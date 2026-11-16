@@ -1,0 +1,64 @@
+---
+title: API - import, export and reports
+description: Export a household as JSON, import Glideworth or ProjectionLab files, import CSV and bank files with a dry run, and fetch table and report data.
+section: API and MCP
+order: 16
+lastChecked: 2026-11-16
+---
+
+All paths are under `/api/v1`. Imports need `write` scope. For the app's screens see [Importing](/docs/importing/projectionlab/).
+
+## Household export and import
+
+```bash
+# Full export of one household
+api $GLIDEWORTH/api/v1/households/hh-sample/export > backup.json
+
+# Restore into a clean database (409 if the household exists, unless "mode": "replace")
+api -X POST $GLIDEWORTH/api/v1/import -d "{\"data\": $(cat backup.json)}"
+
+# ProjectionLab: dry run first
+api -X POST $GLIDEWORTH/api/v1/import -d "{\"format\": \"projectionlab\", \"dryRun\": true, \"data\": $(cat pl-export.json)}"
+```
+
+`mode` is `create` (default), `replace` or `merge`. Plan version history is preserved. The report lists issues by key path
+and never echoes values.
+
+## CSV
+
+`POST /households/{id}/import/csv` takes `{ text, kind, options?, planId?, dryRun? }`. `kind` is `account-balances`,
+`progress-snapshots` or `transactions`. **`dryRun` defaults to `true`**: you get the delimiter, preset and column analysis,
+the issues and, for balances, a reconciliation. Repeat with `"dryRun": false` to apply atomically. Blocking errors are
+`422 IMPORT_FAILED` and change nothing. `POST /households/{id}/import/csv/analyze` returns the analysis alone.
+
+```bash
+api -X POST $GLIDEWORTH/api/v1/households/hh-sample/import/csv -d '{
+  "kind": "account-balances",
+  "text": "Account,Balance,Date\nHigh-yield savings,31000,2026-11-15\n",
+  "options": { "accountMap": { "Cash ISA": "uk-isa" }, "createMissing": false }
+}'
+```
+
+## Bank files
+
+`POST /households/{id}/import/bank-file` takes `{ text, format?, dateFormat?, accountName?, balances?, planId?, annualise?,
+categoryMap?, excludeCategories?, dryRun? }`, with `format` of `ofx`, `qif` or `auto`, and `dryRun` defaulting to `true`.
+Account numbers are masked to their last four digits. `text` is limited to 2 MB (2,000,000 characters); a larger file
+is refused with `400 VALIDATION` before it is parsed.
+
+## Tables and reports
+
+```bash
+api "$GLIDEWORTH/api/v1/plans/plan-main/export/tables/year-by-year?basis=real"
+api "$GLIDEWORTH/api/v1/plans/plan-main/export/tables/taxes?format=csv" > taxes.csv
+api "$GLIDEWORTH/api/v1/households/hh-sample/export/progress?format=csv" > progress.csv
+api "$GLIDEWORTH/api/v1/plans/plan-main/report?basis=real&tableEvery=5"
+```
+
+Tables are `year-by-year`, `cash-flow`, `taxes` and `account-balances`, with money rounded to 2 decimal places in the
+requested basis. The report returns key figures, milestones, series, the year table, current finances, assumptions and
+caveats as data; the web app renders it.
+
+## What this does not do
+
+There is no server-side PDF. A household export is not a full instance backup: it holds no users or keys.

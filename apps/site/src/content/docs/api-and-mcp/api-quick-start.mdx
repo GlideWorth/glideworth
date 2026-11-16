@@ -1,0 +1,67 @@
+---
+title: API quick start with curl
+description: Call the Glideworth API in minutes - identify your key, run a projection, start a Monte Carlo job, edit one number safely, and push balances atomically.
+section: API and MCP
+order: 12
+lastChecked: 2026-11-16
+---
+
+**Before you start:** a running instance, and an API key with at least `read` scope (and `write` for the last two steps).
+See [Authentication](/docs/api-and-mcp/api-authentication/). The ids below (`hh-sample`, `plan-main`, `exp-living`) belong
+to the synthetic sample household; your ids come from the list calls. Figures are illustrative.
+
+<Steps>
+1. Set your address and key, and a small helper.
+
+   ```bash
+   export GLIDEWORTH=http://localhost:8787
+   export KEY=glideworth_xxxxxxxx_yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+   api() { curl -s -H "Authorization: Bearer $KEY" -H "content-type: application/json" "$@"; }
+   ```
+
+2. Check who you are, and list households and plans.
+
+   ```bash
+   api $GLIDEWORTH/api/v1/me
+   api $GLIDEWORTH/api/v1/households
+   api "$GLIDEWORTH/api/v1/plans?limit=5"
+   ```
+
+3. Run a deterministic projection, compact: net worth and taxes every 5 years, in today's money.
+
+   ```bash
+   api -X POST $GLIDEWORTH/api/v1/plans/plan-main/simulate -d '{
+     "view": { "basis": "real", "fromYear": 2030, "everyNYears": 5, "series": ["netWorth", "taxes"] }
+   }'
+   ```
+
+4. Run a Monte Carlo as a job. `?wait=60` blocks until it finishes; without it you get `202` and a job.
+
+   ```bash
+   api -X POST "$GLIDEWORTH/api/v1/plans/plan-main/monte-carlo?wait=60" -d '{ "settings": { "trials": 1000 } }'
+   api $GLIDEWORTH/api/v1/jobs/<job id>/result
+   ```
+
+5. Edit one number safely: read the version from the `ETag`, then `PATCH` with `If-Match`.
+
+   ```bash
+   api -i $GLIDEWORTH/api/v1/plans/plan-main/expenses/exp-living | grep -i etag
+   api -X PATCH $GLIDEWORTH/api/v1/plans/plan-main/expenses/exp-living \
+     -H 'If-Match: "1"' -d '{"amount": {"value": 5600, "basis": "real"}}'
+   ```
+
+6. Push balances from another tool in one atomic call, with an idempotency key.
+
+   ```bash
+   api -X POST $GLIDEWORTH/api/v1/households/hh-sample/balances \
+     -H 'Idempotency-Key: sync-2026-11-15' -d '{
+       "accounts": [{"accountId": "acc-cash", "balance": 31250.40}],
+       "debts": [{"debtId": "debt-car", "balance": 8120}]
+     }'
+   ```
+</Steps>
+
+## Next
+
+Continue with [Finances and plans](/docs/api-and-mcp/api-finances-and-plans/), [Simulation, solvers and jobs](/docs/api-and-mcp/api-simulation-and-jobs/)
+and [Change sets](/docs/api-and-mcp/api-change-sets/).

@@ -1,0 +1,14 @@
+# Generated files (node_modules, dist, coverage and routeTree.gen.ts are also in .gitignore)
+apps/web/src/routeTree.gen.ts
+packages/core/src/stochastic/data/*.generated.ts
+**/drizzle/meta/
+apps/site/src/data/openapi.json
+
+# Build output and caches
+**/.astro/
+**/dist/
+**/coverage/
+**/.vitest/
+
+# Your own private files stay out of every tool
+private/

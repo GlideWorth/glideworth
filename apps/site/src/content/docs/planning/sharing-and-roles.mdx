@@ -1,0 +1,59 @@
+---
+title: Sharing and roles
+description: Give a partner or adviser their own sign-in with an owner, editor or viewer role, or send a read-only share link that shows results without your accounts.
+section: Planning
+order: 8
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+
+There are two ways to share a plan: give a person a sign-in, or send a link to the results.
+
+## Roles
+
+One instance can have several logins. The first, the **owner**, is created at first-run setup.
+
+| Role | Can |
+| --- | --- |
+| Owner | Everything, including users, webhooks, OAuth clients and the audit log. |
+| Editor (a partner) | Read, simulate and write: plans, finances, imports, share links, the check-in schedule and their own API keys. Not users, webhooks or the audit log. |
+| Viewer (an adviser) | Read and simulate only. Every route and MCP tool that writes is refused or absent. |
+
+Roles are instance-wide, not per household. A role caps every credential of that person: browser session, API key
+and OAuth token.
+
+### Invite someone
+
+<Steps>
+1. Open **Settings**, then **People &amp; access**.
+2. Invite a person with a name and a role (editor or viewer). You get a one-time invite token to give them,
+   for example inside a link.
+3. They open the link, choose a passphrase, and are signed in. You never learn their passphrase. The invite works
+   once and expires after 7 days.
+</Steps>
+
+You can change a role, disable a person, remove them, or issue a passphrase reset. The **Audit log** under Settings
+shows who changed what, including writes by API keys and MCP tools.
+
+## Share links
+
+A share link shows the results of one plan to someone without an account.
+
+<Steps>
+1. In **Settings**, open **Share links**, or use the share control for a plan.
+2. Choose a label, how long it lasts ("Expires after", 1 to 365 days, default 30), how money is shown ("Money shown
+   as"), and whether to "Include the chance of success".
+3. Copy the link. The token is shown once.
+</Steps>
+
+Money can be shown in full, as a percentage of your starting net worth, or hidden entirely. The link serves a
+snapshot of results taken when it was created (you can refresh it). It never contains your household, people,
+accounts, balances, settings or other plans, and life-expectancy milestones are left out because they name a
+person. Revoke a link and it stops working at once.
+
+## What this does not do
+
+- It does not give per-household access control. Roles are instance-wide.
+- A share link is not an API credential: it opens no other route.
+- Shared pages are not indexed by search engines.

@@ -1,0 +1,155 @@
+---
+title: Glideworth and ProjectionLab compared
+description: "A dated, sourced comparison of Glideworth and ProjectionLab: who each suits, price, tax and simulation, data, automation, and moving over by JSON import."
+ogTitle: Glideworth vs ProjectionLab
+competitor: ProjectionLab
+checkedOn: 2026-11-16
+sources:
+  - label: ProjectionLab pricing page
+    url: https://projectionlab.com/pricing
+  - label: ProjectionLab home page
+    url: https://projectionlab.com/
+  - label: ProjectionLab Monte Carlo page
+    url: https://projectionlab.com/monte-carlo
+  - label: ProjectionLab security page
+    url: https://projectionlab.com/security
+  - label: ProjectionLab Plugin API documentation
+    url: https://app.projectionlab.com/docs/types/PluginAPI.html
+  - label: ProjectionLab changelog
+    url: https://projectionlab.com/changelog
+  - label: ProjectionLab about page
+    url: https://projectionlab.com/about
+---
+
+import { formatPrice, pricing } from '../../config/pricing';
+import { facts } from '../../lib/facts';
+import { site } from '../../config/site';
+
+ProjectionLab and Glideworth are both financial planners that project a household's money over decades. This
+page sets out what each is, using only what ProjectionLab says about itself in public and what Glideworth's
+code does today. Every statement about ProjectionLab links to the page it came from and the date we read it.
+
+<Callout type="note" title="How to read this page">
+  Facts about ProjectionLab were checked on 16 November 2026 from its public pages. We did not create an
+  account or use the product, so we describe what it says it does, not how it behaves. Products change. If
+  you find something out of date or wrong, write to <a href={`mailto:${site.contact.hello}`}>{site.contact.hello}</a>
+  and we will correct it.
+</Callout>
+
+## Who each suits
+
+**ProjectionLab is the better choice if** you want a hosted planner that exists today, with a free tier and a
+paid plan, from a product that has been developed since 2021 and has a public roadmap and release history and
+community channels
+([about](https://projectionlab.com/about), [home page](https://projectionlab.com/), read 16 Nov 2026). It also
+lists an Optimize tool, added in its v4.6.0 release of April 2026, that targets federal brackets, IRMAA, ACA
+limits and the NIIT cliff ([changelog](https://projectionlab.com/changelog), read 16 Nov 2026). Glideworth models
+Roth conversions, IRMAA and the ACA credit too, but its tax optimiser is less developed: the project's own status
+file rates its depth as partial. If you are an adviser or coach,
+ProjectionLab has a Pro plan for managing clients
+([pricing](https://projectionlab.com/pricing), read 16 Nov 2026); Glideworth has no adviser tier.
+
+**Glideworth may suit you better if** you want to run the planner yourself and keep the data in one file on
+your own machine, read and change the source code (AGPL-3.0), reach your plan from scripts or an AI assistant
+through a server-side REST API and an MCP server, or plan across several countries with a written list of what
+each country's tax estimate leaves out. You can use every feature when you self-host, at no cost.
+
+**Neither is built around live bank connections.** Glideworth does not link accounts, by design. ProjectionLab's
+security page says no linked accounts are required ([security](https://projectionlab.com/security), read
+16 Nov 2026).
+
+## Side by side
+
+Each ProjectionLab cell links to its source and gives the date read. Glideworth cells describe the code in this
+repository today.
+
+| | Glideworth | ProjectionLab |
+|---|---|---|
+| Price | Self-hosted: free, every feature. Hosted: {formatPrice(pricing.monthly)} a month or {formatPrice(pricing.yearly)} a year, **not live yet** | Basic $0 a year; Premium $129 a year; Pro $549 a year ([pricing](https://projectionlab.com/pricing), 16 Nov 2026) |
+| Free tier | Self-hosting has no feature limits | Basic: forecasting, planning, Monte Carlo and historical backtesting ([pricing](https://projectionlab.com/pricing), 16 Nov 2026) |
+| Source and hosting | Open source (AGPL-3.0); run it yourself, with data in a SQLite file | Hosted on Google Cloud Firestore with daily backups; self-hosting and local-only storage are not mentioned on the page ([security](https://projectionlab.com/security), 16 Nov 2026) |
+| Tax estimates | {facts.taxCountryCount} countries with a written list of simplifications for each, plus flat or custom rates | Presets named on its home page include Canada, the UK, Australia, Germany and the Netherlands, "and more" ([home page](https://projectionlab.com/), 16 Nov 2026) |
+| Monte Carlo | Historical restart, sequential, block bootstrap, normal, lognormal and fat-tail returns; seeded; US history 1928 to 2025, UK history 1983 to 2025 | Monte Carlo and historical backtesting, each trial tied to a historical return sequence, with custom distributions ([Monte Carlo page](https://projectionlab.com/monte-carlo), 16 Nov 2026) |
+| Tax planning | Roth conversions, withdrawal strategies, tax-strategy comparison, estate estimates; depth is "partial" in the project's status file | Premium lists Roth conversions, tax optimisation, withdrawal strategies, estate planning and compare mode ([pricing](https://projectionlab.com/pricing), 16 Nov 2026); v4.6.0 added the Optimize tool ([changelog](https://projectionlab.com/changelog), 16 Nov 2026) |
+| Reports and export | JSON and CSV tables; a printable report from the browser (no server-side PDF) | Table reports exported as PDF, CSV and JSON, from v4.4.0 ([changelog](https://projectionlab.com/changelog), 16 Nov 2026) |
+| Automation | REST API (OpenAPI 3.1) that runs on the server, scoped API keys, signed webhooks | A plugin API that runs in the browser as `window.projectionlabPluginAPI`, with an API key and seven methods ([Plugin API docs](https://app.projectionlab.com/docs/types/PluginAPI.html), 16 Nov 2026) |
+| AI assistants | MCP server over stdio or HTTP; edits are proposals you approve | No official MCP server or AI assistant appears in its ten most recent changelog entries ([changelog](https://projectionlab.com/changelog), 16 Nov 2026) |
+| Security assurances | No certifications and no external audit | Describes a programme "designed to align with" SOC 2 control areas and says Google Cloud's certifications apply to Google's infrastructure, not to ProjectionLab ([security](https://projectionlab.com/security), 16 Nov 2026) |
+| Track record | New project | Development began in 2021 ([about](https://projectionlab.com/about), 16 Nov 2026) |
+
+### What we did not compare
+
+Some things we could not establish from ProjectionLab's public pages, so this page says nothing about them:
+the length of the free trial and whether it asks for a card, whether international tax estimation is in the free
+tier or Premium (its pricing page and changelog read differently), its full list of countries and account types,
+which historical data sets and date ranges its simulations use, and whether it has a native mobile app.
+
+## Price
+
+ProjectionLab's pricing page lists Basic at $0 a year, Premium at $129 a year and Pro at $549 a year, with a free
+trial for Premium and Pro; it does not give the trial's length, and the currency is not named
+([pricing](https://projectionlab.com/pricing), read 16 Nov 2026).
+
+Glideworth is free to self-host with every feature. The hosted service, Glideworth Cloud, is planned at
+{formatPrice(pricing.monthly)} a month or {formatPrice(pricing.yearly)} a year in US dollars, after a
+{pricing.trialDays}-day trial without a card. **The hosted service is not live yet**, so you cannot sign up
+today; see [pricing](/pricing/).
+
+In plain numbers, a year of the hosted plan is planned at {formatPrice(pricing.yearly)}, against $129 for
+ProjectionLab Premium. These are not like-for-like: ProjectionLab's Basic tier is free and includes Monte Carlo,
+and the two products differ in features and maturity. Self-hosting Glideworth costs the hardware and your time
+to look after it, and you are responsible for backups and updates.
+
+## Moving over from ProjectionLab
+
+Glideworth can import a ProjectionLab JSON export. You review a report first, then apply it, either in the web
+app or through the API with a dry run. The report classifies every key path in your file as mapped, ignored or unsupported, lists each
+approximation or dropped field as an issue, and never prints your values.
+
+What it does not carry over, so you should plan to check it:
+
+- **Anything the report marks approximated or unsupported.** Nothing is dropped silently, but those items need
+  your attention. Examples of judgement calls: a relocation milestone becomes a move on the residency timeline;
+  a percentage priority is read from its amount; per-account overrides are kept only where they differ from the
+  account's own settings.
+- **Interface state.** Chart and table preferences, layout, tour progress and similar settings are ignored.
+- **Account state and secrets.** Billing and terms state are ignored. A plugin API key in the file is discarded
+  and never read into the report.
+- **Results.** Glideworth recalculates with its own engine and tax tables, so projected figures will differ from
+  ProjectionLab's even for the same inputs.
+- **Starting conditions.** Only the default (live) starting condition is represented.
+- **Newer fields.** The importer was built against export format 4.6. A newer export may include fields the
+  report lists as unrecognised.
+- **Re-importing** the same household needs replace mode.
+
+The importer needs a JSON export file from ProjectionLab. ProjectionLab's plugin interface has an `exportData`
+method that returns account data
+([Plugin API docs](https://app.projectionlab.com/docs/types/PluginAPI.html), read 16 Nov 2026); we have not
+confirmed where its app's menus offer the export, so check its help pages.
+
+## Questions
+
+<FAQ items={[
+  {
+    q: 'Can I try Glideworth before paying?',
+    a: '<p>Yes, by self-hosting: every feature is available and there is no payment. The hosted service is not live yet; when it opens it is planned with a ' + pricing.trialDays + '-day trial that does not ask for a card.</p>'
+  },
+  {
+    q: 'Does Glideworth have everything ProjectionLab has?',
+    a: '<p>No. ProjectionLab lists features, tools and a track record that Glideworth does not match in every area, and Glideworth is new. The project keeps an honest list of partial and missing features in its repository.</p>'
+  },
+  {
+    q: 'Will my plan look the same after importing?',
+    a: '<p>Not exactly. The import maps your inputs and tells you what it approximated, but Glideworth runs its own engine and tax tables, so results differ. Compare the two before you rely on either.</p>'
+  },
+  {
+    q: 'Where did these facts come from, and how do I report a mistake?',
+    a: `<p>Every ProjectionLab statement links to a public ProjectionLab page and the date it was read, 16 November 2026. Pages change, so a statement can go out of date. Email <a href="mailto:${site.contact.hello}">${site.contact.hello}</a> with the page and what is wrong.</p>`
+  }
+]} />
+
+<Callout type="note" title="Estimates, not advice">
+  Glideworth is planning software. Its tax figures help you compare choices under your own assumptions; they
+  are not a tax return and not tax advice. This page describes products as they were on the date shown and is
+  not a recommendation.
+</Callout>

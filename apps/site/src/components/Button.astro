@@ -1,0 +1,124 @@
+---
+/**
+ * A link or button styled as a button.
+ *   <Button href="/pricing/">See pricing</Button>
+ *   <Button href={site.signupUrl} variant="primary" size="lg">Start free trial</Button>
+ * Variants: primary (spruce), secondary (outlined), ghost (text), inverse (for the dark band).
+ */
+import type { HTMLAttributes } from 'astro/types';
+import { externalLinkProps } from '../lib/links';
+
+interface Props extends Omit<HTMLAttributes<'a'>, 'href'> {
+  href?: string;
+  variant?: 'primary' | 'secondary' | 'ghost' | 'inverse';
+  size?: 'md' | 'lg';
+  /** Adds an arrow after the label. */
+  arrow?: boolean;
+  type?: 'button' | 'submit';
+}
+
+const {
+  href,
+  variant = 'primary',
+  size = 'md',
+  arrow = false,
+  type = 'button',
+  class: className,
+  ...rest
+} = Astro.props;
+const classes = ['btn', `btn-${variant}`, `btn-${size}`, className];
+---
+
+{
+  href ? (
+    <a href={href} class:list={classes} {...externalLinkProps(href)} {...rest}>
+      <slot />
+      {arrow && (
+        <svg class="btn-arrow" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      )}
+    </a>
+  ) : (
+    <button type={type} class:list={classes}>
+      <slot />
+    </button>
+  )
+}
+
+<style>
+  .btn {
+    --btn-bg: transparent;
+    --btn-fg: var(--ink);
+    --btn-border: transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    padding: 0.6rem 1.15rem;
+    border: 1px solid var(--btn-border);
+    border-radius: 999px;
+    background: var(--btn-bg);
+    color: var(--btn-fg);
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    line-height: 1.2;
+    text-decoration: none;
+    white-space: nowrap;
+    transition:
+      background-color 160ms var(--ease),
+      border-color 160ms var(--ease),
+      color 160ms var(--ease),
+      transform 160ms var(--ease);
+  }
+  .btn:hover {
+    text-decoration: none;
+  }
+  .btn:active {
+    transform: translateY(1px);
+  }
+  .btn-lg {
+    min-height: 3.1rem;
+    padding: 0.75rem 1.45rem;
+    font-size: var(--text-base);
+  }
+  .btn-primary {
+    --btn-bg: var(--accent);
+    --btn-fg: var(--accent-ink);
+  }
+  .btn-primary:hover {
+    --btn-bg: var(--accent-hover);
+  }
+  .btn-secondary {
+    --btn-border: var(--line-strong);
+    --btn-fg: var(--ink);
+    --btn-bg: var(--surface);
+  }
+  .btn-secondary:hover {
+    --btn-border: var(--ink-3);
+  }
+  .btn-ghost {
+    --btn-fg: var(--accent-text);
+    padding-inline: 0.4rem;
+  }
+  .btn-ghost:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+  .btn-inverse {
+    --btn-bg: var(--band-ink);
+    --btn-fg: #14271f;
+  }
+  .btn-inverse:hover {
+    --btn-bg: #ffffff;
+  }
+  .btn-arrow {
+    transition: transform 160ms var(--ease);
+  }
+  .btn:hover .btn-arrow {
+    transform: translateX(2px);
+  }
+</style>

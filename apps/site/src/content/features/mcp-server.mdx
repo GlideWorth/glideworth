@@ -1,0 +1,80 @@
+---
+title: The MCP server for AI assistants
+description: "Connect Claude or any MCP client to your plan with {{mcpReadTools}} read and compute tools and {{mcpWriteTools}} write tools that stay off by default. Edits are always proposals."
+ogTitle: The MCP server
+summary: Read, simulate and propose with an AI assistant, read-only by default, with every edit a change set you approve.
+order: 15
+---
+
+import { facts } from '../../lib/facts';
+
+The Model Context Protocol is the standard way for AI assistants to use tools. Glideworth's MCP server lets an
+assistant read your plans, run simulations and propose changes, under rules you set. It is a thin adapter over
+the same services as the [REST API](/features/rest-api/), so every tool has a REST twin and behaves identically.
+
+## What an assistant gets
+
+There are {facts.mcpTools} tools. {facts.mcpReadTools} read and compute, and all of them are marked read-only. {facts.mcpWriteTools} write, and they exist only when
+you switch writes on at the server **and** the connecting key has write scope. A client cannot call a tool it
+cannot see.
+
+- **Read:** households, accounts, plans, plan history, diffs, progress snapshots, check-in history, notifications,
+  exchange rates, the residency timeline and cross-border rule tables, and dry-run previews of CSV and bank-file
+  imports.
+- **Compute:** a plan summary (the best first call), projections, Monte Carlo and historical backtests, plan
+  comparison, explanations, the assumption audit, sensitivity, every [solver](/features/solvers/), guardrails,
+  tax breakdowns, stay-or-move, and previews of what-ifs.
+- **Write:** propose, apply and discard change sets; create branches; apply imports; update balances; record
+  snapshots; run check-ins; create and revoke share links; set exchange rates and a person's cross-border record.
+- **Resources and prompts:** reference documents (units, glossary, change sets, common edit paths) and prompts
+  such as `review_my_plan`, `why_might_my_plan_fail`, `how_much_can_i_spend` and `can_i_retire_earlier`.
+
+Tools return compact JSON with money in today's money unless asked otherwise, and every error says how to recover:
+a code, a message and a hint about which tool to call next.
+
+## The safety model
+
+- **Read-only by default.** The write switch is off until you turn it on.
+- **Scoped keys.** `read` for analysis, `simulate` for compute only, `write` to propose and apply. A viewer's
+  connection never has write tools, whatever the key says.
+- **Edits are proposals.** `propose_change_set` returns a readable diff and a before-and-after result and applies
+  nothing. `apply_change_set` works only against the plan version the proposal was written for, or it is refused
+  as a conflict.
+- **No delete tools.** Anything destructive has to be a change set, even reverting to an earlier version.
+- **An audit trail.** Every apply is recorded in plan history under the assistant's identity, and writes appear in
+  the audit log under the person whose key or consent it was.
+- **Limits that hold under manipulation.** An assistant that has been tricked by text it read can still do only
+  what its key allows, which is why least-privilege keys matter.
+
+## A worked illustration
+
+You ask, "What if I retire three years earlier? Save it as a branch." Illustrative figures throughout. The
+assistant calls `get_plan_summary`, then `preview_whatif` with the `early-retirement` template and `years: 3`
+(nothing stored), then `create_branch_from_template` (the parent is untouched), `run_monte_carlo` on both plans and
+`compare_plans` with an explanation. It reports: "Retiring at 57 instead of 60 lowers the chance of success from
+86% to 74%. It is saved as a branch called Retire at 57." You open the branch in the app and decide. The
+[API and MCP page](/api/) walks through a longer session, including a change set.
+
+## Connecting
+
+Over HTTP against a running server, or over stdio with no server running, with the commands shown on the
+[API and MCP page](/api/). Remote assistants that connect by URL sign in with OAuth 2.1 (PKCE, rotating refresh
+tokens, scopes capped by your role) instead of a pasted key. Bearer keys keep working.
+
+## What it does not do
+
+- **Glideworth does not run an AI on your data.** The server has no model in it. Your assistant is software you
+  choose, and **its provider sees what the tools return.** If that matters, use a local model.
+- **An assistant is not a source of tax or investment advice.** Tools return the model's results; what the
+  assistant tells you about them is its own.
+- **No hosted endpoint yet.** A stable HTTPS address with OAuth is planned for the hosted service, which is not
+  open yet. Today the server runs on your machine.
+- **Some tools need the writes switch,** and a tool that touches an engine feature that is not built returns
+  `NOT_IMPLEMENTED` with the owner named.
+- **It does not replace the app.** Charts, the plan editor and some screens have no MCP equivalent.
+
+## Go further
+
+- [API and MCP for AI agents](/api/) for the full session and connection snippets.
+- [Branches and change sets](/features/branches-and-change-sets/), the mechanism behind safe edits.
+- [Security and privacy](/security/) for what a connected assistant can see.

@@ -1,0 +1,66 @@
+name: Tax-rule correction
+description: A rate, threshold, allowance or rule in a country's tax tables is wrong, out of date or missing.
+labels: [tax-rules]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Tax tables are only changed with evidence from an **official source** (the tax authority, the
+        legislation, or the government's own guidance). Blog posts, forums and other calculators are not
+        sources, though you may mention them as hints. Glideworth is an estimator and not tax advice.
+        **Do not include your personal tax details.**
+  - type: input
+    id: country
+    attributes:
+      label: Country and region
+      placeholder: "UK (England), US (California), Canada (Ontario) ..."
+    validations:
+      required: true
+  - type: input
+    id: year
+    attributes:
+      label: Tax year affected
+      placeholder: "2026/27"
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: What the app currently does
+      description: The figure or behaviour as shown (screen, API result or table name).
+    validations:
+      required: true
+  - type: textarea
+    id: correct
+    attributes:
+      label: What it should do
+      description: The correct figure or rule, with units and effective dates.
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Official source (URL)
+      description: A link to the tax authority page, legislation or official publication.
+      placeholder: "https://www.gov.uk/..."
+    validations:
+      required: true
+  - type: input
+    id: source_detail
+    attributes:
+      label: Where in the source
+      description: Section, table, paragraph or page number, and the date you read it.
+    validations:
+      required: true
+  - type: textarea
+    id: vector
+    attributes:
+      label: Worked example (optional but very helpful)
+      description: Synthetic inputs and the result the official calculator or guidance gives.
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Checks
+      options:
+        - label: The source above is official, and I did not include my own tax records.
+          required: true

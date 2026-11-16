@@ -1,0 +1,522 @@
+---
+/**
+ * A calculator: the input form and the results panel. The results for the default inputs are computed
+ * at build time by the same engine code the browser runs (src/tools/engine), so the static page shows
+ * real numbers without JavaScript. The page script (ToolPage) brings it to life.
+ */
+import { currencySymbol } from '../../tools/format';
+import { renderResults } from '../../tools/render';
+import { defaults, isActive } from '../../tools/state';
+import type { ToolSpec, ViewModel } from '../../tools/types';
+import FieldInput from './Field.astro';
+
+interface Props {
+  spec: ToolSpec;
+  vm: ViewModel;
+  name: string;
+}
+const { spec, vm, name } = Astro.props;
+const values = defaults(spec);
+const main = spec.fields.filter((f) => !f.advanced);
+const more = spec.fields.filter((f) => f.advanced);
+const symbol = currencySymbol(String(values.cur ?? 'USD'));
+const simulation = spec.mode === 'simulation';
+---
+
+<section class="tool" data-tool={spec.id} data-mode={spec.mode} aria-label={name}>
+  <form class="tool-form" data-tool-form novalidate>
+    <p class="tool-form-intro">Amounts are in today’s money. Your inputs stay in this browser.</p>
+    <div class="tool-fields">
+      {main.map((f) => <FieldInput field={f} hidden={!isActive(f, values)} symbol={symbol} />)}
+    </div>
+    {
+      more.length > 0 && (
+        <details class="tool-more">
+          <summary>More options</summary>
+          <div class="tool-fields">
+            {more.map((f) => (
+              <FieldInput field={f} hidden={!isActive(f, values)} symbol={symbol} />
+            ))}
+          </div>
+        </details>
+      )
+    }
+    <div class="tool-actions js-only">
+      <button type="submit" class="tool-btn tool-btn-primary">{simulation ? 'Run simulation' : 'Calculate'}</button>
+      <button type="button" class="tool-btn" data-action="reset">Reset</button>
+      <button type="button" class="tool-btn" data-action="copy">Copy link to these results</button>
+    </div>
+    <noscript>
+      <p class="tool-noscript">
+        The calculator needs JavaScript to recalculate. The results shown use the default inputs, and the explanation
+        below works without it.
+      </p>
+    </noscript>
+  </form>
+
+  <div class="tool-output">
+    <div class="tool-status" data-status hidden>
+      <p data-status-text></p>
+      {simulation && <progress data-progress hidden max="1" value="0" aria-label="Simulation progress" />}
+      {simulation && <button type="button" class="tool-btn" data-action="cancel" hidden>Cancel</button>}
+      <button type="button" class="tool-btn" data-action="run" hidden>Run again</button>
+    </div>
+    <p class="visually-hidden" aria-live="polite" data-announce></p>
+    <div class="tool-results" data-results set:html={renderResults(vm)} />
+    <p class="tool-defaults-note">
+      Results update as you type{simulation ? ' (simulations run in the background and can be cancelled)' : ''}. The first
+      result shown is for the default inputs, calculated when this page was built.
+    </p>
+  </div>
+</section>
+
+<style is:global>
+  .tool {
+    display: grid;
+    gap: var(--space-l);
+    align-items: start;
+  }
+  @media (min-width: 62rem) {
+    .tool {
+      grid-template-columns: minmax(0, 21rem) minmax(0, 1fr);
+    }
+  }
+  .tool-form {
+    display: grid;
+    gap: var(--space-s);
+    padding: var(--space-m);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-l);
+  }
+  .tool-form-intro,
+  .tool-defaults-note,
+  .tool-noscript {
+    font-size: var(--text-xs);
+    color: var(--ink-3);
+  }
+  .tool-fields {
+    display: grid;
+    gap: var(--space-s);
+  }
+  .tool-field {
+    display: grid;
+    gap: 0.3rem;
+  }
+  .tool-field[hidden] {
+    display: none;
+  }
+  .tool-field label {
+    font-weight: 600;
+    font-size: var(--text-sm);
+  }
+  .tool-input {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-s);
+    background: var(--bg);
+  }
+  .tool-input:focus-within {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  .tool-input input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    font-variant-numeric: tabular-nums;
+    padding: 0.55rem 0.7rem;
+  }
+  .tool-input input:focus-visible {
+    outline: none;
+  }
+  .tool-input:has(input[aria-invalid='true']) {
+    border-color: var(--risk);
+    box-shadow: inset 0 0 0 1px var(--risk);
+  }
+  .tool-affix {
+    padding-inline: 0.7rem 0;
+    color: var(--ink-3);
+    font-size: var(--text-sm);
+    white-space: nowrap;
+  }
+  .tool-affix:last-child {
+    padding-inline: 0 0.7rem;
+  }
+  .tool-field select {
+    width: 100%;
+    font: inherit;
+    color: var(--ink);
+    background: var(--bg);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-s);
+    padding: 0.55rem 0.6rem;
+  }
+  .tool-help {
+    font-size: var(--text-xs);
+    color: var(--ink-3);
+    line-height: 1.45;
+  }
+  .tool-error {
+    font-size: var(--text-xs);
+    color: var(--risk);
+    font-weight: 600;
+  }
+  .tool-more {
+    border-top: 1px solid var(--line);
+    padding-top: var(--space-xs);
+  }
+  .tool-more > summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: var(--text-sm);
+    color: var(--accent-text);
+    padding-block: 0.3rem;
+  }
+  .tool-more[open] > summary {
+    margin-bottom: var(--space-xs);
+  }
+  .tool-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  html:not(.js) .js-only {
+    display: none;
+  }
+  .tool-btn {
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    border: 1px solid var(--line-strong);
+    background: var(--surface);
+    color: var(--ink);
+    border-radius: 999px;
+    padding: 0.45rem 0.95rem;
+    cursor: pointer;
+    min-height: 2.5rem;
+  }
+  .tool-btn:hover {
+    border-color: var(--ink-3);
+  }
+  .tool-btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+  }
+  .tool-btn-primary:hover {
+    background: var(--accent-hover);
+  }
+  .tool-btn[data-done]::after {
+    content: ' ✓';
+  }
+  .tool-btn[hidden] {
+    display: none;
+  }
+
+  .tool-output {
+    display: grid;
+    gap: var(--space-s);
+    min-width: 0;
+  }
+  .tool-status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 1rem;
+    padding: 0.7rem 1rem;
+    border-radius: var(--radius-m);
+    background: var(--ochre-soft);
+    color: var(--ink);
+    font-size: var(--text-sm);
+  }
+  .tool-status[hidden] {
+    display: none;
+  }
+  .tool-status progress {
+    flex: 1 1 10rem;
+    accent-color: var(--accent);
+    height: 0.6rem;
+  }
+  .tool-status progress[hidden] {
+    display: none;
+  }
+  .tool-results {
+    display: grid;
+    gap: var(--space-m);
+    padding: var(--space-m);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-l);
+    min-width: 0;
+    transition: opacity 160ms var(--ease);
+  }
+  .tool-results.is-stale {
+    opacity: 0.55;
+  }
+  .tool-headline {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    line-height: var(--leading-snug);
+    text-wrap: pretty;
+  }
+  .tool-warnings {
+    padding: 0.6rem 1rem;
+    border-left: 3px solid var(--ochre-mark);
+    background: var(--ochre-soft);
+    font-size: var(--text-sm);
+    list-style: none;
+  }
+  .tool-figures {
+    display: grid;
+    gap: var(--space-s);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  }
+  .tool-figures > div {
+    padding: 0.8rem 0.9rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-m);
+    background: var(--bg);
+  }
+  .tool-figures dt {
+    font-size: var(--text-xs);
+    color: var(--ink-3);
+    font-weight: 600;
+  }
+  .tool-figures dd {
+    display: grid;
+    gap: 0.15rem;
+    margin: 0.2rem 0 0;
+  }
+  .tool-figure-value {
+    font-size: var(--text-xl);
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .tool-figure-detail {
+    font-size: var(--text-xs);
+    color: var(--ink-2);
+  }
+  .tool-charts {
+    display: grid;
+    gap: var(--space-l);
+  }
+  .tool-charts-multi {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+    gap: var(--space-m);
+  }
+  .tool-chart {
+    display: grid;
+    gap: 0.5rem;
+    min-width: 0;
+    margin: 0;
+  }
+  .tool-chart-title,
+  .tool-compare-title,
+  .tool-method-title {
+    font-weight: 650;
+    font-size: var(--text-sm);
+  }
+  .tool-chart figcaption {
+    font-size: var(--text-sm);
+    color: var(--ink-2);
+  }
+  .tc-svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    overflow: visible;
+  }
+  .tc-svg text {
+    fill: var(--ink-3);
+    font-size: 12px;
+    font-family: var(--font-sans);
+  }
+  .tc-svg .tc-label {
+    fill: var(--ink-2);
+  }
+  .tc-svg .tc-ref-label {
+    fill: var(--ink-2);
+    font-weight: 600;
+  }
+  /* Text is in SVG units: scale it up where the chart is drawn small (phones, small multiples). */
+  .tool-charts-multi .tc-svg text {
+    font-size: 19px;
+  }
+  @media (max-width: 34rem) {
+    .tc-svg text {
+      font-size: 19px;
+    }
+  }
+  .tc-grid {
+    stroke: var(--chart-grid);
+    stroke-width: 1;
+  }
+  .tc-axis {
+    stroke: var(--line-strong);
+    stroke-width: 1;
+  }
+  .tc-ref {
+    stroke: var(--ink-3);
+    stroke-width: 1.2;
+    stroke-dasharray: 2 4;
+  }
+  .tc-marker {
+    stroke: var(--ochre-mark);
+    stroke-width: 1.5;
+    stroke-dasharray: 5 4;
+  }
+  .tc-line {
+    fill: none;
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+  .tc-dashed {
+    stroke-dasharray: 8 5;
+    stroke-linecap: butt;
+  }
+  .tc-dotted {
+    stroke-dasharray: 0.5 5;
+    stroke-width: 3;
+  }
+  .tc-line.tone-1 {
+    stroke: var(--chart-1);
+  }
+  .tc-line.tone-2 {
+    stroke: var(--chart-2);
+  }
+  .tc-line.tone-3 {
+    stroke: var(--chart-3);
+  }
+  .tc-line.tone-4 {
+    stroke: var(--chart-4);
+  }
+  .tc-band.tone-1,
+  .tc-bar.tone-1 {
+    fill: var(--chart-1);
+  }
+  .tc-band.tone-2,
+  .tc-bar.tone-2 {
+    fill: var(--chart-2);
+  }
+  .tc-band.tone-3,
+  .tc-bar.tone-3 {
+    fill: var(--chart-3);
+  }
+  .tc-band.tone-4,
+  .tc-bar.tone-4 {
+    fill: var(--chart-4);
+  }
+  .tc-band-outer {
+    opacity: 0.16;
+  }
+  .tc-band-inner {
+    opacity: 0.32;
+  }
+  .tc-bar {
+    opacity: 0.85;
+  }
+  .tool-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 1.1rem;
+    list-style: none;
+    padding: 0;
+    font-size: var(--text-xs);
+    color: var(--ink-2);
+  }
+  .tool-legend li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .tc-swatch {
+    width: 28px;
+    height: 10px;
+    flex: none;
+  }
+  .tool-details > summary {
+    cursor: pointer;
+    font-size: var(--text-sm);
+    color: var(--accent-text);
+    font-weight: 600;
+  }
+  .tool-details[open] > summary {
+    margin-bottom: 0.5rem;
+  }
+  .tool-table-scroll {
+    overflow-x: auto;
+    max-width: 100%;
+  }
+  .tool-details .tool-table-scroll {
+    max-height: 22rem;
+    overflow-y: auto;
+  }
+  .tool-table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+  }
+  .tool-table caption {
+    text-align: left;
+    font-size: var(--text-xs);
+    color: var(--ink-3);
+    padding-bottom: 0.4rem;
+    caption-side: top;
+  }
+  .tool-table th,
+  .tool-table td {
+    padding: 0.45rem 0.6rem;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    vertical-align: top;
+  }
+  .tool-table thead th {
+    font-size: var(--text-xs);
+    color: var(--ink-2);
+    font-weight: 650;
+    border-bottom-color: var(--line-strong);
+  }
+  .tool-table thead td {
+    border-bottom-color: var(--line-strong);
+  }
+  .tool-table .num {
+    text-align: right;
+    white-space: nowrap;
+  }
+  .tool-table tbody th {
+    font-weight: 600;
+  }
+  .tool-compare,
+  .tool-method {
+    display: grid;
+    gap: 0.5rem;
+    padding-top: var(--space-s);
+    border-top: 1px solid var(--line);
+  }
+  .tool-compare caption {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .tool-compare-note,
+  .tool-method ul {
+    font-size: var(--text-sm);
+    color: var(--ink-2);
+  }
+  .tool-method ul {
+    padding-left: 1.1em;
+    display: grid;
+    gap: 0.3rem;
+  }
+</style>

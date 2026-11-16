@@ -1,0 +1,284 @@
+---
+/**
+ * The hosted plan beside the free self-hosted option. Every figure comes from src/config/pricing.ts.
+ *   <PricingTable />
+ * The monthly / yearly switch is two radio buttons and CSS (:has), so it works without JavaScript.
+ */
+import { formatPrice, pricing, yearlySaving } from '../config/pricing';
+import { site } from '../config/site';
+import Button from './Button.astro';
+
+interface Props {
+  /** Heading level of the plan names. */
+  as?: 'h2' | 'h3';
+}
+const { as: Heading = 'h2' } = Astro.props;
+const saving = yearlySaving();
+const selfHosted = [
+  'Every feature, the same code as the hosted service',
+  'Your machine or server: one Docker container or one Node process',
+  'Your data in one SQLite file; backups with one command',
+  'You apply updates when you choose',
+  'No licence key, no sign-up with us, no telemetry',
+];
+---
+
+<div class="pricing">
+  <article class="plan plan-cloud" aria-labelledby="plan-cloud-name">
+    <header class="plan-head">
+      <Heading id="plan-cloud-name" class="plan-name">{pricing.planName}</Heading>
+      <p class="plan-sub">
+        {
+          site.cloudLaunched
+            ? 'We run it, keep it updated and keep it reachable.'
+            : 'The hosted service opens later. Then we will run it, keep it updated and keep it reachable.'
+        }
+      </p>
+    </header>
+
+    <fieldset class="period">
+      <legend class="visually-hidden">Billing period</legend>
+      <label>
+        <input type="radio" name="billing-period" value="yearly" checked />
+        <span>Yearly</span>
+      </label>
+      <label>
+        <input type="radio" name="billing-period" value="monthly" />
+        <span>Monthly</span>
+      </label>
+    </fieldset>
+
+    <div class="price price-yearly">
+      <p>
+        <span class="amount num">{formatPrice(pricing.yearly)}</span>
+        <span class="per">a year</span>
+      </p>
+      <p class="price-note">
+        {formatPrice(saving.amount)} less than twelve monthly payments: about {saving.monthsFree} months free.
+      </p>
+    </div>
+    <div class="price price-monthly">
+      <p>
+        <span class="amount num">{formatPrice(pricing.monthly)}</span>
+        <span class="per">a month</span>
+      </p>
+      <p class="price-note">Billed monthly. {formatPrice(pricing.monthly * 12)} over a year.</p>
+    </div>
+
+    <p class="trial">
+      <strong>{`${pricing.trialDays}-day free trial${pricing.trialNeedsCard ? '' : ', no card needed'}.`}</strong>{' '}
+      {site.cloudLaunched ? '' : 'Planned: sign-up and billing are not built yet. '}Prices in {pricing.currency}.
+    </p>
+
+    {
+      site.cloudLaunched ? (
+        <Button href={site.signupUrl} size="lg" arrow class="plan-cta">Start your free trial</Button>
+      ) : (
+        <Button href="/self-hosting/" size="lg" arrow class="plan-cta">Self-host it today</Button>
+      )
+    }
+
+    <ul class="plan-features" role="list">
+      {
+        pricing.features.map((f) => (
+          <li class:list={['plan-feature', `is-${f.status}`]}>
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" class="tick">
+              {f.status === 'available' ? (
+                <path d="m3.5 8.5 3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+              ) : (
+                <circle cx="8" cy="8" r="4.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 2" />
+              )}
+            </svg>
+            <span>
+              <span class="feature-label">{f.label}</span>
+              {f.status === 'planned' && <span class="badge">Planned</span>}
+              {'detail' in f && f.detail && <span class="feature-detail">{f.detail}</span>}
+            </span>
+          </li>
+        ))
+      }
+    </ul>
+  </article>
+
+  <article class="plan plan-self" aria-labelledby="plan-self-name">
+    <header class="plan-head">
+      <Heading id="plan-self-name" class="plan-name">{pricing.selfHostName}</Heading>
+      <p class="plan-sub">Run the whole planner yourself, free, under the AGPL-3.0 licence.</p>
+    </header>
+    <div class="price">
+      <p><span class="amount num">Free</span><span class="per">forever</span></p>
+      <p class="price-note">You provide the computer and look after it.</p>
+    </div>
+    <Button href="/self-hosting/" variant="secondary" size="lg" arrow class="plan-cta">Read the self-hosting guide</Button>
+    <ul class="plan-features" role="list">
+      {
+        selfHosted.map((label) => (
+          <li class="plan-feature is-available">
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" class="tick">
+              <path d="m3.5 8.5 3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <span class="feature-label">{label}</span>
+          </li>
+        ))
+      }
+    </ul>
+  </article>
+</div>
+
+<style>
+  .pricing {
+    display: grid;
+    gap: var(--space-m);
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+  @media (min-width: 56rem) {
+    .pricing {
+      grid-template-columns: 1.15fr 1fr;
+      gap: var(--space-l);
+    }
+  }
+  .plan {
+    display: grid;
+    gap: var(--space-m);
+    padding: clamp(1.5rem, 1.1rem + 1.6vw, 2.5rem);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-l);
+    background: var(--surface);
+  }
+  .plan-cloud {
+    border-color: color-mix(in oklab, var(--accent) 45%, var(--line));
+    box-shadow: var(--shadow-2);
+  }
+  .plan-self {
+    background: var(--surface-2);
+  }
+  .plan-head {
+    display: grid;
+    gap: 0.35rem;
+  }
+  .plan-name {
+    font-size: var(--text-2xl);
+  }
+  .plan-sub {
+    color: var(--ink-2);
+  }
+  .period {
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    padding: 3px;
+    display: inline-flex;
+    justify-self: start;
+    gap: 2px;
+  }
+  .period label {
+    position: relative;
+  }
+  .period input {
+    position: absolute;
+    opacity: 0;
+    inset: 0;
+    cursor: pointer;
+  }
+  .period span {
+    display: inline-block;
+    padding: 0.4rem 1rem;
+    border-radius: 999px;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--ink-2);
+  }
+  .period input:checked + span {
+    background: var(--ink);
+    color: var(--bg);
+  }
+  .period input:focus-visible + span {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  .price p:first-child {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+  .amount {
+    font-family: var(--font-display);
+    font-size: clamp(2.6rem, 2rem + 2.4vw, 3.6rem);
+    font-weight: 520;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+  .per {
+    color: var(--ink-2);
+    font-size: var(--text-base);
+  }
+  .price-note {
+    margin-top: 0.4rem;
+    color: var(--ink-3);
+    font-size: var(--text-sm);
+  }
+  .plan-cloud .price-monthly {
+    display: none;
+  }
+  .plan-cloud:has(input[value='monthly']:checked) .price-monthly {
+    display: block;
+  }
+  .plan-cloud:has(input[value='monthly']:checked) .price-yearly {
+    display: none;
+  }
+  .trial {
+    font-size: var(--text-sm);
+    color: var(--ink-2);
+  }
+  .trial strong {
+    color: var(--ink);
+  }
+  :global(.plan-cta) {
+    justify-self: start;
+  }
+  .plan-features {
+    display: grid;
+    gap: 0.8rem;
+    padding-top: var(--space-m);
+    border-top: 1px solid var(--line);
+  }
+  .plan-feature {
+    display: grid;
+    grid-template-columns: 16px 1fr;
+    gap: 0.7rem;
+    align-items: start;
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+  .tick {
+    margin-top: 0.2rem;
+    color: var(--accent-text);
+  }
+  .is-planned .tick {
+    color: var(--ink-3);
+  }
+  .feature-label {
+    font-weight: 560;
+  }
+  .is-planned .feature-label {
+    color: var(--ink-2);
+  }
+  .feature-detail {
+    display: block;
+    color: var(--ink-3);
+    margin-top: 0.1rem;
+  }
+  .badge {
+    display: inline-block;
+    margin-left: 0.45rem;
+    padding: 0.05rem 0.45rem;
+    border-radius: 999px;
+    background: var(--ochre-soft);
+    color: var(--ochre);
+    font-size: 0.72rem;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    vertical-align: 0.1em;
+  }
+</style>

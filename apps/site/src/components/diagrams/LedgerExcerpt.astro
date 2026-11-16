@@ -1,0 +1,136 @@
+---
+/**
+ * One plan year as the ledger lays it out: money in, money out, where the shortfall was drawn from,
+ * and the reconciliation that ends every year. All amounts are ILLUSTRATIVE (a made-up retired
+ * household); the structure follows the year drill-down in the app.
+ */
+const income = [
+  ['State Pension', 11_500],
+  ['Part-time work', 8_000],
+] as const;
+const outflows = [
+  ['Living costs', 34_000],
+  ['Travel', 6_000],
+  ['Income tax', 1_900],
+] as const;
+const draws = [
+  ['Cash account', 5_000],
+  ['Taxable investments', 7_400],
+  ['Tax-free account', 10_000],
+] as const;
+const sum = (rows: readonly (readonly [string, number])[]) => rows.reduce((s, [, n]) => s + n, 0);
+const money = (n: number) => `£${n.toLocaleString('en-GB')}`;
+const totalIn = sum(income);
+const totalOut = sum(outflows);
+const totalDraw = sum(draws);
+---
+
+<div class="ledger">
+  <div class="head">
+    <p class="title">2041, age 66 <span class="sub">today's money</span></p>
+    <p class="flag">Illustrative amounts</p>
+  </div>
+  <div class="cols">
+    <table>
+      <caption>Money in</caption>
+      <tbody>
+        {income.map(([l, n]) => <tr><th scope="row">{l}</th><td class="r">{money(n)}</td></tr>)}
+        <tr class="total"><th scope="row">Total in</th><td class="r">{money(totalIn)}</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <caption>Money out</caption>
+      <tbody>
+        {outflows.map(([l, n]) => <tr><th scope="row">{l}</th><td class="r">{money(n)}</td></tr>)}
+        <tr class="total"><th scope="row">Total out</th><td class="r">{money(totalOut)}</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <caption>Shortfall drawn from</caption>
+      <tbody>
+        {draws.map(([l, n]) => <tr><th scope="row">{l}</th><td class="r">{money(n)}</td></tr>)}
+        <tr class="total"><th scope="row">Total drawn</th><td class="r">{money(totalDraw)}</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="check">
+    <span class="tick" aria-hidden="true">✓</span>
+    This adds up: {money(totalOut)} out − {money(totalDraw)} drawn = {money(totalIn)} in.
+  </p>
+</div>
+
+<style>
+  .ledger {
+    padding: clamp(1rem, 0.8rem + 1vw, 1.5rem);
+    background: var(--surface);
+    display: grid;
+    gap: 0.9rem;
+  }
+  .head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.25rem 1rem;
+    font-size: var(--text-sm);
+  }
+  .title {
+    font-weight: 650;
+  }
+  .sub {
+    font-weight: 400;
+    color: var(--ink-3);
+    margin-left: 0.4rem;
+  }
+  .flag {
+    font-size: var(--text-xs);
+    font-style: italic;
+    color: var(--ink-3);
+  }
+  .cols {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+  }
+  caption {
+    text-align: left;
+    font-size: var(--text-xs);
+    font-weight: 650;
+    letter-spacing: 0.02em;
+    color: var(--ink-2);
+    padding-bottom: 0.3rem;
+  }
+  th,
+  td {
+    padding: 0.3rem 0;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    font-weight: 400;
+  }
+  td.r {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .total th,
+  .total td {
+    font-weight: 650;
+    border-bottom: 0;
+    border-top: 1px solid var(--line-strong);
+  }
+  .check {
+    font-size: var(--text-xs);
+    color: var(--ink-2);
+    background: var(--accent-soft);
+    border-radius: var(--radius-s);
+    padding: 0.45rem 0.7rem;
+  }
+  .tick {
+    color: var(--accent-text);
+    font-weight: 700;
+    margin-right: 0.3rem;
+  }
+</style>

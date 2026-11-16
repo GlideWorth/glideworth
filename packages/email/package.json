@@ -1,0 +1,30 @@
+{
+  "name": "@glideworth/email",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Transactional email for Glideworth Cloud: templates, mailer, transports, suppression and unsubscribe.",
+  "license": "AGPL-3.0-only",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "@glideworth/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "preview": "tsx --conditions=@glideworth/source scripts/preview.ts"
+  },
+  "dependencies": {
+    "nodemailer": "10.3.1"
+  },
+  "devDependencies": {
+    "tsx": "4.23.15"
+  }
+}

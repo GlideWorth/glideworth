@@ -1,0 +1,46 @@
+---
+title: Upgrading
+description: Back up, pull the new version, rebuild, and roll back if something goes wrong. Migrations run automatically at start-up.
+section: Self-hosting
+order: 5
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+
+**Before you start:** read the release notes for the version you are moving to (see the [changelog](/changelog/)), and have a
+working [backup process](/docs/self-hosting/backups-and-restore/).
+
+<Steps>
+1. Back up first:
+
+   ```bash
+   docker compose exec glideworth node dist/cli/admin.js backup --out /data/backups/pre-upgrade.db
+   ```
+
+2. Update and rebuild:
+
+   ```bash
+   git pull
+   docker compose up -d --build
+   docker compose logs --tail 50 glideworth
+   ```
+
+   Database migrations are applied automatically at start-up. Check that `docker compose ps` shows "healthy".
+3. If it goes wrong, check out the previous version (`git checkout <previous tag>`) and rebuild. If the database was
+   changed in a way the old version cannot read, restore `pre-upgrade.db`.
+</Steps>
+
+Use release tags rather than the main branch for production. If you have skipped several versions, upgrade one minor version
+at a time and read the notes for each. If you run a pre-built image, replace the build step with `docker compose pull` and
+pin the version tag in your override file.
+
+<Callout type="note" title="Upgrading from Cairn">
+  Glideworth was previously called Cairn. If you are upgrading an instance that still uses the old names (`CAIRN_`
+  variables, the `cairn` service and `cairn-data` volume, `cairn_` keys), follow the "Upgrading from Cairn" section of the
+  self-hosting guide in the repository, `docs/SELF-HOSTING.md`, before you pull the new version.
+</Callout>
+
+## What this does not do
+
+It does not downgrade the database. Going back across a schema change means restoring a backup taken before the upgrade.

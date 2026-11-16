@@ -1,0 +1,109 @@
+---
+/**
+ * The closing call to action: a deep spruce band with the trial and the self-hosting route.
+ *   <CTABand />
+ *   <CTABand title="Run the numbers on your own plan" secondary={{ label: 'Read the docs', href: '/docs/' }} />
+ * Price and trial wording come from src/config/pricing.ts.
+ */
+import { formatPrice, priceSentence, pricing } from '../config/pricing';
+import { site, trialCta } from '../config/site';
+import { externalLinkProps } from '../lib/links';
+import Button from './Button.astro';
+
+interface Props {
+  title?: string;
+  body?: string;
+  primary?: { label: string; href: string };
+  secondary?: { label: string; href: string };
+}
+const {
+  title = 'See where your plan lands.',
+  body = site.cloudLaunched
+    ? priceSentence()
+    : `Free to self-host today, with every feature. The hosted service opens later, at ${formatPrice(pricing.monthly)} a month or ${formatPrice(pricing.yearly)} a year.`,
+  primary = { ...trialCta },
+  secondary = site.cloudLaunched
+    ? { label: 'Or self-host it free', href: '/self-hosting/' }
+    : { label: 'See the hosted plan', href: '/pricing/' },
+} = Astro.props;
+---
+
+<section class="cta-band" aria-labelledby="cta-band-title">
+  <div class="container cta-inner">
+    <svg class="cta-path" viewBox="0 0 600 200" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0 30C230 30 300 170 600 170" fill="none" stroke="currentColor" stroke-width="1.5"></path>
+      <path d="M0 170H600" stroke="currentColor" stroke-width="1" opacity="0.5"></path>
+    </svg>
+    <div class="cta-copy">
+      <h2 id="cta-band-title">{title}</h2>
+      <p>{body}</p>
+    </div>
+    <div class="cta-actions">
+      <Button href={primary.href} variant="inverse" size="lg" arrow>{primary.label}</Button>
+      <a class="cta-secondary" href={secondary.href} {...externalLinkProps(secondary.href)}>{secondary.label}</a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .cta-band {
+    position: relative;
+    overflow: hidden;
+    background: var(--band);
+    color: var(--band-ink);
+    padding-block: clamp(3.5rem, 2.5rem + 4vw, 6rem);
+  }
+  .cta-inner {
+    position: relative;
+    display: grid;
+    gap: var(--space-l);
+    align-items: end;
+  }
+  @media (min-width: 56rem) {
+    .cta-inner {
+      grid-template-columns: 1.4fr 1fr;
+    }
+    .cta-actions {
+      justify-self: end;
+    }
+  }
+  .cta-path {
+    position: absolute;
+    inset: -35% -5% auto 45%;
+    width: 60%;
+    height: 120%;
+    color: var(--band-line);
+    opacity: 0.7;
+    pointer-events: none;
+  }
+  .cta-copy {
+    position: relative;
+    display: grid;
+    gap: var(--space-s);
+  }
+  h2 {
+    color: var(--band-ink);
+    font-size: var(--text-3xl);
+    max-width: 16em;
+  }
+  p {
+    color: var(--band-ink-2);
+    font-size: var(--text-lg);
+  }
+  .cta-actions {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-s) var(--space-m);
+  }
+  .cta-secondary {
+    color: var(--band-ink);
+    font-weight: 600;
+    font-size: var(--text-sm);
+  }
+  .cta-secondary:focus-visible,
+  .cta-band :global(a:focus-visible) {
+    outline-color: var(--band-accent);
+  }
+</style>

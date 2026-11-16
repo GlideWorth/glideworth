@@ -1,0 +1,37 @@
+---
+import { getCollection } from 'astro:content';
+import Card from '../../components/Card.astro';
+import { page } from '../../config/pages';
+import PageLayout from '../../layouts/PageLayout.astro';
+import { formatDate } from '../../lib/content';
+
+const docs = (await getCollection('legal')).sort((a, b) => (a.data.order ?? 99) - (b.data.order ?? 99));
+---
+
+<PageLayout
+  {...page('/legal/')}
+  heading="Legal"
+  eyebrow="Legal"
+  lede="The terms and policies for Glideworth's website and hosted service. Documents marked as taking effect at launch apply once the hosted service opens."
+  crumbs={[{ label: 'Legal', href: '/legal/' }]}
+>
+  <div class="container grid">
+    {
+      docs.map((d) => (
+        <Card title={d.data.title} href={`/legal/${d.id}/`} as="h2" eyebrow={d.data.draft ? 'Takes effect when the hosted service opens' : 'In force'}>
+          <p>{d.data.description}</p>
+          <p class="muted">Last updated {formatDate(d.data.lastUpdated)}</p>
+        </Card>
+      ))
+    }
+  </div>
+</PageLayout>
+
+<style>
+  .grid {
+    display: grid;
+    gap: var(--space-m);
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+    padding-bottom: var(--section-y);
+  }
+</style>

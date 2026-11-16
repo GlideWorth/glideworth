@@ -1,0 +1,122 @@
+---
+title: How a projection is computed
+description: The yearly pipeline in plain language, real versus nominal money, the flow and stock convention, cash-flow timing, and how tax estimates plug in.
+section: Reference
+order: 1
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+
+This page describes what the engine does, so you can judge the results. It is the same engine in the web app,
+the API and the MCP server, and it is deterministic: the same inputs give the same projection.
+
+## Time: one year at a time
+
+The engine steps one calendar year at a time, or a custom fiscal or rolling year. New UK plans align to April,
+Australian plans to July and New Zealand plans to April by default. A plan that starts in November has a short
+first period of two months. Within a period, an event that starts in March counts for the months it is active:
+amounts are **prorated by month**. There is no monthly or daily mode, so what happens inside a year (a crash in
+March and a recovery by December) is not seen.
+
+The plan starts in the month your balances are dated and runs to the last life-expectancy milestone, or the end you
+set, never more than 100 years. The first and last years are labelled when they are partial.
+
+## The pipeline
+
+Before the first year, the engine:
+
+1. Validates the input.
+2. Chooses the starting finances (a snapshot plan uses its frozen finances, otherwise the live finances).
+3. Merges plan overrides onto your accounts, assets and debts.
+4. Resolves milestones that depend only on time (ages and dates). A circular definition is an error.
+5. Computes the horizon.
+6. Builds the periods from the year alignment.
+7. Fixes the market rates for each period, then builds the price index.
+8. Checks that every reference points at something that exists.
+
+For each year, in order:
+
+| Step | What happens |
+| --- | --- |
+| Open | Ages and survival. Milestone effects (filing status, relocation, withholding) and deaths (survivor transfer, cost-basis step-up). |
+| Time milestones | Milestones that resolve to this period are recorded. |
+| Growth | Growth, dividends, interest and fees on the **opening** balance of each account, with bond allocation. |
+| Income | Every income type: pensions, State Pension (with the triple lock), Social Security estimates, benefits, part-time and recurrence. |
+| Real assets | Purchases, ownership costs, rent, loan amortisation, sales and appreciation. |
+| Debts | Interest, scheduled payments and forgiveness. |
+| Expenses | Expense events become required outflows. |
+| Forced distributions | Required minimum distributions and similar are taken first, so they fund expenses first. |
+| Spending strategy | The withdrawal rule, guardrails and flexible spending. |
+| Tax strategy | Roth conversions and similar moves, within limits. |
+| Settle | The cash-flow step below. |
+| Close | Any unfunded shortfall is allocated, the ledger and totals are written, and milestones that depend on the end state are checked. |
+
+### The settle step
+
+Each year adds income, takes off tax and expenses, and sends any surplus down the **flows** in priority order. A
+shortfall is drawn from accounts in the **drawdown** order. Tax depends on the withdrawals and the withdrawals depend
+on the tax, so the engine repeats the calculation until the cash taxes change by less than a tiny tolerance, a
+fraction of a penny. Tax is paid in the same year (the simplest) or settled in the next, with withholding in the year.
+
+A metric milestone ("net worth at least ...") is reached in the last month of the year where it first holds, so
+events tied to it start the **next** year.
+
+## Real versus nominal, and flows versus stocks
+
+Every amount you enter has a basis, real (today's money) or nominal (future money). All engine output is
+nominal, with a price index for each year relative to the plan start. Any series can then be shown in today's money.
+
+- **Flows** (income, expenses, taxes, contributions, withdrawals, shortfall) are valued at the price level when the
+  year **starts**. So an amount entered in today's money, starting at the plan start, reads back exactly as entered
+  in every year, including a partial first year. For example 2,300 a month plus 4,000 a year shows as 31,600 a year
+  in today's money (an illustrative sum).
+- **Stocks** (balances at the year end: net worth, account and loan balances) are valued at the price level at the
+  year **end**.
+- **Ratios** such as the savings rate and withdrawal rate are never adjusted for inflation.
+
+Because flows and balances use different index points, the reconciliation for a year has an **Inflation** line: the
+buying power the year's money lost between the start and the end of the year.
+
+## Cash-flow timing
+
+Growth is applied to the opening balance. Money added or taken out during the year earns part of the year's return,
+set by the cash-flow timing assumption:
+
+| Setting | Meaning |
+| --- | --- |
+| `start` | Flows happen at the start of the year and earn a full year's return. |
+| `mid` (default) | Flows happen mid-year and earn half a year's return. |
+| `end` | Flows happen at the end and earn none. |
+
+Different tools choose differently, which is one reason two planners give different answers for the same inputs. It
+changes how much growth a flow earns, not the price level it is valued at.
+
+## How taxes plug in
+
+Tax is computed per year by a stack of jurisdiction modules that depends on where you live. In estimate mode, a US
+household in New York City gets federal, payroll, state and city; the UK, Canada, Australia, Germany, the Netherlands,
+France, Spain, Israel, Ireland, New Zealand and the UAE each have their own module. Each level sees the output of the
+earlier levels. Flat mode uses one rate per kind of income, and custom mode uses your own brackets.
+
+Each module applies its own allowances, credits and rules to the income, gains and dividends of that year. Withdrawals
+are taxed by account type: gains pro rata to cost basis for taxable accounts, ordinary income (less any tax-free share)
+for pensions, contribution basis first for tax-free accounts. Statutory limits (contribution limits, access ages,
+home-sale exclusions, minimum distributions) come from the account's country in every mode.
+
+### What "estimate" means
+
+A tax figure is an estimate. The tables are for stated tax years. Later years carry the last known rates forward and
+index thresholds with inflation, which is wrong whenever the rules change. Each country's model leaves things out; the
+list is shown with your tax results, and the main ones are on [Known limitations](/docs/methodology/known-limitations/).
+The tables are checked against worked examples, not line by line against every official calculator.
+
+## Reconciliation: "this adds up"
+
+Every year's drill-down ends with a table showing that money in equals money out, that each account's opening balance
+plus flows and growth equals its closing balance, and that last year's net worth plus the changes equals this year's.
+
+<Callout type="note" title="What this does not do">
+  The engine does not round intermediate values; rounding is only for display. It does not model events inside a year.
+  Monthly resolution is reserved and currently rejected.
+</Callout>

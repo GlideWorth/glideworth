@@ -1,0 +1,59 @@
+---
+title: Solvers, guardrails and insights
+description: Ask how much you can spend, when you can retire, how much to save, what a safe withdrawal rate is, and how to adjust spending as markets move.
+section: Planning
+order: 5
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+
+The **Insights** page turns your plan into answers. Each solver runs your plan many times, searching for the
+value that reaches a target chance of success.
+
+**Before you start:** a plan you trust enough to ask questions of, and a target chance of success (90 percent is a
+common choice).
+
+## Run a solver
+
+<Steps>
+1. Open **Insights**.
+2. Under "What to solve for", choose **Max spending**, **Earliest retirement** or **Required savings**.
+3. Set the target success rate. "Trials per evaluation" trades accuracy for speed: fewer trials are faster and
+   noisier.
+4. Read the answer in money or dates, then preview the change. The solver gives the edit that applies it; you
+   decide whether to save it.
+</Steps>
+
+The solvers available through the API and MCP are max spending, earliest retirement, required savings, required
+portfolio, safe withdrawal rate and a generic goal seek. See [Simulation, solvers and jobs](/docs/api-and-mcp/api-simulation-and-jobs/).
+
+## Guardrails
+
+Risk-based guardrails show what spending the rules give this year, given how the plan is doing: a withdrawal-rate
+band, with a multiplier carried year to year. Guyton-Klinger guardrails give money-terms limits: the portfolio
+below which the rules would cut, the portfolio above which they would raise, and what they give now. Both need the plan's withdrawal settings, found in the
+Plan editor under **Withdrawals**.
+
+## Other analysis (Insights, the results pages and the API)
+
+- **Assumption audit.** Flags mistakes such as "nothing pays for care costs in your 80s", real versus nominal
+  mix-ups and implausible returns, with severity. A finding with a fix offers a preview before you apply it.
+- **Explain.** Why the plan fails, where the money went in a year, and why two plans end differently.
+- **Sensitivity.** Which assumptions move the outcome most.
+- **Debts.** "Pay off debt faster: avalanche or snowball?" compares minimum payments, avalanche and snowball.
+- **Tax strategy.** Ranks strategies such as drawdown order, using the personal allowance in gap years (UK),
+  bracket filling (US), and Roth conversions.
+- **72(t) payments.** Compares RMD, fixed amortisation and fixed annuitisation for early access (US).
+- **Stay or move?** See [Moving country](/docs/planning/moving-country/).
+
+## What this does not do
+
+- A solver's answer is only as good as the plan and the historical data behind it.
+- Solvers search to a tolerance; the result says whether it converged.
+- None of this is advice. Talk to a regulated adviser before acting.
+
+<Callout type="note" title="Reproducible answers">
+  Monte Carlo uses a seed. The API and MCP use a fixed default seed, so "same plan, change one number" compares like
+  with like. See [Monte Carlo](/docs/methodology/monte-carlo/).
+</Callout>

@@ -1,0 +1,17 @@
+---
+/**
+ * A link into the public source repository (src/config/site.ts `repoUrl`), for MDX:
+ *   <RepoLink path="LICENSING.md">LICENSING.md</RepoLink>     -> <repo>/blob/HEAD/LICENSING.md
+ *   <RepoLink>the repository</RepoLink>                       -> <repo>
+ */
+import { site } from '../config/site';
+import { externalLinkProps } from '../lib/links';
+
+interface Props {
+  path?: string;
+}
+const { path } = Astro.props;
+const href = path ? `${site.repoUrl}/blob/HEAD/${path}` : site.repoUrl;
+---
+
+<a href={href} {...externalLinkProps(href)}><slot /></a>

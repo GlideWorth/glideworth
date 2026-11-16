@@ -1,0 +1,74 @@
+---
+title: Tax settings, countries and currency
+description: Choose how tax is estimated, which countries are covered, what each estimate leaves out, and how accounts in several currencies work.
+section: Planning
+order: 3
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+import { facts } from '../../../lib/facts';
+
+**Before you start:** a plan, and your household's country set in [Current finances](/docs/planning/build-a-plan/).
+
+<Callout type="warning" title="Estimates, not tax returns">
+  Every tax figure is an estimate from stated tax-year tables and simplified rules. It is not a tax return and not
+  advice. No country's preset has been checked against every official calculator.
+</Callout>
+
+## Choose the tax mode
+
+In the **Plan editor**, open **Taxes**. The tax mode has three choices:
+
+- **Estimate for my location**: country rules for income tax, social contributions, allowances, gains and
+  dividends. This is the one to use if your country is covered.
+- **Flat rates**: a single rate per kind of income. Simple, and crude.
+- **My own brackets**: your own bands, and a wealth tax if you need one.
+
+New households start on estimate whenever their country has a preset. Other options here include the filing status
+(for the US and similar), "Future thresholds" (as legislated then with inflation, rise with inflation every
+year, or frozen forever), and whether tax is paid in the same period or settled the next.
+
+## Countries covered
+
+The engine has a national tax model for {facts.taxCountryCount} countries: {facts.taxCountries.map((c) => c.name).join(', ')}.
+The US model covers federal, payroll, every state and DC, and some cities. Canada covers federal and
+province, and Spain covers the state and region. Each country has a [planning page](/planning/) listing
+what it models, what it leaves out and the tax years in the tables.
+
+Tax years in the tables, as of 2026-11-16: UK 2025/26, 2026/27 and announced changes for 2027/28 and 2029/30; US
+federal, payroll and states 2026; Canada 2026; Australia 2025-26 to 2027-28; Germany, Netherlands, Israel and
+Ireland 2026; New Zealand 2026-27; France the 2026 finance law with 2026 social rates; Spain the 2025 income-tax
+scales with 2026 social security. Later years carry the last known rates forward and index thresholds with
+inflation, which is wrong whenever the rules change.
+
+Germany, the Netherlands, France, Spain, Israel, Ireland and New Zealand are estimated at a basic level. The
+UK, US, Canada and Australia leave things out too. The whole list is shown with your tax results, and the summary
+is on [Known limitations](/docs/methodology/known-limitations/).
+
+## Statutory rules, whatever the mode
+
+For every country covered, limits come from the account's country regardless of tax mode: contribution limits,
+pension access ages, home-sale exclusions and minimum distributions.
+
+## Several currencies
+
+Accounts, real assets, debts and events can be in another currency from your household's.
+
+<Steps>
+1. Set the item's **Country** or currency. The app offers to switch the currency when the country implies one.
+2. Add an exchange rate: the rate is base-currency units per one foreign unit, as of the finances date, with an
+   optional yearly drift. One pair works in either direction. A plan can override a pair.
+3. Read results in the household currency. The original-currency detail is kept.
+</Steps>
+
+A missing rate is a problem: the engine refuses to run a plan that needs it, and the audit lists missing pairs.
+In the chance-of-success settings, "Exchange-rate risk" lets a foreign currency vary with a yearly volatility
+(about 8 to 10 percent is typical). By default exchange rates follow their drift.
+
+## What this does not do
+
+- It does not apply every local rule. Gains are realised pro rata to cost basis and treated as long-term, and
+  losses are never realised, so there is no loss relief.
+- It does not know future law. Anything not yet legislated is your assumption.
+- It does not model Corporate Tax or VAT (UAE) or means-tested benefits (UK Universal Credit, Pension Credit).

@@ -1,0 +1,77 @@
+---
+/**
+ * A standard page: page header (eyebrow, title, lede), optional breadcrumbs, then the slot.
+ *   <PageLayout {...page('/about/')} eyebrow="About" lede="…" crumbs={[{ label: 'About', href: '/about/' }]}>
+ * Pages marked `placeholder` in src/config/pages.ts show a notice and are noindexed.
+ * Use the "hero" slot to replace the standard header entirely (the home page does).
+ */
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import Callout from '../components/Callout.astro';
+import type { SeoProps } from '../components/SEO.astro';
+import type { Crumb } from '../lib/jsonld';
+import BaseLayout from './BaseLayout.astro';
+
+interface Props extends Omit<SeoProps, 'canonicalPath'> {
+  path?: string;
+  placeholder?: boolean;
+  ogTitle?: string;
+  ogEyebrow?: string;
+  /** Visible heading; defaults to the SEO title. */
+  heading?: string;
+  eyebrow?: string;
+  lede?: string;
+  crumbs?: Crumb[];
+}
+const { heading, eyebrow, lede, crumbs, ...rest } = Astro.props;
+const showHeader = !Astro.slots.has('hero');
+---
+
+<BaseLayout {...rest}>
+  <slot name="head" slot="head" />
+  <slot name="hero" />
+  {
+    showHeader && (
+      <header class="page-header">
+        <div class="container">
+          {crumbs && crumbs.length > 0 && <Breadcrumbs items={crumbs} />}
+          <div class="page-header-text">
+            {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+            <h1>{heading ?? rest.title}</h1>
+            {lede && <p class="lede">{lede}</p>}
+          </div>
+        </div>
+      </header>
+    )
+  }
+  {
+    rest.placeholder && (
+      <div class="container placeholder-note">
+        <Callout type="draft" title="This page is being written">
+          <p>What follows is a short, accurate summary. The full page is coming soon.</p>
+        </Callout>
+      </div>
+    )
+  }
+  <slot />
+</BaseLayout>
+
+<style>
+  .page-header {
+    padding-block: clamp(3rem, 2rem + 4vw, 6rem) clamp(2rem, 1.5rem + 2vw, 3.5rem);
+  }
+  .page-header-text {
+    display: grid;
+    gap: var(--space-s);
+    max-width: 48rem;
+    margin-top: var(--space-m);
+  }
+  .page-header h1 {
+    font-size: var(--text-4xl);
+  }
+  .placeholder-note {
+    margin-bottom: var(--space-l);
+  }
+  .placeholder-note :global(.callout) {
+    max-width: 48rem;
+  }
+</style>

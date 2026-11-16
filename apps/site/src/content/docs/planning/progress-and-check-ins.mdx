@@ -1,0 +1,48 @@
+---
+title: Progress snapshots and check-ins
+description: Record your real balances over time with progress snapshots, compare them with the plan, and use scheduled check-ins and notifications to spot drift.
+section: Planning
+order: 7
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+
+A plan is a forecast. **Progress** records what actually happens, so you can compare the two.
+
+## Update balances and record a snapshot
+
+<Steps>
+1. Open **Progress** in the sidebar.
+2. Choose **Update balances**. Enter new balances for accounts, real-asset values (and loan balances) and debts.
+   The update is all-or-nothing. A note is optional.
+3. Save. A progress snapshot records your net worth for that date.
+</Steps>
+
+At most one automatic snapshot is kept per day: a second update the same day updates the day's snapshot instead
+of adding another. A snapshot you record yourself, or one from an import, is left alone. A setting turns automatic
+snapshots off. You can also backfill history with a bulk import of a net-worth series.
+
+The page can plot net worth, assets and debts, or per-account history, over a range, and overlay a plan to compare
+actual with planned.
+
+## Check-ins
+
+A check-in re-runs your plan (projection, chance of success, assumption audit) and stores the result in a plan
+health history. By default the server runs one for each household's main plan weekly, with the first run as the
+baseline. The cadence can be daily, weekly, monthly or quarterly. Set it under **Settings**, then **Check-ins**.
+
+A check-in raises a notification for a material change:
+
+- the chance of success moved by more than a threshold (default 5 percentage points);
+- a milestone slipped later (default 6 months) or is no longer reached;
+- a new warning or critical audit finding appeared;
+- your net worth is more than a threshold (default 10 percent) below what the last check-in projected.
+
+Notifications appear in the app's notification centre, and the same events go to webhooks.
+
+## What this does not do
+
+- It does not send email. Check-ins work through the app and webhooks; email summaries are planned.
+- It does not read your accounts. You enter balances.
+- The "behind plan" test is an approximation in today's money, interpolated across the year.

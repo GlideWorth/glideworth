@@ -1,0 +1,113 @@
+---
+title: "Giving an AI assistant access to your financial plan"
+description: "How MCP lets an assistant read or change a financial plan, why read-only keys and approved proposals matter, what your AI provider sees, and a worked session."
+pubDate: 2026-11-16
+author: [glideworth-team]
+tags: [MCP, AI, Security, Methodology]
+draft: false
+---
+
+import Callout from '../../components/Callout.astro';
+
+An AI assistant connected to your financial plan can answer questions about your own numbers, such as "what is my chance of success?" or "what happens if I retire three years earlier?", instead of answering in general terms. The safe way to set this up rests on four ideas: give it the least access that does the job, keep reading separate from changing, make every change a proposal that you approve, and remember that whatever the assistant reads is also seen by the company that runs the model. This article explains each, then walks through a session with Glideworth's real tools.
+
+<Callout type="note" title="Education, not advice">
+  This article describes how access controls work and what to ask about them. It does not recommend any AI product
+  or provider, and nothing in it is financial advice. See the [not-advice notice](/legal/disclaimer/).
+</Callout>
+
+## What MCP is
+
+The Model Context Protocol (MCP) is, in the words of its [project site](https://modelcontextprotocol.io/introduction), "an open-source standard for connecting AI applications to external systems". An AI application such as an assistant or coding tool is the client. An MCP server exposes **tools** that the client can call: things like "get my plan summary" or "run a simulation". The language model decides when to call a tool, based on what you ask and the tool descriptions, and the client carries out the call and passes the result back to the model.
+
+The protocol's own [specification for tools](https://modelcontextprotocol.io/specification/2025-06-18/server/tools) is candid about the risk. Tools are "model-controlled", meaning the model can discover and invoke them on its own. The specification says there SHOULD always be a human in the loop with the ability to deny tool invocations, that clients SHOULD ask for confirmation on sensitive operations and show tool inputs before calling the server, and that servers MUST validate inputs and implement access controls. It also says that clients must treat tool annotations, such as a tool being marked read-only, as untrusted unless they come from a trusted server. The protocol supplies the plumbing. Whether a particular server is safe depends on how that server is built and which access you give it.
+
+## The difference between an assistant that reads and one that changes things
+
+Access to a financial plan comes in levels, and the risk rises at each:
+
+1. **Read.** List households, accounts and plans, and read their contents.
+2. **Compute.** Run a projection, a Monte Carlo simulation or a solver on the plan as it stands. Nothing about the plan changes.
+3. **Propose.** Prepare an edit, and see what it would do, without applying it.
+4. **Apply.** Make the edit.
+5. **Write data directly.** Record new balances or import a file.
+
+Glideworth's MCP server is built so that the lower levels are the default. It is a thin adapter over the same services as the REST API. Write tools exist only when the server's write switch is on (the environment variable `GLIDEWORTH_MCP_ALLOW_WRITES`) **and** the connecting key has write scope, so a client that cannot see a tool cannot call it. Read and compute tools do not change household or plan data; the project's documentation says this was checked by counting database rows before and after calling every one. Compute tools do store cache and job rows, which is why a repeated Monte Carlo call can return the same stored result instantly.
+
+Level 5 is the exception to the proposal rule. Tools for updating account balances, recording a progress snapshot and applying a CSV import write directly, because they record actuals, not assumptions, and they are atomic. Creating a what-if branch also writes, but it adds a new plan and leaves the original untouched.
+
+## Proposals that you approve
+
+For changes to the plan itself, Glideworth uses a **change set**: a list of edits (in the JSON Patch format, RFC 6902) that the assistant proposes against a specific version of the plan. The proposal returns a readable description of the changes and a before-and-after result, and applies nothing. Applying it is a separate call, and the assistant is expected to show you the result first.
+
+Three details make this safer than "the assistant edits your plan".
+
+- **Version checking.** A proposal records the plan version it was written for. If the plan has changed since, for example because you edited it in the web app, applying it fails with a conflict and nothing is merged.
+- **No deletion.** There are no delete tools. Even undoing a change is a proposal: a revert is a new change set that restores an earlier version's content, and the history stays append-only.
+- **An audit trail.** Every applied change is recorded in the plan's history under the assistant's identity, so you can see what changed, when and through which connection.
+
+The approval step lives in the conversation: the assistant is meant to ask. Your MCP client may also ask before running a tool. The server can protect you from overwrites and conflicts, but "show the user, then apply only after they say yes" is something the assistant and the client do. That is another reason to keep write access off until it is needed.
+
+## Scoped keys
+
+Glideworth keys carry scopes: `read` for the data and compute tools, `simulate` for compute tools only, and `write` for the tools that propose and apply. A key is created with the scopes it needs, for example:
+
+```bash
+pnpm keys:create -- --name claude --scopes read
+```
+
+A read-only key is the usual starting point for analysis. Three further limits apply: write tools are hidden unless the server flag is also on, a household member with the viewer role never gets write tools whatever the key says, and for assistants that connect by URL and sign in with OAuth, the person consenting can grant less than the assistant asked for, never more. Keeping keys narrow is also the main defence if an assistant is led astray by text it has read. A model that reads a note or an imported transaction description containing instructions can be misled, and the cap on what it can do is the key's scope, not the model's judgement.
+
+## What your AI provider can see
+
+This is the part most easily overlooked. Using MCP does not run the model inside the server. It lets the model call the server and read the answers. Those answers become part of the conversation, and the conversation is processed by whoever runs the model.
+
+Concretely:
+
+- **The assistant sees what the tools return, within the key's scopes.** A plan summary returns accounts, balances and income figures, so those figures are now in the conversation. Glideworth's tools return compact output (money rounded to whole units, summaries by default) and bank-file previews mask account numbers to the last four digits, but a plan is personal data by nature.
+- **The model provider you connect sees that data too.** Glideworth's own documentation says so in a warning: "An assistant sees what its tools return, within the scopes of its key. The model provider you connect sees that data too. If that matters to you, use a local model."
+- **Self-hosting the planner does not change this.** When you run Glideworth yourself, the data starts on your machine and the MCP server answers from there. Whatever it returns goes to the model, wherever the model runs. If that is a hosted service, a copy of the returned text leaves your machine.
+- **Providers' terms differ,** on retention, human review and training use. The terms of the provider and the product you use are the place to look, and this article makes no claim about any of them.
+
+Glideworth's hosted service is about to open and is not live yet. The description above applies to the open-source server you run today, and the same MCP interface is what the hosted service will offer.
+
+## A worked session with the real tools
+
+This session uses tools from Glideworth's MCP documentation. The figures are illustrative. You ask: "Can I spend 500 more a month on dining?" The assistant is connected with read and write scopes and the write switch on.
+
+**1. Orient.** `list_plans` returns the plans, with the main one at **version 4**. `get_plan_summary` returns a compact plan (living expenses `5200 real/monthly`, id `exp-living`) and the deterministic outcome: end net worth of 910,000 in today's money, no depletion year.
+
+**2. Ask "what if", storing nothing.** `preview_changes` applies the edit in memory:
+
+```json
+{ "planId": "plan-main",
+  "ops": [{ "op": "replace", "path": "/expenses/[id=exp-living]/amount/value", "value": 5700 }] }
+```
+
+It returns the readable change ("Living expenses raised from 5,200 to 5,700 per month") and a before-and-after: end net worth 910,000 to 802,000, still no depletion year. The assistant can also run `run_monte_carlo` for the risk, not just the single path.
+
+**3. Propose it.** `propose_change_set` repeats the edit with `"baseVersion": 4`, a summary and a rationale. The server returns a stored proposal (`cs_9f2c1a`, status `proposed`) with the same diff and before-and-after. Nothing has been applied.
+
+**4. You decide.** The assistant reports: "That takes about 108,000 off end net worth in today's money (910,000 to 802,000), and the plan still never runs short. Want me to apply it?" The difference is 910,000 − 802,000 = 108,000. If you say yes, `apply_change_set` with `cs_9f2c1a` returns status `applied` and the new version, 5. If you say no, `discard_change_set` drops it.
+
+**5. If the plan moved meanwhile.** Suppose you edited the plan in the web app between steps 3 and 4. The apply returns a `CHANGESET_CONFLICT` error ("plan changed since the proposal", base version 4, current version 5). The assistant re-reads, proposes again against version 5, and asks you again.
+
+**6. Undo is also a proposal.** `list_plan_versions` shows version 5 with the assistant as the actor. `propose_revert` for version 4 creates a new proposal, you review it, and `apply_change_set` writes version 6 with version 4's content.
+
+If the assistant had only a read key, steps 1 and 2 would work and steps 3 to 6 would not exist: the proposal tools would not be visible to it.
+
+## Questions to ask before connecting
+
+- Which scopes does this key have, and is the write switch on? Could a read-only key do the job?
+- Where does the model run, and what are that provider's terms for the data it receives?
+- Does my client ask before it calls tools, and does it show me the inputs?
+- Do I review the before-and-after before anything is applied?
+- Where can I see what the assistant changed?
+
+For setup details, see the guide to [connecting an AI assistant](/docs/api-and-mcp/mcp-setup/) and the [MCP server feature page](/features/mcp-server/).
+
+<FAQ items={[
+  { q: 'Can the assistant delete my plan?', a: '<p>No. The server has no delete tools. Even reverting to an earlier version is a proposal that you review and apply.</p>' },
+  { q: 'Does the assistant see my whole database?', a: '<p>No. It sees what the tools it can call return, within the scopes of its key, and the tools return compact results. But what it does see is part of the conversation with the model provider.</p>' },
+  { q: 'Is a read-only key enough to ask about retirement scenarios?', a: '<p>Yes for questions and for what-if previews that store nothing, such as comparing outcomes. Saving a scenario as a branch or changing the plan needs write access.</p>' },
+]} />

@@ -1,0 +1,75 @@
+---
+title: Acceptable use policy
+description: What you may and may not do with the Glideworth hosted service, its API and its MCP server, and what we may do if the rules are broken.
+lastUpdated: 2026-11-16
+draft: true
+order: 4
+---
+
+import { site } from '../../config/site';
+
+This policy is part of the [terms of service](/legal/terms/) and takes effect when the hosted service opens. It covers the hosted service at
+app.glideworth.com, including the REST API and the MCP server. It does not limit what the open-source licence
+lets you do with the code on your own machine.
+
+## 1. Do not
+
+**Harm the service or other customers**
+
+- Try to get into another customer's workspace or data, or look for weaknesses on live customer data. If you
+  find a vulnerability, test only with accounts you own and report it under the [security
+  policy](/security/).
+- Overload the service, or work around rate limits, quotas, trial limits or entitlements. Do not create more than
+  one trial for yourself, or use disposable email addresses to get around that.
+- Run automated sign-ups, password guessing, scanning or load tests against the hosted service.
+- Introduce malware, or send requests meant to break or slow the service.
+
+**Misuse accounts and credentials**
+
+- Share a login between people, or sell, rent or resell access.
+- Use someone else's account or credentials, or keep a key or connection that its owner has revoked.
+- Give an AI assistant or script a key with wider scopes than it needs, or leave a key where others can read it.
+  You are responsible for what is done with your keys.
+
+**Misuse the content**
+
+- Enter data you have no right to enter, or personal data about other people without a lawful reason. Advisers
+  holding client data should use the [data processing agreement](/legal/dpa/).
+- Store anything unlawful, or anything unrelated to financial planning in notes or file fields, such as illegal
+  material or large files that are not planning data.
+- Use the service to give regulated financial advice to others, or to present Glideworth's estimates as
+  personal advice to a client, without making clear what they are and without any authorisation you need. The
+  service is not an advice tool.
+- Use the service for fraud, money laundering, market abuse or evading tax or sanctions.
+
+**Misuse the API and MCP server**
+
+- Build a service that resells our API or results to third parties, or that stores results in a way that
+  replaces the service, without our written agreement.
+- Scrape public share links in bulk.
+- Point webhooks at addresses you do not control, or at internal networks (these are blocked).
+- Use prompts, tools or other techniques to make a connected AI assistant act outside the scopes of its key.
+
+**Misuse the brand**
+
+- Pretend to be Glideworth, or use the name or logo in a way that suggests we run or endorse your product. See the
+  <RepoLink path="TRADEMARKS.md">trademark policy</RepoLink>.
+
+## 2. Fair use
+
+The API and MCP server are included in the plan within the limits in the terms (section 9). Normal use by one
+household, its AI assistants and its own scripts is what the limits are for. If you need more, ask us at
+<a href={`mailto:${site.contact.support}`}>{site.contact.support}</a>.
+
+## 3. What we may do
+
+If we think a rule has been broken we may, in proportion to the problem: warn you; slow or block requests; revoke
+keys, share links or webhooks; make a workspace read-only; suspend an account; or end the contract as set out in
+the terms. We will tell you why unless the law or security stops us. Even when an account is suspended, the
+owner can export and delete their data. We may report unlawful conduct to the authorities.
+
+## 4. Reporting a problem
+
+To report abuse of the service or a copy of Glideworth that pretends to be us, write to
+<a href={`mailto:${site.contact.security}`}>{site.contact.security}</a> for security matters, or
+<a href={`mailto:${site.contact.support}`}>{site.contact.support}</a> for anything else.

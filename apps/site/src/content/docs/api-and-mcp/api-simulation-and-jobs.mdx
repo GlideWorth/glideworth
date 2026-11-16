@@ -1,0 +1,91 @@
+---
+title: API - simulation, solvers, insights and jobs
+description: Deterministic projections with compact views, Monte Carlo and solver jobs with polling, server-sent events and cancellation, insights, and moving-country routes.
+section: API and MCP
+order: 14
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+
+All paths are under `/api/v1`. These routes need `read` or `simulate` scope.
+
+## Deterministic projection
+
+`POST /plans/{id}/simulate` runs the engine. Without `view` you get the full result (every period, ledger and trace:
+large). With `view` you get a compact one:
+
+```json
+{ "trace": "off",
+  "view": { "basis": "real", "fromYear": 2030, "toYear": 2060, "everyNYears": 5,
+            "series": ["netWorth", "liquidNetWorth", "spending", "taxes", "shortfall"],
+            "accountIds": ["acc-brokerage"], "include": ["summary", "milestones", "warnings"] } }
+```
+
+`series` is any of `netWorth`, `liquidNetWorth`, `assets`, `liabilities`, `portfolio`, `cash`, `realAssets`, `income`,
+`passiveIncome`, `expenses`, `spending`, `taxes`, `contributions`, `withdrawals`, `savingsRate`, `withdrawalRate` and
+`shortfall`. `POST /simulate` is stateless: send a full simulation input and nothing is stored.
+
+Results are cached per plan id, plan version, options, household version and engine version, so an edit never serves a
+stale result.
+
+## Jobs
+
+`POST /plans/{id}/monte-carlo`, `POST /plans/{id}/historical`, the solvers, guardrails, tax strategy and some insights run
+in worker threads (`GLIDEWORTH_MAX_JOBS` at a time, default 2) and return `202` with a job.
+
+| Route | Purpose |
+| --- | --- |
+| `GET /jobs`, `GET /jobs/{id}` | `status` is `queued`, `running`, `succeeded`, `failed` or `cancelled`; `progress` runs 0 to 1. |
+| `GET /jobs/{id}/events` | Server-sent events: `status`, `progress`, then `done`. The data is the job JSON. |
+| `GET /jobs/{id}/result` | The result. Monte Carlo results are thinned by default; ask for more with `?detail=full`, `?metrics=`, `?percentiles=` or `?everyNYears=`. |
+| `POST /jobs/{id}/cancel` | Stop the job and its worker threads. |
+
+Add `?wait=<seconds>` (up to 120) to the start request to block until the job finishes and get the finished job back.
+Browsers' `EventSource` cannot set an `Authorization` header but does send the session cookie; elsewhere use
+`curl -N` or fetch streaming. A failed job carries a typed error, and a job interrupted by a restart fails with
+`INTERRUPTED`.
+
+A large run is split across worker threads (the lesser of the CPU count and 4, overridable with
+`GLIDEWORTH_MC_SHARDS`, never fewer than 200 trials each) and gives the same result as a single-threaded run with the same
+seed. Without `settings.seed`, a fixed default seed is used; `"randomSeed": true` draws a fresh one and skips the cache.
+
+## Solvers
+
+All are jobs with the same `?wait=` and a `monteCarlo` override such as `{"monteCarlo": {"trials": 200}}`, plus
+`maxEvaluations` and `targetSuccessRate`.
+
+| Route | Extra body | Answers |
+| --- | --- | --- |
+| `POST /plans/{id}/solve/max-spending` | `expenseIds` | How much can I spend? |
+| `POST /plans/{id}/solve/earliest-retirement` | `milestoneId` | Earliest retirement month. |
+| `POST /plans/{id}/solve/required-savings` | `flowId` | How much must I save? |
+| `POST /plans/{id}/solve/required-portfolio` | `accountIds` | How much do I need? |
+| `POST /plans/{id}/solve/safe-withdrawal-rate` | `years`, `accountIds` | Highest constant withdrawal rate. |
+| `POST /plans/{id}/solve/goal-seek` | `variable`, `objective`, `direction`, `bounds` | Any variable against any objective. |
+| `POST /plans/{id}/solve/tax-strategy` | `objective`, `candidates` | Compare tax strategies. |
+
+## Insights
+
+| Route | Purpose |
+| --- | --- |
+| `POST /plans/{id}/insights/explain`, `/explain-year`, `/explain-years`, `/explain-difference` | Why the plan ended up here, where the money went, why two plans differ. |
+| `POST /plans/{id}/insights/audit` | Modelling mistakes, with severities and ready-made fixes. |
+| `POST /plans/{id}/insights/sensitivity` | Tornado data; `metric` can be `successRate` (a job). |
+| `POST /plans/{id}/insights/guardrails`, `/guyton-klinger` | Spending guardrails. |
+| `POST /plans/{id}/insights/debt-payoff`, `/income-by-tax-rate`, `/strategy-matrix` | Debt strategies, income by marginal rate, strategies against metrics (a job). |
+| `GET /plans/{id}/tax-breakdown` | Taxes by year, jurisdiction and kind. |
+| `POST /insights/compare`, `POST /insights/sepp-comparison` | Compare 2 to 6 plans; 72(t) methods. |
+
+## Moving country
+
+`GET /plans/{id}/residency-timeline`, `GET /plans/{id}/cross-border/items`, `POST /plans/{id}/insights/explain-taxation`,
+`POST /plans/{id}/insights/stay-or-move`, `GET /plans/{id}/tax-breakdown/by-country`, and the rule tables `GET
+/cross-border/countries`, `/cross-border/non-resident-rules/{country}`, `/cross-border/treaties`,
+`/cross-border/treaties/{a}/{b}`, `/cross-border/wrappers` and `/cross-border/simplifications`, plus
+`POST /cross-border/explain`. Stay-or-move runs two deterministic projections and answers inline.
+
+<Callout type="note" title="What this does not do">
+  A solver's single evaluation runs in one thread; only plain Monte Carlo is split. The `NOT_IMPLEMENTED` error (501)
+  means the plan uses a feature the engine does not model.
+</Callout>

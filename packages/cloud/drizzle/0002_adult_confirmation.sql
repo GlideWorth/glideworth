@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `adult_confirmed_at` text;

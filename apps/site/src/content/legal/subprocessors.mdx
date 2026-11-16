@@ -1,0 +1,65 @@
+---
+title: Sub-processors
+description: The providers Glideworth proposes to use to run the hosted service, what each would receive and where. The list is final before sign-ups open.
+lastUpdated: 2026-11-16
+draft: true
+order: 7
+---
+
+import { site } from '../../config/site';
+
+<Callout type="warning" title="Proposed, to be confirmed before launch">
+  **This list will be final before the hosted service accepts sign-ups.** Until then these providers are
+  proposals. Several have been chosen and some are already set up, but we do not claim that a contract or data
+  processing agreement is in place with any of them. This page will be updated, and customers told, before the
+  hosted service opens. Locations and roles are taken from our planning documents and from each provider's
+  published information, and must be checked against the signed terms.
+</Callout>
+
+A sub-processor is a company that handles personal data for us when we provide the service. We list them so you
+can see who might handle your data. See the [privacy policy](/legal/privacy/) and the [data processing
+agreement](/legal/dpa/). {site.entity.name}, the company that runs the service, is in the United Arab Emirates and
+its staff may reach data from there (privacy policy, section 6); it is not a sub-processor.
+
+## Proposed sub-processors
+
+| Provider | Purpose | Data categories | Location | Status |
+|---|---|---|---|---|
+| DigitalOcean, LLC | Servers that run the app and store workspaces; block storage for the data; object storage (Spaces) for encrypted backups | Account data, planning data (live, and in encrypted backups), technical logs | Frankfurt, Germany. DigitalOcean, LLC is a US company, so the data is stored in the EU but is not out of reach of a US provider: transfers rely on its data processing terms, not on where the servers are | Proposed. Its data processing terms are part of its customer terms and are to be accepted in our account before launch |
+| Stripe | Payments, invoices, tax calculation, customer billing portal | Billing data, name, email, billing address, tax number. No planning data | Not yet confirmed. Stripe is a US company and may process data in the United States | Proposed. Stripe may also act as an independent controller for some of its own purposes, such as fraud prevention and legal compliance, under its own privacy policy |
+| Resend | Sends application emails (sign-up confirmation, security notices, billing notices, check-ins) over SMTP, from a sending subdomain | Email address, name, the email content (never financial figures), delivery events | Not yet confirmed. Resend is a US company; the region is chosen when the account is created | Proposed. Free plan to start; the account is not created yet |
+| MXroute | Receives and stores the mail people send to our support addresses (hello@, support@, security@, privacy@, and addresses forwarded to hello@). Not used for application emails | The sender's email address and name, the message and any attachments, mail headers. Whatever you write to us | Not yet confirmed | Set up and in use for these mailboxes; its terms are to be confirmed |
+| Vercel Inc. | Domain registration and DNS for our domain | DNS queries for our host names, and the registrant contact details of the domain. No customer data | Not yet confirmed. Vercel is a US company | Proposed. In use as the registrar and DNS host |
+| Google (sign-in with Google, optional) | Lets you sign in with your Google account instead of a password, only if you choose it | To be confirmed when the feature is finished (expected: the identifier, email address and name Google returns about you) | Not yet confirmed. Google is a US company | Being added. Not available yet; this row will be completed before it is |
+| Cloudflare (Turnstile) | Bot check at sign-up, password reset and after repeated failed sign-ins | IP address, browser signals | Not yet confirmed. Cloudflare is a US company with servers worldwide | Proposed |
+| GlitchTip (hosted, EU), or a similar error tracker | Receives scrubbed error reports so we can fix faults | Error name and code, a fingerprint, route template, status code, release, an opaque account id, job kind. No messages, no request data, no IP address, no financial values | EU (Germany) | Proposed. Only if enabled |
+| UptimeRobot | Uptime checks and the public status page | Public web addresses only; the account holder's contact details. No customer data | Not yet confirmed | Proposed |
+| Healthchecks.io | Heartbeat checks that scheduled jobs ran (backups, restore tests, host checks) | Job names only. No customer data | Not yet confirmed | Proposed |
+
+Where a provider is outside the UK and the EU, we will use it only where a lawful transfer mechanism applies,
+and the final list will say which (privacy policy, section 6).
+
+## Not sub-processors
+
+- **GitHub and the container registry** handle source code and software images, not customer data.
+- **Let's Encrypt** receives our public host names to issue security certificates.
+- **Your own AI assistant provider**, if you connect one, is your service, not ours. It receives what its tools
+  return. See the privacy policy, section 9.
+
+## Fallback and changes
+
+Hetzner Online GmbH was considered as the hosting provider and is **not in use**; it would be added to this list
+before any customer data moved to it. Vercel sees requests for our host names, as any DNS provider does, but not
+customer content. Mailgun is supported by the software as an alternative email sender and is **not in use**.
+
+The marketing site may be served from the same server or from a static host. If a separate host is used, it will
+be listed here.
+
+## How we will tell you about changes
+
+We will update this page and email account holders at least 30 days before a new sub-processor starts
+handling customer data. If you object on reasonable data protection grounds, you may cancel, delete your data and
+ask for a refund of the unused part of what you prepaid before the change takes effect. Customers with a data
+processing agreement have the rights set out in it.
+
+Questions: <a href={`mailto:${site.contact.privacy}`}>{site.contact.privacy}</a>.

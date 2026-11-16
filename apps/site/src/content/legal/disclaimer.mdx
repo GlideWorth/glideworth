@@ -1,0 +1,72 @@
+---
+title: Not financial advice
+description: Glideworth is planning software, not financial, tax, investment or legal advice. What its projections and tax estimates are and leave out.
+lastUpdated: 2026-11-16
+draft: false
+order: 5
+---
+
+import { facts } from '../../lib/facts';
+import { site } from '../../config/site';
+
+<Callout type="risk" title="Glideworth does not give advice">
+  Nothing in Glideworth, its website, its API, its MCP server or its documentation is financial, tax, investment,
+  pension or legal advice. We do not recommend that you buy, sell or hold anything, or take or avoid any action.
+  Glideworth and {site.entity.name} are not licensed or regulated as a financial adviser, investment adviser, tax
+  adviser or financial consultant in any country. It is a calculation tool that shows the results of the
+  assumptions you enter.
+</Callout>
+
+## What Glideworth is
+
+Glideworth is a calculator. You enter your situation and your assumptions. It works out what follows from them:
+how your money might last, what tax you might pay, how a change might affect the result. The numbers depend on
+what you put in. Different inputs give different answers.
+
+## What the results are
+
+- **Projections are estimates.** They show one possible set of outcomes from your assumptions. Monte Carlo
+  results show a range of outcomes from historical data and random draws. A "chance of success" is a model
+  output. It is not a probability that your own future will go a certain way.
+- **The past does not predict the future.** Historical returns, inflation and exchange rates in the tool come from
+  published datasets for the periods stated. Markets, tax and inflation can behave differently from anything in
+  the data.
+- **Tax figures are estimates.** The tax models cover {facts.taxCountryCount} countries, for the tax years stated
+  on each [country page](/planning/). Each model is simplified and leaves things out. They are not tax
+  returns, not tax advice, and not a substitute for a tax professional or the tax authority's own rules. Tax
+  law changes, and so can the tables in the tool.
+- **Moving between countries is complex.** The engine models some effects of changing residence, taxation of
+  non-residents and treaty relief, but it cannot reflect every rule or your personal facts.
+- **Errors are possible.** We test the software and publish what it does and does not model, but it can contain
+  mistakes. Check results that matter against official sources.
+
+## Things that may look like recommendations
+
+Some features point out what to look at or try, for example the assumption check, tax strategy comparison,
+conversion analysis, spending guardrails, and the prompts offered to AI assistants. Where they use words such as
+"fix", "best", "recommended" or "what to do", those words describe a change to **your own inputs** and what
+**the model** then shows. They are generic. They do not take account of your whole situation, they do not name
+any particular fund, security, product or provider, and they are not a recommendation to act. The service gives
+no personal recommendation to you and no recommendation of any investment, product or provider.
+
+## AI assistants
+
+If you connect an AI assistant through MCP, what it says is its own output, shaped by its provider and by what it
+decides to do with the data. It may be wrong. Glideworth runs no AI on your data and does not control what a
+connected assistant says. Treat it as you would any other source: check it.
+
+## Who we are not
+
+**{site.entity.name}** and Glideworth are not licensed or regulated as a financial adviser, investment adviser,
+tax adviser or financial consultant in any country, and do not hold themselves out as one. We are not an
+investment manager, broker, pension adviser or fiduciary. We do not manage your money, hold your assets or
+connect to your bank accounts. We give no personal recommendations. Glideworth is a calculation tool that shows
+the results of the assumptions you enter.
+
+## What to do
+
+Decide for yourself. For decisions that matter, such as when to retire, how to draw down pensions, whether to
+move country or how to structure tax, talk to a qualified, regulated professional who can look at your
+whole situation.
+
+See also the [terms of service](/legal/terms/), section 10 and section 13.

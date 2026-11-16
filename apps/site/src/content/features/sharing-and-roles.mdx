@@ -1,0 +1,76 @@
+---
+title: Sharing and household roles
+description: Invite a partner as an editor or an adviser as a viewer, and share plan results through expiring, revocable read-only links that hide amounts if you wish.
+ogTitle: Sharing and household roles
+summary: Owner, editor and viewer sign-ins, plus read-only share links that serve a results snapshot and nothing else.
+order: 13
+---
+
+Retirement planning is rarely a solo activity. Glideworth has two ways to include someone else: give them a
+sign-in with a role, or give them a link to the results.
+
+## Roles
+
+One instance has one **owner**, created when you first set a passphrase, who can invite others. Invitations carry
+a one-time token that is valid for seven days; the invited person chooses their own passphrase, so the owner never
+learns it.
+
+| Role | Can |
+| --- | --- |
+| Owner | Everything, including people, webhooks, connected apps and the audit log |
+| Editor (a partner) | Read, simulate and write plans, finances, imports, share links and check-in settings, and manage their own API keys |
+| Viewer (an adviser) | Read and simulate only. Every route and MCP tool that writes is refused or absent |
+
+Roles are enforced where API scopes are: every route declares the scope it needs, and any credential's scopes
+are capped by its person's role, whether it is a browser session, an API key or an OAuth token for an assistant.
+Demoting or disabling someone takes effect at once on all their sessions and keys. Every write by a person, key or
+connected app, and every refused write, is recorded in an audit log that the owner can read, and plan history
+names who made each edit.
+
+## Share links
+
+A share link gives someone a view of a plan's **results** without an account. The link serves a snapshot of
+computed results taken when you create it, not live access:
+
+- the plan name and a summary: chance of success, retirement and financial-independence year, whether it is funded;
+- the milestones reached (life-expectancy milestones are left out because they name a person); and
+- a year-by-year table.
+
+It never contains the household, people, accounts, balances, settings or your other plans. You choose how amounts
+appear: **full** (in your currency), **percent** (every amount as a percentage of starting net worth, with no
+currency), or **hidden** (amounts removed, leaving success rate, years and milestones). Links expire (30 days by
+default, up to 365), can be revoked at once, can be refreshed to take a new snapshot, and show a view count. The
+token is shown once, is 256 random bits and is stored only as a hash. Public reads are rate limited, return `404`
+for unknown, expired and revoked links alike, and ask search engines not to index them.
+
+## A worked illustration
+
+You want your accountant to see how the plan is doing without seeing your balances. You create a link with privacy
+**percent** and a 14-day expiry, and send it. They see "Chance of success 86%, funded to 2068, net worth by year
+as a percentage of where you started", and no account names, no pounds. After the meeting you revoke it. All
+figures here are illustrative.
+
+If the accountant should poke at the model themselves, invite them as a **viewer** instead.
+
+## Over the API and MCP
+
+Share links are `POST /api/v1/plans/{id}/share-links` and a public `GET /api/v1/shared/{token}`. Invitations are
+`POST /api/v1/users`. An assistant with write access can use `create_share_link`, `list_share_links` and
+`revoke_share_link`. See [the API](/features/rest-api/) and [the MCP server](/features/mcp-server/).
+
+## What it does not do
+
+- **Roles are instance-wide,** not per household or per plan. Everyone with a sign-in sees the whole household.
+  Per-person privacy inside a household is not modelled.
+- **A share link is a snapshot.** It is not a live dashboard; refresh it to update it.
+- **A share link is not an API credential.** It opens no other route.
+- **No advisor workspace:** there is no multi-client view, no branding and no client management for professionals.
+- **No single sign-on** or directory integration.
+- **Two-factor sign-in is planned for the hosted service,** not built. Self-hosted sign-in is a passphrase.
+  See [security](/security/).
+
+## Go further
+
+- [Progress and check-ins](/features/progress-and-check-ins/): what you might share.
+- [Security and privacy](/security/): how sessions, keys and links are stored.
+- [Self-hosting](/self-hosting/): inviting people to your own instance, and putting it behind HTTPS.

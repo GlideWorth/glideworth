@@ -1,0 +1,67 @@
+---
+title: What Glideworth is
+description: Glideworth is an open-source financial and retirement planner. See what it does, what it does not do, and the two ways to run it.
+section: Getting started
+order: 1
+lastChecked: 2026-11-16
+---
+
+import { facts } from '../../../lib/facts';
+
+Glideworth answers one question: will my money last, and what can I change? You describe your
+household, accounts, income, spending and milestones. It projects your finances decades ahead, in
+today's money or in future money, and tells you your chance of success, why a plan fails when it does,
+and what you could change. It is a planning tool, not financial, tax or legal advice.
+
+## What it does
+
+- **Plans a household** of one or two people: accounts, real assets, debts, income, expenses, savings
+  flows, milestones (retire at 60, mortgage-free, life expectancy), drawdown order and assumptions.
+- **Projects year by year** with a full ledger of every money movement, then **replays the plan many
+  times** against historical or random market returns to give a chance of success.
+- **Estimates tax** for {facts.taxCountryCount} countries, or with flat or custom rates. Every country lists what its estimate
+  leaves out. These are estimates, never a tax return.
+- **Answers questions**: the most you can spend at a target chance of success, the earliest retirement
+  date, the savings you need, a safe withdrawal rate, spending guardrails.
+- **Explains itself**: why a plan fails, where the money went in a year, what an assumption audit finds.
+- **Lets you experiment safely**: branches, version history with undo, what-if templates, survivor
+  scenarios, and change sets you preview before applying.
+- **Is open to software**: a REST API and an MCP server, so scripts and AI assistants can read plans, run
+  simulations and propose edits.
+
+## What it does not do
+
+- It does not connect to your bank. Balances come from you, a CSV or bank file, or a script.
+- It does not give advice. It does not know your circumstances, your tax residence in detail or your risk
+  tolerance.
+- It does not model anything inside a year. The engine steps one year at a time.
+- It does not predict markets. A chance of success is a stress test against history, not a probability of
+  the future.
+
+The full list is on [Known limitations](/docs/methodology/known-limitations/).
+
+## Two ways to run it
+
+<FeatureGrid
+  columns={2}
+  items={[
+    {
+      title: 'Self-host, free',
+      body: 'One Docker container or one Node process, with your data in a single SQLite file. The self-hosted build is the whole product: no licence key, no telemetry, no feature switched off.',
+      href: '/docs/self-hosting/docker/',
+    },
+    {
+      title: 'Hosted service',
+      body: 'The same software run for you, for a subscription. It is not open yet.',
+      href: '/docs/hosted/hosted-service/',
+    },
+  ]}
+/>
+
+Either way you get the same web app, API and MCP server. Glideworth is licensed AGPL-3.0-only.
+
+## Where to go next
+
+1. [Your first plan in ten minutes](/docs/getting-started/first-plan/).
+2. [Core concepts](/docs/getting-started/concepts/), so the words in the app make sense.
+3. [Build a plan](/docs/planning/build-a-plan/) and [read your results](/docs/planning/read-your-results/).

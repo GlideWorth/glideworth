@@ -1,0 +1,26 @@
+---
+/**
+ * Stands in for every <table> that Markdown and MDX produce (registered as `table` in src/components/mdx.ts):
+ * a table wider than its column scrolls inside its own box instead of widening the page. The box is
+ * keyboard-focusable (tabindex="0") so people without a pointer can scroll it; its focus ring is `.table-scroll`
+ * in global.css. Tables written by hand in .astro pages use the same markup.
+ *
+ * The box is a `group`, not a `region`: a region is a landmark, and a page with several tables would list
+ * several landmarks with the same name.
+ *
+ * A table whose first header cell is empty (`| | A | B |`) has its row labels in the first column. An
+ * empty header cell is announced as an unnamed header and leaves that column without one, so the corner
+ * becomes a plain <td> and the first cell of each body row becomes a row header. Prose.astro keeps both
+ * looking as they did.
+ */
+let rows = await Astro.slots.render('default');
+const corner = /(<thead>\s*<tr>\s*)<th(\s[^>]*)?><\/th>/;
+if (corner.test(rows)) {
+  const [head, body = ''] = rows.replace(corner, '$1<td$2></td>').split('<tbody>');
+  rows = [head, body.replace(/(<tr>\s*)<td(\s[^>]*)?>([\s\S]*?)<\/td>/g, '$1<th scope="row"$2>$3</th>')].join('<tbody>');
+}
+---
+
+<div class="table-scroll" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
+  <table {...Astro.props}><Fragment set:html={rows} /></table>
+</div>

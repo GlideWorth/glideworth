@@ -1,0 +1,55 @@
+{
+  "name": "@glideworth/cloud",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Glideworth Cloud: control plane, tenancy, entitlements, quotas, backups, HTTP routes, operator console and server boot. Loaded only in cloud mode.",
+  "license": "AGPL-3.0-only",
+  "bin": {
+    "glideworth-cloud": "./dist/cli/bin.js"
+  },
+  "files": [
+    "dist",
+    "drizzle"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "@glideworth/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./server": {
+      "@glideworth/source": "./src/server.ts",
+      "types": "./dist/server.d.ts",
+      "default": "./dist/server.js"
+    },
+    "./log": {
+      "@glideworth/source": "./src/log/index.ts",
+      "types": "./dist/log/index.d.ts",
+      "default": "./dist/log/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.1153.0",
+    "@glideworth/billing": "workspace:*",
+    "@glideworth/email": "workspace:*",
+    "@hono/node-server": "2.1.8",
+    "@hono/zod-openapi": "1.6.3",
+    "better-sqlite3": "13.2.0",
+    "disposable-email-domains": "1.0.62",
+    "drizzle-orm": "0.45.4",
+    "hono": "4.13.18",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "9.6.0",
+    "drizzle-kit": "0.31.11"
+  }
+}

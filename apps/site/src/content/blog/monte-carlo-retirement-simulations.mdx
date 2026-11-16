@@ -1,0 +1,122 @@
+---
+title: "Monte Carlo retirement simulations: reading the result"
+description: "What a retirement Monte Carlo percentage means, how the three sampling methods differ, what assumptions drive it, and what to read beyond the headline."
+pubDate: 2026-11-16
+author: [glideworth-team]
+tags: [Monte Carlo, Retirement, Methodology]
+draft: false
+---
+
+import Callout from '../../components/Callout.astro';
+
+A retirement Monte Carlo result such as "87% chance of success" means this: the plan was run through many simulated sequences of market returns, and in 87% of them every year's spending was paid. It describes the plan's behaviour under the model's assumptions. It is not a forecast, and it is not the probability that you personally will run out of money, because the model has fixed rules about spending that real people do not follow. The sections below explain how the number is produced, what moves it, and what to read next to it.
+
+<Callout type="note" title="Education, not advice">
+  This article explains a method. The numbers in it come from a small example described in full below, not from a
+  forecast, and none of it is advice. See the [not-advice notice](/legal/disclaimer/).
+</Callout>
+
+## What one simulation does
+
+Each trial does the same three things:
+
+1. Draw a path of returns (and usually inflation) for every year of the plan.
+2. Run the plan along that path: add income, take out spending, apply tax, grow the portfolio.
+3. Record whether the plan succeeded, which usually means every year's spending was fully paid.
+
+After thousands of trials the success rate is the fraction that succeeded. The only difference between methods is step 1.
+
+## Three ways to draw the returns
+
+**Parametric.** Assume each year's return comes from a distribution, often a normal or log-normal one, defined by an average, a volatility and correlations between assets such as stocks, bonds and inflation. This is easy to run and easy to vary. It assumes each year is drawn independently of the last, so it has no runs of bad years unless you add them. A **fat-tailed** variant, for example a Student's t distribution scaled to the same standard deviation, allows more extreme years than a normal curve does.
+
+**Historical bootstrap.** Instead of a formula, draw from real history. Two common forms exist. One picks a random historical start year and walks forward through real consecutive years, restarting when the data runs out. The other uses every start year once, which is a historical replay. Either keeps the real relationships between stocks, bonds and inflation inside a year. A plain bootstrap that picked individual years at random would lose the order of years, and with it any run of bad years or any tendency of returns to follow each other.
+
+**Block bootstrap.** Resample not single years but blocks of consecutive years, and stitch the blocks together. The technique for dependent data is due to Hans Künsch, "[The Jackknife and the Bootstrap for General Stationary Observations](https://doi.org/10.1214/aos/1176347265)" (*Annals of Statistics*, 1989), which resamples blocks of length `l` from overlapping blocks of the observed series; the block length must grow with the sample size but stay small against it for the method to be consistent. A short block keeps the series' short-term patterns and lets the model produce sequences history never produced. A long block comes closer to a replay. Choosing the length is a judgement.
+
+Glideworth offers all three: random distributions (normal, with an optional log-normal shape and fat tails), historical random start years, every historical start year, and block bootstrap with blocks of 1 to 30 years, default 5. The [methodology page](/docs/methodology/monte-carlo/) has the table.
+
+## An experiment you can reproduce
+
+To see what drives the result, here is a small Monte Carlo that you can run yourself with any Python 3. The plan is deliberately simple: a starting balance of 1,000,000, spending of 40,000 a year in today's money taken at the start of each year, 30 years, no tax and no other income. Real returns are log-normal with a chosen arithmetic average and standard deviation, drawn independently each year. A trial fails if the balance cannot cover a full year's spending.
+
+```python
+import math, random
+
+def success_rate(mu, sigma, trials=10_000, seed=42, df=None,
+                 balance=1_000_000, spend=40_000, years=30):
+    # log-normal real returns with arithmetic mean mu and standard deviation sigma
+    s2 = math.log(1 + sigma**2 / (1 + mu) ** 2)
+    m, s = math.log(1 + mu) - s2 / 2, math.sqrt(s2)
+    rng = random.Random(seed)
+    ok = 0
+    for _ in range(trials):
+        b = balance
+        for _ in range(years):
+            if b < spend:          # cannot pay the full year: the trial fails
+                break
+            b -= spend             # withdraw at the start of the year
+            z = rng.gauss(0, 1)
+            if df:                 # Student-t shock scaled to unit variance
+                z = z / math.sqrt(rng.gammavariate(df / 2, 2) / df) * math.sqrt((df - 2) / df)
+            b *= math.exp(m + s * z)
+        else:
+            ok += 1
+    return ok / trials
+```
+
+With an average real return of 5% and a standard deviation of 12%, `success_rate(0.05, 0.12)` returns **0.8667** with seed 42. The [Monte Carlo retirement calculator](/tools/monte-carlo-retirement-calculator/) runs the same experiment in your browser with the planner's engine. Three more results show the main lessons.
+
+**The inputs matter a great deal.** Success rates for 10,000 trials with seed 42:
+
+| Average real return | Volatility 8% | Volatility 12% | Volatility 16% |
+| ---: | ---: | ---: | ---: |
+| 4% | 90.8% | 76.2% | 64.0% |
+| 5% | 97.1% | 86.7% | 74.5% |
+| 6% | 99.5% | 93.2% | 82.6% |
+
+Moving the average return by one point shifts the 12% volatility column by 6.5 points up or 10.5 points down. Moving volatility from 8% to 16% at a 5% average takes the result from 97.1% to 74.5%. None of these is a "correct" setting. Each is an assumption, and the headline moves with it.
+
+**The seed adds noise.** The same inputs with seeds 7 and 99 return 87.5% and 87.0%. With `n` trials, the 95% margin of error on a rate `p` is about `1.96 × √(p(1 − p) ÷ n)`: roughly ±0.7 points at 10,000 trials and ±2.1 points at 1,000 for a result near 87%. A comparison of two plans that differ by a point is a comparison of noise unless both runs use the same seed and trial count.
+
+**Fat tails changed little here.** With a fat-tailed draw (`df=4`, same average and standard deviation) the result was 87.5%, against 86.7% for the normal draw. This is a limited test, since it changes only the shape of single-year returns and keeps them independent, and it does not make fat tails unimportant. It shows that matching the average and the volatility mattered more than the tail shape to this particular headline number. Tail shape matters more to the worst trials than to the percentage.
+
+## Why the same plan gives different answers in different tools
+
+Beyond the sampling method, tools differ in conventions that move the result. One is when in the year cash flows are assumed to happen: at the start, in the middle or at the end. In Glideworth's own check against an established historical retirement calculator, with a 60/40 portfolio of 1,000,000, 4% inflation-adjusted withdrawals and 30 years, the other calculator gave 96.8% on US data from 1871. On US data from 1928, Glideworth gave 94.2% with cash flows at the start of the year, 95.7% in the middle and 98.6% at the end. One timing setting moved the answer by more than four points. Others include whether fees are included, how success is defined and which dataset is used. The comparison was one case and is not a published validation report.
+
+## Common misreadings
+
+**"87% means a 13% chance I run out of money."** Not quite. It means 13% of simulated futures, under a rule where spending is fixed whatever happens, ended with some year unpaid. A person in a sequence that is going badly would normally cut spending, delay a purchase, or earn some income. A trial that fails by a small amount in its final year counts the same as one that fails at 70. The failure rate measures how a rigid plan behaves, not a rate of real-world ruin. The [article on withdrawal strategies](/blog/withdrawal-strategies-compared/) shows how rules that adjust spending change this.
+
+**"Higher is always better."** A 99% result may be leaving a great deal of spending unused. The percentage is one side of a trade; the other side is how much you spend.
+
+**"The model's range is the real range."** Returns that are independent, normally distributed and unchanging in character are a simplification. Real markets show clusters of volatility, regimes, and relationships between inflation and returns that vary over time. Historical and block methods keep some of these features and a parametric draw does not, but a history is a sample from one country and period.
+
+**"The model knows my life."** Only the market varies in most simulations. Your income, spending, tax rules and dates are fixed in every trial. Lifespan, health costs, changes in the law and your own behaviour are not random in the model, so they are outside the percentage.
+
+**"Success is a probability."** It is a frequency under a model. A model with different inputs gives a different frequency, and the true probability is not available to anyone.
+
+## Seeds and reproducibility
+
+A simulation uses a pseudo-random number generator, and a seed fixes the sequence it produces. The same seed and the same inputs give the same answer, so a result can be repeated and checked. Glideworth derives a separate seed for each trial from the run's seed and the trial number, so splitting a run across processors and merging the pieces gives exactly the single-processor result. Through the API and the MCP server, a run without a stated seed uses a fixed default seed, which makes "same plan, change one number" a fair comparison, and a run can ask for a fresh seed to see how much of a difference is noise. A fresh seed is recorded in the result so the run can be repeated.
+
+## What to look at beyond the headline
+
+A single percentage discards most of what a simulation produces. These are worth reading alongside it:
+
+- **When failures happen.** A histogram of the year in which failing trials first run short separates a plan that fails at 70 from one that fails at 92.
+- **How bad the shortfall is.** The size and length of the gap, not just whether there was one.
+- **The spread of outcomes.** The 10th, 50th and 90th percentile balances over time show the range, and the 10th is the bad-luck case.
+- **Sequence of returns.** Success grouped by the returns in the first years (for example the first ten) shows how much depends on a poor start.
+- **Sensitivity.** Which assumption moves the result most: return, spending, retirement date.
+- **A second method.** Compare the Monte Carlo result with a historical replay of the same plan.
+- **Reproducibility.** The seed and trial count.
+
+Glideworth's results include the success rate, outcome categories, the failure-year histogram, sequence-of-returns buckets, percentile bands and representative best, worst and median trials you can open year by year, as listed on the [Monte Carlo feature page](/features/monte-carlo/). Success can be defined as every year funded, or as savings staying above a floor you set. The hosted service is about to open; the free [Monte Carlo retirement calculator](/tools/monte-carlo-retirement-calculator/) runs a simple version of this.
+
+<FAQ items={[
+  { q: 'What chance of success is good enough?', a: '<p>There is no standard. Studies and tools use different targets: the Guyton and Klinger paper on withdrawal decision rules reports results at 95% and 99% confidence standards, while Glideworth\'s risk-based guardrails default to a target of 80% inside a band of 70% to 95%. The target is a choice about how much risk of a rigid plan failing to accept against how much to spend.</p>' },
+  { q: 'How many trials are enough?', a: '<p>More trials reduce sampling noise only. At 1,000 trials a result near 87% carries a margin of about two points either way; at 10,000, about 0.7. The model assumptions matter far more than the trial count beyond that.</p>' },
+  { q: 'Is a historical replay better than random draws?', a: '<p>Neither is better in general. A replay keeps real relationships but offers few independent sequences. Random draws offer many sequences but depend on assumed averages and volatility. Comparing both is informative.</p>' },
+]} />

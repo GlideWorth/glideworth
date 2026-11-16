@@ -1,0 +1,302 @@
+# Quality gates on every pull request and every push to main: lint (oxlint), format check (oxfmt),
+# typecheck, tests (sharded), build, and secret scanning. Change detection skips the heavy jobs when a
+# change touches documentation only; the "CI gate" job is the single, stable required check.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# A newer push to a pull request replaces the run in progress.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # Pushes to main are never cancelled, so every commit on main keeps a result.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # ─── Change detection ───────────────────────────────────────────────────────
+  # No install: runs in seconds. The heavy jobs depend on its output, so a documentation-only change
+  # (Markdown outside the site content, docs/, issue templates, licence texts) does not pay for them.
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      # Full history, so the diff below needs no further network access: the credentials the checkout
+      # used are not persisted (and are not needed afterwards). On a pull request this is the merge
+      # commit, whose history holds both the base and the head.
+      - name: Check out (full history)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # A file counts as code unless it is documentation: docs/, any Markdown file, the licence texts or
+      # the issue templates. Whenever the changed files cannot be determined (first push, a force push
+      # whose old tip is gone, a missing commit, a git error) the answer is "code", so everything runs.
+      - name: Filter changed paths
+        id: filter
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -u
+
+          # Prints the revision range to diff, or fails when there is none.
+          range() {
+            if [ "$EVENT" = "pull_request" ]; then
+              git cat-file -e "${PR_BASE}^{commit}" && git cat-file -e "${PR_HEAD}^{commit}" || return 1
+              # Three dots: the changes of the pull request itself, not of the base branch since it forked.
+              echo "${PR_BASE}...${PR_HEAD}"
+            else
+              case "$BEFORE" in ""|0000000000000000000000000000000000000000) return 1 ;; esac
+              git cat-file -e "${BEFORE}^{commit}" || return 1
+              # A force push: the old tip is not an ancestor of the new one, so a plain diff is not "what this push added".
+              git merge-base --is-ancestor "$BEFORE" "$AFTER" || return 1
+              echo "${BEFORE}..${AFTER}"
+            fi
+          }
+
+          detect() {
+            local r file
+            r="$(range)" || { echo "no usable diff range" >&2; return 1; }
+            git diff --name-only --no-renames -z "$r" > changed.list || return 1
+            while IFS= read -r -d '' file; do
+              case "$file" in
+                docs/*|*.md|LICENSE|packages/importers/LICENSE|.github/ISSUE_TEMPLATE/*) ;;
+                *) echo "code change: $file" >&2; return 0 ;;
+              esac
+            done < changed.list
+            return 2
+          }
+
+          # The step runs under "bash -e": a bare non-zero return would end the script before the case below.
+          status=0; detect || status=$?
+          case "$status" in
+            0) code=true ;;
+            2) code=false; echo "documentation-only change" ;;
+            *) code=true; echo "::notice::could not compute the changed files; running every job" ;;
+          esac
+          rm -f changed.list
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
+  # ─── Fast checks ────────────────────────────────────────────────────────────
+  lint:
+    name: Lint (oxlint)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # pnpm's version comes from "packageManager" in package.json.
+      - name: Set up pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+  # Runs for every change: it also covers Markdown, YAML and JSON, which are exactly what a docs-only
+  # change edits, and it is the cheapest job.
+  format:
+    name: Format (oxfmt)
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check formatting
+        run: pnpm format:check
+
+  typecheck:
+    name: Typecheck
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+  # ─── Unit and integration tests (sharded across runners) ────────────────────
+  test:
+    # No matrix expression in the name: a skipped job never expands it. GitHub appends the shard itself.
+    name: Tests
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Wall-clock benchmarks are not part of this run (`pnpm bench` is opt-in).
+      - name: Test
+        run: pnpm test --shard=${{ matrix.shard }}/3
+
+  # ─── Build (only when code changed) ─────────────────────────────────────────
+  build:
+    name: Build
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+  # ─── Secret scan (always, full history) ─────────────────────────────────────
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out (full history)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Official gitleaks image, pinned by digest (v8.30.1). Scans every commit reachable from the
+      # checkout, not just the tip. Findings are redacted in the log. To allow a known false positive,
+      # add a .gitleaks.toml or .gitleaksignore file; do not disable the step.
+      - name: Scan history with gitleaks
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
+            -v "$GITHUB_WORKSPACE:/repo" -w /repo \
+            ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
+            git --no-banner --redact --verbose /repo
+
+  # ─── Aggregator (the one required status check) ─────────────────────────────
+  # Branch protection should require only "CI gate". Skipped jobs are fine when no code changed; when
+  # code did change, every job must have succeeded.
+  gate:
+    name: CI gate
+    needs: [changes, lint, format, typecheck, test, build, secrets]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check results
+        env:
+          CODE_CHANGED: ${{ needs.changes.outputs.code }}
+          CHANGES: ${{ needs.changes.result }}
+          LINT: ${{ needs.lint.result }}
+          FORMAT: ${{ needs.format.result }}
+          TYPECHECK: ${{ needs.typecheck.result }}
+          TEST: ${{ needs.test.result }}
+          BUILD: ${{ needs.build.result }}
+          SECRETS: ${{ needs.secrets.result }}
+        run: |
+          fail=0
+          for pair in "changes=$CHANGES" "format=$FORMAT" "secrets=$SECRETS"; do
+            if [ "${pair#*=}" != "success" ]; then echo "::error::${pair%%=*} job: ${pair#*=}"; fail=1; fi
+          done
+          # Without a trustworthy answer from change detection the other jobs' state is meaningless
+          # (they are all skipped when it fails), so report only that failure.
+          if [ "$CHANGES" != "success" ] || { [ "$CODE_CHANGED" != "true" ] && [ "$CODE_CHANGED" != "false" ]; }; then
+            echo "::error::change detection gave no usable answer (result: $CHANGES, code: '$CODE_CHANGED')"
+            exit 1
+          fi
+          for pair in "lint=$LINT" "typecheck=$TYPECHECK" "test=$TEST" "build=$BUILD"; do
+            result="${pair#*=}"
+            if [ "$CODE_CHANGED" = "true" ]; then
+              [ "$result" = "success" ] || { echo "::error::${pair%%=*} job: $result"; fail=1; }
+            else
+              [ "$result" = "skipped" ] || { echo "::error::${pair%%=*} job: $result (expected skipped)"; fail=1; }
+            fi
+          done
+          if [ "$CODE_CHANGED" != "true" ]; then echo "No code changes: lint, typecheck, test and build skipped."; fi
+          exit "$fail"

@@ -1,0 +1,41 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import PostList from '../../../components/PostList.astro';
+import PageLayout from '../../../layouts/PageLayout.astro';
+import { publishedPosts, tagSlug } from '../../../lib/content';
+
+export async function getStaticPaths() {
+  const posts = await publishedPosts();
+  const tags = new Map<string, string>();
+  for (const t of posts.flatMap((p) => p.data.tags)) tags.set(tagSlug(t), t);
+  return [...tags].map(([slug, name]) => ({
+    params: { tag: slug },
+    props: { name, posts: posts.filter((p) => p.data.tags.some((t) => tagSlug(t) === slug)) },
+  }));
+}
+interface Props {
+  name: string;
+  posts: CollectionEntry<'blog'>[];
+}
+const { name, posts } = Astro.props;
+const path = `/blog/tags/${tagSlug(name)}/`;
+---
+
+<PageLayout
+  title={`Articles about ${name}`}
+  description={`Glideworth blog articles tagged ${name}: ${posts.length} ${posts.length === 1 ? 'article' : 'articles'} on retirement planning, tax and building an open-source planner.`}
+  heading={name}
+  eyebrow="Tag"
+  crumbs={[
+    { label: 'Blog', href: '/blog/' },
+    { label: name, href: path },
+  ]}
+>
+  <div class="container body"><PostList posts={posts} /></div>
+</PageLayout>
+
+<style>
+  .body {
+    padding-bottom: var(--section-y);
+  }
+</style>

@@ -1,0 +1,138 @@
+---
+title: Glideworth and spreadsheets or free calculators compared
+description: "A dated, sourced comparison of Glideworth with FIRECalc, cFIREsim, FI Calc and spreadsheets: who each suits, what each does, price and moving over."
+ogTitle: Glideworth vs spreadsheets and calculators
+competitor: Spreadsheets and free calculators
+checkedOn: 2026-11-16
+sources:
+  - label: FIRECalc
+    url: https://www.firecalc.com/
+  - label: cFIREsim
+    url: https://www.cfiresim.com/
+  - label: FI Calc
+    url: https://ficalc.app/
+---
+
+import { formatPrice, pricing } from '../../config/pricing';
+import { facts } from '../../lib/facts';
+import { site } from '../../config/site';
+
+Before a full planner, many people use a retirement calculator or a spreadsheet, and many keep using them. This
+page compares Glideworth with three web calculators (FIRECalc, cFIREsim and FI Calc), with the Bogleheads
+variable percentage withdrawal (VPW) worksheet, and with a spreadsheet you build yourself. Every statement about
+the three web calculators links to its page and the date we read it, 16 November 2026.
+
+<Callout type="note" title="How to read this page">
+  Facts about the calculators were checked on 16 November 2026 from their public pages. We did not test their
+  results. Tools change. We could not open the Bogleheads wiki pages directly on that date, so this page says
+  nothing about what that worksheet contains beyond its name. If you find something out of date or wrong, write
+  to <a href={`mailto:${site.contact.hello}`}>{site.contact.hello}</a> and we will correct it.
+</Callout>
+
+## Who each suits
+
+**A calculator is the better choice if** you have one question and want an answer in minutes. FIRECalc tests a
+spending plan against every historical start year since 1871 and reports how often it survived
+([FIRECalc](https://www.firecalc.com/), read 16 Nov 2026). cFIREsim offers a range of spending rules, including
+percent of portfolio, VPW, Hebeler Autopilot, Guyton-Klinger and Variable CAPE, and an "investigate" mode that
+finds the highest starting spending for a target success rate
+([cFIREsim](https://www.cfiresim.com/), 16 Nov 2026). FI Calc backtests withdrawal strategies such as constant
+dollar, percent of portfolio, VPW, Guyton-Klinger, the 95% rule and Vanguard dynamic spending, and reports
+success rate, spending volatility and a per-simulation table ([FI Calc](https://ficalc.app/), 16 Nov 2026).
+Glideworth needs you to describe a household before it answers anything.
+
+**A spreadsheet you build is the better choice if** you want every formula in front of you and the freedom to
+model something unusual, and you are willing to maintain it. Nothing hides in a spreadsheet you wrote, and you
+can change any assumption in a cell.
+
+**Glideworth may suit you better if** the question is bigger than "does this withdrawal rate survive?": you want
+accounts, income, spending and milestones over decades in one plan, with tax estimated each year for each person,
+and the result shown as a year-by-year ledger. It also suits you if you want to branch a plan to compare changes,
+or reach the plan from scripts or an AI assistant.
+
+## Side by side
+
+Each calculator cell links to its source and gives the date read. Glideworth cells describe the code in this
+repository today. A spreadsheet you build can do anything you put in it, so it has no fixed column.
+
+| | Glideworth | FIRECalc | cFIREsim | FI Calc |
+|---|---|---|---|---|
+| Price | Self-hosted: free. Hosted: {formatPrice(pricing.monthly)} a month or {formatPrice(pricing.yearly)} a year, **not live yet** | Not stated on the page ([FIRECalc](https://www.firecalc.com/), 16 Nov 2026) | Not stated on the page ([cFIREsim](https://www.cfiresim.com/), 16 Nov 2026) | Supported by donations ([FI Calc](https://ficalc.app/), 16 Nov 2026) |
+| History used | US history 1928 to 2025 or UK history 1983 to 2025; start years replayed or resampled | Every start year since 1871; data through 1 January 2026, updated 17 April 2026 ([FIRECalc](https://www.firecalc.com/), 16 Nov 2026) | Most recent data stated as 1 August 2026 ([cFIREsim](https://www.cfiresim.com/), 16 Nov 2026) | Data source and date range not stated on the page ([FI Calc](https://ficalc.app/), 16 Nov 2026) |
+| Withdrawal rules | Initial percentage, ratcheting, VPW, Clyatt 95%, Guyton-Klinger, plus floor and ceiling; risk-based guardrails | Constant inflation-adjusted, Bernicke reduced spending, percent of portfolio, 95% rule ([FIRECalc](https://www.firecalc.com/), 16 Nov 2026) | Inflation-adjusted, percent of portfolio, VPW, Hebeler Autopilot, Guyton-Klinger, Variable CAPE ([cFIREsim](https://www.cfiresim.com/), 16 Nov 2026) | Constant dollar, percent of portfolio, VPW, Guyton-Klinger, 95% rule, CAPE-based, Vanguard dynamic spending and more ([FI Calc](https://ficalc.app/), 16 Nov 2026) |
+| Tax | Estimated each year for each person in {facts.taxCountryCount} countries, with a list of simplifications | No tax modelling mentioned ([FIRECalc](https://www.firecalc.com/), 16 Nov 2026) | No tax model mentioned ([cFIREsim](https://www.cfiresim.com/), 16 Nov 2026) | No tax modelling mentioned ([FI Calc](https://ficalc.app/), 16 Nov 2026) |
+| Scope | A household of one or two people: accounts, real assets, debts, income, expenses, flows, milestones, branches | A spending plan tested against history, with Social Security and other income ([FIRECalc](https://www.firecalc.com/), 16 Nov 2026) | Spending plan with allocation across equities, bonds, gold and cash, fees, rebalancing and glide path; up to two Social Security streams ([cFIREsim](https://www.cfiresim.com/), 16 Nov 2026) | Withdrawal strategy backtesting with asset mix and rebalancing ([FI Calc](https://ficalc.app/), 16 Nov 2026) |
+| Data and sharing | Self-hosted: stays on your machine. Hosted: not live yet | Says it does not store entered data ([FIRECalc](https://www.firecalc.com/), 16 Nov 2026) | Not stated on the page ([cFIREsim](https://www.cfiresim.com/), 16 Nov 2026) | Share and export options ([FI Calc](https://ficalc.app/), 16 Nov 2026) |
+| Open source | Yes (AGPL-3.0) | Licence not stated on the page ([FIRECalc](https://www.firecalc.com/), 16 Nov 2026) | Licence not stated on the page ([cFIREsim](https://www.cfiresim.com/), 16 Nov 2026) | Licence not stated on the page ([FI Calc](https://ficalc.app/), 16 Nov 2026) |
+
+### Where the calculators are stronger
+
+- **Speed to an answer.** You do not describe a household first.
+- **Rule variety on the page.** cFIREsim and FI Calc list several withdrawal rules that Glideworth does not
+  list by name, such as Hebeler Autopilot, Variable CAPE and Vanguard dynamic spending. Glideworth has guardrails
+  and other rules, but not these.
+- **More recent data on the page.** FIRECalc states data through 1 January 2026 and cFIREsim states
+  1 August 2026. Glideworth's bundled US data ends in 2025 and is not updated automatically.
+- **No set-up.** They run in a browser.
+
+### Where Glideworth does more
+
+None of the three calculators describes tax modelling on the pages we read, or a household with several
+accounts and income streams over time. That is a gap in what those pages say, not proof the tools lack
+it. Glideworth also keeps a year-by-year ledger of every money movement, so you can see why a plan fails, where
+the money went in a year, and what edit explains a difference between two plans.
+
+### And a spreadsheet you build
+
+A spreadsheet is the most flexible option and the cheapest to start. The cost shows later: you maintain the tax
+tables and update them when the law changes, build any Monte Carlo yourself, and carry the risk that a formula
+error goes unnoticed. Glideworth has tests for its engine and its tax tables, a list of what each country's
+estimate leaves out, and an audit that flags common mistakes in a plan, but it is not error-free either.
+
+## Price
+
+The three calculators' pages we read state no price for FIRECalc or cFIREsim; FI Calc says it is supported by
+donations. cFIREsim's page also offers a "try it free" link that refers to a separate product, so check each
+before you rely on it being free. Glideworth is free to self-host with every feature. The hosted service,
+Glideworth Cloud, is planned at {formatPrice(pricing.monthly)} a month or {formatPrice(pricing.yearly)} a year,
+after a {pricing.trialDays}-day trial without a card. **The hosted service is not live yet**; see
+[pricing](/pricing/).
+
+## Moving over from a spreadsheet or calculator
+
+There is no importer for a calculator or for a personal spreadsheet. You enter your household, accounts,
+income, spending and milestones, through the web app, the API or an AI assistant over MCP. If your spreadsheet
+holds balances in a layout like a bank or budgeting export, Glideworth's generic CSV import may read it; check
+the dry-run report before you apply anything. If you have been using a calculator with a spending rule, you can
+set the matching rule in Glideworth if it is among those listed above, and compare the two answers before you
+trust either.
+
+Expect different results. Glideworth's default history is US 1928 to 2025, and it models returns, inflation and
+tax together in one run.
+
+## Questions
+
+<FAQ items={[
+  {
+    q: 'Is Glideworth a replacement for FIRECalc or cFIREsim?',
+    a: '<p>Not necessarily. They answer a narrower question quickly. Glideworth answers a wider one, and takes longer to set up. Many people use a calculator to sense-check a plan.</p>'
+  },
+  {
+    q: 'Can I keep using a spreadsheet alongside Glideworth?',
+    a: '<p>Yes. Glideworth exports JSON and CSV tables and has a REST API, so a spreadsheet or script can read from it.</p>'
+  },
+  {
+    q: 'Are the calculators free?',
+    a: '<p>The pages we read stated no price for FIRECalc or cFIREsim, and FI Calc said it was supported by donations. Check each site for its current terms.</p>'
+  },
+  {
+    q: 'Where did these facts come from, and how do I report a mistake?',
+    a: `<p>Every calculator statement links to its public page and the date it was read, 16 November 2026. Pages change, so a statement can go out of date. Email <a href="mailto:${site.contact.hello}">${site.contact.hello}</a> with the page and what is wrong.</p>`
+  }
+]} />
+
+<Callout type="note" title="Estimates, not advice">
+  Glideworth is planning software. Its tax figures help you compare choices under your own assumptions; they
+  are not a tax return and not tax advice. This page describes tools as they were on the date shown and is not a
+  recommendation.
+</Callout>

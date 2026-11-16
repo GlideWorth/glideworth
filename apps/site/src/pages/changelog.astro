@@ -1,0 +1,108 @@
+---
+import { getCollection, render } from 'astro:content';
+import { mdxComponents } from '../components/mdx';
+import Prose from '../components/Prose.astro';
+import { page } from '../config/pages';
+import PageLayout from '../layouts/PageLayout.astro';
+import { formatDate, isoDate } from '../lib/content';
+
+const entries = (await getCollection('changelog')).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf(),
+);
+const rendered = await Promise.all(
+  entries.map(async (e) => ({ entry: e, Content: (await render(e)).Content })),
+);
+---
+
+<PageLayout
+  {...page('/changelog/')}
+  heading="Changelog"
+  eyebrow="What's new"
+  lede="Notable changes to the planner, newest first."
+  crumbs={[{ label: 'Changelog', href: '/changelog/' }]}
+>
+  <div class="container body">
+    <ol class="log" role="list">
+      {
+        rendered.map(({ entry, Content }) => (
+          <li class="item" id={entry.id}>
+            <div class="meta">
+              <time datetime={isoDate(entry.data.date)}>{formatDate(entry.data.date)}</time>
+              {entry.data.version && <span class="version">{entry.data.version}</span>}
+            </div>
+            <div class="content">
+              <h2>
+                <a href={`#${entry.id}`}>{entry.data.title}</a>
+              </h2>
+              {entry.data.tags.length > 0 && (
+                <p class="tags">
+                  {entry.data.tags.map((t) => (
+                    <span>{t}</span>
+                  ))}
+                </p>
+              )}
+              <Prose>
+                <Content components={mdxComponents} />
+              </Prose>
+            </div>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</PageLayout>
+
+<style>
+  .body {
+    padding-bottom: var(--section-y);
+  }
+  .log {
+    border-top: 1px solid var(--line-strong);
+  }
+  .item {
+    display: grid;
+    gap: var(--space-s) var(--space-xl);
+    padding-block: var(--space-xl);
+    border-bottom: 1px solid var(--line);
+  }
+  @media (min-width: 52rem) {
+    .item {
+      grid-template-columns: 12rem minmax(0, 1fr);
+    }
+  }
+  .meta {
+    display: grid;
+    gap: 0.3rem;
+    align-content: start;
+    font-size: var(--text-sm);
+    color: var(--ink-3);
+  }
+  .version {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+  .content {
+    display: grid;
+    gap: var(--space-s);
+  }
+  h2 {
+    font-size: var(--text-2xl);
+  }
+  h2 a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+  .tags span {
+    font-size: var(--text-xs);
+    padding: 0.05rem 0.5rem;
+    border-radius: 999px;
+    background: var(--surface-2);
+    color: var(--ink-2);
+    border: 1px solid var(--line);
+  }
+</style>

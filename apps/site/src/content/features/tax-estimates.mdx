@@ -1,0 +1,106 @@
+---
+title: "Tax estimates in {{taxCountryCount}} countries"
+description: "Glideworth estimates tax every year of a plan in {{taxCountryCount}} countries, for stated tax years, and lists next to each result what its estimate leaves out."
+ogTitle: "Tax estimates in {{taxCountryCount}} countries"
+summary: Country tax models with stated tax years and a written list of what each one leaves out.
+order: 3
+---
+
+import { facts } from '../../lib/facts';
+import TaxYear from '../../components/visuals/TaxYear.astro';
+
+Tax decides how much of a pension you keep, which account to draw from first and whether a plan that looks
+comfortable before tax still works after it. Glideworth estimates tax for every person in the household, every
+year of the plan, in {facts.taxCountryCount} countries: {facts.taxCountries.map((c) => c.name).join(', ')}. Flat
+and custom bracket tables cover everywhere else.
+
+Every figure is an **estimate**. It is not a tax return and not tax advice, and it is labelled that way in the
+app and the API.
+
+## What a country's tax model covers
+
+Each country is a plug-in to the engine. A plug-in knows the rules for that country's tax system and for the
+accounts that live in it. In general that means:
+
+- Income tax by band, allowances and credits, for each person, with joint filing or independent taxation as the
+  country does it.
+- Social contributions and levies where they apply (National Insurance, FICA and Medicare, CSG and CRDS, ACC and
+  so on), with the limits the country sets.
+- Tax on dividends, interest and capital gains, with wrapper rules such as ISAs, Roth accounts, TFSAs, PEA or
+  KiwiSaver.
+- Statutory limits that come from the account's country: contribution limits, pension access ages, home-sale
+  exclusions and required minimum distributions. A wrapper that cannot legally be drawn early stays locked until
+  its access age unless you model a penalty.
+- Estate tax and net legacy for the US and the UK (inheritance tax), and wealth tax as a custom or an opt-in
+  rule in some countries.
+
+The United States covers federal income tax, payroll tax, all 50 states and DC, and a subset of cities. Detail differs by country: Germany, the Netherlands, France, Spain, Israel, Ireland and New Zealand are
+estimated at a basic level, and parts of the US and Canadian models (for example the US alternative minimum tax and
+Canada's Guaranteed Income Supplement) are partial.
+
+## Tax years are stated
+
+Tables are for stated tax years, shown with the results:
+
+| Country | Years in the tables |
+| --- | --- |
+| United Kingdom | 2025/26 and 2026/27, with announced changes for 2027/28 and 2029/30 |
+| United States | 2026 federal, payroll and states; a "2017 law returns" what-if is itself an estimate |
+| Canada | 2026 |
+| Australia | 2025-26, 2026-27 and legislated 2027-28 |
+| Germany, Netherlands, Israel, Ireland | 2026 |
+| New Zealand | 2026-27 |
+| France | 2026 finance law (taxes 2025 income), 2026 social rates |
+| Spain | 2025 income-tax scales, 2026 social security |
+| United Arab Emirates | 2026 |
+
+Years after the last table carry the latest rates forward and index thresholds with inflation, or keep them
+frozen where the law freezes them. That is a reasonable default and it is wrong whenever the law changes. Someone
+has to add the new year every spring, and tax-table updates will be listed in the [changelog](/changelog/).
+
+## Every estimate says what it leaves out
+
+Each country's model ships with a written list of simplifications, kept in the code next to the rules and shown
+beside your tax results. Highlights from today's lists:
+
+- **United States:** the SALT cap and itemised-deduction phase-outs are not applied automatically, the alternative
+  minimum tax adds back only the standard deduction, and the earned income and education credits are not
+  modelled.
+- **United Kingdom:** the model does not carry forward unused pension annual allowance (UK law allows carry-forward
+  from the three previous tax years), National Insurance covers Class 1 employee and Class 4 only, and one pair of capital gains rates applies to all assets.
+- **Canada:** no alternative minimum tax, and the Guaranteed Income Supplement is an amount you enter.
+- **Australia:** no seniors offset, HELP repayments or Medicare levy surcharge.
+- **Everywhere:** gains are realised in proportion to cost basis and treated as long-term, and losses are never
+  harvested.
+
+<Figure caption="Tax lines for one year with the model's own list of what it leaves out. Amounts are illustrative.">
+  <TaxYear />
+</Figure>
+
+## Figures we could not confirm
+
+Where a figure could not be confirmed from an official source, it is marked provisional in the code and listed in
+the project's status document. Today that includes the Israeli exemption for some pension annuities (pensions are
+taxed in full), the Netherlands box 3 deemed returns for savings and debts, Spain's 2025 scales carried forward,
+and the pair-specific rules for most tax treaties. No country preset has been checked line by line against an
+official calculator for every case; the models are tested against worked examples, and anything you will act on
+should be checked.
+
+<Callout type="warning" title="Estimates, not advice">
+  Glideworth shows the consequences of the assumptions you enter. It does not know your full circumstances, and it
+  is not a substitute for a tax return or a regulated adviser.
+</Callout>
+
+## What it does not do
+
+- **No statutory residence tests.** Residence is what your plan says. See [moving between countries](/features/cross-border/).
+- **No means-tested benefits,** and no municipal or Treasury bond-income split.
+- **No automatic law updates.** Future rule changes are your assumption until a table is added.
+- **No checked-against-official-calculator guarantee** for every case, as above.
+- **Local taxes** exist only for the US cities in the table, not for every municipality anywhere.
+
+## Go further
+
+- [Planning by country](/planning/) has one page per country with its modelled and not-modelled lists, starting with [the United Kingdom](/planning/uk/).
+- [What a tax estimate leaves out, and why we tell you](/blog/what-a-tax-estimate-leaves-out/).
+- Want to add or correct a tax year? The [open-source page](/open-source/) explains the evidence a change needs.

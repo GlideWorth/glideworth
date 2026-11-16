@@ -1,0 +1,79 @@
+---
+title: Multi-currency planning
+description: Hold accounts, property, debts and income in different currencies, convert them with your own exchange rates and drift, and test exchange-rate risk.
+ogTitle: Multi-currency planning
+summary: Items in their own currency, exchange-rate pairs with drift, and optional exchange-rate risk in simulations.
+order: 10
+---
+
+If you have savings in sterling, a pension in euros and a salary in dirhams, a planner that quietly converts
+everything at today's rate is hiding the biggest assumption in the plan. Glideworth lets each item keep its own
+currency, makes the exchange rate an explicit assumption, and lets you test what happens when it moves.
+
+## How it works
+
+- **Accounts, real assets, debts and income and expense events** can each carry a currency other than the
+  household's. The household has a base currency and a display currency and locale for formatting, independent of
+  the tax country.
+- **Each foreign currency needs an exchange-rate pair**, in either direction, stored with the household's current
+  finances. A rate is expressed as base units per one foreign unit as of a date, with an optional **annual drift**
+  that moves it each year. A plan can override a pair or add drift in its own assumptions.
+- **The engine reports in the base currency** and keeps the original amount alongside, so you can see both.
+- **Progress snapshots, check-in net worth and the totals** the API reports convert foreign items with these
+  rates. A missing pair counts at 1 and is reported; the engine itself refuses to run a plan with a missing pair.
+- **Tax is worked out in each country's currency,** using your rates, so a plan that crosses a border needs a rate
+  for every currency involved. The audit lists any that are missing.
+
+## Exchange-rate risk in simulations
+
+By default exchange rates follow their drift in every trial. Give a currency pair a yearly volatility
+(about 8 to 10% is typical for a major pair) and [Monte Carlo](/features/monte-carlo/) draws correlated exchange-rate
+shocks alongside the market data. The setting is off by default and you switch it on per plan, so a plan that
+holds one currency is never affected.
+
+## A worked illustration
+
+An illustrative household has £400,000 in UK investments and a pension of 50,000 euros a year that starts at
+67. Its base currency is sterling, and the plan assumes 0.86 pounds per euro with no drift:
+
+| Item | Currency | Plan figure | In base currency |
+| --- | --- | --- | --- |
+| UK investments | GBP | 400,000 | £400,000 |
+| Euro pension (annual) | EUR | 50,000 | £43,000 |
+
+Now give the pair a 9% yearly volatility. The pension's value in pounds varies from trial to trial, and the
+chance of success moves with it. The difference between the two runs is the exchange-rate risk in the plan, which
+a fixed rate cannot show. All numbers here are invented.
+
+## Over the API and MCP
+
+```bash
+curl -s -H "Authorization: Bearer $KEY" \
+  "$GW/api/v1/households/hh-sample/fx-rates"
+
+curl -s -X POST \
+  "$GW/api/v1/households/hh-sample/fx-rates" \
+  -H "Authorization: Bearer $KEY" \
+  -H 'content-type: application/json' \
+  -d '{"from":"EUR","to":"USD",
+       "rate":1.08,"annualDrift":0}'
+```
+
+The MCP tools are `list_fx_rates`, and, with writes enabled, `set_fx_rate` and `unset_fx_rate`. Writes honour
+the household's version, so a stale edit is refused.
+
+## What it does not do
+
+- **No live exchange rates.** Glideworth does not fetch rates from anywhere; you enter them (the dirham's
+  US-dollar peg is pre-filled). A self-hosted server makes no network calls to find one.
+- **No currency hedging, forward contracts or foreign-exchange costs** on conversions.
+- **Exchange-rate risk is optional and simplified:** per-pair volatility and an optional correlation between
+  pairs, not a full currency model. By default rates follow their drift.
+- **Cross-border residence is separate.** A currency says what an amount is in; where you are resident is set in
+  the [residency timeline](/features/cross-border/).
+
+## Go further
+
+- [Moving between countries](/features/cross-border/): tax in each country needs the right rates.
+- [Plan modelling](/features/plan-modelling/): where an item's country and currency are set.
+- [Progress and check-ins](/features/progress-and-check-ins/): net worth converted with your rates.

@@ -1,0 +1,78 @@
+---
+import { getCollection } from 'astro:content';
+import Callout from '../../components/Callout.astro';
+import Card from '../../components/Card.astro';
+import CTABand from '../../components/CTABand.astro';
+import FeatureGrid from '../../components/FeatureGrid.astro';
+import Section from '../../components/Section.astro';
+import { page } from '../../config/pages';
+import PageLayout from '../../layouts/PageLayout.astro';
+import { facts } from '../../lib/facts';
+
+const entries = (await getCollection('features')).sort((a, b) => a.data.order - b.data.order);
+---
+
+<PageLayout
+  {...page('/features/')}
+  heading="Everything the planner does"
+  eyebrow="Features"
+  lede="Glideworth models a household's finances year by year, estimates tax, simulates thousands of futures, answers planning questions and explains its results. Each guide below says what it does and what it does not."
+  crumbs={[{ label: 'Features', href: '/features/' }]}
+>
+  <Section title="Feature guides" intro="One page per capability, with a worked illustration and an honest list of limits." tight>
+    <div class="cards">
+      {
+        entries.map((e) => (
+          <Card title={e.data.title} href={`/features/${e.id}/`}>
+            <p>{e.data.summary}</p>
+          </Card>
+        ))
+      }
+    </div>
+  </Section>
+  <Section title="At a glance" tight>
+    <FeatureGrid
+      items={[
+        { glyph: 'ledger', title: 'Projections', href: '/features/projections-and-ledger/', body: "A year-by-year ledger with taxes, withdrawals and every money movement, in today's money or future money, for one person or a couple." },
+        { glyph: 'globe', title: `Tax in ${facts.taxCountryCount} countries`, href: '/features/tax-estimates/', body: 'Estimates with stated tax years and written simplifications, plus flat and custom rates, several currencies and cross-border residency in the engine.' },
+        { glyph: 'fan', title: 'Monte Carlo', href: '/features/monte-carlo/', body: 'Historical, bootstrap and distribution-based methods, seeded, with failure analysis, milestone timing and backtests.' },
+        { glyph: 'solver', title: 'Solvers', href: '/features/solvers/', body: 'Maximum spending, earliest retirement, required savings, safe withdrawal rate, risk-based guardrails, tax-strategy comparison.' },
+        { glyph: 'branch', title: 'Branches and change sets', href: '/features/branches-and-change-sets/', body: 'What-if branches that follow a parent plan, diff and merge, version history with undo, survivor scenarios.' },
+        { glyph: 'people', title: 'Sharing', href: '/features/sharing-and-roles/', body: 'Owner, editor and viewer sign-ins, read-only share links, progress snapshots and scheduled check-ins.' },
+        { glyph: 'import', title: 'Import and export', href: '/features/import-and-export/', body: 'ProjectionLab JSON, bank and budgeting CSV, OFX, QFX and QIF in; JSON, CSV tables and a printable report out.' },
+        { glyph: 'plug', title: 'API and MCP', href: '/api/', body: `${facts.apiOperations} REST operations and ${facts.mcpTools} MCP tools, scoped keys, signed webhooks.` },
+      ]}
+      columns={4}
+    />
+  </Section>
+  <Section title="What the planner does not do" width="narrow" tight>
+    <Callout type="note" title="Read this before relying on a number">
+      <p>
+        Glideworth is planning software, not advice, and every tax figure is an estimate for a stated tax year. It
+        steps by year, not by month; it does not connect to bank accounts; it does not randomise lifespan or care
+        costs in simulations; and it applies no statutory residence test for people who move country. Each feature
+        guide lists its own limits, and the full status of the project is in the
+        <a href="/roadmap/">roadmap</a>.
+      </p>
+    </Callout>
+    <p class="more">
+      Features that belong to the hosted service rather than the planner, such as accounts, billing, two-factor
+      sign-in, automatic backups and email, are planned and not running yet. See <a href="/pricing/">pricing</a>
+      and <a href="/security/">security</a> for which is which. The self-hosted build has every planner feature
+      today: <a href="/self-hosting/">self-hosting</a>.
+    </p>
+  </Section>
+  <CTABand />
+</PageLayout>
+
+<style>
+  .cards {
+    display: grid;
+    gap: var(--space-m);
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  }
+  .more {
+    margin-top: var(--space-m);
+    color: var(--ink-2);
+  }
+</style>

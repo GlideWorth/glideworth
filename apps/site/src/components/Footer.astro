@@ -1,0 +1,158 @@
+---
+/**
+ * Site footer: the full site map (src/config/nav.ts plus every published legal document), the
+ * "not financial advice" line, licence and contact.
+ */
+import { getCollection } from 'astro:content';
+import { footerNav } from '../config/nav';
+import { site } from '../config/site';
+import { externalLinkProps } from '../lib/links';
+import Logo from './Logo.astro';
+
+const legal = (await getCollection('legal'))
+  .sort((a, b) => (a.data.order ?? 99) - (b.data.order ?? 99))
+  .map((e) => ({ label: e.data.title, href: `/legal/${e.id}/` }));
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer" data-site-footer>
+  <div class="container">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a href="/" aria-label="Glideworth, home" class="footer-logo"><Logo /></a>
+        <p>{site.tagline}</p>
+      </div>
+      <nav class="footer-nav" aria-label="Site map">
+        {
+          footerNav.map((group) => (
+            <div class="footer-group">
+              <h2 class="footer-heading">{group.heading}</h2>
+              <ul role="list">
+                {group.links.map((l) => (
+                  <li>
+                    <a href={l.href} {...externalLinkProps(l.href)}>
+                      {l.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        }
+        {
+          legal.length > 0 && (
+            <div class="footer-group">
+              <h2 class="footer-heading">Legal documents</h2>
+              <ul role="list">
+                {legal.map((l) => (
+                  <li>
+                    <a href={l.href}>{l.label}</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )
+        }
+      </nav>
+    </div>
+
+    <div class="footer-bottom">
+      <p class="disclaimer">
+        <strong>Not financial advice.</strong> Glideworth is planning software. Its projections and tax figures are
+        estimates from the assumptions you enter, not financial, tax, legal or investment advice.
+      </p>
+      <p class="fineprint">
+        © {year} Glideworth. The application is open source under the
+        <a href={`${site.repoUrl}/blob/main/LICENSE`} {...externalLinkProps(site.repoUrl)}>{site.license}</a> licence.
+        <a href={`mailto:${site.contact.hello}`}>{site.contact.hello}</a>
+      </p>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    margin-top: auto;
+    border-top: 1px solid var(--line);
+    background: var(--surface-2);
+    padding-block: clamp(3rem, 2.2rem + 3vw, 5rem) var(--space-l);
+    font-size: var(--text-sm);
+  }
+  .footer-top {
+    display: grid;
+    gap: var(--space-xl);
+  }
+  @media (min-width: 64rem) {
+    .footer-top {
+      grid-template-columns: 1fr 3fr;
+    }
+  }
+  .footer-brand {
+    display: grid;
+    gap: var(--space-s);
+    align-content: start;
+    max-width: 22rem;
+    color: var(--ink-2);
+  }
+  .footer-logo {
+    text-decoration: none;
+    justify-self: start;
+    border-radius: 8px;
+  }
+  .footer-nav {
+    display: grid;
+    gap: var(--space-l) var(--space-m);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  @media (min-width: 40rem) {
+    .footer-nav {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  @media (min-width: 64rem) {
+    .footer-nav {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+  }
+  .footer-heading {
+    font-family: var(--font-sans);
+    font-size: var(--text-xs);
+    font-weight: 650;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 0.8rem;
+  }
+  .footer-group ul {
+    display: grid;
+    gap: 0.5rem;
+  }
+  .footer-group a {
+    color: var(--ink-2);
+    text-decoration: none;
+  }
+  .footer-group a:hover {
+    color: var(--ink);
+    text-decoration: underline;
+  }
+  .footer-bottom {
+    margin-top: var(--space-2xl);
+    padding-top: var(--space-m);
+    border-top: 1px solid var(--line);
+    display: grid;
+    gap: var(--space-xs);
+    color: var(--ink-3);
+    font-size: var(--text-xs);
+    line-height: 1.6;
+  }
+  .disclaimer {
+    color: var(--ink-2);
+    max-width: 60rem;
+  }
+  .disclaimer strong {
+    color: var(--ink);
+  }
+  .fineprint a {
+    color: var(--ink-2);
+  }
+</style>

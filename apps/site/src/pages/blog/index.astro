@@ -1,0 +1,32 @@
+---
+import PostList from '../../components/PostList.astro';
+import { page } from '../../config/pages';
+import PageLayout from '../../layouts/PageLayout.astro';
+import { publishedPosts } from '../../lib/content';
+
+const posts = await publishedPosts();
+---
+
+<PageLayout
+  {...page('/blog/')}
+  heading="Notes on planning, tax and building in the open"
+  eyebrow="Blog"
+  lede="How Glideworth works, why it works that way, and what we learn about planning for retirement across countries."
+  crumbs={[{ label: 'Blog', href: '/blog/' }]}
+>
+  <div class="container body">
+    <PostList posts={posts} />
+    <p class="rss">Follow along with the <a href="/rss.xml">RSS feed</a>.</p>
+  </div>
+</PageLayout>
+
+<style>
+  .body {
+    padding-bottom: var(--section-y);
+  }
+  .rss {
+    margin-top: var(--space-l);
+    color: var(--ink-3);
+    font-size: var(--text-sm);
+  }
+</style>

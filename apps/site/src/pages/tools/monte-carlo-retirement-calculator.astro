@@ -1,0 +1,160 @@
+---
+import { MARKET_DATASETS } from '@glideworth/core';
+import ToolPage from '../../components/tools/ToolPage.astro';
+import { marginOfError } from '../../tools/closed-form';
+import { HISTORY_DATASET } from '../../tools/engine/model';
+import { simulatePlan } from '../../tools/engine/monte-carlo';
+import { pct, whole } from '../../tools/format';
+import type { Values } from '../../tools/types';
+
+const ds = MARKET_DATASETS[HISTORY_DATASET];
+// Worked examples, computed by the calculator's own engine code at build time.
+const base: Values = {
+  balance: 1_000_000,
+  spend: 40_000,
+  years: 30,
+  method: 'parametric',
+  stocks: 60,
+  mean: 5,
+  vol: 12,
+  trials: '10000',
+  seed: 2026,
+  inc: 0,
+  incFrom: 10,
+  tax: 0,
+  timing: 'start',
+  cur: 'USD',
+};
+const rateOf = async (v: Values) => (await simulatePlan(v)).successRate;
+const article = await rateOf(base);
+const grid = await Promise.all(
+  [4, 5, 6].map(async (mean) => [
+    `${mean}%`,
+    ...(await Promise.all([8, 12, 16].map(async (vol) => pct(await rateOf({ ...base, mean, vol, trials: '1000' }), 1)))),
+  ]),
+);
+const methods = await Promise.all(
+  (
+    [
+      ['history', 'US history, random start years'],
+      ['block', 'US history, 5-year blocks'],
+      ['parametric', 'Random returns (log-normal 5%, 12%)'],
+    ] as const
+  ).map(async ([method, label]) => [label, pct(await rateOf({ ...base, method, trials: '1000', timing: 'mid' }), 1)]),
+);
+const moe1k = marginOfError(0.87, 1000);
+const moe10k = marginOfError(0.87, 10_000);
+
+const faq = [
+  {
+    q: 'What does an 87% chance of success mean?',
+    a: '<p>That in 87% of the simulated market sequences every year’s spending was paid in full. It describes how a plan with fixed spending behaves under the model’s assumptions. It is not a forecast, and not the chance that you will run out: real people cut spending, delay purchases or earn income when markets go badly.</p>',
+  },
+  {
+    q: 'What chance of success is good enough?',
+    a: '<p>There is no standard. Studies use different targets, and the full planner’s risk-based guardrails default to a target of 80% inside a band of 70% to 95%. A higher figure also means spending you may never use.</p>',
+  },
+  {
+    q: 'How many simulations do I need?',
+    a: `<p>More simulations reduce sampling noise only. Near 87%, 1,000 simulations carry a margin of about ±${(moe1k * 100).toFixed(1)} points and 10,000 about ±${(moe10k * 100).toFixed(1)}. The model’s assumptions matter far more than the count.</p>`,
+  },
+  {
+    q: 'Why does the same seed always give the same answer?',
+    a: '<p>A seed fixes the sequence of random numbers. The engine derives one seed per simulation from the run’s seed, so the same inputs and seed reproduce the result exactly, and comparing two plans with the same seed compares like with like. Change the seed to see how much of a difference is noise.</p>',
+  },
+];
+---
+
+<ToolPage
+  id="monte-carlo"
+  heading="Monte Carlo retirement calculator"
+  lede="Your chance that every year’s spending is paid, from thousands of seeded simulations on US market history or on random returns, with the spread of outcomes and when failures happen. It runs the Glideworth planning engine in your browser; nothing you type is sent anywhere."
+  faq={faq}
+  adds="This calculator has one portfolio, one spending figure and one optional income."
+  related={[
+    { href: '/features/monte-carlo/', label: 'Monte Carlo in the planner' },
+    { href: '/docs/methodology/monte-carlo/', label: 'Methodology: Monte Carlo' },
+    { href: '/blog/how-long-will-my-money-last/', label: 'How long will my money last? Three ways to answer' },
+  ]}
+>
+  <h2>How the calculator works</h2>
+  <p>Each simulation does three things, using the planning engine’s own Monte Carlo runner:</p>
+  <ol>
+    <li>Draw a path of returns (and, for history, inflation) for every year of the plan.</li>
+    <li>Run the plan along that path: take out the spending (and add any income), grow the portfolio.</li>
+    <li>Record whether every year’s spending was paid in full.</li>
+  </ol>
+  <p>The chance of success is the share of simulations that succeeded. The market models differ only in step 1:</p>
+  <ul>
+    <li>
+      <strong>US history, random start years</strong> (default): each simulation starts in a random year of
+      {' '}{ds.label} and walks forward through real consecutive years, restarting at a random year when the data runs out.
+      It keeps the real relationship between stocks, bonds and inflation within a year and real runs of years.
+    </li>
+    <li>
+      <strong>US history, 5-year blocks</strong>: random blocks of five consecutive years stitched together (a block
+      bootstrap, after Künsch, <a rel="noopener noreferrer" href="https://doi.org/10.1214/aos/1176347265"
+        ><em>Annals of Statistics</em>, 1989</a
+      >), which can produce sequences history never did while keeping short-term patterns.
+    </li>
+    <li>
+      <strong>Random returns</strong>: each year’s real return drawn independently from a log-normal distribution with
+      the average and volatility you set. Easy to vary; no runs of bad years unless they happen by chance.
+    </li>
+  </ul>
+  <p>
+    Every simulation is seeded: the run’s seed and the simulation number give each one its own seed, so the same inputs
+    and seed always reproduce the same answer. The seed is shown with the result and can be changed under “More options”.
+  </p>
+
+  <h2>Reading the result</h2>
+  <p class="formula">margin ≈ 1.96 × √(p × (1 − p) ÷ n)</p>
+  <p>
+    A simulated success rate <code>p</code> from <code>n</code> simulations estimates the model’s true answer with
+    sampling noise. Near 87%, the 95% margin is about ±{(moe1k * 100).toFixed(1)} points at 1,000 simulations and
+    ±{(moe10k * 100).toFixed(1)} at 10,000. Two plans that differ by a point are only comparable with the same seed and
+    count.
+  </p>
+
+  <h2>Worked example</h2>
+  <p>
+    Computed by the calculator’s own code when this page was built, with the plan from the <a
+      href="/blog/monte-carlo-retirement-simulations/">Monte Carlo article</a
+    >: {whole(1_000_000)} invested, {whole(40_000)} a year of spending in today’s money taken at the start of each year,
+    30 years, no tax or other income, real returns log-normal with an average of 5% and a volatility of 12%. With 10,000
+    simulations and seed 2026 the engine finds every year paid in {pct(article, 1)} of them. The article’s independent
+    script, with its own random numbers, found 86.7%; the difference is within the sampling noise.
+  </p>
+  <table>
+    <caption>Chance of success at other averages and volatilities (1,000 simulations each, seed 2026)</caption>
+    <thead><tr><th>Average real return</th><th>Volatility 8%</th><th>Volatility 12%</th><th>Volatility 16%</th></tr></thead>
+    <tbody>{grid.map((r) => <tr>{r.map((c) => <td>{c}</td>)}</tr>)}</tbody>
+  </table>
+  <p>The same plan under each market model, with the calculator’s defaults (60% stocks, money moving mid-year):</p>
+  <table>
+    <caption>Chance of success by market model (1,000 simulations, seed 2026)</caption>
+    <thead><tr><th>Market model</th><th>Chance of success</th></tr></thead>
+    <tbody>{methods.map((r) => <tr>{r.map((c) => <td>{c}</td>)}</tr>)}</tbody>
+  </table>
+
+  <h2>What this assumes and leaves out</h2>
+  <ul>
+    <li>
+      <strong>Fixed spending.</strong> Every simulation spends the same amount in today’s money whatever happens. A
+      simulation that is short by a little in its last year fails just as one that runs out early does.
+    </li>
+    <li>
+      <strong>Only the market varies.</strong> Lifespan, health costs, tax law and your own behaviour are fixed.
+    </li>
+    <li>
+      <strong>One country’s history.</strong> The history models use {ds.label}. Data: Aswath Damodaran,
+      <em>Historical Returns on Stocks, Bonds and Bills</em> (NYU Stern), and US Bureau of Labor Statistics CPI-U.
+    </li>
+    <li>No fees, one portfolio rebalanced yearly, and no tax unless you set the flat rate.</li>
+    <li>
+      <strong>Timing.</strong> Money moves in the middle of each year by default. In the planner’s own check against an
+      established historical calculator (60/40, 4% inflation-adjusted, 30 years, US data from 1928), moving withdrawals
+      from the start to the middle of the year moved the answer from 94.2% to 95.7%, and to the end of the year 98.6%.
+    </li>
+  </ul>
+</ToolPage>

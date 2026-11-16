@@ -1,0 +1,471 @@
+/**
+ * US federal income tax: brackets by filing status, standard (incl. 65+) vs itemised deduction,
+ * OBBBA senior deduction, taxable Social Security (IRC §86), QBI (simplified), LTCG/qualified
+ * dividend stacking (0/15/20), NIIT, AMT (no preference items beyond the standard deduction),
+ * child tax credit, ACA premium tax credit with reconciliation, IRMAA (2-year MAGI look-back via
+ * `history`), early-withdrawal penalty, RMDs and contribution limits. Data: ../data/us-federal.ts.
+ */
+
+import {
+  accountCountry,
+  alivePeople,
+  type Band,
+  bands,
+  clamp0,
+  collectIncome,
+  finiteMarginal,
+  indexFactor,
+  LineSink,
+  periodScale,
+  pickYear,
+  sliceTax,
+  sumDeductions,
+} from "../common.js";
+import { US_FEDERAL_SIMPLIFICATIONS } from "../data/anglo.js";
+import {
+  UNIFORM_LIFETIME,
+  US_ACA_2026,
+  US_FEDERAL_SUNSET_2026,
+  US_FEDERAL_YEARS,
+  US_FIXED,
+  US_IRMAA_2026,
+  US_LIMITS_2026,
+  type UsFederalYear,
+  usRmdStartAge,
+} from "../data/us-federal.js";
+import type {
+  BracketFill,
+  HomeSaleQuery,
+  PensionAccessQuery,
+  RequiredDistributionQuery,
+  TaxContributionLimitQuery,
+  TaxJurisdiction,
+  TaxYearInput,
+  TaxYearOutput,
+} from "../types.js";
+import { defaultCharacterForIncomeType } from "./flat.js";
+import { usPayroll } from "./us-payroll.js";
+
+const ID = "us-federal";
+
+const toggle = (input: TaxYearInput, id: string, def: boolean) =>
+  input.config.lawToggles[id] ?? def;
+
+export function taxableSocialSecurity(
+  benefits: number,
+  otherIncome: number,
+  status: TaxYearInput["filingStatus"],
+  scale = 1,
+): number {
+  if (benefits <= 0) return 0;
+  const S = US_FIXED.socialSecurity;
+  const prov = otherIncome + 0.5 * benefits;
+  const kind =
+    status === "married-joint" ? "joint" : status === "married-separate" ? "separate" : "other";
+  const b1 = S.base1[kind] * scale;
+  const b2 = S.base2[kind] * scale;
+  if (kind === "separate") return Math.min(0.85 * benefits, 0.85 * clamp0(prov));
+  if (prov <= b1) return 0;
+  if (prov <= b2) return Math.min(0.5 * benefits, 0.5 * (prov - b1));
+  return Math.min(0.85 * benefits, 0.85 * (prov - b2) + Math.min(0.5 * benefits, 0.5 * (b2 - b1)));
+}
+
+function irmaaTable(status: TaxYearInput["filingStatus"]) {
+  if (status === "married-joint") return US_IRMAA_2026.joint;
+  if (status === "married-separate") return US_IRMAA_2026.separate;
+  return US_IRMAA_2026.single;
+}
+
+/** Monthly IRMAA surcharge (Part B above standard + Part D) for a MAGI. Tiers are cliffs. */
+export function irmaaMonthly(
+  magi: number,
+  status: TaxYearInput["filingStatus"],
+  factor = 1,
+): number {
+  let s = 0;
+  for (const [lo, b, d] of irmaaTable(status))
+    if (magi > lo * factor) s = (b - US_IRMAA_2026.standardPartB + d) * factor;
+  return s;
+}
+
+/** IRMAA tier thresholds (MAGI upper bounds before each surcharge tier), indexed. */
+export function irmaaThresholds(status: TaxYearInput["filingStatus"], factor = 1): number[] {
+  return irmaaTable(status).map(([lo]) => lo * factor);
+}
+
+export function federalPovertyLine(householdSize: number, factor = 1): number {
+  return (
+    (US_ACA_2026.fpl.first + US_ACA_2026.fpl.additional * Math.max(0, householdSize - 1)) * factor
+  );
+}
+
+export function acaApplicablePercentage(fplMultiple: number, enhanced: boolean): number | null {
+  const table = enhanced ? US_ACA_2026.enhanced : US_ACA_2026.applicable;
+  if (!enhanced && fplMultiple >= US_ACA_2026.cliff) return null;
+  let row = table[0]!;
+  let next: (typeof table)[number] | undefined;
+  for (let i = 0; i < table.length; i++)
+    if (fplMultiple >= table[i]![0]) {
+      row = table[i]!;
+      next = table[i + 1];
+    }
+  if (!next) return row[2];
+  const t = (fplMultiple - row[0]) / (next[0] - row[0]);
+  return row[1] + (row[2] - row[1]) * Math.min(1, Math.max(0, t));
+}
+
+interface FedCore {
+  out: TaxYearOutput;
+  total: number;
+}
+
+function yearData(input: TaxYearInput): UsFederalYear {
+  return toggle(input, "us.tcjaSunset", false)
+    ? US_FEDERAL_SUNSET_2026
+    : pickYear(US_FEDERAL_YEARS, input.year);
+}
+
+function computeFederal(input: TaxYearInput, explain: boolean): FedCore {
+  const d = yearData(input);
+  const status = input.filingStatus;
+  const idx = indexFactor(input, "us", undefined);
+  const f = idx.factor;
+  const scale = periodScale(input);
+  const fs = f * scale;
+  const people = alivePeople(input);
+  const b = collectIncome(input, ID);
+  const payroll = usPayroll(input);
+
+  // ---- income
+  const preTax = sumDeductions(input, "pre-tax-contribution", { level: "federal" });
+  const aboveLine = sumDeductions(input, "deduction", { level: "federal", itemized: false });
+  const itemizedItems = sumDeductions(input, "deduction", { level: "federal", itemized: true });
+  const userCredits = sumDeductions(input, "credit", { level: "federal" });
+  const ordinaryIncome =
+    b.wage +
+    b.selfEmployment +
+    b.pension +
+    b.ordinary +
+    b.interest +
+    b.ordinaryDividends +
+    b.rental +
+    b.gainsShort +
+    b.deferredWithdrawals;
+  const prefIncome = b.qualifiedDividends + b.gainsLong;
+  const agiExSs = ordinaryIncome + prefIncome - preTax - aboveLine - payroll.seDeduction;
+  const taxableSs = taxableSocialSecurity(b.socialSecurity, agiExSs, status, scale);
+  const agi = agiExSs + taxableSs;
+  const magi = agi;
+  const acaMagi = agi + (b.socialSecurity - taxableSs);
+
+  // ---- deductions
+  const married =
+    status === "married-joint" ||
+    status === "married-separate" ||
+    status === "qualifying-surviving-spouse";
+  const filers = status === "married-joint" ? people : people.slice(0, 1);
+  const n65 = filers.filter((p) => p.age >= 65).length;
+  const standard =
+    d.standardDeduction[status] * fs +
+    n65 * (married ? d.additionalAged.married : d.additionalAged.unmarried) * fs;
+  const itemizing = itemizedItems > standard;
+  const deduction = Math.max(standard, itemizedItems);
+  const exemptions =
+    d.personalExemption * fs * (filers.length + input.dependents.filter((x) => x.age < 19).length);
+  let senior = 0;
+  if (
+    d.seniorDeduction &&
+    input.year <= d.seniorDeduction.lastYear &&
+    toggle(input, "us.obbbaSeniorDeduction", true)
+  ) {
+    const S = d.seniorDeduction;
+    const red = S.phaseoutRate * clamp0(magi - S.phaseoutStart[status] * scale);
+    senior = n65 * clamp0(S.amount * scale - red);
+  }
+  const preQbi = clamp0(agi - deduction - exemptions - senior);
+  // QBI: 20% of SE income (net of half SE tax), capped at 20% of taxable income less net capital
+  // gain; phased out over the phase-in range above the threshold (treated as a service business).
+  let qbi = 0;
+  const qbiBase = clamp0(b.selfEmployment - payroll.seDeduction);
+  if (qbiBase > 0 && toggle(input, "us.qbi", true)) {
+    const thr = d.qbi.threshold[status] * fs;
+    const range = d.qbi.phaseInRange[status] * fs;
+    const phase = Math.max(0, Math.min(1, (preQbi - thr) / range));
+    qbi = Math.min(0.2 * qbiBase * (1 - phase), 0.2 * clamp0(preQbi - prefIncome));
+  }
+  const taxable = clamp0(preQbi - qbi);
+  const pref = Math.min(prefIncome, taxable);
+  const ordTaxable = taxable - pref;
+
+  // ---- regular tax
+  const fill: BracketFill[] = [];
+  const ordBands: Band[] = bands(d.brackets[status], fs);
+  const of: BracketFill["bands"] | undefined = explain ? [] : undefined;
+  const ord = sliceTax(ordBands, 0, ordTaxable, of);
+  if (of) fill.push({ jurisdictionId: ID, schedule: "ordinary", bands: of });
+  const cg = d.capitalGains[status];
+  const prefBands: Band[] = [
+    { from: 0, rate: 0, label: "0%" },
+    { from: cg.zeroMax * fs, rate: 0.15, label: "15%" },
+    { from: cg.fifteenMax * fs, rate: 0.2, label: "20%" },
+  ];
+  const pf: BracketFill["bands"] | undefined = explain ? [] : undefined;
+  const prefTax = sliceTax(prefBands, ordTaxable, pref, pf).tax;
+  if (pf) fill.push({ jurisdictionId: ID, schedule: "preferential", bands: pf });
+  const regular = ord.tax + prefTax;
+
+  // ---- AMT (standard deduction added back; no other preference items modelled)
+  let amt = 0;
+  if (toggle(input, "us.amt", true)) {
+    const amti = taxable + (itemizing ? 0 : deduction) + exemptions + senior;
+    const ex = clamp0(
+      d.amt.exemption[status] * fs - 0.25 * clamp0(amti - d.amt.phaseoutStart[status] * fs),
+    );
+    const base = clamp0(amti - ex);
+    const amtPref = Math.min(pref, base);
+    const amtOrd = base - amtPref;
+    const bp = d.amt.breakpoint28[status] * fs;
+    const tmtOrd = 0.26 * Math.min(amtOrd, bp) + 0.28 * clamp0(amtOrd - bp);
+    const tmt = tmtOrd + sliceTax(prefBands, amtOrd, amtPref).tax;
+    amt = clamp0(tmt - regular);
+  }
+
+  // ---- NIIT (thresholds statutory, not indexed)
+  const nii =
+    b.interest + b.qualifiedDividends + b.ordinaryDividends + b.gainsLong + b.gainsShort + b.rental;
+  const niit =
+    US_FIXED.niit.rate * Math.min(nii, clamp0(magi - US_FIXED.niit.threshold[status] * scale));
+
+  // ---- credits
+  const beforeCredits = regular + amt;
+  const kids = input.dependents.filter((x) => x.age < 17).length;
+  let ctc = 0;
+  let ctcRefundable = 0;
+  if (kids > 0) {
+    const C = d.childTaxCredit;
+    const full = clamp0(
+      kids * C.perChild * f * scale - 0.05 * clamp0(magi - C.phaseoutStart[status] * scale),
+    );
+    const nonRef = Math.min(full, beforeCredits);
+    const earned = b.wage + b.selfEmployment;
+    ctcRefundable = Math.min(
+      full - nonRef,
+      kids * C.refundable * fs,
+      0.15 * clamp0(earned - 2_500 * scale),
+    );
+    ctc = nonRef + ctcRefundable;
+  }
+  const other = Math.min(userCredits, clamp0(beforeCredits - (ctc - ctcRefundable)));
+
+  // ---- ACA premium tax credit
+  let ptc = 0;
+  let fplMultiple = 0;
+  let acaLine: { kind: "credit" | "aca-reconciliation"; amount: number } | null = null;
+  if (input.aca && input.aca.benchmarkPremium > 0) {
+    const fpl = federalPovertyLine(input.aca.householdSize, f);
+    fplMultiple = acaMagi / scale / fpl;
+    const pct = acaApplicablePercentage(fplMultiple, toggle(input, "us.acaEnhanced", false));
+    ptc = pct === null ? 0 : clamp0(input.aca.benchmarkPremium - pct * acaMagi);
+    acaLine =
+      input.aca.advanceCredit !== undefined
+        ? { kind: "aca-reconciliation", amount: input.aca.advanceCredit - ptc }
+        : { kind: "credit", amount: -ptc };
+  }
+
+  // ---- IRMAA (Medicare premium surcharge, 2-year MAGI look-back)
+  let irmaa = 0;
+  const onMedicare = people.filter((p) => p.age >= 65).length;
+  let lookbackMagi = magi;
+  if (onMedicare > 0 && toggle(input, "us.irmaa", true)) {
+    const h = input.history;
+    lookbackMagi = h[h.length - 2]?.magi ?? h[h.length - 1]?.magi ?? magi;
+    irmaa = onMedicare * irmaaMonthly(lookbackMagi, status, f) * 12 * scale;
+  }
+
+  // ---- early-withdrawal penalty (US and generic accounts only)
+  let penalty = 0;
+  for (const w of input.withdrawals) {
+    const c = accountCountry(w.accountType);
+    if (w.penaltyRate > 0 && (c === "US" || c === undefined) && !w.isConversion)
+      penalty += clamp0(w.taxableAmount) * w.penaltyRate;
+  }
+
+  // ---- lines
+  const sink = new LineSink(ID);
+  sink.add("income", "Federal income tax", ord.tax, ordTaxable);
+  const prefDiv = prefIncome > 0 ? (prefTax * b.qualifiedDividends) / prefIncome : 0;
+  sink.add("dividends", "Qualified dividends tax", prefDiv, b.qualifiedDividends);
+  sink.add("capital-gains", "Long-term capital gains tax", prefTax - prefDiv, b.gainsLong);
+  sink.add("amt", "Alternative minimum tax", amt);
+  sink.add("niit", "Net investment income tax", niit, nii);
+  sink.add("credit", "Child tax credit", -ctc);
+  sink.add("credit", "Other credits", -other);
+  if (acaLine)
+    sink.add(
+      acaLine.kind,
+      acaLine.kind === "credit"
+        ? "ACA premium tax credit"
+        : "ACA premium tax credit reconciliation",
+      acaLine.amount,
+    );
+  sink.add("irmaa", "Medicare IRMAA surcharge", irmaa, lookbackMagi);
+  sink.add("penalty", "Early withdrawal penalty", penalty);
+
+  const facts: Record<string, number> = {
+    ...idx.facts,
+    "tax.year": input.year,
+    "tax.priceIndex": input.priceIndex,
+    agi,
+    magi,
+    "us.acaMagi": acaMagi,
+    "us.taxableIncome": taxable,
+    "us.ordinaryTaxableIncome": ordTaxable,
+    "us.preferentialIncome": pref,
+    "us.taxableSocialSecurity": taxableSs,
+    "us.deduction": deduction,
+    "us.itemizing": itemizing ? 1 : 0,
+    "us.seniorDeduction": senior,
+    "us.qbiDeduction": qbi,
+    "us.seTaxDeduction": payroll.seDeduction,
+    "us.ptc": ptc,
+    "tax.ordinaryBracketRate": ordTaxable > 0 ? ord.marginal : 0,
+  };
+  if (fplMultiple > 0) facts["us.fplMultiple"] = fplMultiple;
+  if (irmaa > 0) facts["us.irmaaMagi"] = lookbackMagi;
+  const gross = ordinaryIncome + prefIncome + b.socialSecurity + b.deferredTaxFree;
+  const out: TaxYearOutput = {
+    lines: sink.lines,
+    grossIncome: gross,
+    taxableIncome: taxable,
+    marginalRate: 0,
+    facts,
+  };
+  if (explain) out.brackets = fill;
+  return { out, total: sink.total() };
+}
+
+function totalOnly(input: TaxYearInput): number {
+  return computeFederal(input, false).total;
+}
+
+function computeYear(input: TaxYearInput, explain: boolean): TaxYearOutput {
+  const { out } = computeFederal(input, explain);
+  out.marginalRate = finiteMarginal(totalOnly, input, "ordinary");
+  return out;
+}
+
+const DEFERRAL_401K = new Set([
+  "401k",
+  "roth-401k",
+  "403b",
+  "roth-403b",
+  "457b",
+  "roth-457b",
+  "tsp",
+  "roth-tsp",
+  "solo-401k",
+]);
+const IRA = new Set(["traditional-ira", "roth-ira"]);
+const RMD_TYPES = new Set([
+  "traditional-ira",
+  "sep-ira",
+  "simple-ira",
+  "401k",
+  "403b",
+  "457b",
+  "401a",
+  "solo-401k",
+  "tsp",
+  "generic-tax-deferred",
+]);
+
+export function usContributionLimit(q: TaxContributionLimitQuery): number | null {
+  const L = US_LIMITS_2026;
+  const f = q.year > L.year ? q.priceIndex : 1;
+  const age = q.ownerAge;
+  if (DEFERRAL_401K.has(q.accountType)) {
+    const catchUp = age >= 60 && age < 64 ? L.catchUp60to63 : age >= 50 ? L.catchUp50 : 0;
+    return (L.electiveDeferral + catchUp) * f;
+  }
+  if (IRA.has(q.accountType))
+    return Math.min((L.ira + (age >= 50 ? L.iraCatchUp : 0)) * f, q.earnedIncome);
+  if (q.accountType === "simple-ira") {
+    const catchUp = age >= 60 && age < 64 ? L.simpleCatchUp60to63 : age >= 50 ? L.simpleCatchUp : 0;
+    return (L.simple + catchUp) * f;
+  }
+  if (q.accountType === "sep-ira") return Math.min(L.sepOrSoloTotal * f, 0.25 * q.earnedIncome);
+  if (q.accountType === "hsa")
+    return (
+      ((q.coverage === "family" ? L.hsa.family : L.hsa.self) + (age >= 55 ? L.hsa.catchUp55 : 0)) *
+      f
+    );
+  return null;
+}
+
+export function usRequiredDistribution(q: RequiredDistributionQuery): number {
+  if (!RMD_TYPES.has(q.accountType) && q.rule !== "us-rmd") return 0;
+  if (q.ownerAge < usRmdStartAge(q.ownerBirthYear)) return 0;
+  const age = Math.min(120, Math.floor(q.ownerAge));
+  const divisor = UNIFORM_LIFETIME[age] ?? UNIFORM_LIFETIME[72]!;
+  return clamp0(q.priorYearEndBalance) / divisor;
+}
+
+const ACCESS_59 = new Set([
+  ...DEFERRAL_401K,
+  ...RMD_TYPES,
+  "roth-ira",
+  "401a",
+  "generic-tax-deferred",
+]);
+
+function pensionAccessAge(q: PensionAccessQuery): number | null {
+  if (q.accountType === "hsa") return US_FIXED.hsaPenaltyFreeAge;
+  return ACCESS_59.has(q.accountType) ? US_FIXED.retirementAccessAge : null;
+}
+
+/** IRC §121: $250k ($500k joint) of main-home gain excluded when owned 2 of the last 5 years. */
+export function usHomeSaleExclusion(q: HomeSaleQuery): number | null {
+  if (q.monthsOwned !== null && q.monthsOwned < 24) return 0;
+  const joint =
+    q.filingStatus === "married-joint" || q.filingStatus === "qualifying-surviving-spouse";
+  return joint ? US_FIXED.homeSaleExclusion.joint : US_FIXED.homeSaleExclusion.single;
+}
+
+export const usFederalJurisdiction: TaxJurisdiction = {
+  id: ID,
+  label: "US federal income tax",
+  level: "national",
+  country: "US",
+  status: "implemented",
+  owner: "b",
+  computeYear: (input) => computeYear(input, false),
+  explainYear: (input) => computeYear(input, true),
+  contributionLimit: usContributionLimit,
+  requiredDistribution: usRequiredDistribution,
+  pensionAccessAge,
+  homeSaleExclusion: usHomeSaleExclusion,
+  defaultCharacter: defaultCharacterForIncomeType,
+  lawToggles: [
+    {
+      id: "us.tcjaSunset",
+      label: "TCJA sunset (pre-2018 rates; what-if, OBBBA made TCJA permanent)",
+      default: false,
+    },
+    {
+      id: "us.obbbaSeniorDeduction",
+      label: "OBBBA $6,000 senior deduction (2025-2028)",
+      default: true,
+    },
+    { id: "us.acaEnhanced", label: "Enhanced ACA subsidies (no 400% FPL cliff)", default: false },
+    { id: "us.irmaa", label: "Model Medicare IRMAA surcharges", default: true },
+    { id: "us.amt", label: "Alternative minimum tax", default: true },
+    { id: "us.qbi", label: "Qualified business income deduction", default: true },
+  ],
+  sources: [
+    ...US_FEDERAL_YEARS.flatMap((y) => y.sources.map((s) => ({ taxYear: String(y.year), ...s }))),
+    { taxYear: "2026", url: US_IRMAA_2026.source, note: "IRMAA tiers" },
+    ...US_ACA_2026.sources.map((s) => ({ taxYear: "2026", ...s })),
+    ...US_LIMITS_2026.sources.map((s) => ({ taxYear: "2026", ...s })),
+  ],
+  simplifications: US_FEDERAL_SIMPLIFICATIONS,
+};

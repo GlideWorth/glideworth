@@ -1,0 +1,79 @@
+---
+/**
+ * The document shell every page uses: <head> (SEO, icons, manifest, fonts, theme), skip link, header,
+ * <main id="main">, footer. Pages normally use PageLayout or a collection layout, which wrap this.
+ *
+ *   ---
+ *   import BaseLayout from '../layouts/BaseLayout.astro';
+ *   import { page } from '../config/pages';
+ *   ---
+ *   <BaseLayout {...page('/pricing/')} jsonLd={[softwareApplication()]}>…</BaseLayout>
+ */
+import '@fontsource-variable/inter/wght.css';
+import '@fontsource-variable/fraunces/opsz.css';
+import '@fontsource-variable/fraunces/opsz-italic.css';
+import '../styles/global.css';
+import frauncesUrl from '@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2?url';
+import interUrl from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import SEO, { type SeoProps } from '../components/SEO.astro';
+import { site } from '../config/site';
+
+interface Props extends Omit<SeoProps, 'canonicalPath'> {
+  /** Site path of this page (from page()), used as the canonical path. */
+  path?: string;
+  /** Placeholder pages are kept out of search until the content wave fills them. */
+  placeholder?: boolean;
+  /** Accepted from page() and used by the social-image endpoint only. */
+  ogTitle?: string;
+  ogEyebrow?: string;
+}
+
+const {
+  path,
+  placeholder = false,
+  noindex = false,
+  ogTitle: _ogTitle,
+  ogEyebrow: _ogEyebrow,
+  ...seo
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang={site.locale} dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script is:inline>
+      // Before first paint: the visitor's theme choice, and a flag that JavaScript runs.
+      document.documentElement.classList.add('js');
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
+    <SEO {...seo} canonicalPath={path ?? Astro.url.pathname} noindex={noindex || placeholder} />
+    <link rel="preload" href={interUrl} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={frauncesUrl} as="font" type="font/woff2" crossorigin />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#f5f2ea" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f1311" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="alternate" type="application/rss+xml" title="Glideworth blog" href="/rss.xml" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <slot name="head" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <Header />
+    <main id="main" tabindex="-1">
+      <slot />
+    </main>
+    <Footer />
+  </body>
+</html>

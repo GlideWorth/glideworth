@@ -1,0 +1,96 @@
+---
+title: "What is your FIRE number? The 25x rule and its limits"
+description: "Your FIRE number is yearly spending divided by a withdrawal rate. Where the 4% rule came from, what the studies did and did not claim, and when it fails."
+pubDate: 2026-11-16
+author: [glideworth-team]
+tags: [FIRE, Retirement, Withdrawal rates, Methodology]
+draft: false
+---
+
+import Callout from '../../components/Callout.astro';
+
+Your **FIRE number** is the portfolio you would need to stop working, and the usual shortcut is to divide yearly spending by a withdrawal rate. At 4%, that is the same as multiplying spending by 25. If you spend 40,000 a year, the number is 40,000 ÷ 0.04 = **1,000,000**. The 4% comes from studies of United States market history, each looking at retirements of around 30 years. It is a historical rule of thumb. It was never a guarantee, and several of its built-in assumptions will not hold for every reader.
+
+<Callout type="note" title="Education, not advice">
+  This article explains where a rule of thumb comes from and what it assumed. It does not recommend a withdrawal rate
+  or any action. See the [not-advice notice](/legal/disclaimer/).
+</Callout>
+
+## The arithmetic
+
+The formula is the number of years of spending you want to hold, expressed as a rate:
+
+> FIRE number = annual spending ÷ withdrawal rate
+
+| Withdrawal rate | Multiple of spending | FIRE number for spending of 40,000 |
+| ---: | ---: | ---: |
+| 3.0% | 33.3× | 1,333,333 |
+| 3.25% | 30.8× | 1,230,769 |
+| 3.5% | 28.6× | 1,142,857 |
+| 4.0% | 25× | 1,000,000 |
+| 4.5% | 22.2× | 888,889 |
+| 5.0% | 20× | 800,000 |
+
+Two consequences follow. Every 1,000 of yearly spending adds 25,000 to the target at 4%, so the number is driven more by spending than by anything about markets. And the number is very sensitive to the rate: moving from 4% to 3.5% adds 142,857, about 14%. The [FIRE calculator](/tools/fire-calculator/) does this sum, and the years of saving it takes, with your numbers.
+
+## Where 4% came from
+
+**Bengen (1994).** William Bengen's article ["Determining Withdrawal Rates Using Historical Data"](https://www.financialplanningassociation.org/sites/default/files/2021-04/MAR04%20Determining%20Withdrawal%20Rates%20Using%20Historical%20Data.pdf) appeared in the *Journal of Financial Planning* in October 1994. It took the historical record of US stocks, intermediate-term US Treasuries and inflation from 1926, from the Ibbotson yearbook, and asked how much a retiree could have taken in the first year, then raised each year with inflation, without running out. His main case was a portfolio of 50% stocks and 50% intermediate-term Treasuries, rebalanced, held in tax-deferred accounts so that capital gains taxes did not apply. His reading of the results: assuming at least 30 years of portfolio life is required, a first-year withdrawal of 4% "should be safe". In no past case did it exhaust the portfolio before 33 years. A 4.25% first-year withdrawal could, in the worst past case, have run out in as little as 28 years. Bengen also found that a stock allocation between 50% and 75% did best in his data.
+
+**The Trinity study (1998).** Philip Cooley, Carl Hubbard and Daniel Walz, finance professors at Trinity University, published ["Retirement Savings: Choosing a Withdrawal Rate That Is Sustainable"](https://www.aaii.com/journal/article/retirement-savings-choosing-a-withdrawal-rate-that-is-sustainable) in the AAII Journal in February 1998. They used annual US returns from 1926 to 1995 for the S&P 500 and long-term high-grade corporate bonds. They tested five stock and bond mixes from 100% stocks to 100% bonds, payout periods of 15, 20, 25 and 30 years, and withdrawal rates from 3% to 12% of the starting portfolio, with and without inflation adjustment. They reported that 3% and 4% rates were very unlikely to exhaust a stock and bond portfolio in their data. The paper states that it did not adjust for taxes or transaction costs.
+
+The popular label "the 4% rule" blurs these two different studies, with different data and different assumptions, into one number.
+
+## What "4%" did and did not claim
+
+Read the studies and a precise statement emerges. In US data from the 1920s onwards, a retiree who withdrew 4% of the starting portfolio in year one, raised the amount by inflation every year afterwards, and held a mix of stocks and bonds, would not have run out of money within 30 years in the historical start years tested. Each phrase in that sentence is a limit:
+
+- **A fixed horizon.** About 30 years. A 40-year retirement is a different problem.
+- **US data.** One country's history, which includes the country that did unusually well in the twentieth century.
+- **A portfolio mix.** Mostly 50% or more in stocks. A lower stock share changes the result.
+- **Constant real spending.** The retiree never changes the spending plan, however the portfolio does. Real retirees usually adjust.
+- **No investment costs, and no tax in the main cases.** Bengen's main case was tax-deferred; the Trinity authors did not adjust for taxes or transaction costs. A fund fee or advisory fee comes straight off the return.
+- **History as the test.** A rate that survives every start year in a sample has survived a limited number of overlapping periods. See the [article on historical and Monte Carlo methods](/blog/how-long-will-my-money-last/).
+
+## Longer horizons
+
+If the portfolio earned a constant real return every year, the sustainable withdrawal rate for `n` years would be `r ÷ (1 − (1 + r)^−n)`, with withdrawals at the end of each year. This table gives the result. It is a calculation with no volatility in it, so it is an upper bound on what a variable return could support.
+
+| Constant real return | 30 years | 40 years | 50 years | 60 years |
+| ---: | ---: | ---: | ---: | ---: |
+| 2% | 4.46% | 3.66% | 3.18% | 2.88% |
+| 3% | 5.10% | 4.33% | 3.89% | 3.61% |
+| 4% | 5.78% | 5.05% | 4.66% | 4.42% |
+
+A related check: how long does a 4% withdrawal last, if the return is constant? The answer is `−ln(1 − r ÷ 0.04) ÷ ln(1 + r)` years. At a 1% real return it is 28.9 years. At 2% it is 35.0. At 3% it is 46.9. At 4%, where the return equals the withdrawal rate, the balance never falls. Someone retiring at 40 or 45 and planning to 95 or 100 faces a horizon of 50 years or more. At a 3% real return, the constant-return table above gives 3.89% for 50 years, before any allowance for volatility.
+
+The same formula shows what costs do. If a fund charge takes a 3% real return down to 2% net, the number of years that a 4% withdrawal lasts falls from 46.9 to 35.0. These are illustrative figures with a constant return, not forecasts.
+
+## Investors outside the United States
+
+The studies above used US data. Wade Pfau's ["An International Perspective on Safe Withdrawal Rates: The Demise of the 4 Percent Rule?"](https://financialplanningassociation.org/article/journal/DEC10-international-perspective-safe-withdrawal-rates-demise-4-percent-rule) (*Journal of Financial Planning*, December 2010) repeated the exercise with 109 years of data for 17 developed countries and a 30-year retirement. Its summary says a 4% real withdrawal rate would have provided safety in only 4 of the 17 countries, and calls the rate "surprisingly risky". The count depends on how "safe" is defined, and a looser definition, such as surviving 90% of start years, would give a different count. The paper's point stands: the US was one outcome among several.
+
+If your country has less history in a tool, the tool may default to US data. Glideworth's UK households use a UK series that ends in 2020; households elsewhere default to US history unless you choose otherwise, as the [limitations page](/docs/methodology/known-limitations/) notes.
+
+## Setting your own number with a spending-based projection
+
+A multiple of one flat spending figure is a shortcut. A projection starts from what the plan actually contains:
+
+1. **Spending by year, not a single figure.** Spending commonly changes as people age, and housing, children and health costs rise and fall.
+2. **Other income.** Subtract pensions, state pensions and part-time earnings in the years they exist. A portfolio only has to cover the gap.
+3. **Tax on the withdrawals taken.** The tax depends on which account the money comes from.
+4. **A horizon from retirement age to a life expectancy you choose,** with a margin.
+5. **A chance of success you accept,** found by running the plan against many market sequences.
+
+The number is then the smallest starting portfolio that meets the chosen chance of success. Glideworth's solvers answer this directly: the required portfolio at a target chance of success, the most you can spend at that target, and the safe withdrawal rate for your plan, as described on the [solvers page](/features/solvers/) and in the [guide to solvers and guardrails](/docs/planning/solvers-and-guardrails/). Two caveats apply. The result is an estimate from your assumptions and from historical or random returns, and tax figures are estimates. And a different chance-of-success target gives a different number: the choice of 85% or 95% is part of the answer. The [article on Monte Carlo results](/blog/monte-carlo-retirement-simulations/) explains how to read that percentage.
+
+A spending-based number also shows what a fixed rate hides. It can show that the plan is fine with a lower portfolio because a pension starts at 67, or that it needs more because spending rises in the first decade. It can also compare withdrawal rules, which is the subject of the [article on withdrawal strategies](/blog/withdrawal-strategies-compared/).
+
+## Summary
+
+- FIRE number = spending ÷ withdrawal rate; 4% means 25×.
+- The 4% figure comes from US historical studies of roughly 30-year retirements (Bengen 1994; Cooley, Hubbard and Walz 1998), with fixed real spending and, in the main cases, no costs or tax.
+- Longer retirements, non-US markets, costs and taxes all push the rate below 4% in some calculations, and flexible spending pushes it up.
+- A projection that uses your own spending, other income and horizon replaces the multiple with a number that comes from your plan.
+
+The free [FIRE calculator](/tools/fire-calculator/) works out the simple version of this question with your own spending, savings and withdrawal rate, and tests the number against US market history.

@@ -1,0 +1,79 @@
+---
+title: Read your results
+description: What each results page shows - Results, Cash flow, Taxes, Chance of success and Estate and legacy - and how to check that the numbers add up.
+section: Planning
+order: 2
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+
+The **Analysis** group in the sidebar holds the result pages: Results, Chance of success, Cash flow, Taxes,
+Compare, Insights, Report, Estate and legacy, and Custom charts. Use the "Today's money" and "Future money"
+switch in the top bar to change every figure's view.
+
+**Before you start:** a plan that the engine can run. If it cannot, the page says "The plan could not be
+simulated" and says why.
+
+## Results (the projection)
+
+Net worth year by year, the dates your milestones are reached, and any year in which money runs short. Open a
+year for its drill-down: income, outflows, saving, withdrawals by account, investment return and the change in net
+worth, as sentences and tables.
+
+Every year's drill-down ends with a reconciliation, "this adds up": money in equals money out, each account's
+opening balance plus its flows and growth equals its closing balance, and last year's net worth plus the changes
+equals this year's. In today's money an **Inflation** line shows the buying power the year's money lost.
+
+### Partial years
+
+The plan starts in the month your balances are dated and ends at its horizon, so the first and last years often
+cover fewer than 12 months. Their income, spending and taxes look low next to full years, so they are labelled,
+for example "2026 (Nov-Mar, 5 months)", and charts and tables mark them "2026*". The **Actual months** and
+**Annualised** switch scales a partial year's money moved to a full year. Balances, rates, totals over several
+years and CSV exports always use actual months.
+
+## Cash flow
+
+Where money comes from and goes, as a Sankey diagram, for **One year** or a **Range**, **Grouped** or showing
+**Every line**.
+
+## Taxes
+
+Tax by year, by jurisdiction and by kind, with effective and marginal rates, and income by tax band. These are
+estimates. For a cross-border plan the page first lists what the estimate leaves out, then shows tax by country
+and by reason (residence, source, citizenship, relief, exit tax, return). Each rule has a "How this is taxed, and
+why" explanation with its source.
+
+## Chance of success
+
+The share of replays in which every year's spending was fully funded, with panels:
+
+- **Settings**: method, trials, seed, historical data set, and what "success" means.
+- **Failures**, with "When failed trials run short".
+- **Sequence of returns**, with "Early returns vs success".
+- **Milestones**, with "When milestones happen across trials".
+- **Trial explorer**, with "Inspect one simulated future": scrub through trials ranked by ending net worth.
+
+Method details are on [Monte Carlo and historical replay](/docs/methodology/monte-carlo/).
+
+## Estate and legacy
+
+What the estate is made of, by account type, and the net legacy to heirs at a chosen year of death, after estate
+tax where the plan models it.
+
+## Compare
+
+Two or more plans side by side on net worth at end, peak net worth, retirement, financial independence, first
+shortfall, unfunded spending, lifetime spending, lifetime taxes, average savings rate and first withdrawal rate.
+"Where the difference comes from" attributes the change to individual edits.
+
+## What this does not do
+
+A result is a model of your inputs, not a prediction. Read [Known limitations](/docs/methodology/known-limitations/)
+before you act on a figure.
+
+<Callout type="warning" title="Estimates, not tax returns">
+  Tax figures are estimates built from stated tax-year tables and simplified rules. They are not a tax return
+  and not advice.
+</Callout>

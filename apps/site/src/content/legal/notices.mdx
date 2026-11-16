@@ -1,0 +1,65 @@
+---
+title: Open-source and data notices
+description: Where the Glideworth software licence, trademark policy and data licences are, with the attribution statements for the data it uses.
+lastUpdated: 2026-11-16
+draft: false
+order: 8
+---
+
+import { site } from '../../config/site';
+
+## The software
+
+Glideworth's application code is open source under the **GNU Affero General Public License v3.0 only
+(AGPL-3.0-only)**. The `packages/importers` package is under the **MIT** licence. The licence is separate from
+the [terms of service](/legal/terms/) for the hosted service. Copyright in the code is held by
+{site.entity.name} and by the people who contributed to it, each for their own contributions.
+
+Files in the repository:
+
+- <RepoLink path="LICENSE">LICENSE</RepoLink>: the AGPL text.
+- <RepoLink path="LICENSING.md">LICENSING.md</RepoLink>: which licence applies to which part, in plain English.
+- <RepoLink path="TRADEMARKS.md">TRADEMARKS.md</RepoLink>: the trademark policy. "Glideworth" is a trademark of
+  {site.entity.name}, claimed through use and not registered. The name and logo are not licensed by the AGPL.
+- <RepoLink path="CLA.md">CLA.md</RepoLink>: the contributor licence agreement.
+- <RepoLink path="DATA-LICENSES.md">DATA-LICENSES.md</RepoLink>: the licence and source of each bundled dataset and tax table.
+- <RepoLink path="THIRD-PARTY-NOTICES.md">THIRD-PARTY-NOTICES.md</RepoLink>: notices for software dependencies.
+- <RepoLink path="SECURITY.md">SECURITY.md</RepoLink>: how to report a vulnerability.
+
+The hosted service runs the same code. If we change the AGPL-licensed code that runs the hosted service, we
+offer its source to users of the service, as the licence requires. The source is at
+<RepoLink>{site.repoUrl}</RepoLink>.
+
+## The data
+
+The calculations use historical market data and tax tables published by others. They are facts or open data with
+their own conditions. Some conditions ask us to show a statement. We show these here and in the app's "About the
+data" page.
+
+- **UK public sector information (Office for National Statistics, Bank of England, HMRC and GOV.UK, Scottish
+  Government).** Contains public sector information licensed under the Open Government Licence v3.0
+  (licence text: nationalarchives.gov.uk/doc/open-government-licence/version/3/).
+  Sources: Office for National Statistics (CPI, RPI); Bank of England (Bank Rate, gilt yields); HM Revenue &
+  Customs and GOV.UK (UK tax rates); Scottish Government (Scottish rates).
+- **Federal Reserve Board.** Exchange rates: Board of Governors of the Federal Reserve System, H.10 Foreign
+  Exchange Rates.
+- **US Bureau of Labor Statistics.** US inflation: U.S. Bureau of Labor Statistics, Consumer Price Index for All
+  Urban Consumers (CPI-U), series CUUR0000SA0.
+- **Damodaran.** US stock, bond and bill returns: Aswath Damodaran, Historical Returns on Stocks, Bonds and
+  Bills, NYU Stern (pages.stern.nyu.edu/~adamodar).
+- **New Zealand Inland Revenue.** Contains material from Inland Revenue (New Zealand), Crown copyright, licensed
+  under CC BY 4.0.
+- **Spain.** Source: Agencia Tributaria and Seguridad Social (official websites). Their reuse conditions ask us to
+  cite the source and not to distort the content.
+- **France.** Source: impots.gouv.fr, service-public.gouv.fr, BOFiP-Impôts, with the date of last update, under
+  the Licence Ouverte 2.0; URSSAF under the Open Database Licence.
+- **US federal agencies (IRS, SSA, HHS).** Public domain. Source: IRS, SSA.
+
+Tax tables for other countries are transcribed from official publications. Each country page lists its sources.
+The tax and market data are estimates for the years and periods stated. See the [disclaimer](/legal/disclaimer/).
+
+## Questions
+
+Licensing questions: licensing@glideworth.com. Trademark requests: trademarks@glideworth.com. Everything else:
+<a href={`mailto:${site.contact.hello}`}>{site.contact.hello}</a>. The hosted service is run by
+{site.entity.name}, {site.entity.address}.

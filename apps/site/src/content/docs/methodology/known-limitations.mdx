@@ -1,0 +1,123 @@
+---
+title: Known limitations
+description: What Glideworth does not model, where its tax estimates are simplified, which figures could not be confirmed, and what is partial, from the project's status document.
+section: Reference
+order: 4
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+import { facts } from '../../../lib/facts';
+
+This is the complete list, taken from the project's status document and checked against the code on 2026-11-16.
+Read it before you rely on a number.
+
+<Callout type="warning" title="Estimator, not advice">
+  Treat every output as a model of your assumptions. Glideworth does not know your circumstances, your tax residence in
+  detail or your risk tolerance. Talk to a regulated adviser before acting on a projection.
+</Callout>
+
+## Not modelled
+
+- Monthly or daily resolution. The engine steps by year, so nothing within a year is seen.
+- Randomised lifespan and care-cost shocks inside the Monte Carlo (you set a life expectancy; a care scenario is a
+  what-if).
+- Account aggregation, by design, and live sync with budgeting apps.
+- A server-side PDF.
+- The municipal and Treasury bond-income split.
+- The US earned income credit and education credits.
+- Means-tested benefits (UK Universal Credit, Pension Credit).
+- Loss harvesting and specific-lot selling.
+- End-to-end encrypted sync, and per-person privacy within a household.
+- Changes in the law that are not already legislated, and behaviour (panic selling, windfalls, a marriage or divorce you
+  have not planned).
+- Survivor pensions beyond what you enter.
+- Investment fees beyond the percentage or amount you set.
+
+## Partial
+
+US federal tax; Canada CPP, OAS and GIS; Germany, the Netherlands, France, Spain, Israel, Ireland and New Zealand (a
+basic level); debt payoff strategies; datasets; drawdown-order graphs; the Flex versus No-Flex table; the depth of the
+tax optimiser; strategy and income-by-rate heatmaps; table export (four tables, not any plot); reports (browser print
+only); share links; re-run on plan change (on request, not on every edit); household collaboration (roles are
+instance-wide); onboarding data-quality checks; scheduled re-runs (no email; use webhooks); open test vectors (no
+published validation report).
+
+## Tax tables and years
+
+Later years carry the last known rates forward and index thresholds with inflation, which is wrong whenever the rules
+change. Someone has to add each new year each spring. The years in the tables are listed on
+[Tax settings, countries and currency](/docs/planning/tax-and-currency/). The US 2017-law sunset variant is an
+estimate (the 2017 law scaled by 1.33), not law.
+
+Each of the {facts.taxCountryCount} countries' full simplification list is shown with your tax results. The main ones follow. Each "no" or "not" describes
+what Glideworth's model leaves out, not what the law says; where the law allows something the model omits, the item says so.
+
+- **UK:** the model does not carry forward unused pension annual allowance (UK law allows it from the three previous tax years); Class 1 employee and Class 4 National Insurance only;
+  one pair of capital gains rates for all assets; no blind person's or married couple's allowance, trading or property
+  allowance, or Gift Aid band extension; student-loan interest ignored.
+- **US:** itemised deductions are what you enter (the SALT cap is not applied for you); AMT adds back only the standard
+  deduction; QBI is simplified; credits are the child tax credit and the ACA premium credit only; states start from
+  federal AGI with no state-specific additions or subtractions; local tax only for the cities in the table.
+- **Canada:** no AMT; GIS is an amount you enter; provincial low-income reductions and the Quebec return's own amounts
+  are not modelled.
+- **Australia:** residents only; no SAPTO, HELP repayments or Medicare levy surcharge; Medicare levy uses single
+  thresholds; the model does not carry forward an unused concessional cap (the law allows it in some cases) and applies no transfer balance cap.
+- **Germany:** statutory health insurance at the average supplementary rate; no Kindergeld comparison; investments
+  assumed to be equity funds (30 percent partial exemption, switchable) and no Vorabpauschale; Riester allowance not
+  modelled; tax not rounded to whole euros; self-employed pay no social contributions.
+- **Netherlands:** box 3 uses the 2026 deemed returns (the savings and debt rates are provisional) without the
+  actual-return counter-evidence route; pension contributions are deducted without checking the jaarruimte; no
+  mortgage-interest or own-home rules; box 2 only for income you tag as such.
+- **France:** salaries are gross with employee pension contributions and CSG/CRDS (other contributions not modelled);
+  PEA and assurance-vie are assumed held 5 and 8 years (switchable); the PER is available from 64 (the 2025 suspension
+  is not modelled); no high-income contribution or IFI.
+- **Spain:** only Madrid, Cataluña, Andalucía and Valencia have their own scales (others use the state scale);
+  individual returns only; no regional minimums or deductions; wealth tax off by default.
+- **Israel:** capital gains are taxed on the nominal gain (Israel taxes only the real gain), so long-held assets are
+  over-taxed; pensions are taxed in full because the partial exemption could not be confirmed from an official source;
+  only the basic credit points.
+- **Ireland:** capital gains tax for 2026 averages the 33 percent and 31 percent rates by days (the rate fell on 7 October
+  2026; the model has no disposal dates), and is 31 percent from 2027; no
+  exit tax on funds; no reduced USC rates for over-70s; the 25 percent tax-free lump sum is applied only if you set a
+  tax-free withdrawal share.
+- **New Zealand:** no capital gains tax at all (no bright-line or FIF rules); dividends assumed fully imputed; no
+  independent earner tax credit.
+- **United Arab Emirates:** the gratuity's daily wage (monthly basic divided by 30) is Glideworth's convention, and
+  whether the two-year cap uses basic or total wage is not settled on the government portal (basic is used); the DEWS
+  voluntary-savings cap and GPSSA eligibility ages could not be confirmed and are not modelled.
+- **Everywhere:** gains are realised pro rata to cost basis and treated as long-term; losses are never realised.
+
+Figures that could not be confirmed or are provisional: Israeli brackets, credit points, capital-income rates and
+National Insurance rates could not be confirmed from the Tax Authority or National Insurance Institute; some US
+states' figures (all of Idaho, Kansas, Louisiana, Michigan, New Hampshire, Ohio, Rhode Island and Wisconsin, and
+some of nine others) and Quebec's brackets could not be confirmed from the state's or province's own site, and those
+results say so; Australian Medicare levy low-income thresholds are the 2024-25 values; the 2026 Dutch box 3 deemed returns; the Spanish 2025 scales carried forward; the UK State
+Pension uprating list comes from a government page that may be dated. No preset has been checked against every
+official calculator for every case.
+
+## Cross-border limits
+
+- Residence is what you enter: no statutory residence test, no 183-day rules, split years prorated by months, and treaty
+  relief assumed claimed.
+- Only UK-UAE is implemented article by article. UK-US, UK-Australia, UK-Canada, UK-Spain, UK-France and US-Canada are
+  basic. Other pairs use the credit method with a warning.
+- Non-resident rules are detailed for the UK and basic elsewhere (no withholding on interest or dividends; resident
+  rates are used for non-residents).
+- Departure taxes cover taxable investment accounts only, at their value at the start of the year you leave. One cost
+  basis is kept per account.
+- Temporary non-residence covers capital gains only. US citizens abroad pay federal tax only, with one foreign-tax-credit
+  basket in the model and no carry-forward of unused credit.
+- The bracket and marginal-rate analytics on the Taxes page describe the household country's calculation only.
+  Stay-or-move is deterministic: branch it for a chance of success. Planned real assets and plan-level account overrides
+  have no country field in the plan editor. The gratuity is UAE-only, and voluntary contributions are not added as an
+  expense automatically.
+
+## Data
+
+See [Historical data](/docs/methodology/historical-data/). The UK set shipped today ends in 2020.
+
+## Running it yourself
+
+Self-hosted means you are responsible: back up the database, keep the server up to date, and keep the port off the
+public internet unless you have set a passphrase, a setup token and TLS.

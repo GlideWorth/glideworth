@@ -1,0 +1,31 @@
+---
+import { page } from '../../config/pages';
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import { docHref, docsSidebar } from '../../lib/docs';
+
+const meta = page('/docs/');
+const sections = await docsSidebar();
+---
+
+<DocsLayout title={meta.title} description={meta.description} path="/docs/">
+  <p>
+    Guides for running and using Glideworth: getting started, building and reading a plan, running it yourself,
+    connecting an AI assistant, importing your data, and how the numbers are calculated. Commands and settings are
+    shown as they are in the current release. If you are upgrading an instance that still uses the old names, see
+    <a href="/docs/self-hosting/upgrading/">Upgrading</a>.
+  </p>
+  {
+    sections.map((s) => (
+      <>
+        <h2 id={s.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}>{s.name}</h2>
+        <ul>
+          {s.entries.map((e) => (
+            <li>
+              <a href={docHref(e.id)}>{e.data.title}</a>: {e.data.description}
+            </li>
+          ))}
+        </ul>
+      </>
+    ))
+  }
+</DocsLayout>

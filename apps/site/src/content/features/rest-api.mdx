@@ -1,0 +1,99 @@
+---
+title: The REST API and OpenAPI document
+description: Everything the web app does is a versioned REST call, described in OpenAPI 3.1, with scoped keys, safe retries, concurrency checks, jobs and signed webhooks.
+ogTitle: The REST API
+summary: A complete, versioned REST API with an OpenAPI 3.1 document, scoped keys, idempotent writes, async jobs and webhooks.
+order: 14
+---
+
+import { facts } from '../../lib/facts';
+
+The web app has no private back door. Whatever it does, it does through the same REST API that your scripts can
+call: reading plans, editing them, running simulations and solvers, importing, exporting and managing access.
+The OpenAPI 3.1 document is generated from the same schemas as the engine, so request and response shapes cannot
+drift from the code. It describes {facts.apiOperations} operations, each with an operation id, tags, a required scope and an
+explicit security declaration, and it is checked by tests for validity and completeness.
+
+## Conventions
+
+- **Units that cannot be misread.** Money is a number in major currency units, rates are fractions (`0.07` is
+  7%), and every amount is `{ "value", "basis": "real" | "nominal" }` plus a frequency.
+- **Scoped keys.** `Authorization: Bearer glideworth_<prefix>_<secret>`. A `read` key can read and run
+  simulations; a `simulate` key can run compute and read job results but not raw data; a `write` key can change
+  things. A key never has more than its person's role allows, and keys are stored as hashes and shown once.
+- **Safe retries.** Send `Idempotency-Key` on any write and a retry replays the first response for 24 hours.
+  Reusing a key for a different request is an error.
+- **Concurrency.** Plans and households return an `ETag` that is their version. Send `If-Match` on a write and a
+  stale version is a `409`, never a silent overwrite.
+- **Partial updates** by JSON Merge Patch on a single resource, or JSON Patch on a whole plan with array items
+  addressed by id (`/income/[id=salary]/amount/value`), never by index.
+- **Errors** share one envelope with a stable code, such as `VERSION_CONFLICT`, `VALIDATION` or `RATE_LIMITED`.
+  Unexpected failures say `internal error` and nothing more: no stack traces, SQL or file paths.
+- **Pagination, rate limits and size.** Lists take `limit` and `cursor`. The default limit is 600 requests a
+  minute per key, and request bodies are capped at 10 MiB by default. Both are configurable on a self-hosted server.
+
+## Long jobs
+
+Monte Carlo, solvers, guardrails and strategy comparisons run in worker threads and return a job. Poll it,
+stream its progress as server-sent events, cancel it, or add `?wait=60` to a request to block until it finishes.
+Results can be thinned or expanded (`detail`, `metrics`, `percentiles`). With the default seed, repeated requests are
+cache hits.
+
+## Webhooks
+
+A webhook posts a signed JSON event to a URL you register: plan updated, simulation completed, snapshot created or
+updated, check-in completed, notification created. Each delivery carries an HMAC-SHA256 signature over a
+timestamp and the body, so you can verify it and reject old ones. Failures retry after 1, 5 and 30 seconds, and
+deliveries are logged. Redirects are not followed. By default the server refuses to deliver to localhost,
+private and link-local addresses, including a public name that resolves to one, so a webhook cannot be turned
+against your own network.
+
+## A worked illustration
+
+Illustrative figures, with the real paths. A script pushes today's balances, then asks for a chance of success:
+
+```bash
+export GW=http://localhost:8787
+export KEY=glideworth_ab12cd34_...
+
+curl -s -X POST \
+  "$GW/api/v1/households/hh-sample/balances" \
+  -H "Authorization: Bearer $KEY" \
+  -H 'content-type: application/json' \
+  -H 'Idempotency-Key: sync-2026-11-15' \
+  -d '{"accounts":[{"accountId":"acc-cash",
+        "balance":31250.40}],
+       "recordSnapshot":true}'
+
+curl -s -X POST \
+  "$GW/api/v1/plans/plan-main/monte-carlo?wait=60" \
+  -H "Authorization: Bearer $KEY" \
+  -H 'content-type: application/json' \
+  -d '{"settings":{"trials":1000}}'
+# -> {"id":"job_...","status":"succeeded",
+#     "links":{"result":"/api/v1/jobs/..."}}
+```
+
+The first call is atomic: an unknown account id changes nothing. Run it twice with the same `Idempotency-Key`
+and the second returns the first answer with `Idempotent-Replay: true`.
+
+## The reference and a typed client
+
+A running server serves the document at `/openapi.json` and an interactive reference at `/docs`. The reference page
+loads its viewer script from a public CDN, so that page needs internet access; the document and every API call
+work offline. You can generate a complete TypeScript client from the document with a standard generator. The
+API's own tests include one that does.
+
+## What it does not do
+
+- **No GraphQL, no streaming sync protocol and no hosted API yet.** The API runs on your own server. A hosted
+  endpoint is planned for the hosted service, which is not open yet.
+- **No published client libraries.** Generate one from the OpenAPI document.
+- **Cookies are for the web app.** Programs authenticate with keys; a browser session needs a CSRF token on writes.
+- **The public development key is refused in production.** Create your own.
+
+## Go further
+
+- [API and MCP for AI agents](/api/): scopes, the safety model and a worked agent session.
+- [MCP server](/features/mcp-server/), the same operations as tools.
+- [Self-hosting](/self-hosting/) to run a server to call.

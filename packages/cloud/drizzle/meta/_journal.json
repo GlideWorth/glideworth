@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1794811495068,
+      "tag": "0000_control_plane",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1794816654719,
+      "tag": "0001_second_work_package",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794829050763,
+      "tag": "0002_adult_confirmation",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1794833928553,
+      "tag": "0003_federated_identities",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1794846669717,
+      "tag": "0004_oauth_revoke_pending",
+      "breakpoints": true
+    }
+  ]
+}

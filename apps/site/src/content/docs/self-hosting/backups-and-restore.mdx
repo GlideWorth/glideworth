@@ -1,0 +1,88 @@
+---
+title: Backups, restore and moving machines
+description: Take an online backup of the single SQLite file, copy it off the machine, restore it safely, and move Glideworth to a new machine.
+section: Self-hosting
+order: 4
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+
+All your data is one SQLite file on the `glideworth-data` volume. A backup is one self-contained file, is integrity-checked,
+and can be taken **while the server is running**.
+
+## Back up
+
+```bash
+# A named file on the volume
+docker compose exec glideworth node dist/cli/admin.js backup --out /data/backups/manual.db
+
+# Or let it name the file: /data/backups/<database name>-<timestamp>.db
+docker compose exec glideworth node dist/cli/admin.js backup
+
+# Copy it off the volume to the host (and then off the machine)
+docker compose cp glideworth:/data/backups/manual.db ./glideworth-backup.db
+```
+
+Without Docker, from a checkout: `pnpm backup`, or `pnpm backup -- --out ~/glideworth.db`.
+
+Backups on the same volume protect against mistakes, not against losing the disk: **copy them somewhere else**, regularly.
+For a daily backup, cron on the host can run the first command with a dated name and `docker compose cp`, followed by an
+off-site copy (`rsync`, `restic` or `rclone`). In cron, add `-T` to `docker compose exec`, which has no terminal there.
+
+<Callout type="warning" title="A backup holds everything">
+  A backup contains your whole financial plan and your hashed credentials. Store it as carefully as the live data, and
+  encrypt it.
+</Callout>
+
+You can also export one household as portable JSON from the app, or with `GET /households/{id}/export`. That is not a full
+backup: it has no users, keys or history.
+
+## Restore
+
+Stop the server first, so nothing writes while the file is replaced. Then:
+
+```bash
+docker compose stop glideworth
+
+# Backup file is on the host, in the current directory:
+docker compose run --rm --no-deps \
+  -v "$PWD/glideworth-backup.db:/restore/backup.db:ro" \
+  glideworth node dist/cli/admin.js restore --from /restore/backup.db --force
+
+docker compose up -d
+```
+
+Without Docker: stop the server, then `pnpm restore -- --from ~/glideworth.db --force`.
+
+`--force` is required when a database already exists. The current database is kept next to it as
+`<database>.pre-restore-<timestamp>` on the volume, so a wrong restore can be undone. Delete those copies when you no
+longer need them. A backup from an older version is migrated to the current schema.
+
+## Moving to a new machine
+
+<Steps>
+1. On the old machine, take a backup and copy it off. Also copy your `.env` file: it holds the setup token and settings, and
+   is **not** inside the backup.
+2. On the new machine, install Docker, clone the repository (the same version or newer), put the `.env` in place, and build
+   without starting:
+
+   ```bash
+   docker compose build
+   ```
+
+3. Restore the backup into the new, empty volume before the first start. No `--force` is needed because no database exists
+   yet.
+
+   ```bash
+   docker compose run --rm --no-deps \
+     -v "$PWD/glideworth-backup.db:/restore/backup.db:ro" \
+     glideworth node dist/cli/admin.js restore --from /restore/backup.db
+   docker compose up -d
+   ```
+
+4. Sign in with your existing passphrase. Users, API keys and share links travel with the database; existing browser
+   sessions may need to sign in again. Update DNS and the proxy, and set `GLIDEWORTH_PUBLIC_URL` if the address changed
+   (assistants connected over OAuth will need to reconnect).
+5. Keep the old machine's data until you are sure the new one works, then delete the old volume.
+</Steps>

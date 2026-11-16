@@ -1,0 +1,98 @@
+---
+title: Import from ProjectionLab
+description: Export from ProjectionLab as JSON and import it with a report of what mapped exactly, what was approximated and what has no equivalent. Re-import safely.
+section: Importing
+order: 1
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+
+Glideworth reads a ProjectionLab JSON export and builds a household, its current finances, every plan and your
+net-worth history. Nothing is lost silently: every field is classified and the import report lists everything that was
+dropped, approximated or could not be mapped.
+
+**Before you start:** a ProjectionLab data export, and Glideworth running. The format checked is ProjectionLab export
+version 4.6.0. A newer version imports too, with keys the importer does not recognise reported.
+
+## Import it
+
+<Steps>
+1. In ProjectionLab, open your account menu and export your data as JSON.
+2. In Glideworth, open **Import &amp; export** and choose the **From ProjectionLab** tab (or choose "Import from
+   ProjectionLab" on the Welcome page).
+3. Choose the file ("Choose your ProjectionLab export", up to 25 MB). It is read and converted in your browser;
+   nothing is uploaded while you review.
+4. Review the counts and the full report.
+5. Choose Import. Only the converted plan is saved, to your own server.
+</Steps>
+
+Over the API, run a dry run first, then repeat without `dryRun` (see [Import, export and reports](/docs/api-and-mcp/api-import-export-and-reports/)):
+
+```bash
+curl -s -X POST $GLIDEWORTH/api/v1/import -H "Authorization: Bearer $KEY" -H 'content-type: application/json' \
+  -d "{\"format\":\"projectionlab\",\"dryRun\":true,\"data\":$(cat projectionlab-export.json)}"
+```
+
+## The import report
+
+The report lists every issue by key path in your file (such as `$.plans[0].income.events[2].amount`) and never repeats
+your values. Each issue has a severity (info, warning, error) and a category:
+
+| Category | Meaning |
+| --- | --- |
+| dropped | Intentionally not carried over: interface state, derived values, redundant copies, secrets. |
+| approximated | Carried over, but Glideworth's model differs; the message says how. Check these by hand. |
+| unsupported | Real planning content with no home in the schema yet. |
+| unrecognised | A key the importer does not know, such as from a newer export version. |
+| defaulted, invalid, info | A default was chosen, a value was invalid, or something worth knowing. |
+
+For the version-4.6 format, the importer classifies 1,135 key paths: 748 mapped, 387 ignored (interface state, derived
+values, copies, secrets) and none unsupported or unknown.
+
+## What maps exactly
+
+People, location and currency; accounts, property and debts with balances, owners, growth, dividends, fees and
+withdrawal rules; every plan's income, expenses, milestones, savings priorities, withdrawal strategy, tax settings and
+Monte Carlo settings; and net-worth history. Conversions: percentages are divided by 100; "today$" amounts become real
+and "$" amounts nominal; ProjectionLab dates become months; owners become the primary person, the partner or joint;
+ids are kept when they fit and otherwise slugged.
+
+## What is approximated
+
+These are reported as approximated:
+
+- A Move milestone's destination becomes a relocation effect on the milestone. The keys for it are inferred, because
+  the checked export carried none. A country code `UK` is read as `GB`.
+- Withdraw and liquid values such as "after a given age" map to Glideworth's rules for when an account can be drawn.
+- Rental management fees: ProjectionLab applies the fee to rental income, Glideworth to asset value. A rental income
+  given as an amount is read as per year.
+- Priorities: "contributions are fixed" becomes mandatory, target-mode priorities become a target strategy, and an
+  asset priority becomes a pay-down of the asset's loan.
+- Monte Carlo: ProjectionLab's random-restart backtest becomes historical random restart, and per-series means and
+  standard deviations become normal distributions. A fixed seed is kept.
+- Tax: with tax estimation on and a supported country the mode is estimate, otherwise flat, or custom brackets where the
+  source uses them.
+- Progress dates are rounded to the nearest day.
+
+## What has no equivalent
+
+- The `non-qualified-uk-pension` drawdown entry is dropped, because Glideworth models early pension access per account.
+- Debts with a payment frequency other than monthly: payments are monthly, and other values are reported.
+- A per-plan override of an asset's loan or value cannot be represented: Glideworth cannot override a loan per plan. The
+  difference is reported.
+- Starting conditions other than the default (live finances).
+- Your ProjectionLab plugin API key. It is never read into the document or the report.
+
+## Re-import
+
+Importing again into the same household needs `"mode": "replace"` (over the API) or a choice in the app. The three modes
+are `create` (the default; `409` if the household exists), `replace` (the household becomes the document; plans and
+snapshots not in it are removed) and `merge` (the household, finances and the plans in the document are updated;
+everything else is kept). Plan version history is preserved: an existing plan keeps its earlier versions and the import
+is recorded as its next version.
+
+<Callout type="warning" title="Check what changed">
+  Anything marked approximated or unsupported must be checked by hand. An import is a starting point, not proof that two
+  tools agree: they calculate differently (for example, cash-flow timing).
+</Callout>

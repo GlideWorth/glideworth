@@ -1,0 +1,33 @@
+{
+  "name": "@glideworth/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Glideworth domain schema, simulation engine, tax plug-ins, stochastic runners and solvers. Pure TypeScript; runs in Node, browsers and Web Workers.",
+  "license": "AGPL-3.0-only",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "@glideworth/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./samples": {
+      "@glideworth/source": "./src/samples/index.ts",
+      "types": "./dist/samples/index.d.ts",
+      "default": "./dist/samples/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "bench": "vitest run --config vitest.bench.config.ts"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
+  }
+}

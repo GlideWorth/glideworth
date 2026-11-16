@@ -1,0 +1,89 @@
+---
+title: Retirement planning in Ireland
+description: "How Glideworth estimates Irish tax at a basic level for 2026: income tax, USC, PRSI, DIRT, capital gains and pension relief, and the gaps to know about."
+ogTitle: Retirement planning in Ireland
+countryCode: IE
+countryName: Ireland
+taxYears:
+  - "2026"
+modelled:
+  - Income tax at 20% and 40% with rate bands and tax credits, and joint assessment for married couples
+  - The Universal Social Charge and employee PRSI
+  - DIRT at 33% on deposit interest
+  - Capital gains tax at 33% to 6 October 2026 and 31% from 7 October 2026, with the annual exemption
+  - Age-related pension tax relief and pension contributions
+  - A default State Pension (Contributory) age of 66
+notModelled:
+  - Disposal dates within the year (2026 gains use the 33% and 31% rates averaged by days, 32.53%)
+  - The PRSI credit taper and PRSI on unearned income
+  - Exit tax and deemed disposals on funds; all other interest, dividends and fund distributions are taxed as income
+  - Reduced USC rates for people over 70 and medical card holders
+  - The Single Person Child Carer Credit
+  - Employer pension contributions, the standard fund threshold and lump-sum rules; the 25% tax-free lump sum is not applied automatically
+---
+
+import { facts } from '../../lib/facts';
+
+Ireland is estimated at a **basic level**: the main rules are in, with {facts.simplificationCount('ie')} written
+simplifications, and it has had less checking than the United Kingdom or the United States. The tables are for 2026, and
+later years index them with the plan's threshold policy.
+
+## What is modelled
+
+- **Income tax (2026)**: 20% up to the rate band and 40% above. The band is €44,000 for a single person, €48,000 for a single parent,
+  and €53,000 for a married couple, with up to €35,000 more for a second income. Credits: personal €2,000 (single)
+  or €4,000 (married), employee €2,000, earned income €2,000, and an age credit of €245 (€490 married) from 65.
+- **USC**: 0.5% to €12,012; 2% to €28,700; 3% to €70,044; 8% above; not payable when total income is €13,000 or less.
+  State Pension and other social welfare income are exempt.
+- **PRSI**: Class A employee at an average of about 4.24% for 2026 (4.2% January to September and 4.35% from 1 October).
+  No employee PRSI at €352 a week or less, and none from age 66.
+- **DIRT** at 33% on deposit interest. **Capital gains tax** on most gains at 33% for disposals to 6 October 2026 and 31% from 7 October 2026, with a
+  €1,270 annual exemption. Glideworth has no disposal dates, so 2026 gains use the average by days (32.53%) and later
+  years 31%.
+- **Pension relief** is age-related: 15% of earnings up to age 29, 20% from 30, 25% from 40, 30% from 50, 35% from 55 and 40% from
+  60, on earnings capped at €115,000. Pension access is from 60. There is no USC or PRSI relief on contributions.
+
+## Worked example
+
+<Callout type="note" title="Illustrative">
+  Made-up figures, to show the arithmetic with the 2026 table. It assumes a single PAYE employee with no
+  pension contributions. It is not a forecast or advice.
+</Callout>
+
+A single employee earns €50,000 in 2026.
+
+- Income tax: 20% × €44,000 = €8,800; 40% × (€50,000 − €44,000 = €6,000) = €2,400. Total €11,200. Less credits of
+  €2,000 (personal) + €2,000 (employee) = €4,000. Income tax **€7,200**.
+- USC: 0.5% × €12,012 = €60.06; 2% × (€28,700 − €12,012 = €16,688) = €333.76; 3% × (€50,000 − €28,700 = €21,300) =
+  €639.00. Total **€1,032.82**.
+- PRSI: €50,000 × 4.2375% (the 2026 average of 4.2% and 4.35%) = **€2,118.75**.
+- Together: €7,200 + €1,032.82 + €2,118.75 = **€10,351.57**.
+
+## Historical data for simulations
+
+No Irish or euro-area market history is bundled. Irish households are tested against US history by default
+(S&P 500, 10-year Treasuries, T-bills and CPI-U, 1928 to 2025, in US dollars).
+
+## What to treat with care
+
+- Capital gains tax for 2026 is an average of the 33% and 31% rates (32.53%), because the model does not know when
+  in the year a gain is made. Development land (33%) and the other special CGT rates are not modelled.
+- PRSI uses an average of the two 2026 rates.
+- To model the 25% tax-free retirement lump sum, set a tax-free withdrawal share on the account.
+- No preset has been checked line by line against an official calculator for every case.
+
+## Official sources
+
+- [Revenue: tax relief charts (bands and credits)](https://www.revenue.ie/en/personal-tax-credits-reliefs-and-exemptions/tax-relief-charts/index.aspx)
+- [Revenue: USC standard rates and thresholds](https://www.revenue.ie/en/jobs-and-pensions/usc/standard-rates-thresholds.aspx) and
+  [USC](https://www.revenue.ie/en/jobs-and-pensions/usc/index.aspx)
+- [Department of Social Protection: PRSI contribution rates (January 2026)](https://assets.gov.ie/static/documents/cb168977/PRSI_C20260116_Contribution_Rates_and_User_Guide_-_SW_14_-_English_Version_-_January_2026_.pdf-web.pdf)
+- [Revenue: how to calculate CGT](https://www.revenue.ie/en/gains-gifts-and-inheritance/transfering-an-asset/how-to-calculate-cgt.aspx)
+- [Revenue: pensions manual, chapter 3](https://www.revenue.ie/en/tax-professionals/tdm/pensions/chapter-03.pdf) and
+  [tax relief for pension contributions](https://www.revenue.ie/en/jobs-and-pensions/pensions/tax-relief-for-pension-contributions.aspx)
+- [Revenue: DIRT rate](https://www.revenue.ie/en/additional-incomes/dirt/what-dirt-rate-is-applicable.aspx)
+
+<Callout type="note" title="Estimates, not advice">
+  Glideworth is planning software. Its tax figures help you compare choices under your own assumptions; they
+  are not a tax return and not tax advice.
+</Callout>

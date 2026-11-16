@@ -1,0 +1,162 @@
+/**
+ * Data hooks. The workspace (a GlideworthDocument) is loaded from the API; if the API is unreachable
+ * the app falls back to the bundled SYNTHETIC sample so the UI is always explorable.
+ *
+ * Part of the app shell, so it holds no runtime import of @glideworth/core, Zod or the API client: the
+ * client (with its schemas), the sample and the engine are loaded on first use (bundle splitting).
+ */
+import type { GlideworthDocument, Plan } from "@glideworth/core";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useUi } from "../stores/ui";
+import { runSimulation } from "../workers/sim-client";
+import { ApiRequestError, loadApi } from "./api-lazy";
+import {
+  type FormatOptions,
+  formatMoney,
+  formatNumber,
+  formatPercent,
+  formatSigned,
+} from "./format";
+
+export interface Workspace {
+  doc: GlideworthDocument;
+  source: "api" | "sample";
+  error?: string;
+  /** The API is reachable but holds no household yet: a brand-new install (onboarding). */
+  firstRun?: boolean;
+  /** HTTP status of the failure that forced the sample fallback (401 = sign-in needed). */
+  status?: number;
+}
+
+/**
+ * The server could not be reached (network error, proxy 502/503/504, or a restart) after the app
+ * had loaded real data. The query keeps showing that data instead of swapping in the sample.
+ */
+export class ServerUnreachableError extends Error {}
+
+/** A failure worth retrying: no response at all, or a 5xx / 429 from the server or the proxy. */
+export function isTransientFailure(e: unknown): boolean {
+  if (e instanceof ApiRequestError) return e.status >= 500 || e.status === 429;
+  return true;
+}
+
+const RECONNECT_MS = 5_000;
+
+export function useWorkspace() {
+  const qc = useQueryClient();
+  return useQuery({
+    queryKey: ["workspace"],
+    queryFn: async (): Promise<Workspace> => {
+      const sample = async () => (await import("@glideworth/core/samples")).createSampleDocument();
+      try {
+        const api = await loadApi();
+        const { items } = await api.listHouseholds();
+        const first = items[0];
+        if (!first)
+          return {
+            doc: await sample(),
+            source: "sample",
+            error: "No household in the database yet.",
+            firstRun: true,
+          };
+        return { doc: await api.getDocument(first.id), source: "api" };
+      } catch (e) {
+        // Once real data is on screen, a server blip (restart, flaky network) must never replace
+        // the user's household with the bundled sample: keep the last good copy, mark the query
+        // as failed and keep retrying until the server answers again.
+        const prev = qc.getQueryData<Workspace>(["workspace"]);
+        if (prev?.source === "api" && isTransientFailure(e))
+          throw new ServerUnreachableError(e instanceof Error ? e.message : String(e));
+        // The browser session ended (signed out elsewhere, expired): show the sign-in screen
+        // rather than swapping in the sample household.
+        if (e instanceof ApiRequestError && e.status === 401 && qc.getQueryData(["session"])) {
+          qc.setQueryData(["session"], { kind: "login" });
+          if (prev?.source === "api") throw e;
+        }
+        return {
+          doc: await sample(),
+          source: "sample",
+          error: e instanceof Error ? e.message : String(e),
+          status: e instanceof ApiRequestError ? e.status : undefined,
+        };
+      }
+    },
+    staleTime: 30_000,
+    retry: (count, e) => e instanceof ServerUnreachableError && count < 2,
+    // Reconnect on its own: poll while the server is unreachable (real data kept on screen) or
+    // while we are showing the offline sample because the server was down at start-up.
+    refetchInterval: (q) => {
+      const d = q.state.data;
+      if (q.state.status === "error") return RECONNECT_MS;
+      if (d?.source === "sample" && !d.firstRun && (d.status === undefined || d.status >= 500))
+        return RECONNECT_MS;
+      return false;
+    },
+  });
+}
+
+/** True while real data is on screen but the server cannot be reached. */
+export function useServerUnreachable(): boolean {
+  const { data, isError, error } = useWorkspace();
+  return data?.source === "api" && isError && error instanceof ServerUnreachableError;
+}
+
+export function useActivePlan(): {
+  plan: Plan | undefined;
+  plans: Plan[];
+  workspace: Workspace | undefined;
+} {
+  const { data } = useWorkspace();
+  const activeId = useUi((s) => s.activePlanId);
+  const plans = data?.doc.plans ?? [];
+  const defaultId = data?.doc.settings.defaultPlanId;
+  const plan =
+    plans.find((p) => p.id === activeId) ??
+    plans.find((p) => p.id === defaultId) ??
+    plans.find((p) => p.isMain) ??
+    plans[0];
+  return { plan, plans, workspace: data };
+}
+
+export function useProjection(planId: string | undefined) {
+  const { data } = useWorkspace();
+  const plan = data?.doc.plans.find((p) => p.id === planId);
+  return useQuery({
+    queryKey: ["projection", data?.source, planId, plan?.version, plan?.updatedAt],
+    enabled: !!data && !!plan,
+    queryFn: async () => {
+      const { buildSimulationInput } = await import("@glideworth/core");
+      return runSimulation(buildSimulationInput(data!.doc, planId!, { trace: "summary" }));
+    },
+    staleTime: Number.POSITIVE_INFINITY,
+    retry: false,
+  });
+}
+
+export function useFormat() {
+  const { data } = useWorkspace();
+  const s = data?.doc.settings;
+  const opts: FormatOptions = {
+    locale: s?.locale ?? data?.doc.household.locale ?? navigator.language,
+    currency: s?.displayCurrency ?? data?.doc.household.currency ?? "USD",
+  };
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- opts is derived from locale + currency only
+  return useMemo(() => makeFormatter(opts), [opts.locale, opts.currency]);
+}
+
+/** Formatting helpers bound to one locale and currency (see `useFormat`). */
+export function makeFormatter(opts: FormatOptions) {
+  return {
+    ...opts,
+    money: (v: number, compact = false) => formatMoney(v, { ...opts, compact }),
+    percent: (v: number, d = 1) => formatPercent(v, opts.locale, d),
+    /** An amount in another currency (original-currency figures of foreign holdings). */
+    moneyIn: (v: number, currency: string, compact = false) =>
+      formatMoney(v, { locale: opts.locale, currency, compact }),
+    number: (v: number, d = 0) => formatNumber(v, opts.locale, d),
+    /** "+£1,200" / "−£300", or "£0" for nothing. */
+    signed: (v: number, compact = false) =>
+      formatSigned(v, (a) => formatMoney(a, { ...opts, compact }), formatMoney(0, opts)),
+  };
+}

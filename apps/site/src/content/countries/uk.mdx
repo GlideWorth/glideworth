@@ -1,0 +1,137 @@
+---
+title: Retirement planning in the United Kingdom
+description: "How Glideworth plans UK retirement: income tax, National Insurance, pensions, ISAs, State Pension and inheritance tax by tax year, and what it leaves out."
+ogTitle: Retirement planning in the UK
+countryCode: GB
+countryName: United Kingdom
+taxYears:
+  - 2025/26
+  - 2026/27
+  - Announced changes for 2027/28 and 2029/30
+modelled:
+  - Income tax at the rest-of-UK and Scottish rates, with the personal allowance taper
+  - Savings starting rate and personal savings allowance; dividend allowance and rates; separate property income rates from April 2027
+  - Capital gains tax (one basic and one higher rate); a main home is exempt
+  - National Insurance, Class 1 employee and Class 4, none above State Pension age
+  - Pension tax relief (net pay, relief at source, salary sacrifice), the annual allowance with taper and the money purchase allowance, and the lump sum allowance on tax-free cash
+  - ISA, Lifetime ISA, SIPP, workplace pension and general investment account, with ISA limits and the announced cash ISA limit
+  - The new State Pension, with State Pension age by birth month, deferral and a triple-lock setting
+  - Marriage allowance, the High Income Child Benefit Charge, and student and postgraduate loan repayments
+  - Inheritance tax as an estimate, with nil-rate and residence bands and pensions from April 2027
+notModelled:
+  - Carry-forward of unused pension annual allowance from the three previous tax years, which UK law allows and this model does not apply
+  - Class 2, voluntary Class 3 and employer National Insurance
+  - Business Asset Disposal Relief, investors' relief and different CGT rates by asset
+  - Means-tested benefits such as Universal Credit and Pension Credit
+  - Blind person's allowance, the married couple's allowance, trading and property allowances, Gift Aid band extension, and the remittance basis
+  - Gift taper relief and business or agricultural relief for inheritance tax
+  - Loss harvesting; gains are realised in proportion to cost basis and treated as long-term
+---
+
+import { facts } from '../../lib/facts';
+
+Glideworth estimates UK tax for each person in the household, every year of the plan, under independent
+taxation: each person is taxed alone and jointly owned income is split equally. The United Kingdom is one of
+the two most detailed models Glideworth has, with {facts.simplificationCount('uk')} written simplifications shown beside your tax
+results.
+
+Plans can follow calendar years or the April tax year. A calendar-year plan maps year Y onto tax year Y/Y+1;
+choose the April alignment for exact UK years. Years after the last table carry the latest rates forward, with
+thresholds frozen to April 2031 as legislated and indexed after that, unless you choose another threshold
+policy.
+
+## Accounts and wrappers
+
+| Account | What Glideworth does |
+|---|---|
+| ISA | Overall allowance of £20,000 a year (2026/27). Growth and withdrawals are tax-free. From 6 April 2027 a cash ISA limit of £12,000 applies to savers under 65 inside the overall allowance, as announced in Budget 2025; you can switch it off or change it. |
+| Lifetime ISA | £4,000 a year, for people aged 18 to 49; access from 60. |
+| SIPP, workplace pension | Contributions relievable up to the higher of your earnings and £3,600 gross, capped by the annual allowance of £60,000 (£10,000 money purchase allowance once you have flexibly accessed a pension). The allowance tapers above £260,000 adjusted income, to a minimum of £10,000. Relief at source, net pay and salary sacrifice are all handled. Tax-free cash is limited by the lump sum allowance of £268,275. |
+| General investment account | Taxed on dividends, interest and gains under the rules above. |
+
+The normal minimum pension age is 55, rising to 57 from 6 April 2028. Salary-sacrifice National Insurance relief
+is capped at £2,000 a year from April 2029, as announced.
+
+## State Pension
+
+The new State Pension is £241.30 a week in 2026/27 (£230.25 in 2025/26), about £12,548 a year. State Pension age
+comes from your birth month: 66 for people born before April 1960, rising month by month to 67 for those born
+between April 1960 and March 1961, 67 for April 1961 to March 1977, rising month by month to 68 for April 1977 to
+March 1978, and 68 after that.
+Deferring past State Pension age adds 1% for every nine weeks deferred. Projections apply a triple-lock setting
+to uprating (an earnings premium of 1% and a floor of 2.5%) as plan defaults. National Insurance stops at State
+Pension age.
+
+## Key figures for 2026/27
+
+| | 2026/27 |
+|---|---|
+| Personal allowance | £12,570, withdrawn at £1 for every £2 of adjusted net income above £100,000 |
+| Basic-rate band | £37,700 at 20%; higher rate 40% to £125,140; additional rate 45% |
+| Scottish rates | 19% starter, 20% basic, 21% intermediate, 42% higher, 45% advanced, 48% top |
+| Savings | £5,000 starting rate at 0%; personal savings allowance £1,000 basic, £500 higher, nil additional; rates 20%, 40%, 45% (22%, 42%, 47% from 2027/28) |
+| Dividends | £500 allowance; 10.75%, 35.75%, 39.35% (8.75%, 33.75%, 39.35% in 2025/26) |
+| Capital gains tax | £3,000 annual exempt amount; 18% basic rate, 24% higher rate |
+| National Insurance, Class 1 employee | 8% between £12,570 and £50,270, 2% above |
+| National Insurance, Class 4 | 6% between £12,570 and £50,270, 2% above |
+| Marriage allowance | £1,260 |
+| High Income Child Benefit Charge | Begins at £60,000, 1% of the benefit for each £200 above |
+| Student loans | 9% above £26,900 (Plan 1), £29,385 (Plan 2, held to 2029/30), £33,795 (Plan 4), £25,000 (Plan 5); postgraduate 6% above £21,000 |
+| Inheritance tax | 40% above a £325,000 nil-rate band, with a £175,000 residence nil-rate band that tapers above £2m of estate; 36% where enough is left to charity; unused pension funds count in the estate from 6 April 2027 |
+
+## Worked example
+
+<Callout type="note" title="Illustrative">
+  Made-up figures, to show the arithmetic. This is not a forecast or advice.
+</Callout>
+
+A person living in England earns £50,000 in 2026/27, with no pension contributions.
+
+- Income tax: taxable income is £50,000 − £12,570 = £37,430, all inside the £37,700 basic-rate band, so tax is
+  £37,430 × 20% = **£7,486.00**.
+- National Insurance: £50,000 is below the £50,270 upper limit, so everything above £12,570 is charged at 8%:
+  £37,430 × 8% = **£2,994.40**.
+- Total: £7,486.00 + £2,994.40 = **£10,480.40**, leaving £39,519.60 before any other deductions.
+
+## Historical data for simulations
+
+Monte Carlo and historical runs need market history. Glideworth's UK series covers 1983 to 2025, in sterling: UK
+inflation, Bank Rate and 10-year gilts from the Office for National Statistics and the Bank of England, with US shares
+converted to sterling, because no openly licensed UK share history exists. It is only 43 years long, all after 1982,
+so it has no 1970s inflation and is more optimistic than long UK history. New UK plans therefore default to US history
+from 1928 to 2025, in real terms, which is longer; you can choose the UK series instead. Datasets are not updated
+automatically.
+
+## What to treat with care
+
+- Tables are for 2025/26 and 2026/27, with the announced changes for 2027/28 and 2029/30. Later years carry rates
+  forward, which is wrong whenever the rules change.
+- The model applies the pension annual allowance with its taper, but it does not carry forward unused allowance
+  from the three previous tax years, which UK law allows. A large contribution can therefore show an allowance
+  charge that carry-forward would remove. "Scheme pays" is not modelled either.
+- National Insurance is assessed on the year's earnings, not per pay period.
+- Student loan interest is ignored, and a write-off applies only when you enter its year.
+- The High Income Child Benefit Charge applies only if the plan says Child Benefit is claimed.
+- Welsh rates currently equal the rest of the UK. Scottish rates apply to non-savings income; savings,
+  dividends and gains use UK rates, as the law does.
+- Inheritance tax is an estimate on the Estate page.
+- Tax figures for someone who has left the UK, including the personal allowance for non-residents and the frozen
+  State Pension, come from the [moving-country model](/planning/moving-country/).
+
+## Official sources
+
+The 2026/27 tables cite these government pages:
+
+- [Budget 2025: overview of tax legislation and rates, Annex A](https://www.gov.uk/government/publications/budget-2025-overview-of-tax-legislation-and-rates-ootlar/annex-a-rates-and-allowances)
+- [Rates and thresholds for employers 2026 to 2027](https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027)
+- [New State Pension: what you'll get](https://www.gov.uk/new-state-pension/what-youll-get)
+- [Scottish income tax](https://www.gov.uk/scottish-income-tax) and the
+  [Scottish Rate Resolution 2026 to 2027](https://www.gov.scot/publications/scottish-rate-resolution-2026-2027-draft-motion-explanatory-note/pages/2/)
+- [Budget 2025 document](https://www.gov.uk/government/publications/budget-2025-document/budget-2025-html)
+- [High Income Child Benefit Charge](https://www.gov.uk/guidance/high-income-child-benefit-tax-charge)
+- [Tapered annual allowance](https://www.gov.uk/guidance/pension-schemes-work-out-your-tapered-annual-allowance)
+
+<Callout type="note" title="Estimates, not advice">
+  Glideworth is planning software. Its tax figures help you compare choices under your own assumptions; they
+  are not a tax return and not tax advice.
+</Callout>

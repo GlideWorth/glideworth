@@ -1,0 +1,100 @@
+---
+title: "Barista FIRE: how part-time income changes the maths"
+description: "Barista FIRE funds only the gap between spending and part-time pay. A worked example shows the portfolio it needs, the sequence-risk effect, and the catches."
+pubDate: 2026-11-16
+author: [glideworth-team]
+tags: [FIRE, Retirement, Methodology]
+draft: false
+---
+
+import Callout from '../../components/Callout.astro';
+
+**Barista FIRE** is early retirement with a bridge: you leave a full-time career but keep some paid work, and the portfolio only has to cover the gap between what you spend and what the work pays. The required portfolio is therefore smaller than for full retirement. How much smaller depends mostly on one thing the slogan hides, which is how long the part-time income lasts. If it lasts for ever, the saving is large. If it stops at 60, the saving is much smaller. The worked example below puts numbers on both.
+
+<Callout type="note" title="Education, not advice">
+  This article describes how a calculation behaves and, in general terms, how health cover and pensions differ by
+  country. It is not advice on work, health insurance or pensions. See the [not-advice notice](/legal/disclaimer/).
+</Callout>
+
+## The shortcut and why it overstates the saving
+
+The usual shortcut applies the [25× rule](/blog/what-is-your-fire-number/) to the gap:
+
+> Barista number = (annual spending − part-time income) × 25
+
+With spending of 40,000 and part-time income of 15,000 after tax, the gap is 25,000 and the number is 25 × 25,000 = **625,000**. Full retirement on the same spending needs 1,000,000. The shortcut suggests a 37.5% saving.
+
+That is correct only if the 15,000 continues for the whole retirement, because the 25× rule assumes a gap that lasts about 30 years. Most people doing part-time work in their forties do not intend to do it at 80. Once the income has an end date, a different calculation is needed.
+
+## A worked example with an end date
+
+The inputs, all in today's money:
+
+| Input | Value |
+| --- | --- |
+| Yearly spending | 40,000 |
+| Stops full-time work at | 45 |
+| Part-time income, after tax | 15,000 a year from 45 to 59 (15 years), then none |
+| Plan runs to | 90, so 45 years of spending |
+| Real return | 3% a year, constant, compounded annually |
+| Withdrawals | taken at the start of each year |
+
+The portfolio that exactly funds the plan is its present value: the sum of each year's withdrawal divided by 1.03 raised to the number of years until it is taken.
+
+- **Full retirement at 45:** 40,000 a year for 45 years has a present value of **1,010,171**.
+- **Barista, income stopping at 60:** 25,000 a year for 15 years, then 40,000 a year for 30 years, has a present value of **825,730**, which is 184,441 less, or 18.3% less.
+
+So the same 15,000 of part-time income that the shortcut said was worth 375,000 is worth 184,441 in this calculation, because it only exists for a third of the plan. If the income instead lasts until 65 (20 years), the figure is 780,314, a saving of 22.8%. The [Barista FIRE calculator](/tools/barista-fire-calculator/) runs this calculation with your own ages and amounts.
+
+The table varies the part-time income, keeping the same end date at 60:
+
+| Part-time income (15 years) | Portfolio that funds the plan | Saving against full retirement |
+| ---: | ---: | ---: |
+| 0 | 1,010,171 | 0% |
+| 10,000 | 887,210 | 12.2% |
+| 15,000 | 825,730 | 18.3% |
+| 20,000 | 764,249 | 24.3% |
+| 30,000 | 641,289 | 36.5% |
+
+This is a present-value calculation with a constant return. It shows how the pieces trade off. It is not a safe-withdrawal calculation, so it does not include a margin for bad markets; the sections below give the effect of one. You can reproduce each row with `Σ w ÷ 1.03^t`, or with the annuity factor `(1 − 1.03^−n) ÷ 0.03 × 1.03` for `n` withdrawals taken at the start of each year.
+
+## The effect on sequence risk
+
+Sequence-of-returns risk is the danger that poor returns come early, when withdrawals are being taken. Smaller early withdrawals soften it, because less is sold at low prices. A bridge income does exactly that during the years it lasts.
+
+To see the size of the effect, take a 1,000,000 portfolio and 15 years of real returns: a fall of 25% in year one, 10% in year two and 5% in year three, then 7% in each of the next 12 years. Call that the bad-first sequence. Reverse the order and call it the good-first sequence; the two have the same average return. Withdrawals are taken at the start of each year.
+
+| Yearly withdrawal | Balance after 15 years, bad-first | Balance after 15 years, good-first |
+| ---: | ---: | ---: |
+| 40,000 (no part-time income) | 458,215 | 870,610 |
+| 25,000 (part-time income of 15,000) | 827,966 | 1,085,713 |
+
+With full withdrawals, the bad-first ordering leaves 46% of the starting portfolio at the end of the 15 years, against 87% for the good-first ordering. With the smaller withdrawals the figures are 83% and 109%. The part-time income did not change the market, but in the bad-first case it left the portfolio 369,751 higher after 15 years.
+
+Two cautions apply. First, part-time income is itself a risk: work can end through redundancy, illness or a recession, and those events tend to arrive together with falling markets. Second, the example covers only the first 15 years. After the part-time income stops, the full 40,000 is drawn from whatever is left, and a portfolio that took a heavy early hit has less to draw on. The [article on how long money lasts](/blog/how-long-will-my-money-last/) and the [one on Monte Carlo results](/blog/monte-carlo-retirement-simulations/) show how to test that.
+
+## Health cover and pensions: what changes with the job
+
+For many people the largest practical change in a part-time bridge is not the money but what used to come with the full-time job. The details are country-specific and change often, so this section describes the structure and points to official pages. It does not say what to choose.
+
+**United States.** Health cover is often tied to an employer. The official site healthcare.gov says that if you lose job-based coverage you can enrol in a Marketplace plan, which you need to apply for within 60 days of losing it, or sign up for COBRA to stay on your job-based plan. It says COBRA coverage typically lasts about 18 months and that you usually pay the full premium plus a small administrative fee ([healthcare.gov](https://www.healthcare.gov/have-job-based-coverage/if-you-lose-job-based-coverage/)). Medicare is generally for people aged 65 or older who meet citizenship or residency requirements ([medicare.gov](https://www.medicare.gov/basics/get-started-with-medicare)). A bridge that spans the years before 65 has to price cover for those years.
+
+**United Kingdom.** Pension saving through work depends on earnings. On gov.uk, automatic enrolment into a workplace pension applies to workers aged between 22 and State Pension age who earn at least a stated yearly amount ([workplace pensions on gov.uk](https://www.gov.uk/workplace-pensions/joining-a-workplace-pension)). Part-time pay can fall below that line. The State Pension also depends on a record: the full rate of the new State Pension needs 35 qualifying years ([gov.uk](https://www.gov.uk/new-state-pension/what-youll-get)). Which years count depends on your own record.
+
+**Canada.** Public health insurance is run by the provinces and territories. Canada.ca says each province and territory decides who qualifies as a resident for coverage and covers medically necessary hospital and physician services, while extras such as home care, vision, dental care and prescription drugs are covered for some groups and paid for personally or through private insurance by others ([Canada.ca](https://www.canada.ca/en/health-canada/services/canada-health-care-system.html)).
+
+Other countries differ again. The questions worth listing are the same everywhere: what does the full-time job provide that the part-time job will not (health cover, employer pension contributions, a state pension record), what does replacing it cost, and for how long?
+
+## Tax and other details the simple version skips
+
+Part-time earnings are taxed, and so are withdrawals. The 15,000 in the example was an after-tax figure; a gross figure would need tax taken off first. Earning income can also change which tax bands or benefits apply to other income. The shape of the answer depends on the country and the account types the portfolio is held in, which is why a spreadsheet with two lines for income and spending tends to be a first pass.
+
+## How a projection handles a bridge
+
+In a year-by-year projection the part-time income is an income stream with a start date and an end date, and the engine works out each year's tax and the withdrawal needed to fill the remaining gap. Glideworth lets you enter exactly that, run the plan with Monte Carlo, and keep the part-time version as a [branch](/features/branches-and-change-sets/) next to a plan with no part-time income, so the two can be compared directly. You can also set whether other income reduces withdrawals or raises spending, and the tax figures are estimates. See the [features overview](/features/plan-modelling/) for the modelling it supports. The hosted service is about to open; the free [Barista FIRE calculator](/tools/barista-fire-calculator/) handles the simple version.
+
+<FAQ items={[
+  { q: 'Is Barista FIRE the same as partial retirement?', a: '<p>In practice, yes: some work, some portfolio income. The name is mostly a label for the plan where the paid work is chosen for flexibility or benefits rather than for pay.</p>' },
+  { q: 'How much part-time income is needed?', a: '<p>There is no fixed amount. In the table above, 10,000 a year for 15 years reduced the required portfolio by 12.2% and 30,000 reduced it by 36.5%, with the same 40,000 of spending. The value depends on how long the income lasts as much as on how large it is.</p>' },
+  { q: 'Does part-time income remove sequence risk?', a: '<p>No. It reduces the withdrawals taken in the early years, which lessens the damage from a bad start, but the income can stop and the full spending still has to be funded afterwards.</p>' },
+]} />

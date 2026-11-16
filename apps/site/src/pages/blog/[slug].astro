@@ -1,0 +1,98 @@
+---
+import { type CollectionEntry, getEntries, render } from 'astro:content';
+import Callout from '../../components/Callout.astro';
+import { mdxComponents } from '../../components/mdx';
+import { absoluteUrl } from '../../config/site';
+import EntryLayout from '../../layouts/EntryLayout.astro';
+import { formatDate, isoDate, publishedPosts, tagSlug } from '../../lib/content';
+import { article } from '../../lib/jsonld';
+import { ogImagePath } from '../../lib/og';
+
+export async function getStaticPaths() {
+  return (await publishedPosts()).map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+interface Props {
+  entry: CollectionEntry<'blog'>;
+}
+const { entry } = Astro.props;
+const { Content, headings } = await render(entry);
+const authors = await getEntries(entry.data.author);
+const path = `/blog/${entry.id}/`;
+const d = entry.data;
+---
+
+<EntryLayout
+  title={d.title}
+  description={d.description}
+  noindex={d.noindex || d.draft}
+  type="article"
+  published={d.pubDate}
+  modified={d.updatedDate}
+  eyebrow="Blog"
+  lede={d.description}
+  headings={headings}
+  crumbs={[
+    { label: 'Blog', href: '/blog/' },
+    { label: d.title, href: path },
+  ]}
+  jsonLd={[
+    article({
+      title: d.title,
+      description: d.description,
+      path,
+      published: d.pubDate,
+      modified: d.updatedDate,
+      authors: authors.map((a) => ({ name: a.data.name, url: absoluteUrl(`/authors/${a.id}/`), kind: a.data.kind })),
+      image: absoluteUrl(ogImagePath(path)),
+      tags: d.tags,
+    }),
+  ]}
+>
+  <Fragment slot="before">
+    <p class="byline">
+      By {
+        authors.map((a, i) => (
+          <>
+            {i > 0 && ', '}
+            <a href={`/authors/${a.id}/`}>{a.data.name}</a>
+          </>
+        ))
+      }
+      · <time datetime={isoDate(d.pubDate)}>{formatDate(d.pubDate)}</time>
+      {d.updatedDate && <span> · updated <time datetime={isoDate(d.updatedDate)}>{formatDate(d.updatedDate)}</time></span>}
+    </p>
+    {d.draft && <Callout type="draft" title="Draft">This post is a draft and only appears in development.</Callout>}
+  </Fragment>
+  <Content components={mdxComponents} />
+  <Fragment slot="after">
+    {
+      d.tags.length > 0 && (
+        <p class="tags">
+          Filed under{' '}
+          {d.tags.map((t, i) => (
+            <>
+              {i > 0 && ', '}
+              <a href={`/blog/tags/${tagSlug(t)}/`}>{t}</a>
+            </>
+          ))}
+        </p>
+      )
+    }
+  </Fragment>
+</EntryLayout>
+
+<style>
+  .byline {
+    color: var(--ink-3);
+    font-size: var(--text-sm);
+  }
+  .byline a {
+    color: var(--ink-2);
+  }
+  .tags {
+    padding-top: var(--space-m);
+    border-top: 1px solid var(--line);
+    color: var(--ink-3);
+    font-size: var(--text-sm);
+  }
+</style>

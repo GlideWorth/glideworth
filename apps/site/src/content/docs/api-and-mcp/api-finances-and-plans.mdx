@@ -1,0 +1,81 @@
+---
+title: API - households, finances and plans
+description: Routes for households and people, accounts, real assets and debts, plan collections and settings, version history and undo, and branches.
+section: API and MCP
+order: 13
+lastChecked: 2026-11-16
+---
+
+All paths are under `/api/v1`. Read scope covers `GET`; writes need `write` scope and the editor or owner role. For
+conventions see [API overview](/docs/api-and-mcp/api-overview/).
+
+## Households and people
+
+| Route | Purpose |
+| --- | --- |
+| `GET/POST /households` | List or create. |
+| `GET/PUT/PATCH/DELETE /households/{id}` | One household. `PUT` also accepts the whole current-finances body. |
+| `/households/{id}/people[/{personId}]`, `/households/{id}/dependents[/{id}]` | CRUD. Adding a second person switches the household to couple mode. |
+| `GET/PUT/PATCH /households/{id}/people/{personId}/cross-border` | Citizenships, US green card, residence history and state-pension records, checked as a unit. |
+| `PUT /households/{id}/reorder/{collection}` | Display order. `collection` is `accounts`, `real-assets`, `debts` or `plans`. |
+
+## Current finances
+
+| Route | Purpose |
+| --- | --- |
+| `/households/{id}/accounts`, `/real-assets`, `/debts` | List, create, get, `PUT`, `PATCH`, `DELETE` by id. Delete is `409 IN_USE` while a plan references the item, unless `force=true`; prefer `archived: true`. |
+| `PUT /households/{id}/current-finances` | Replace the people, accounts, real assets and debts in one validated, all-or-nothing write. A stale `If-Match` changes nothing. |
+| `POST /households/{id}/balances` | Update many balances atomically (accounts, real-asset values and loan balances, debts). Unknown ids change nothing and return `404`. |
+| `GET/POST/PUT /households/{id}/fx-rates`, `DELETE /households/{id}/fx-rates/{FROM-TO}` | Exchange-rate pairs. |
+| `/households/{id}/snapshots` and `.../snapshots/record`, `.../snapshots/bulk` | Progress snapshots. |
+
+A balance write that moves a balance creates or updates today's automatic snapshot, at most one a day, when
+`settings.autoProgressSnapshots` is true (the default).
+
+## Plans
+
+| Route | Purpose |
+| --- | --- |
+| `GET/POST /plans` | List or create. |
+| `GET/PUT/PATCH/DELETE /plans/{id}` | One plan. `PUT` requires `If-Match`. `PATCH` takes JSON Patch with id-addressed items. |
+| `POST /plans/{id}/duplicate`, `/archive`, `/unarchive`, `/set-main` | Plan actions. |
+| `/plans/{id}/income`, `/expenses`, `/milestones`, `/flows`, `/planned-accounts`, `/planned-real-assets`, `/residency` | Collections: list, add, get, `PUT`, `PATCH`, `DELETE` by id. |
+| `PUT /plans/{id}/reorder/{collection}` | Reorder. For flows, the order is the funding priority. |
+| `/plans/{id}/assumptions`, `/tax-settings`, `/withdrawal-strategy`, `/drawdown`, `/flex-spending`, `/risk-guardrails`, `/tax-strategy`, `/monte-carlo-settings`, `/leftover` | Singletons with `GET`, `PUT`, `PATCH`, `DELETE`. `DELETE` removes optional ones and resets the others to defaults. |
+
+## History and undo
+
+| Route | Purpose |
+| --- | --- |
+| `GET /plans/{id}/versions` | Every version with its actor and message. |
+| `GET /plans/{id}/versions/{n}` | One version. |
+| `GET /plans/{id}/versions/{n}/diff?against=current` | A readable diff. |
+| `POST /plans/{id}/versions/{n}/restore` | Writes the old content as a **new** version. History is append-only. |
+
+## Branches
+
+| Route | Purpose |
+| --- | --- |
+| `POST /plans/{id}/branches` | Create a branch, optionally with an initial `patch`. |
+| `GET /plans/{id}/branches` | List branches. |
+| `GET /plans/{id}/diff` | A branch against its parent, with outcomes. |
+| `POST /plans/{id}/merge` | Merge a branch back. |
+
+A branch stores only its differences from the parent, follows the parent (or pins its version), is rebuilt whenever the
+parent changes, and can be merged back or promoted.
+
+## Scenarios
+
+| Route | Purpose |
+| --- | --- |
+| `GET /scenarios/templates` | Template ids, titles and parameters with JSON Schema. |
+| `POST /plans/{id}/scenarios/{templateId}/preview` | What the template would do. Stores nothing. |
+| `POST /plans/{id}/scenarios/{templateId}/branch` | Store it as a branch (write scope). |
+| `GET /plans/{id}/scenarios/survivor?ages=70,80,90&evaluate=true` | Survivor scenarios (couples only). |
+
+Templates: `market-crash`, `job-loss`, `career-break`, `early-retirement`, `downsizing`, `child`, `inheritance`,
+`long-term-care`, `survivor`, `relocation`. An unknown template is `404`; bad parameters are `400`.
+
+## What this does not do
+
+The API never reads or writes a file path from a request. There is no `/progress` route: use the `snapshots` routes.

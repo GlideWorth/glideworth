@@ -1,0 +1,38 @@
+---
+title: Import bank files (OFX, QFX, QIF)
+description: Import balances and spending from bank and card statements in OFX, QFX or QIF format, with account numbers masked and a dry run before anything is written.
+section: Importing
+order: 3
+lastChecked: 2026-11-16
+---
+
+Bank and card statement files give balances and transactions. Glideworth reconciles balances against your current
+finances and summarises spending into annual expense events.
+
+**Before you start:** a statement file from your bank in OFX, QFX (an OFX variant) or QIF format.
+
+## Import it
+
+<Steps>
+1. Open **Import &amp; export** and choose the **Bank files** tab.
+2. Drop the file. The format is detected, or you can choose it. QIF dates can need a date format.
+3. Review the accounts found (account numbers are masked to their last four digits), the balance reconciliation, the
+   annual spending summary and the issues.
+4. Apply. Nothing is written until you do.
+</Steps>
+
+## How it works
+
+- Balances are matched to your accounts by name, or by a mapping you give. The importer can create missing accounts and
+  debts. A foreign-currency account keeps its currency, so add an exchange rate.
+- Spending is summarised into annual expense events on a plan. Transfers, income and card payments are excluded.
+- Blocking errors change nothing.
+
+Over the API, `POST /api/v1/households/{id}/import/bank-file` takes `text` and optional `format` (`ofx`, `qif` or
+`auto`), `dateFormat`, `accountName`, `balances`, `planId`, `annualise`, `categoryMap`, `excludeCategories` and `dryRun`.
+`dryRun` defaults to `true`. `text` can be up to 2 MB (2,000,000 characters); for a larger file, export a shorter date
+range. See [Import, export and reports](/docs/api-and-mcp/api-import-export-and-reports/).
+
+## What this does not do
+
+It does not connect to your bank, and it does not keep a transaction ledger. It reads a file you downloaded.

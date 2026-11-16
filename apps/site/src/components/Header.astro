@@ -1,0 +1,287 @@
+---
+/**
+ * Site header: logo, primary navigation (src/config/nav.ts), theme switch, sign-in and trial links.
+ * Below 60rem the navigation folds into a menu button; the panel closes on Escape, on a link click,
+ * and when the viewport grows past the breakpoint.
+ */
+import { primaryNav } from '../config/nav';
+import { site, trialCta } from '../config/site';
+import { externalLinkProps } from '../lib/links';
+import Button from './Button.astro';
+import Logo from './Logo.astro';
+import ThemeToggle from './ThemeToggle.astro';
+
+const path = Astro.url.pathname;
+const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
+---
+
+<header class="site-header" data-site-header>
+  <div class="container header-inner">
+    <a href="/" class="brand" aria-label="Glideworth, home">
+      <Logo />
+    </a>
+
+    <nav class="nav" aria-label="Main">
+      <button
+        type="button"
+        class="menu-button"
+        aria-expanded="false"
+        aria-controls="site-menu"
+        data-menu-button
+      >
+        <span class="menu-icon" aria-hidden="true"><span></span><span></span></span>
+        <span class="menu-label">Menu</span>
+      </button>
+
+      <div id="site-menu" class="menu" data-menu>
+        <ul class="nav-list" role="list">
+          {
+            primaryNav.map((l) => (
+              <li>
+                <a href={l.href} aria-current={isCurrent(l.href) ? 'page' : undefined}>
+                  {l.label}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+        <div class="menu-actions">
+          <a class="signin" href={site.appUrl} {...externalLinkProps(site.appUrl)}>Sign in</a>
+          <Button href={trialCta.href} size="md">{trialCta.label}</Button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="header-tools">
+      <ThemeToggle />
+    </div>
+  </div>
+</header>
+
+<script>
+  const button = document.querySelector<HTMLButtonElement>('[data-menu-button]');
+  const menu = document.querySelector<HTMLElement>('[data-menu]');
+  const wide = window.matchMedia('(min-width: 60rem)');
+
+  function setOpen(open: boolean) {
+    if (!button || !menu) return;
+    button.setAttribute('aria-expanded', String(open));
+    menu.dataset.open = String(open);
+    document.documentElement.classList.toggle('menu-open', open);
+  }
+
+  if (button && menu) {
+    button.addEventListener('click', () => setOpen(button.getAttribute('aria-expanded') !== 'true'));
+    menu.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('a')) setOpen(false);
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && button.getAttribute('aria-expanded') === 'true') {
+        setOpen(false);
+        button.focus();
+      }
+    });
+    wide.addEventListener('change', () => setOpen(false));
+  }
+</script>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: color-mix(in oklab, var(--bg) 86%, transparent);
+    backdrop-filter: saturate(1.2) blur(10px);
+    -webkit-backdrop-filter: saturate(1.2) blur(10px);
+    border-bottom: 1px solid color-mix(in oklab, var(--line) 70%, transparent);
+  }
+  .header-inner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+    min-height: var(--header-h);
+  }
+  .brand {
+    display: inline-flex;
+    text-decoration: none;
+    color: var(--ink);
+    border-radius: 8px;
+    margin-right: auto;
+  }
+  .nav {
+    order: 3;
+  }
+  .header-tools {
+    order: 2;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Mobile first: menu button and a full-width panel */
+  .menu-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.5rem;
+    padding: 0.4rem 0.8rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+  .menu-icon {
+    display: grid;
+    gap: 4px;
+    width: 14px;
+  }
+  .menu-icon span {
+    display: block;
+    height: 1.5px;
+    background: currentColor;
+    border-radius: 1px;
+    transition: transform 180ms var(--ease);
+  }
+  [aria-expanded='true'] .menu-icon span:first-child {
+    transform: translateY(2.75px) rotate(45deg);
+  }
+  [aria-expanded='true'] .menu-icon span:last-child {
+    transform: translateY(-2.75px) rotate(-45deg);
+  }
+  .menu {
+    display: none;
+    position: fixed;
+    inset: var(--header-h) 0 auto 0;
+    max-height: calc(100dvh - var(--header-h));
+    overflow-y: auto;
+    padding: var(--space-s) var(--gutter) var(--space-l);
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    box-shadow: var(--shadow-2);
+  }
+  .menu[data-open='true'] {
+    display: grid;
+    gap: var(--space-m);
+  }
+  .nav-list {
+    display: grid;
+  }
+  .nav-list a {
+    display: block;
+    padding: 0.8rem 0;
+    border-bottom: 1px solid var(--line);
+    color: var(--ink);
+    font-size: var(--text-lg);
+    font-weight: 560;
+    text-decoration: none;
+  }
+  .nav-list a[aria-current='page'] {
+    color: var(--accent-text);
+  }
+  .menu-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-s);
+  }
+  .signin {
+    color: var(--ink);
+    font-weight: 600;
+    font-size: var(--text-sm);
+    text-decoration: none;
+  }
+  .signin:hover {
+    text-decoration: underline;
+  }
+
+  /* Without JavaScript the small-screen menu cannot open, so its links show in a row instead. */
+  @media (max-width: 59.99rem) {
+    :global(:root:not(.js)) .menu-button {
+      display: none;
+    }
+    :global(:root:not(.js)) .nav {
+      order: 5;
+      flex-basis: 100%;
+    }
+    :global(:root:not(.js)) .header-inner {
+      flex-wrap: wrap;
+      padding-block: 0.5rem;
+    }
+    :global(:root:not(.js)) .menu {
+      display: block;
+      position: static;
+      padding: 0;
+      box-shadow: none;
+      border: 0;
+      background: none;
+    }
+    :global(:root:not(.js)) .nav-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0 1rem;
+    }
+    :global(:root:not(.js)) .nav-list a {
+      border: 0;
+      font-size: var(--text-sm);
+      padding: 0.3rem 0;
+    }
+    :global(:root:not(.js)) .menu-actions {
+      display: none;
+    }
+  }
+
+  @media (min-width: 60rem) {
+    .brand {
+      margin-right: 0;
+    }
+    .nav {
+      order: 0;
+      flex: 1;
+    }
+    .header-tools {
+      order: 4;
+    }
+    .menu-button {
+      display: none;
+    }
+    .menu,
+    .menu[data-open='true'] {
+      display: flex;
+      position: static;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-m);
+      padding: 0;
+      max-height: none;
+      overflow: visible;
+      background: none;
+      border: 0;
+      box-shadow: none;
+    }
+    .nav-list {
+      display: flex;
+      gap: 0.15rem;
+      margin-left: var(--space-l);
+    }
+    .nav-list a {
+      padding: 0.45rem 0.7rem;
+      border: 0;
+      border-radius: 999px;
+      font-size: var(--text-sm);
+      font-weight: 540;
+      color: var(--ink-2);
+    }
+    .nav-list a:hover {
+      color: var(--ink);
+      background: var(--surface-2);
+    }
+    .nav-list a[aria-current='page'] {
+      color: var(--ink);
+      background: var(--surface-2);
+    }
+    .menu-actions {
+      gap: var(--space-m);
+    }
+  }
+</style>

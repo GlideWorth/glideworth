@@ -1,0 +1,84 @@
+---
+title: Retirement planning in Israel
+description: "How Glideworth estimates Israeli tax at a basic level for 2026: brackets, credit points, National Insurance, pensions, and the figures it could not confirm."
+ogTitle: Retirement planning in Israel
+countryCode: IL
+countryName: Israel
+taxYears:
+  - "2026"
+modelled:
+  - Income tax on the 2026 brackets, with credit points and a surtax on high incomes
+  - National Insurance and health tax on wages, until age 67
+  - A 25% tax on capital income (interest, dividends and real gains), with an extra 2% surtax on capital income at the top
+  - Pension contributions with a tax credit on the employee share, and keren hishtalmut as a tax-free account
+  - Pension access from age 67 and a default old-age pension age of 67
+notModelled:
+  - The partial exemption for qualifying pension annuities, which could not be confirmed from an official source; pensions are taxed in full
+  - Removal of the inflationary part of capital gains; gains are taxed on the nominal amount
+  - The 15% rate on some unlinked deposits, the 30% rate for substantial shareholders and the 31% minimum rate on passive income under 60
+  - Credit points other than the basic 2.25 for a resident
+  - Self-employed National Insurance, health tax on pensions, and the insured-salary ceiling
+  - The lower, rising pension age for women, and any exemption on the sale of a main home
+---
+
+import { facts } from '../../lib/facts';
+
+Israel is estimated at a **basic level**: the main rules are in, with {facts.simplificationCount('il')} written
+simplifications, and it has had less checking than the United Kingdom or the United States. The tables are for 2026, and
+later years index them with the plan's threshold policy.
+
+## What is modelled
+
+- **Brackets (2026)**, annual, after the Economic Efficiency Law 2026: 10% to ₪84,120; 14% to ₪120,720; 20% to
+  ₪228,000; 31% to ₪301,200; 35% to ₪560,280; 47% above. A surtax of 3% applies above ₪721,560, with 2% more on
+  capital income.
+- **Credit points**: each is worth ₪2,904 a year, and a resident gets 2.25, which is ₪6,534.
+- **National Insurance and health tax (employee)**: 4.27% (1.04% plus 3.23%) up to ₪92,436 a year, and 12.17% (7% plus 5.17%)
+  from there to ₪622,920, until age 67.
+- **Capital income**: 25% on interest, dividends and real gains.
+- **Pensions**: a 35% credit on the employee contribution up to 7% of salary. Keren hishtalmut is modelled as a
+  tax-free account; the six-year holding rule is not checked. Pension funds open at 67 and the default old-age pension age is 67; you enter
+  the amount yourself.
+
+## Worked example
+
+<Callout type="note" title="Illustrative">
+  Made-up figures, to show the arithmetic with the 2026 table. It assumes a resident employee with only the basic
+  credit points and no pension contribution. It is not a forecast or advice.
+</Callout>
+
+An employee earns ₪200,000 in 2026.
+
+- Income tax before credits: 10% × ₪84,120 = ₪8,412; 14% × (₪120,720 − ₪84,120 = ₪36,600) = ₪5,124; 20% × (₪200,000 −
+  ₪120,720 = ₪79,280) = ₪15,856. Total **₪29,392**.
+- Credit points: 2.25 × ₪2,904 = **₪6,534**. Income tax after credits: ₪29,392 − ₪6,534 = **₪22,858**.
+- National Insurance and health tax: 4.27% × ₪92,436 = ₪3,947.02; 12.17% × (₪200,000 − ₪92,436 = ₪107,564) = ₪13,090.54.
+  Total **₪17,037.56**.
+
+## Historical data for simulations
+
+No Israeli market history is bundled. Israeli households are tested against US history by default (S&P 500, 10-year
+Treasuries, T-bills and CPI-U, 1928 to 2025, in US dollars).
+
+## Figures that could not be confirmed
+
+- **Not confirmed from an official source:** the brackets, credit-point value, capital-income rates, surtax threshold
+  and National Insurance rates. The Israel Tax Authority and National Insurance Institute sites refused automated
+  access again on 16 November 2026, so the figures could not be read from them; they are as published by
+  independent sources, which agree with each other.
+- Pensions are taxed in full because the partial exemption for qualifying pension annuities could not be confirmed
+  from an official source.
+- Capital gains are taxed on the nominal gain, because Glideworth does not know purchase dates. Long-held assets can
+  be over-taxed, since Israel taxes only the real, inflation-adjusted gain.
+- No preset has been checked line by line against an official calculator for every case.
+
+## Official sources
+
+- [Israel Tax Authority: monthly deductions booklet](https://www.gov.il/he/pages/income-tax-monthly-deductions-booklet) (in Hebrew)
+- [Israel Tax Authority: information for new immigrants](https://www.gov.il/BlobFolder/generalpage/new-immigrants-france-081026/he/IncomeTax_new-immigrants-english-081026.pdf) (credit points)
+- [National Insurance Institute: rates for employees](https://www.btl.gov.il/Insurance/Rates/Pages/%D7%9C%D7%A2%D7%95%D7%91%D7%93%D7%99%D7%9D%20%D7%A9%D7%9B%D7%99%D7%A8%D7%99%D7%9D.aspx)
+
+<Callout type="note" title="Estimates, not advice">
+  Glideworth is planning software. Its tax figures help you compare choices under your own assumptions; they
+  are not a tax return and not tax advice.
+</Callout>

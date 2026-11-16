@@ -1,0 +1,87 @@
+---
+title: Retirement planning in the Netherlands
+description: "How Glideworth estimates Dutch tax at a basic level for 2026: boxes 1, 2 and 3, tax credits, AOW, and the provisional figures and gaps to know about."
+ogTitle: Retirement planning in the Netherlands
+countryCode: NL
+countryName: Netherlands
+taxYears:
+  - "2026"
+modelled:
+  - Box 1 income tax and national insurance premiums, below and at AOW age, with the general tax credit, the employment tax credit and the older-person credits
+  - Box 2 tax on substantial-interest income you tag as such
+  - Box 3 tax on a deemed return on savings, other assets and debts, with the tax-free allowance; partners share the allowance
+  - Pension and annuity contributions deducted in box 1, and pension income taxed in box 1
+  - AOW (state pension) age by birth year
+notModelled:
+  - The counter-evidence route for box 3 (taxing the actual return when lower)
+  - Mortgage interest deduction and the own-home rules
+  - Self-employed deductions and the income-related health contribution for pensioners and the self-employed
+  - Limits on pension deductions (jaarruimte and reserveringsruimte), and the limit on deductions at the top rate
+  - Splitting of common items between fiscal partners
+  - Loss harvesting; gains are realised in proportion to cost basis and treated as long-term
+---
+
+import { facts } from '../../lib/facts';
+
+The Netherlands is estimated at a **basic level**: the main rules are in, with {facts.simplificationCount('nl')} written
+simplifications, and it has had less checking than the United Kingdom or the United States. The tables are for 2026. Some
+figures are provisional (see below), and later years index the 2026 tables with the plan's threshold policy.
+
+## What is modelled
+
+- **Box 1** for 2026, under AOW age: 35.75% on income up to €38,883, 37.56% up to €78,426 and 49.50% above. These
+  rates include the national insurance premiums. From AOW age the first rate is 17.85%.
+- **Tax credits**: the general tax credit (maximum €3,115 below AOW age, reducing above €29,736), the employment tax
+  credit (maximum about €5,685, reducing at higher incomes and nil from €132,920), the older-person credit
+  (up to €2,067) and a single-person older-person credit of €540.
+- **Box 2** (substantial interest): 24.5% up to €68,843 and 31% above, applied only to income you tag as such.
+- **Box 3**: a deemed return on assets instead of tax on actual interest, dividends or gains. The allowance is €59,357
+  per person (€118,714 with a partner), the deemed returns are 1.28% on savings, 6.00% on other assets and 2.70% on
+  debts (above a €3,800 threshold), and the rate is 36%. The savings and debt percentages are provisional.
+- **AOW age** in the model is 67 for people born before 1961 and 67 years and 3 months for those born later. You enter
+  the pension amount yourself.
+
+## Worked example
+
+<Callout type="note" title="Illustrative">
+  Made-up figures, to show the arithmetic with the 2026 table. It assumes a person below AOW age whose
+  box 1 income is all earned, with no other deductions. It is not a forecast or advice.
+</Callout>
+
+A person has €30,000 of box 1 income from work in 2026.
+
+- Box 1 tax and premiums: 35.75% × €30,000 = **€10,725.00**.
+- General tax credit: €3,115 − 6.398% × (€30,000 − €29,736 = €264) = €3,115 − €16.89 = **€3,098.11**.
+- Employment tax credit: €5,300 + 1.95% × (€30,000 − €25,845 = €4,155) = €5,300 + €81.02 = **€5,381.02**.
+- Tax after credits: €10,725.00 − €3,098.11 − €5,381.02 = **€2,245.87**.
+
+The model does not split the credits between the tax and premium parts, so it treats the credits as fully usable.
+
+## Historical data for simulations
+
+No Dutch or euro-area market history is bundled. Dutch households are tested against US history by default (S&P 500,
+10-year Treasuries, T-bills and CPI-U, 1928 to 2025, in US dollars).
+
+## What to treat with care
+
+- The 2026 box 3 deemed returns for savings and debts are the provisional figures used for the provisional
+  assessment; final figures are set after the year ends. The counter-evidence route is not applied.
+- Box 3 assets come from period-start wealth: savings, taxable investments (including investment property) and debts
+  other than the main-home mortgage. Pensions are excluded. If the engine cannot split them, the whole portfolio is
+  treated as other assets.
+- Box 3 replaces tax on actual interest, dividends and gains, so they are not taxed again.
+- The year you reach AOW age is taxed at the AOW rate for the whole year if you reach it by 1 January, otherwise at
+  the under-AOW rate.
+- No preset has been checked line by line against an official calculator for every case.
+
+## Official sources
+
+- [Belastingdienst: tax calculation (Fiscale informatie 2026)](https://www.belastingdienst.nl/wps/wcm/connect/fisin/fisin2026/belastingberekening)
+- [Belastingdienst: tax credits 2026](https://www.belastingdienst.nl/wps/wcm/connect/fisin/fisin2026/heffingskortingen)
+- [Belastingdienst: provisional assessment rates and credits](https://www.belastingdienst.nl/wps/wcm/connect/nl/voorlopige-aanslag/content/voorlopige-aanslag-tarieven-en-heffingskortingen)
+- [Rijksoverheid: AOW age](https://www.rijksoverheid.nl/themas/belastingen-uitkeringen-en-toeslagen/algemene-ouderdomswet-aow/aow-leeftijd)
+
+<Callout type="note" title="Estimates, not advice">
+  Glideworth is planning software. Its tax figures help you compare choices under your own assumptions; they
+  are not a tax return and not tax advice.
+</Callout>

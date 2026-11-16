@@ -1,0 +1,288 @@
+@import "tailwindcss";
+
+/*
+ * Glideworth design tokens.
+ * Identity: calm, paper-and-stone. Warm neutral surfaces, a deep spruce accent, ochre for
+ * emphasis, terracotta for risk. Numbers are always tabular. Display type is Fraunces (used
+ * sparingly for page titles and headline figures); UI and data use Inter.
+ * Tokens are CSS variables so ECharts and canvas code can read them at runtime.
+ */
+:root,
+[data-theme="light"] {
+  --bg: #f3f1eb;
+  --surface: #fbfaf6;
+  --surface-2: #eeebe3;
+  --surface-3: #e6e2d7;
+  --border: #e0dbcf;
+  --border-strong: #c9c2b2;
+  --ink: #1c2320;
+  --ink-2: #48514c;
+  --ink-3: #636a64; /* AA (≥4.5:1) on bg, surface and surface-2 */
+  --accent: #2c5a4d;
+  --accent-hover: #24493f;
+  --accent-ink: #f5f2e9;
+  --accent-soft: #dce6de;
+  --ochre: #8a5915; /* AA on surfaces and on ochre-soft */
+  --ochre-soft: #f1e3cc;
+  --positive: #3a7650;
+  --negative: #a33f29;
+  --negative-soft: #f3dcd4;
+  --warning: #83600f;
+  --focus: #3f7c6a;
+  --shadow: 0 1px 0 rgb(28 35 32 / 0.04), 0 1px 3px rgb(28 35 32 / 0.06);
+  --shadow-pop: 0 10px 30px -10px rgb(28 35 32 / 0.25), 0 2px 6px rgb(28 35 32 / 0.08);
+
+  --chart-1: #2c5a4d;
+  --chart-2: #4f6d8f;
+  --chart-3: #c08a3e;
+  --chart-4: #b45b3e;
+  --chart-5: #8aa37b;
+  --chart-6: #7a5a7e;
+  --chart-7: #c9b48a;
+  --chart-8: #8b8f88;
+  --chart-grid: #e4e0d6;
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --bg: #111513;
+  --surface: #171c19;
+  --surface-2: #1d2420;
+  --surface-3: #252d28;
+  --border: #29312c;
+  --border-strong: #3a443e;
+  --ink: #e9e6dd;
+  --ink-2: #b5b8ae;
+  --ink-3: #868b83;
+  --accent: #82bba7;
+  --accent-hover: #97c9b7;
+  --accent-ink: #0f1714;
+  --accent-soft: #1e3530;
+  --ochre: #d9a35a;
+  --ochre-soft: #3a2e1c;
+  --positive: #7bbf8e;
+  --negative: #e0846b;
+  --negative-soft: #3b231d;
+  --warning: #d7ad55;
+  --focus: #82bba7;
+  --shadow: 0 1px 0 rgb(0 0 0 / 0.3);
+  --shadow-pop: 0 12px 32px -12px rgb(0 0 0 / 0.7), 0 2px 6px rgb(0 0 0 / 0.4);
+
+  --chart-1: #82bba7;
+  --chart-2: #8aa6c8;
+  --chart-3: #d9a35a;
+  --chart-4: #df8a6e;
+  --chart-5: #a9c497;
+  --chart-6: #b393b6;
+  --chart-7: #d8c79f;
+  --chart-8: #a3a79f;
+  --chart-grid: #252c28;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-ochre: var(--ochre);
+  --color-ochre-soft: var(--ochre-soft);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --color-negative-soft: var(--negative-soft);
+  --color-warning: var(--warning);
+  --color-focus: var(--focus);
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces Variable", ui-serif, Georgia, serif;
+  --shadow-card: var(--shadow);
+  --shadow-pop: var(--shadow-pop);
+  --radius-card: 10px;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01", "tnum";
+    background: var(--bg);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    font-size: 13.5px;
+    line-height: 1.45;
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--accent-soft);
+  }
+}
+
+@layer components {
+  .num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum", "cv11";
+  }
+  .display {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    letter-spacing: -0.01em;
+  }
+  .eyebrow {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-3);
+    font-weight: 600;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    /* reduced motion must override component styles */
+    animation: none !important;
+    /* reduced motion must override component styles */
+    transition: none !important;
+  }
+}
+
+/* App-level reduced motion (Settings → Appearance), same effect as the OS setting. */
+[data-motion="reduced"] * {
+  /* reduced motion must override component styles */
+  animation: none !important;
+  /* reduced motion must override component styles */
+  transition: none !important;
+  scroll-behavior: auto;
+}
+
+/* Compact density: Tailwind v4 derives every spacing utility from --spacing. */
+[data-density="compact"] {
+  --spacing: 0.2rem;
+}
+[data-density="compact"] body {
+  font-size: 13px;
+}
+
+/* Reduce transparency: solid chrome, no blur behind overlays or the top bar. */
+[data-transparency="reduced"] * {
+  /* accessibility preference overrides component styles */
+  backdrop-filter: none !important;
+}
+[data-transparency="reduced"] .chrome-translucent {
+  background: var(--bg);
+}
+
+@layer components {
+  .chrome-translucent {
+    background: color-mix(in oklab, var(--bg) 82%, transparent);
+    backdrop-filter: saturate(1.2) blur(10px);
+  }
+  .skip-link {
+    position: fixed;
+    left: 12px;
+    top: 10px;
+    z-index: 100;
+    transform: translateY(-160%);
+    border-radius: 8px;
+    background: var(--ink);
+    color: var(--bg);
+    padding: 8px 12px;
+    font-weight: 600;
+    font-size: 13px;
+    transition: transform 120ms ease-out;
+  }
+  .skip-link:focus-visible {
+    transform: none;
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  /* Route enter: a short, calm fade. Disabled by reduced motion (above). */
+  .route-enter {
+    animation: glideworth-route-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--surface-2) 0%,
+      var(--surface-3) 50%,
+      var(--surface-2) 100%
+    );
+    background-size: 200% 100%;
+    animation: glideworth-shimmer 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes glideworth-route-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes glideworth-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+/* Forced colours (Windows high contrast): keep focus and selection visible. */
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 2px solid CanvasText;
+  }
+}
+
+/* Print: paper-friendly, no app chrome. */
+@media print {
+  :root,
+  [data-theme="dark"] {
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #f4f4f2;
+    --ink: #111111;
+    --ink-2: #333333;
+    --ink-3: #555555;
+    --border: #d4d4d0;
+    color-scheme: light;
+  }
+  .no-print,
+  [data-app-chrome] {
+    /* print must hide chrome regardless of utilities */
+    display: none !important;
+  }
+  html,
+  body,
+  #root,
+  [data-app-frame] {
+    /* print must let the page flow past the viewport */
+    height: auto !important;
+    /* print must let the page flow past the viewport */
+    overflow: visible !important;
+    background: #fff;
+  }
+  [data-app-main] {
+    /* print must let the page flow past the viewport */
+    overflow: visible !important;
+  }
+  section {
+    break-inside: avoid;
+  }
+}

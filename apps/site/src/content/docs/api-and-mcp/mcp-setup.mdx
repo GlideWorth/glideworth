@@ -1,0 +1,171 @@
+---
+title: Connect an AI assistant over MCP
+description: Connect Claude Code, Claude Desktop, Cursor and other MCP clients to Glideworth over HTTP or stdio with a least-privilege key, and keep plan edits as proposals you approve.
+section: API and MCP
+order: 1
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+import { facts } from '../../../lib/facts';
+
+Glideworth's MCP server has {facts.mcpTools} tools: {facts.mcpReadTools} that read and compute, and {facts.mcpWriteTools} that write, which are off unless you
+turn them on. Plan edits made through MCP are always proposals (change sets) that you preview and then apply or discard.
+Nothing can be deleted through MCP. For how the safety model works, see the [MCP overview](/docs/api-and-mcp/mcp-overview/).
+
+Two transports expose the same tools.
+
+| Transport | Endpoint | Auth | Writes enabled by |
+| --- | --- | --- | --- |
+| Streamable HTTP | `POST http://localhost:8787/mcp` | `Authorization: Bearer <api key>`, never a browser cookie | `GLIDEWORTH_MCP_ALLOW_WRITES=true` on the server **and** a key with `write` scope |
+| stdio | `node apps/api/dist/mcp/stdio.js` | None: a local process you start | `GLIDEWORTH_MCP_ALLOW_WRITES=true` in the process environment |
+
+The HTTP endpoint is stateless, so it works behind plain proxies. Which tools a key sees depends on its scopes: `read`
+gets the read and compute tools, `simulate` only compute tools, and `write` with the server flag adds the write tools.
+
+**Before you start:** a running instance (for HTTP) or a built checkout (for stdio, `pnpm build`), and a key:
+
+```bash
+pnpm keys:create -- --name claude-readonly --scopes read        # analysis only
+pnpm keys:create -- --name claude-editor --scopes read,write    # can propose and apply change sets
+```
+
+Use absolute paths in every stdio configuration. Do not launch a stdio server through `pnpm run`: pnpm prints a banner to
+stdout, which is the protocol channel. Logs go to stderr.
+
+## Claude Code
+
+Over HTTP, with the server running:
+
+```bash
+claude mcp add --transport http glideworth http://localhost:8787/mcp \
+  --header "Authorization: Bearer glideworth_xxxxxxxx_..."
+```
+
+Over stdio, with nothing else running (after `pnpm build`):
+
+```bash
+claude mcp add glideworth \
+  -e GLIDEWORTH_DB_PATH=/abs/path/to/glideworth/apps/api/data/glideworth.db \
+  -e GLIDEWORTH_MCP_ALLOW_WRITES=false \
+  -- node /abs/path/to/glideworth/apps/api/dist/mcp/stdio.js
+```
+
+Without a build, run the source through tsx instead:
+`-- /abs/path/to/glideworth/apps/api/node_modules/.bin/tsx --conditions=@glideworth/source /abs/path/to/glideworth/apps/api/src/mcp/stdio.ts`.
+
+A project-scoped `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "glideworth": {
+      "type": "http",
+      "url": "http://localhost:8787/mcp",
+      "headers": { "Authorization": "Bearer ${GLIDEWORTH_MCP_KEY}" }
+    }
+  }
+}
+```
+
+## Claude Desktop
+
+Edit `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/`, Windows: `%APPDATA%\Claude\`) and
+restart the app.
+
+stdio, reading the SQLite file directly:
+
+```json
+{
+  "mcpServers": {
+    "glideworth": {
+      "command": "node",
+      "args": ["/abs/path/to/glideworth/apps/api/dist/mcp/stdio.js"],
+      "env": {
+        "GLIDEWORTH_DB_PATH": "/abs/path/to/glideworth/apps/api/data/glideworth.db",
+        "GLIDEWORTH_MCP_ALLOW_WRITES": "false"
+      }
+    }
+  }
+}
+```
+
+If Glideworth runs in Docker, use the container's own copy:
+
+```json
+{
+  "mcpServers": {
+    "glideworth": {
+      "command": "docker",
+      "args": ["exec", "-i", "-e", "GLIDEWORTH_MCP_ALLOW_WRITES=false", "glideworth", "node", "dist/mcp/stdio.js"]
+    }
+  }
+}
+```
+
+HTTP, through the `mcp-remote` bridge for clients that only speak stdio:
+
+```json
+{
+  "mcpServers": {
+    "glideworth": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://localhost:8787/mcp", "--header", "Authorization:${GLIDEWORTH_AUTH}"],
+      "env": { "GLIDEWORTH_AUTH": "Bearer glideworth_xxxxxxxx_..." }
+    }
+  }
+}
+```
+
+Newer Claude Desktop builds can add the same URL and header as a custom connector (Settings, Connectors) instead of the
+bridge.
+
+## Cursor and other clients
+
+Use the generic settings of your client:
+
+- **HTTP:** the URL `http://localhost:8787/mcp` and the header `Authorization: Bearer <key>`.
+- **stdio:** run `node apps/api/dist/mcp/stdio.js` with `GLIDEWORTH_DB_PATH` set.
+- To try it without a client: `npx @modelcontextprotocol/inspector`, and point it at either transport.
+
+Where Cursor keeps its MCP settings is Cursor's own documentation, not Glideworth's.
+
+## Remote clients with OAuth
+
+Hosted clients that connect by URL sign in with OAuth 2.1: the first request to `/mcp` returns `401` with a
+`WWW-Authenticate` header, the client discovers the server, registers itself, sends you to a consent screen served by
+Glideworth, and redeems the code with PKCE. You can grant fewer scopes than asked, never more, and your role caps them.
+Put Glideworth behind TLS and set `GLIDEWORTH_PUBLIC_URL`. Revoke a connection under **Settings**, then **Connected apps**.
+See [Authentication](/docs/api-and-mcp/api-authentication/).
+
+## Ask about your plan
+
+Once connected, try:
+
+- "Summarise my finances and plan."
+- "What is my chance of success, and why does it fail when it fails?"
+- "What if I retire three years earlier? Save it as a branch." (needs writes)
+- "What is the most I can spend at 90% success?"
+- "Review my assumptions and show what changing the top finding would do." (needs writes)
+
+See the [worked examples](/docs/api-and-mcp/mcp-examples/) for the tool calls behind each.
+
+<Callout type="warning" title="What the model sees">
+  An assistant sees what its tools return, within the scopes of its key. The model provider you connect sees that data too.
+  If that matters to you, use a local model.
+</Callout>
+
+## Troubleshooting
+
+- **No write tools:** the flag is off or the key lacks `write`. Reconnect after changing either.
+- **`401` from `/mcp`:** MCP needs an API key or an OAuth token; the browser sign-in is not accepted.
+- **A stdio server fails to start in Claude Desktop:** use absolute paths, make sure the build exists, and do not launch via
+  `pnpm run`.
+- **A tool returns a `jobId` and `running`:** it did not finish within `wait` seconds; call `get_job` with `wait: 60`.
+- **`planId is required here`:** more than one household or main plan exists; call `list_households` or `list_plans`.
+- **`CHANGESET_CONFLICT`:** the plan changed after the proposal. Re-read and propose again.
+- **`PATCH_CONFLICT`:** an operation's target does not exist; check ids with `get_plan`.
+
+<Callout type="note" title="Working paths">
+  The stdio paths assume a checkout of the repository. Replace `/abs/path/to/glideworth` with yours.
+</Callout>

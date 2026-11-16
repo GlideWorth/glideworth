@@ -1,0 +1,86 @@
+---
+/**
+ * Questions and answers as disclosure widgets, with FAQPage structured data.
+ *   <FAQ items={[{ q: 'Is there a free plan?', a: '<p>No free cloud tier…</p>' }]} />
+ * Answers are simple trusted HTML (p, a, strong, em, ul, li). Use one FAQ with structured data per page
+ * (set `schema={false}` on any second list).
+ */
+import { type FaqItem, faqPage } from '../lib/jsonld';
+import { withExternalRel } from '../lib/links';
+import JsonLd from './JsonLd.astro';
+
+interface Props {
+  items: FaqItem[];
+  schema?: boolean;
+  /** Heading level used for each question inside its summary. */
+  as?: 'h2' | 'h3' | 'h4';
+}
+const { items, schema = true, as: Heading = 'h3' } = Astro.props;
+---
+
+<div class="faq">
+  {
+    items.map((item) => (
+      <details class="faq-item">
+        <summary>
+          <Heading class="faq-q">{item.q}</Heading>
+          <svg class="faq-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+            <path d="M3 8h10M8 3v10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          </svg>
+        </summary>
+        <div class="faq-a" set:html={withExternalRel(item.a)} />
+      </details>
+    ))
+  }
+</div>
+{schema && <JsonLd data={faqPage(items)} />}
+
+<style>
+  .faq {
+    border-top: 1px solid var(--line-strong);
+  }
+  .faq-item {
+    border-bottom: 1px solid var(--line);
+  }
+  summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-s);
+    padding-block: 1.15rem;
+    cursor: pointer;
+    list-style: none;
+  }
+  summary::-webkit-details-marker {
+    display: none;
+  }
+  .faq-q {
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    font-weight: 620;
+    letter-spacing: -0.005em;
+    line-height: 1.4;
+  }
+  .faq-icon {
+    flex: none;
+    color: var(--ink-3);
+    transition: transform 200ms var(--ease);
+  }
+  details[open] .faq-icon {
+    transform: rotate(45deg);
+  }
+  summary:hover .faq-q {
+    color: var(--accent-text);
+  }
+  .faq-a {
+    padding-bottom: 1.3rem;
+    max-width: 62ch;
+    color: var(--ink-2);
+  }
+  .faq-a :global(> * + *) {
+    margin-top: 0.7em;
+  }
+  .faq-a :global(ul) {
+    padding-left: 1.2em;
+  }
+</style>

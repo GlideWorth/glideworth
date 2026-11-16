@@ -1,0 +1,88 @@
+---
+title: Branches, change sets and plan history
+description: Try a what-if on a branch that follows its parent, diff two plans, propose edits as change sets you approve, and undo anything from an append-only history.
+ogTitle: Branches, change sets and history
+summary: What-if branches, readable diffs, proposed edits with a before-and-after, and an append-only history with undo.
+order: 9
+---
+
+import BranchTree from '../../components/diagrams/BranchTree.astro';
+
+Planning is a series of "what if". What if I retire at 57? What if we downsize? Doing that by copying a plan and
+editing the copy leaves you with two plans that drift apart. Glideworth gives you three tools that keep the
+experiments tidy and the original safe.
+
+## Branches
+
+A branch is a plan that stores only its differences from a parent, as a patch. It **follows the parent**: change
+the parent's assumptions and the branch picks the change up, unless you pin the branch to a particular parent
+version. You can compare a branch against its parent with a structured diff and the outcome of each, merge it
+back, or promote it to a plan in its own right. Merging a pinned branch over a parent that has since moved is
+refused unless you force it, so newer edits are not overwritten by accident.
+
+What-if **templates** build common branches from a few parameters: a market crash in a given year, job loss,
+a career break, retiring earlier, downsizing, having a child, an inheritance, long-term care, a partner dying at
+a given age, and a move to another country. A template can be previewed first, which stores nothing, and then
+saved as a branch.
+
+<Figure caption="A plan's history with a what-if branch. Version numbers and names are illustrative.">
+  <BranchTree />
+</Figure>
+
+## Change sets
+
+A change set is a proposed list of edits to one plan, written as standard JSON Patch (RFC 6902) with array items
+addressed by id, never by position. **Proposing it changes nothing.** You get a readable list of the changes
+("Living expenses raised from 5,200 to 5,700 per month") and a before-and-after simulation summary. Then you
+apply it or discard it.
+
+Each change set is tied to the plan version it was written against. If the plan has moved on in the meantime,
+applying it is refused with a conflict, and nothing is merged silently. You re-read, propose again and review
+again. This is the mechanism that lets a person, a script or an [AI assistant](/features/mcp-server/) suggest
+edits without being able to overwrite your plan.
+
+## History and undo
+
+Every write to a plan, from the web app, a script or an assistant, creates a new version with the actor
+recorded: a signed-in person, an API key or an MCP client, plus the change set's id when there was one.
+History is append-only. Restoring version 4 does not delete versions 5 and 6; it writes a new version holding
+version 4's content, so the undo itself can be undone. Through MCP, "revert to version N" is a proposal, not an
+action. Imports keep history too: re-importing a household records the import as the plan's next version.
+
+## A worked illustration
+
+You are asked, "Can we spend 500 more a month on dining?" Illustrative flow:
+
+1. Preview the edit: living expenses 5,200 to 5,700 a month. End net worth in today's money goes from 910,000 to
+   802,000 and the plan still never runs short. Nothing is stored.
+2. Propose it against plan version 4. The change set is `proposed`; the plan is untouched.
+3. You say yes. It is applied atomically and the plan becomes version 5, recorded as made by the key or client
+   that applied it.
+4. If you had edited the plan between steps 2 and 3, the apply would have been refused as a conflict.
+5. Changed your mind? Propose a revert to version 4, review it, apply it. History now holds versions 1 to 6.
+
+Exploring instead? Make the same edit on a branch, run [Monte Carlo](/features/monte-carlo/) on both and compare.
+
+## Also in this family
+
+- **Survivor scenarios** for couples: what if each partner died at 70, 80 or 90 (or ages you choose), with before
+  and after outcomes. Assets pass to the survivor, filing status changes and the cost basis steps up. A
+  one-person household gets an explanatory note rather than an empty list.
+- **Compare** 2 to 6 plans side by side: what differs, outcome deltas and, optionally, an explanation.
+- **Duplicate, archive and set main** to keep your list of plans manageable.
+
+## What it does not do
+
+- **Branches are per plan, not per household.** All of a household's plans share one set of current finances.
+- **Survivor scenarios do not add survivor pensions you have not entered;** the scenario says so.
+- **There is no live collaborative editing.** A write that names the version it was based on is refused as a
+  conflict if the plan has moved; edits are never merged automatically.
+- **Plans do not re-run on every edit.** Results are produced on request and cached per plan version.
+- **Roles are instance-wide** (see [sharing and roles](/features/sharing-and-roles/)), so there is no per-person
+  privacy inside a household.
+
+## Go further
+
+- [Explanations](/features/explanations-and-audit/): "why do these two plans end differently?" with attribution.
+- [Solvers](/features/solvers/): every solver result comes with the edits that apply it, ready to propose.
+- [REST API](/features/rest-api/): `POST /api/v1/plans/{id}/change-sets`, `/branches`, `/merge`.

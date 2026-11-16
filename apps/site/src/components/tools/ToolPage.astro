@@ -1,0 +1,159 @@
+---
+/**
+ * The page shell every calculator uses: header, the calculator (with build-time results for the default
+ * inputs), the path into the full planner, the explanation (default slot), FAQ with FAQPage data,
+ * related reading and the not-advice note. Structured data: WebApplication + BreadcrumbList (via
+ * crumbs) + FAQPage (via FAQ).
+ *
+ *   <ToolPage id="coast-fire" heading="…" lede="…" faq={[…]} adds="…">…explanation…</ToolPage>
+ */
+import Callout from '../Callout.astro';
+import FAQ from '../FAQ.astro';
+import Prose from '../Prose.astro';
+import { page, type PagePath } from '../../config/pages';
+import PageLayout from '../../layouts/PageLayout.astro';
+import type { FaqItem } from '../../lib/jsonld';
+import { runTool } from '../../tools/engine';
+import { TOOLS, toolMeta } from '../../tools/registry';
+import { webApplication } from '../../tools/seo';
+import { SPECS } from '../../tools/specs';
+import { defaults } from '../../tools/state';
+import type { ToolId } from '../../tools/types';
+import Calculator from './Calculator.astro';
+import PlannerCta from './PlannerCta.astro';
+
+interface Props {
+  id: ToolId;
+  heading: string;
+  lede: string;
+  faq: FaqItem[];
+  /** For the planner box: what the full planner adds to this question. */
+  adds: string;
+  /** Feature and docs pages worth reading next. */
+  related: { href: string; label: string }[];
+}
+const { id, heading, lede, faq, adds, related } = Astro.props;
+const meta = toolMeta(id);
+const spec = SPECS[id];
+const pm = page(meta.path as PagePath);
+const vm = await runTool(id, defaults(spec));
+const others = TOOLS.filter((t) => t.id !== id);
+---
+
+<PageLayout
+  {...pm}
+  heading={heading}
+  eyebrow="Free calculator"
+  lede={lede}
+  crumbs={[
+    { label: 'Free tools', href: '/tools/' },
+    { label: meta.name, href: meta.path },
+  ]}
+  jsonLd={[webApplication({ name: meta.name, path: meta.path, description: pm.description })]}
+>
+  <div class="container tool-page">
+    <Calculator spec={spec} vm={vm} name={meta.name} />
+
+    <PlannerCta spec={spec} adds={adds} />
+
+    <div class="tool-explain">
+      <Prose>
+        <slot />
+      </Prose>
+    </div>
+
+    <section class="tool-faq" aria-labelledby="faq-title">
+      <h2 id="faq-title">Questions</h2>
+      <FAQ items={faq} />
+    </section>
+
+    <section class="tool-related" aria-labelledby="related-title">
+      <h2 id="related-title">Read next</h2>
+      <ul>
+        <li>
+          <a href={meta.article.href}>{meta.article.title}</a> <span>(the article behind this calculator)</span>
+        </li>
+        {
+          related.map((r) => (
+            <li>
+              <a href={r.href}>{r.label}</a>
+            </li>
+          ))
+        }
+      </ul>
+      <h3>Other free calculators</h3>
+      <ul class="tool-related-tools">
+        {
+          others.map((t) => (
+            <li>
+              <a href={t.path}>{t.name}</a>: {t.summary}
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <Callout type="note" title="Education, not advice">
+      <p>
+        This calculator shows what follows from the numbers you enter and the assumptions stated on this page. It is not
+        a forecast, a tax calculation or financial advice. See the <a href="/legal/disclaimer/">not-advice notice</a>.
+      </p>
+    </Callout>
+  </div>
+</PageLayout>
+
+<script>
+  import { SPECS } from '../../tools/specs';
+  import type { ToolId } from '../../tools/types';
+  import { mountCalculator } from '../../tools/ui/mount';
+
+  for (const el of document.querySelectorAll<HTMLElement>('[data-tool]')) {
+    const spec = SPECS[el.dataset.tool as ToolId];
+    if (spec) mountCalculator(spec);
+  }
+</script>
+
+<style>
+  .tool-page {
+    display: grid;
+    gap: clamp(2.5rem, 2rem + 2vw, 4rem);
+    padding-bottom: var(--section-y);
+  }
+  .tool-faq,
+  .tool-related {
+    display: grid;
+    gap: var(--space-s);
+    max-width: var(--measure);
+  }
+  .tool-faq h2,
+  .tool-related h2 {
+    font-size: var(--text-2xl, var(--text-xl));
+  }
+  .tool-related h3 {
+    font-size: var(--text-lg);
+    margin-top: var(--space-s);
+  }
+  .tool-related ul {
+    display: grid;
+    gap: 0.45rem;
+    padding-left: 1.1em;
+  }
+  .tool-related span {
+    color: var(--ink-3);
+    font-size: var(--text-sm);
+  }
+  .tool-page :global(.callout) {
+    max-width: var(--measure);
+  }
+  .tool-explain :global(.formula) {
+    font-family: var(--font-mono);
+    font-size: 0.95em;
+    padding: 0.7rem 1rem;
+    background: var(--surface-2);
+    border-radius: var(--radius-m);
+    overflow-x: auto;
+  }
+  .tool-explain :global(table) {
+    font-variant-numeric: tabular-nums;
+  }
+</style>

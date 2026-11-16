@@ -1,0 +1,82 @@
+---
+/**
+ * The path from a calculator into the full planner. When the hosted service is open
+ * (site.cloudLaunched), the button links to sign-up with the calculator's inputs in the query string
+ * (src/tools/carry.ts; format in src/tools/README.md), and the page script keeps the link in step with
+ * the form. Until then the box says so plainly and points to self-hosting.
+ */
+import { plannerOpen, plannerUrl } from '../../tools/carry';
+import { TAX_COUNTRIES } from '../../tools/engine/model';
+import { defaults } from '../../tools/state';
+import type { ToolSpec } from '../../tools/types';
+
+interface Props {
+  spec: ToolSpec;
+  /** What the full planner adds for this question, one sentence. */
+  adds: string;
+}
+const { spec, adds } = Astro.props;
+const href = plannerUrl(spec, defaults(spec));
+---
+
+<aside class="planner-cta" aria-labelledby={`cta-${spec.id}`}>
+  <h2 id={`cta-${spec.id}`}>Take this into the full planner</h2>
+  <p>
+    {adds} The planner models your real accounts, income and spending year by year, with tax estimates for {TAX_COUNTRIES} countries,
+    Monte Carlo on market history and solvers that answer questions like this one for your whole plan.
+  </p>
+  {
+    plannerOpen ? (
+      <p class="planner-cta-actions">
+        <a class="tool-btn tool-btn-primary" href={href} data-planner-link rel="noopener noreferrer">
+          Continue in the planner with these inputs
+        </a>
+      </p>
+    ) : (
+      <>
+        <p>
+          <strong>The hosted planner is not open yet.</strong> When it opens, this box will carry the inputs above
+          into a new plan. Until then you can run the full planner on your own computer, free and with every
+          feature.
+        </p>
+        <p class="planner-cta-actions">
+          <a class="tool-btn tool-btn-primary" href="/self-hosting/">
+            Run it yourself
+          </a>
+          <a class="tool-btn" href="/features/">
+            See what the planner does
+          </a>
+        </p>
+      </>
+    )
+  }
+</aside>
+
+<style>
+  .planner-cta {
+    display: grid;
+    gap: var(--space-xs);
+    padding: var(--space-m);
+    border-radius: var(--radius-l);
+    background: var(--accent-soft);
+    border: 1px solid var(--line);
+  }
+  .planner-cta h2 {
+    font-size: var(--text-xl);
+  }
+  .planner-cta p {
+    max-width: 62ch;
+    color: var(--ink-2);
+  }
+  .planner-cta-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 0.3rem;
+  }
+  .planner-cta-actions a {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+  }
+</style>

@@ -1,0 +1,87 @@
+---
+/**
+ * A numbered sequence. Pass items, or write the steps as an ordered list in the slot (MDX friendly).
+ *   <Steps items={[{ title: 'Export from ProjectionLab', body: 'Account menu, JSON export.' }]} />
+ *   <Steps>
+ *     1. Export your data.
+ *     2. Import it.
+ *   </Steps>
+ */
+interface Step {
+  title: string;
+  body?: string;
+}
+interface Props {
+  items?: Step[];
+}
+const { items } = Astro.props;
+---
+
+{
+  items ? (
+    <ol class="steps" role="list">
+      {items.map((s) => (
+        <li class="step">
+          <p class="step-title">{s.title}</p>
+          {s.body && <p class="step-body">{s.body}</p>}
+        </li>
+      ))}
+    </ol>
+  ) : (
+    <div class="steps steps-slot">
+      <slot />
+    </div>
+  )
+}
+
+<style>
+  .steps {
+    counter-reset: step;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-m);
+    padding: 0;
+    list-style: none;
+  }
+  .step,
+  .steps-slot :global(ol > li) {
+    counter-increment: step;
+    position: relative;
+    padding-left: 3.1rem;
+    min-height: 2.2rem;
+  }
+  .steps-slot :global(ol) {
+    counter-reset: step;
+    list-style: none;
+    padding: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-m);
+  }
+  .step::before,
+  .steps-slot :global(ol > li::before) {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: -0.1rem;
+    width: 2.1rem;
+    height: 2.1rem;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    border: 1px solid var(--line-strong);
+    background: var(--surface);
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: var(--text-sm);
+    color: var(--accent-text);
+    font-variant-numeric: tabular-nums;
+  }
+  .step-title {
+    font-weight: 640;
+  }
+  .step-body {
+    color: var(--ink-2);
+    margin-top: 0.2rem;
+  }
+</style>

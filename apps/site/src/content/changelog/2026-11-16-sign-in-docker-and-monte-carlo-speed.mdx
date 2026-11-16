@@ -1,0 +1,12 @@
+---
+title: Sign-in, Docker and faster Monte Carlo
+date: 2026-11-16
+tags: [api, security]
+---
+
+- **Passphrase sign-in** for the web app on a self-hosted server, with sessions. API keys keep working for scripts
+  and assistants.
+- **A one-container Docker image** that serves the web app, the API and the MCP server on one port, with the data
+  in a single SQLite file.
+- **Monte Carlo runs are split across worker threads** and merged into exactly the result a single thread would
+  give.

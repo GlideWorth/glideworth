@@ -1,0 +1,48 @@
+---
+import { getCollection } from 'astro:content';
+import Card from '../../components/Card.astro';
+import { page } from '../../config/pages';
+import PageLayout from '../../layouts/PageLayout.astro';
+import { formatDate } from '../../lib/content';
+
+const all = await getCollection('compare');
+const published = all.filter((e) => !e.data.noindex);
+// Samples are listed in development only, so the layout can be reviewed.
+const shown = import.meta.env.DEV ? all : published;
+---
+
+<PageLayout
+  {...page('/compare/')}
+  heading="Comparisons"
+  eyebrow="Compare"
+  lede="How Glideworth differs from other ways to plan. Every claim about another product cites a source and the date it was checked."
+  crumbs={[{ label: 'Comparisons', href: '/compare/' }]}
+>
+  <div class="container body">
+    {
+      shown.length === 0 ? (
+        <p class="muted">Comparisons are being written and checked. They will appear here.</p>
+      ) : (
+        <div class="grid">
+          {shown.map((e) => (
+            <Card title={e.data.title} href={`/compare/${e.id}/`} as="h2">
+              <p>{e.data.description}</p>
+              <p class="muted">Checked {formatDate(e.data.checkedOn)}</p>
+            </Card>
+          ))}
+        </div>
+      )
+    }
+  </div>
+</PageLayout>
+
+<style>
+  .body {
+    padding-bottom: var(--section-y);
+  }
+  .grid {
+    display: grid;
+    gap: var(--space-m);
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  }
+</style>

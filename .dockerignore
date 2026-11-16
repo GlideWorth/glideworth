@@ -1,0 +1,27 @@
+# Never send private data, secrets, local databases or build output to the Docker build context.
+private/
+.env
+.env.*
+!.env.example
+.git/
+.github/
+**/node_modules
+**/dist
+**/.vite
+**/.vitest
+**/coverage
+**/*.tsbuildinfo
+**/*.db
+**/*.db-wal
+**/*.db-shm
+**/*.db-journal
+apps/api/data/
+# Backup output directories (not source: packages/cloud/src/backups is code and must be in the context).
+/backups/
+apps/api/backups/
+**/data/backups/
+.DS_Store
+docs/
+*.md
+# Optional locally downloaded market data: never in an image
+data-local/

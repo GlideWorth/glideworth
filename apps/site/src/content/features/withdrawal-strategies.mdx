@@ -1,0 +1,87 @@
+---
+title: Withdrawal strategies and guardrails
+description: Choose how spending is set in retirement, from a fixed amount to Guyton-Klinger, and see what spending risk-based guardrails give this year.
+ogTitle: Withdrawal strategies and guardrails
+summary: Textbook withdrawal rules, flexible spending, and guardrails that move spending when your chance of success moves.
+order: 7
+---
+
+Retirement spending is two decisions. **Where the money comes from** is the drawdown order: which account to
+empty first, which to leave to grow, and when each can be touched. **How much to take** is the withdrawal rule.
+Glideworth models both, and can tell you what the rule says for this year.
+
+## Drawdown order
+
+By default a shortfall is met from cash, then taxable investments, crypto, tax-deferred accounts, health
+accounts, tax-free accounts and finally real assets that you have marked as available to sell. You can reorder
+categories or name individual accounts, draw within a category in list order or in proportion to balance, set a
+cash buffer to keep, and set the date or age from which each account can be touched. Statutory access ages, such
+as a pension's minimum age, still apply, and an early-withdrawal penalty is applied where you set one.
+
+## Withdrawal rules
+
+A strategy sets how much to take from the portfolio each year. The rules available are:
+
+- **Fixed amount**, inflation-adjusted or not.
+- **Initial percent** (the "4% rule": a percentage of the starting portfolio, then adjusted for inflation) and
+  **fixed percent** of the current portfolio.
+- **1/N**, and **variable percentage withdrawal** (VPW), which rises with age.
+- **Ratcheting**, which lifts spending after strong years, with a cool-down.
+- **Clyatt 95%**, which never lets spending fall below 95% of the previous year.
+- **Guyton-Klinger**, with a guardrail and an adjustment you set (20% and 10% by default).
+
+Each rule can have a floor and a ceiling, and you choose whether other income reduces withdrawals or lifts
+spending. **Flexible spending** is a simpler rule of the same family: when the portfolio is down by a set
+fraction from its high, cut flexed spending by a set fraction, in steps or linearly, on all spending or just the
+discretionary part.
+
+## Guardrails that watch the risk
+
+Percent-of-portfolio rules react to the portfolio. **Risk-based guardrails** react to the chance of success. You
+set a target (80% by default) and a band around it (70% and 95%). If the chance of success leaves the band,
+spending is cut or raised by a step. The planner works from one shared set of simulations rather than nesting
+simulations inside simulations, and it turns the band into a withdrawal-rate band the engine applies year by
+year, so you also get a plain answer: "what do I spend this year?"
+
+## A worked illustration
+
+The Guyton-Klinger rule in money terms, with illustrative numbers. A household starts with £1,000,000 and spends
+£50,000, a 5% initial rate, with a 20% guardrail. After a bad year, inflation lifts the spending to £51,000
+while the portfolio has fallen to £760,000.
+
+| | Value |
+| --- | --- |
+| Current withdrawal rate | £51,000 ÷ £760,000 = 6.7% |
+| Cut-above rate (5% × 1.2) | 6.0% |
+| Portfolio below which to cut | £51,000 ÷ 6% = £850,000 |
+| Action | Cut spending by 10% to £45,900 |
+
+The tool states this the other way round as well: the portfolio level below which to cut, the level above which to
+raise, and the action now. Over MCP these are `guyton_klinger` and `evaluate_guardrails`; over REST,
+`POST /api/v1/plans/{id}/insights/guyton-klinger` and `/insights/guardrails`.
+
+## Tax strategies
+
+Withdrawal order is also a tax decision. The planner models Roth conversions to a target bracket, an IRMAA tier,
+an ACA income level or a fixed income, plus withdrawal shielding and gain harvesting for US plans, and UK
+strategies such as drawdown order, using the personal allowance in gap years and the timing of the tax-free lump
+sum. The tax-strategy comparison ranks candidates (or your own) by end net worth, lifetime tax or chance of
+success, and a matrix compares strategies across those outcomes. For the US 72(t) early-distribution rules it
+compares the three SEPP methods. See [solvers](/features/solvers/) and [tax estimates](/features/tax-estimates/).
+
+## What it does not do
+
+- **Rules model your intentions, not your behaviour.** A rule says what a disciplined household would do; real
+  households may not.
+- **No dedicated go-go and slow-go phases.** You can approximate them with flexible spending and milestones.
+- **The tax optimiser has limited depth.** It ranks candidates it generates (or yours); it has no beam search or depth setting.
+- **No Flex versus No-Flex pulse table.** Risk-based guardrails are compared instead.
+- **Strategy and income-by-rate heatmaps are partial:** they run as background analysis jobs.
+- **Survivor benefits are not added automatically** in survivor what-ifs.
+- **Not advice.** A strategy is a model of a rule, and tax results are [estimates](/features/tax-estimates/).
+
+## Go further
+
+- [Monte Carlo](/features/monte-carlo/) for the simulations guardrails read.
+- [Explanations](/features/explanations-and-audit/): "why did this withdrawal come from that account?"
+- [Branches](/features/branches-and-change-sets/): compare two strategies side by side.

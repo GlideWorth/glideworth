@@ -1,0 +1,102 @@
+---
+import Callout from '../components/Callout.astro';
+import Card from '../components/Card.astro';
+import Section from '../components/Section.astro';
+import { page } from '../config/pages';
+import { site } from '../config/site';
+import PageLayout from '../layouts/PageLayout.astro';
+import { externalLinkProps } from '../lib/links';
+
+const routes = [
+  {
+    title: 'General questions',
+    email: site.contact.hello,
+    body: 'About Glideworth, the project, press or partnerships.',
+  },
+  {
+    title: 'Support',
+    email: site.contact.support,
+    body: 'Help with the hosted service once it opens. Self-hosters: see the community route below.',
+  },
+  {
+    title: 'Security',
+    email: site.contact.security,
+    body: 'Report a vulnerability privately. Please do not open a public issue. Details are on the security page.',
+  },
+  {
+    title: 'Privacy',
+    email: site.contact.privacy,
+    body: 'Questions about personal data, or a request to access or delete it.',
+  },
+];
+---
+
+<PageLayout
+  {...page('/contact/')}
+  heading="Get in touch"
+  eyebrow="Contact"
+  lede="Each address goes to the right place. For questions about the code, the source repository is the best route."
+  crumbs={[{ label: 'Contact', href: '/contact/' }]}
+>
+  <div class="container grid">
+    {
+      routes.map((r) => (
+        <Card title={r.title} as="h2">
+          <p>{r.body}</p>
+          <p>
+            <a href={`mailto:${r.email}`}>{r.email}</a>
+          </p>
+        </Card>
+      ))
+    }
+  </div>
+  <Section title="Where to take what" tight width="narrow">
+    <ul class="points">
+      <li>
+        <strong>A bug in the planner</strong> or a feature request: open an issue on the
+        <a href={site.repoUrl} {...externalLinkProps(site.repoUrl)}>repository</a> using the issue template, once it is public. Include the version and how you
+        ran it, and use invented numbers: never post real balances, passphrases or API keys.
+      </li>
+      <li>
+        <strong>A wrong tax figure:</strong> use the "tax-rule correction" issue template, with the official source (the
+        link, the document and the date you read it). The <a href="/open-source/#contribute">open-source page</a> explains
+        what evidence a change needs.
+      </li>
+      <li>
+        <strong>A question about self-hosting:</strong> GitHub Discussions. Self-hosting support is community support,
+        with no guaranteed response time. See <a href="/self-hosting/#support">self-hosting</a>.
+      </li>
+      <li>
+        <strong>A security problem:</strong> the private route on the <a href="/security/#reporting">security page</a>, not
+        a public issue.
+      </li>
+      <li>
+        <strong>Your data on the hosted service</strong> (access, export, deletion): the privacy address above. The
+        hosted service is not open yet.
+      </li>
+    </ul>
+    <Callout type="note" title="Mailboxes are being set up">
+      <p>
+        These addresses are being set up alongside the launch. If a message to one bounces, use the repository instead. We
+        are a very small project and cannot promise a reply time.
+      </p>
+    </Callout>
+  </Section>
+</PageLayout>
+
+<style>
+  .grid {
+    display: grid;
+    gap: var(--space-m);
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+    padding-bottom: var(--space-xl);
+  }
+  .points {
+    display: grid;
+    gap: var(--space-s);
+    padding-left: 1.2rem;
+    list-style: disc;
+    color: var(--ink-2);
+    margin-bottom: var(--space-l);
+  }
+</style>

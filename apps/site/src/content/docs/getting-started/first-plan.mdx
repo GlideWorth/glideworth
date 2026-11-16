@@ -1,0 +1,79 @@
+---
+title: Your first plan in ten minutes
+description: Start Glideworth, choose a passphrase, answer six setup questions, and read your first projection and chance of success.
+section: Getting started
+order: 2
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+
+This walks you from a fresh install to a first result. The figures in the app are your own; nothing here
+is advice.
+
+**Before you start:** Glideworth running, either self-hosted ([install with Docker](/docs/self-hosting/docker/))
+or, once it opens, the [hosted service](/docs/hosted/hosted-service/). You need rough balances for your
+accounts, your yearly pay before tax, your yearly spending and the age you would like to stop working.
+
+## 1. Sign in
+
+<Steps>
+1. Open the address of your instance (`http://localhost:8787` for a local Docker install).
+2. On a new database the app asks you to choose a passphrase of 12 or more characters. If the server has
+   `GLIDEWORTH_SETUP_TOKEN` set, it also asks for that token. You become the owner and are signed in.
+3. There is no email, so there is no "forgot password" link. See
+   [Troubleshooting](/docs/self-hosting/troubleshooting/) for the reset command.
+</Steps>
+
+## 2. Choose how to start
+
+The Welcome page offers three starting points:
+
+- **Start from scratch**, with the button "Begin setup": a short guided setup.
+- **Explore a sample household**: three worked examples with invented people and numbers. "Sam" is a single
+  UK household, "Avery & Jordan" a US couple, and "Noor & Ellis" a UAE couple whose plan moves back to the UK.
+  Loading a sample replaces your data if you already have some, and the app asks first.
+- **Bring your data**: "Import from ProjectionLab" or "Import CSV files". See [Importing](/docs/importing/projectionlab/).
+
+## 3. Answer the six setup questions
+
+"Begin setup" has six steps. A summary on the right ("So far") shows your household, net worth, income,
+spending and retirement as you go.
+
+<Steps>
+1. **Where you live.** Choose the country of tax residence, a region if the country has them, the currency,
+   and the number and date format. This sets the currency, tax year and account types.
+2. **Who is in the plan.** Your first name (only used for labels) and birth month. Tick "I am planning with
+   a partner" to add a second person.
+3. **What you have.** Add accounts: a type, a name, a balance and an owner. A few balances are enough.
+4. **What you earn.** Your salary per year, before tax, and your partner's if there is one.
+5. **What you spend.** "Everyday essentials" and "Travel and fun" (spending you could trim), entered per
+   week, month or year.
+6. **Your retirement goal.** "Retire at age", "Plan until age", and a plan name.
+</Steps>
+
+Choose the finish button on the last step. The app creates your household and your first plan and says
+the plan is ready.
+
+## 4. Read the first result
+
+<Steps>
+1. Open **Results** in the sidebar. You see net worth year by year, your milestone dates and any year money
+   runs short. Use the "Today's money" and "Future money" switch in the top bar.
+2. Open **Chance of success** and run it. Read the headline first, then the panels "When failed trials run
+   short" and "Early returns vs success".
+3. Open **Insights** and ask a solver question, such as the most you can spend at a target chance of success.
+4. Open the **Plan editor** to refine: add milestones, flows, a mortgage or other income.
+</Steps>
+
+<Callout type="note" title="It starts rough on purpose">
+  The setup is deliberately quick. Spend your time in the Plan editor, where each section (Income,
+  Expenses, Flows, Accounts, Property and debts, Withdrawals, Assumptions, Taxes) lets you add the detail
+  that matters for you. See [Build a plan](/docs/planning/build-a-plan/).
+</Callout>
+
+## What this does not do
+
+It does not check your inputs against your real statements, and the first result uses default
+assumptions. Set the tax mode to estimate for your country (see
+[Tax settings and currency](/docs/planning/tax-and-currency/)) before you rely on a figure.

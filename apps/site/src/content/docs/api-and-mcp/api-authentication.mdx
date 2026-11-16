@@ -1,0 +1,92 @@
+---
+title: API authentication, scopes and roles
+description: Create scoped API keys, sign in from a browser with a passphrase and CSRF token, understand owner, editor and viewer roles, and connect remote MCP clients with OAuth 2.1.
+section: API and MCP
+order: 11
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+
+There are two ways in, and they never interfere with each other.
+
+| | API key | Browser session |
+| --- | --- | --- |
+| For | Scripts, integrations, MCP, AI assistants | The web app |
+| Credential | `Authorization: Bearer glideworth_<prefix>_<secret>` | Passphrase sign-in, then an httpOnly cookie |
+| Scopes | Per key: `read`, `simulate`, `write` | The user's role |
+| Writes need | Nothing extra | An `X-CSRF-Token` header |
+| `/mcp` | Yes | No (MCP is bearer-only) |
+
+## API keys
+
+Keys are stored as a SHA-256 hash only. The secret is shown once, at creation, and is never logged.
+
+| Scope | Allows |
+| --- | --- |
+| `read` | `GET` everything, and run compute (simulations, solvers, insights). |
+| `simulate` | Run compute and read job status and results, but not read raw data (a "calculator" key). |
+| `write` | All mutations: plans, finances, change sets, keys, webhooks and imports. Implies `read` and `simulate`. |
+
+A key can only mint keys with scopes it has itself, and never has more than its user's role allows. The last active
+`write` key cannot be revoked.
+
+Create a key in the app under **Settings**, then **API keys**, or from the command line:
+
+```bash
+pnpm keys:create -- --name laptop --scopes read,simulate
+```
+
+On Docker: `docker compose exec glideworth node dist/cli/create-key.js --name laptop --scopes read`.
+
+On first boot, if there are no keys and `GLIDEWORTH_BOOTSTRAP_KEY` is set, it is inserted with read and write scope. The
+public example key in `.env.example` is refused in production.
+
+## Browser sign-in
+
+In production the browser signs in with a passphrase you choose on first run. These routes are public, under
+`/api/v1/auth`:
+
+| Route | Purpose |
+| --- | --- |
+| `GET /api/v1/auth/status` | Whether setup is required, whether you are authenticated, your user, and a CSRF token. |
+| `POST /api/v1/auth/setup` | First run only: set the passphrase (12 or more characters) and sign in. With `GLIDEWORTH_SETUP_TOKEN` set, the token must be sent too. |
+| `POST /api/v1/auth/login` | Open a session. Omit the sign-in name for the owner. |
+| `POST /api/v1/auth/accept` | Accept an invite or a passphrase reset with a token and a new passphrase. |
+| `POST /api/v1/auth/change-passphrase` | Change your own. Your other sessions are signed out. |
+| `POST /api/v1/auth/logout`, `/api/v1/auth/logout-all` | End this session, or all of your sessions. |
+
+The passphrase is hashed with scrypt and compared in constant time. The session cookie is a random 256-bit token,
+`HttpOnly` and `SameSite=Strict`, stored server-side only as a hash. A session lasts 168 hours at most
+(`GLIDEWORTH_SESSION_TTL_HOURS`) with a 24-hour idle timeout (`GLIDEWORTH_SESSION_IDLE_HOURS`). Cookie-authenticated
+writes must send `X-CSRF-Token`, and an `Origin` header, if sent, must match the server. API-key requests are exempt.
+Failed sign-ins are throttled per client and globally (`GLIDEWORTH_LOGIN_MAX_ATTEMPTS` in
+`GLIDEWORTH_LOGIN_WINDOW_MINUTES`, default 5 in 15), and the `429` applies even to the right passphrase until the window
+passes. Behind a reverse proxy set `GLIDEWORTH_TRUST_PROXY=true` so the real client address is used.
+
+## Roles
+
+| Role | Can |
+| --- | --- |
+| `owner` | Everything, including users, webhooks, OAuth clients and the audit log. |
+| `editor` | Read, simulate and write; not users, webhooks or the audit log. |
+| `viewer` | Read and simulate only. |
+
+A role caps every credential of that person. A viewer's `POST /plans` is `403 FORBIDDEN` with `details`
+`{ "required": "write", "role": "viewer" }`. Related routes: `GET /me`, `GET/POST /me/keys`, `DELETE /me/keys/{id}`, `GET
+/users`, `POST /users` (invite), `POST /users/{id}/invite`, `PATCH /users/{id}`, `DELETE /users/{id}`,
+`POST /users/{id}/reset-passphrase` and `GET /audit-log`.
+
+## OAuth for remote MCP clients
+
+Hosted MCP clients that connect by URL sign in with OAuth 2.1 following the MCP authorisation specification: discovery at
+`/.well-known/oauth-protected-resource`, dynamic client registration at `POST /oauth/register`, a consent screen at
+`/oauth/authorize`, and PKCE (S256 only) at `POST /oauth/token`. Tokens last an hour and refresh with rotation. OAuth
+tokens are accepted on `/mcp` only. Scopes are the same three, capped by the role of the user who consents. Set
+`GLIDEWORTH_PUBLIC_URL` behind a proxy. Manage grants with `GET/DELETE /me/oauth-grants` (yours) or
+`GET/DELETE /oauth/clients` (owner).
+
+<Callout type="warning" title="What this does not do">
+  It does not support confidential OAuth clients, client ID metadata documents, or the implicit and password grants. There
+  is no per-household access control: roles are instance-wide. Two-factor sign-in is not built.
+</Callout>

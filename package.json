@@ -1,0 +1,51 @@
+{
+  "name": "glideworth",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c cyan,magenta \"pnpm --filter @glideworth/api dev\" \"pnpm --filter @glideworth/web dev\"",
+    "build": "pnpm -r --workspace-concurrency=1 build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "oxlint --ignore-path .oxlintignore --deny-warnings .",
+    "lint:fix": "oxlint --ignore-path .oxlintignore --fix .",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "knip": "knip",
+    "quality": "pnpm run format:check && pnpm run typecheck && pnpm run lint && pnpm run test",
+    "db:generate": "pnpm --filter @glideworth/api db:generate",
+    "keys:create": "pnpm --filter @glideworth/api keys:create",
+    "start": "pnpm --filter @glideworth/api start",
+    "seed": "pnpm --filter @glideworth/api seed",
+    "backup": "pnpm --filter @glideworth/api backup",
+    "restore": "pnpm --filter @glideworth/api restore",
+    "bench": "pnpm --filter @glideworth/core bench",
+    "prepare": "node .husky/install.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "concurrently": "10.0.7",
+    "husky": "9.1.7",
+    "knip": "6.34.0",
+    "lint-staged": "17.5.0",
+    "oxfmt": "0.67.0",
+    "oxlint": "1.82.0",
+    "typescript": "7.0.2",
+    "vitest": "5.1.0"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,mjs,mts}": [
+      "oxlint --ignore-path .oxlintignore --no-error-on-unmatched-pattern --fix",
+      "oxfmt --no-error-on-unmatched-pattern --write"
+    ],
+    "*.{json,md,css,html,yml,yaml}": [
+      "oxfmt --no-error-on-unmatched-pattern --write"
+    ]
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@10.28.2"
+}

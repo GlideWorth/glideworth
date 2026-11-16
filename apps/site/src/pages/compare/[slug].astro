@@ -1,0 +1,80 @@
+---
+import { type CollectionEntry, getCollection, render } from 'astro:content';
+import Callout from '../../components/Callout.astro';
+import { mdxComponents } from '../../components/mdx';
+import EntryLayout from '../../layouts/EntryLayout.astro';
+import { formatDate, isoDate } from '../../lib/content';
+import { EXTERNAL_REL } from '../../lib/links';
+
+export async function getStaticPaths() {
+  return (await getCollection('compare')).map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+interface Props {
+  entry: CollectionEntry<'compare'>;
+}
+const { entry } = Astro.props;
+const { Content, headings } = await render(entry);
+const d = entry.data;
+---
+
+<EntryLayout
+  title={d.title}
+  description={d.description}
+  noindex={d.noindex}
+  eyebrow="Comparison"
+  lede={d.description}
+  headings={headings}
+  crumbs={[
+    { label: 'Comparisons', href: '/compare/' },
+    { label: d.title, href: `/compare/${entry.id}/` },
+  ]}
+>
+  <Fragment slot="before">
+    {
+      d.noindex && (
+        <Callout type="draft" title="Sample entry">
+          <p>This page shows the layout of a comparison. It is not indexed by search engines.</p>
+        </Callout>
+      )
+    }
+    <p class="checked">
+      Facts about {d.competitor} checked on <time datetime={isoDate(d.checkedOn)}>{formatDate(d.checkedOn)}</time>. Products
+      change; check the sources below for the latest.
+    </p>
+  </Fragment>
+  <Content components={mdxComponents} />
+  <section slot="after" class="sources" aria-labelledby="sources-h">
+    <h2 id="sources-h">Sources</h2>
+    <ol>
+      {
+        d.sources.map((s) => (
+          <li>
+            <a href={s.url} rel={`${EXTERNAL_REL} nofollow`}>{s.label}</a>
+            {s.accessed && <span class="muted"> (read {formatDate(s.accessed)})</span>}
+          </li>
+        ))
+      }
+    </ol>
+  </section>
+</EntryLayout>
+
+<style>
+  .checked {
+    color: var(--ink-3);
+    font-size: var(--text-sm);
+  }
+  .sources {
+    padding-top: var(--space-l);
+    border-top: 1px solid var(--line);
+    font-size: var(--text-sm);
+  }
+  .sources h2 {
+    font-size: var(--text-xl);
+    margin-bottom: var(--space-s);
+  }
+  .sources ol {
+    padding-left: 1.2em;
+    display: grid;
+    gap: 0.4rem;
+  }
+</style>

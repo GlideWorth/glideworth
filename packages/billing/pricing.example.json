@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "trialDays": 30,
+  "pastDueGraceDays": 14,
+  "trialEndingNoticeDays": 3,
+  "trialProductId": "gw_cloud",
+  "products": [
+    {
+      "id": "gw_cloud",
+      "name": "Glideworth Cloud",
+      "description": "Hosted Glideworth: your financial plan, backed up and available everywhere.",
+      "limits": {
+        "editors": 2,
+        "viewers": 3,
+        "apiRequestsPerMinute": 1200,
+        "apiRequestsPerDay": 100000,
+        "concurrentJobs": 1,
+        "queuedJobs": 10,
+        "jobsPerDay": 300,
+        "workerSecondsPerDay": 1800,
+        "maxJobSeconds": 300,
+        "maxMonteCarloTrials": 20000,
+        "webhooks": 10,
+        "webhookDeliveriesPerDay": 5000,
+        "shareLinks": 50,
+        "shareReadsPerDay": 10000,
+        "apiKeys": 25,
+        "storageMb": 200
+      },
+      "prices": [
+        {
+          "lookupKey": "cloud_monthly_v1",
+          "interval": "month",
+          "currency": "usd",
+          "unitAmount": 900,
+          "taxBehavior": "exclusive",
+          "currencyOptions": {
+            "gbp": { "unitAmount": 900, "taxBehavior": "inclusive" },
+            "eur": { "unitAmount": 900, "taxBehavior": "inclusive" }
+          },
+          "offered": true
+        },
+        {
+          "lookupKey": "cloud_yearly_v1",
+          "interval": "year",
+          "currency": "usd",
+          "unitAmount": 9000,
+          "taxBehavior": "exclusive",
+          "currencyOptions": {
+            "gbp": { "unitAmount": 9000, "taxBehavior": "inclusive" },
+            "eur": { "unitAmount": 9000, "taxBehavior": "inclusive" }
+          },
+          "offered": true
+        }
+      ]
+    }
+  ],
+  "checkout": { "allowPromotionCodes": false, "collectTaxIds": true }
+}

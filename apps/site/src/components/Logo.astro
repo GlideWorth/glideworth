@@ -1,0 +1,55 @@
+---
+/**
+ * The Glideworth logo: an origami bird (the mark) with the wordmark drawn as outlines, inline so it follows
+ * the theme. The artwork is read from the masters in /brand (mark.svg, logo.svg), so there is one source:
+ * green facets on light backgrounds, off-white facets on dark ones (the sand wing-tip stays), switched with
+ * light-dark() the same way the site's colour tokens are. The wordmark is outlines rather than live text so it
+ * matches the approved lockup; the SVG has role="img" and an aria-label (a <title> would be a second document title for check:dist).
+ */
+import logoSvg from '../../../../brand/logo.svg?raw';
+import markSvg from '../../../../brand/mark.svg?raw';
+
+interface Props {
+  /** Show the wordmark next to the mark. */
+  wordmark?: boolean;
+  /** Height of the artwork in px (the bird's height). */
+  height?: number;
+  class?: string;
+}
+const { wordmark = true, height = 40, class: className } = Astro.props;
+
+const source = wordmark ? logoSvg : markSvg;
+const viewBox = /viewBox="0 0 ([\d.]+) ([\d.]+)"/.exec(source);
+const ratio = Number(viewBox?.[1]) / Number(viewBox?.[2]);
+const svg = source
+  .trim()
+  .replace('<title>Glideworth</title>', '')
+  .replace(
+    '<svg ',
+    `<svg class="logo-svg" width="${Math.round(height * ratio * 10) / 10}" height="${height}" aria-label="Glideworth" focusable="false" `,
+  )
+  .replaceAll('fill="#1F4D3F"', 'class="lg"')
+  .replaceAll('fill="#D9C7A7"', 'class="ls"');
+---
+
+<span class:list={['logo', className]} set:html={svg} />
+
+<style is:global>
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    line-height: 0;
+    --logo-green: light-dark(#1f4d3f, #f4efe6);
+    --logo-sand: #d9c7a7;
+  }
+  .logo-svg {
+    flex: none;
+    display: block;
+  }
+  .logo-svg .lg {
+    fill: var(--logo-green);
+  }
+  .logo-svg .ls {
+    fill: var(--logo-sand);
+  }
+</style>

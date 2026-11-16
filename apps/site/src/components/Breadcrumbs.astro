@@ -1,0 +1,57 @@
+---
+/**
+ * Breadcrumb trail with BreadcrumbList structured data. "Home" is added for you.
+ *   <Breadcrumbs items={[{ label: 'Docs', href: '/docs/' }, { label: 'Self-hosting', href: '/docs/self-hosting/' }]} />
+ * The last item is the current page.
+ */
+import { breadcrumbList, type Crumb } from '../lib/jsonld';
+import JsonLd from './JsonLd.astro';
+
+interface Props {
+  items: Crumb[];
+}
+const crumbs: Crumb[] = [{ label: 'Home', href: '/' }, ...Astro.props.items];
+---
+
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+  <ol role="list">
+    {
+      crumbs.map((c, i) => (
+        <li>
+          {i === crumbs.length - 1 ? (
+            <span aria-current="page">{c.label}</span>
+          ) : (
+            <a href={c.href}>{c.label}</a>
+          )}
+        </li>
+      ))
+    }
+  </ol>
+</nav>
+<JsonLd data={breadcrumbList(crumbs)} />
+
+<style>
+  .breadcrumbs ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0;
+    font-size: var(--text-xs);
+    color: var(--ink-3);
+  }
+  li + li::before {
+    content: '/';
+    margin-inline: 0.5rem;
+    color: var(--line-strong);
+  }
+  a {
+    color: var(--ink-3);
+    text-decoration: none;
+  }
+  a:hover {
+    color: var(--ink);
+    text-decoration: underline;
+  }
+  [aria-current='page'] {
+    color: var(--ink-2);
+  }
+</style>

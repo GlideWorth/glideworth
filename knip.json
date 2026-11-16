@@ -1,0 +1,43 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/*.mjs"],
+      "project": ["scripts/**/*.mjs", "*.{ts,mjs}"]
+    },
+    "packages/core": {
+      "entry": ["bench/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts", "bench/**/*.ts"]
+    },
+    "packages/importers": {
+      "entry": ["scripts/*.ts"],
+      "project": ["src/**/*.ts", "cli/**/*.ts", "scripts/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/email": {
+      "entry": ["scripts/*.ts"],
+      "project": ["src/**/*.ts", "scripts/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/billing": {
+      "entry": ["scripts/*.ts"],
+      "project": ["src/**/*.ts", "scripts/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/cloud": {
+      "entry": ["src/cli/bin.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "apps/api": {
+      "entry": ["src/cli/*.ts", "src/jobs/worker.ts", "scripts/*.mjs"],
+      "project": ["src/**/*.ts", "test/**/*.ts", "scripts/**/*.mjs"]
+    },
+    "apps/web": {
+      "entry": ["scripts/*.mjs"],
+      "project": ["src/**/*.{ts,tsx,css}", "test/**/*.{ts,tsx}", "scripts/**/*.mjs"]
+    },
+    "apps/site": {
+      "entry": ["scripts/*.mjs"],
+      "project": ["src/**/*.{ts,astro,mdx}", "scripts/**/*.mjs"],
+      "ignoreBinaries": ["xmllint"],
+      "ignoreDependencies": ["@fontsource/fraunces", "@fontsource/inter"]
+    }
+  }
+}

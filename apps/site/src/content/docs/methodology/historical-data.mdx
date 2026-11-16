@@ -1,0 +1,65 @@
+---
+title: Historical data and its limits
+description: Which historical return datasets Glideworth uses, where each comes from, how they are licensed and what they cannot tell you, including the limits of the UK data.
+section: Reference
+order: 3
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+import { site } from '../../../config/site';
+
+Historical Monte Carlo methods need market history: stock and bond returns, dividends, cash and inflation, by year.
+Glideworth bundles datasets built from public sources. Every value is an arithmetic transformation of a source cell;
+nothing is typed in by hand. The repository records the provenance and the licence terms of every source in
+<RepoLink path="DATA-LICENSES.md">DATA-LICENSES.md</RepoLink>.
+
+## The datasets
+
+| Dataset | Coverage | Source | Terms |
+| --- | --- | --- | --- |
+| US since 1928 (the default for every country, including the UK) | 1928 to 2025, calendar years | Aswath Damodaran, "Historical Returns on Stocks, Bonds and Bills" (stocks, 10-year Treasury bonds, 3-month bills). Inflation from US Bureau of Labor Statistics CPI-U, December to December. | Damodaran: free to use, acknowledgement requested. BLS: public domain. |
+| UK since 1983 | 1983 to 2025, calendar years | Office for National Statistics (inflation), Bank of England (Bank Rate and 10-year gilt yields), Federal Reserve (the dollar-sterling rate), and Damodaran for equities: US shares converted to sterling. | Open Government Licence v3.0 for the UK public-sector sources; Federal Reserve data is public domain. |
+
+Datasets are not updated automatically. Canada, Australia and the euro area have no history of their own, so
+households there test against US history unless the plan says otherwise.
+
+Two older sets are no longer included. The UK set from 1871 to 2020 came from an academic database with a
+non-commercial licence. The US set from 1871 (Robert Shiller's data) has no explicit licence. Plans that named
+either now run on UK since 1983 or US since 1928, and the app says so with a notice on the plan. If you run
+Glideworth yourself, you can download the 1871 US data for your own use with a script in the repository; it is never
+part of the hosted service.
+
+## How the sets are built
+
+For each year, the engine needs stock price return, dividend yield, bond return, bond income (the coupon), cash and
+inflation. Bond total return is split into income and price change. Both bundled sets use calendar years, and
+inflation is December to December to align with calendar-year returns.
+
+## What the UK set is, and is not
+
+The UK set uses openly licensed sources so that it can be used in a commercial service and in an AGPL repository.
+UK inflation, Bank Rate and 10-year gilts are UK data. No openly licensed UK share history covering more than a few
+years exists, so the share series is the US market (Damodaran's S&P 500 data) converted to sterling at the Federal
+Reserve's year-end exchange rate: a sterling investor holding US shares, not UK shares.
+
+It covers 43 years, all after 1982. It contains the 2008 crash and the 2022 inflation spike and gilt sell-off, but no
+1970s inflation and no wartime years, and US shares returned more than UK shares over the period. Historical runs on
+it are therefore markedly more optimistic than long UK history. For that reason **new UK plans default to US history
+since 1928**, which is longer and includes the Depression and the 1970s; it is still more favourable than long-run UK
+history, so leave a margin. You can choose the UK set in the chance-of-success settings. A plan longer than 43 years
+cannot use the method that replays every start year once.
+
+## Limits you should know
+
+- **A short history is a short history.** 43 years of UK data, or 98 years of US data, is a thin sample of possible
+  futures, and overlapping start years are not independent.
+- **You are probably testing against American history.** The default everywhere is US stocks, bonds and inflation,
+  in dollars; results are in real terms, so what matters is US history after inflation, not the dollar.
+- **Crypto** has no history and is sampled from a distribution.
+- **Past returns do not predict the future.**
+
+<Callout type="note" title="What this does not do">
+  The datasets do not update by themselves, and there are no historical series of your own. You can instead choose
+  random draws from distributions you set (the normal method).
+</Callout>

@@ -1,0 +1,10 @@
+[
+  {
+    "id": "glideworth-team",
+    "name": "The Glideworth team",
+    "kind": "organization",
+    "role": "Maintainers",
+    "bio": "The people who build and maintain Glideworth, an open-source financial and retirement planner with an API and MCP server.",
+    "url": "https://glideworth.com/about/"
+  }
+]

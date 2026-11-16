@@ -1,0 +1,110 @@
+---
+import Callout from '../components/Callout.astro';
+import CTABand from '../components/CTABand.astro';
+import FAQ from '../components/FAQ.astro';
+import PricingTable from '../components/PricingTable.astro';
+import Section from '../components/Section.astro';
+import { page } from '../config/pages';
+import { formatPrice, pricing, yearlySaving } from '../config/pricing';
+import { site } from '../config/site';
+import PageLayout from '../layouts/PageLayout.astro';
+import { facts } from '../lib/facts';
+import type { FaqItem } from '../lib/jsonld';
+import { softwareApplication } from '../lib/jsonld';
+
+const saving = yearlySaving();
+const m = formatPrice(pricing.monthly);
+const y = formatPrice(pricing.yearly);
+
+const faq: FaqItem[] = [
+  {
+    q: 'Is there a free plan?',
+    a: `<p>There is no free hosted plan. The free routes are the self-hosted build, which you can run today, is free for good and has every feature, and a ${pricing.trialDays}-day trial of ${pricing.planName} with every feature and no card, once the hosted service opens.</p>`,
+  },
+  {
+    q: 'What is the difference between the hosted and the self-hosted versions?',
+    a: `<p>Only who runs it. Both are the same open-source code with the same features. The software exists and you can self-host it today. ${pricing.planName} is the hosted service, which opens later: we will run the servers, apply engine and tax-table updates, and host the API and MCP server at a stable HTTPS address. When you self-host, you do those things yourself on your own machine or server.</p>`,
+  },
+  {
+    q: 'Is self-hosting really free, with nothing held back?',
+    a: `<p>Yes. The self-hosted build is the whole product under the ${site.license} licence: no licence key, no feature that is switched off unless you pay, and no telemetry. See <a href="/self-hosting/">self-hosting</a> for what it takes to run.</p>`,
+  },
+  {
+    q: 'Why is there only one plan?',
+    a: `<p>Because every feature is in it. You choose how to pay: ${m} a month, or ${y} a year, which costs ${formatPrice(saving.amount)} less than twelve monthly payments.</p>`,
+  },
+  {
+    q: 'What happens when the trial ends?',
+    a: `<p>Once the hosted service is open: to keep using it, choose the monthly or yearly plan. Whatever you decide, you can export your data as JSON, CSV tables or a printable report and import it into a self-hosted copy.</p>`,
+  },
+  {
+    q: 'Can I move between the hosted service and self-hosting?',
+    a: '<p>Yes. Both run the same code, and Glideworth imports its own export file, so you can take a household from one to the other.</p>',
+  },
+  {
+    q: 'Does Glideworth connect to my bank?',
+    a: '<p>No. You enter balances yourself or import files: ProjectionLab JSON exports, bank and budgeting CSVs (Monarch, YNAB and generic), and OFX, QFX or QIF statements.</p>',
+  },
+  {
+    q: 'Can my AI assistant use my hosted account?',
+    a: `<p>That is the plan for the hosted service, which is not running yet: its MCP server will use OAuth, so Claude and other MCP clients can connect without a tunnel. The same MCP server runs today on your own machine or server. Assistants get ${facts.mcpReadTools} read and compute tools; the ${facts.mcpWriteTools} write tools stay off unless you turn them on, and plan edits are always proposals you approve. See <a href="/api/">API and MCP</a>.</p>`,
+  },
+  {
+    q: 'Which countries does it estimate tax for?',
+    a: `<p>${facts.taxCountries.map((c) => c.name).join(', ')}, plus flat or custom rates anywhere else. Every figure is an estimate, and each country lists what its model leaves out. See <a href="/planning/">planning by country</a>.</p>`,
+  },
+  {
+    q: 'Is this financial advice?',
+    a: '<p>No. Glideworth is planning software. It shows the consequences of the assumptions you enter; it does not tell you what to buy, and its tax figures are estimates, not a tax return.</p>',
+  },
+];
+---
+
+<PageLayout
+  {...page('/pricing/')}
+  heading="One plan, every feature. Or run it yourself, free."
+  eyebrow="Pricing"
+  lede={`${pricing.planName} is ${m} a month or ${y} a year after a ${pricing.trialDays}-day free trial with no card. Self-hosting is free, with nothing held back.`}
+  crumbs={[{ label: 'Pricing', href: '/pricing/' }]}
+  jsonLd={[softwareApplication()]}
+>
+  <section class="container pricing-wrap" aria-label="Plans">
+    {
+      !site.cloudLaunched && (
+        <Callout type="note" title="Before launch" class="prelaunch">
+          <p>
+            The software exists, and you can self-host it today. The hosted service opens later: sign-up, billing and
+            hosted servers are not built yet, so this page describes the plan it will offer.
+          </p>
+        </Callout>
+      )
+    }
+    <PricingTable />
+    <p class="pricing-foot">
+      Features marked <em>Planned</em> belong to the hosted service, which is not running yet. Everything else listed is
+      in the open-source software today, and you can self-host it now.
+    </p>
+  </section>
+
+  <Section id="faq" eyebrow="Questions" title="Pricing questions, answered plainly." width="narrow">
+    <FAQ items={faq} />
+  </Section>
+
+  <CTABand title="Try it on your own numbers." />
+</PageLayout>
+
+<style>
+  .pricing-wrap {
+    padding-bottom: var(--space-l);
+    display: grid;
+    gap: var(--space-l);
+  }
+  .pricing-wrap :global(.prelaunch) {
+    max-width: 48rem;
+  }
+  .pricing-foot {
+    font-size: var(--text-sm);
+    color: var(--ink-3);
+    max-width: 48rem;
+  }
+</style>

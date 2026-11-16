@@ -1,0 +1,144 @@
+---
+import ToolPage from '../../components/tools/ToolPage.astro';
+import { coastNumbers } from '../../tools/engine/coast';
+import { growthFactor } from '../../tools/closed-form';
+import { money } from '../../tools/format';
+
+const m = (x: number) => money(x, 'USD');
+// Worked examples: the blog article's inputs, computed by the calculator's own engine code at build time.
+const base = { spend: 40_000, wr: 4, ret: 5, timing: 'end', cur: 'USD' } as const;
+const ex1 = coastNumbers({ ...base, age: 30, retire: 60, balance: 0, save: 0 });
+const ex2 = coastNumbers({ ...base, age: 35, retire: 60, balance: 100_000, save: 30_000 });
+const t2 = ex2.coastYears ?? 0;
+const g30 = growthFactor(0.05, 30);
+
+const faq = [
+  {
+    q: 'What is a Coast FIRE number?',
+    a: `<p>It is the amount you need invested today so that, with no further contributions, growth alone reaches your FIRE number by the age you plan to retire. With a FIRE number of ${m(ex1.target)}, 30 years to go and a 5% return after inflation, it is ${m(ex1.coastToday)}.</p>`,
+  },
+  {
+    q: 'Does reaching Coast FIRE mean I can stop working?',
+    a: '<p>No. It means you can stop saving for retirement, provided your income still covers your spending until you retire. The portfolio then has to be left alone to grow.</p>',
+  },
+  {
+    q: 'Which return should I use?',
+    a: '<p>A return after inflation, because the target is in today’s money. There is no right value: the result is very sensitive to it, so the calculator shows the coast number at two points either side of your choice.</p>',
+  },
+  {
+    q: 'Does the calculator include tax?',
+    a: '<p>No. It grows a pre-tax pot to a pre-tax target. If withdrawals in retirement will be taxed, raise the spending you enter (the FIRE calculator has a flat tax option for this). The full planner estimates real tax by country.</p>',
+  },
+];
+---
+
+<ToolPage
+  id="coast-fire"
+  heading="Coast FIRE calculator"
+  lede="How much you need invested today for growth alone to reach your FIRE number by the time you retire, and the age you get there if you keep saving. It runs the Glideworth planning engine in your browser; nothing you type is sent anywhere."
+  faq={faq}
+  adds="A coast number assumes one steady return and no tax."
+  related={[
+    { href: '/blog/what-is-your-fire-number/', label: 'What is your FIRE number? The 25x rule and its limits' },
+    { href: '/features/solvers/', label: 'Solvers: earliest retirement and required savings for a whole plan' },
+    { href: '/docs/methodology/how-projections-work/', label: 'How projections work' },
+  ]}
+>
+  <h2>How the calculator works</h2>
+  <p>
+    <strong>Coast FIRE</strong> means you already have enough invested that, without another contribution, growth alone
+    carries the portfolio to your full retirement target by the age you chose. You still have to earn enough to pay
+    today’s bills; you have only stopped saving for retirement.
+  </p>
+  <ol>
+    <li>
+      <strong>FIRE number.</strong> Your yearly spending in retirement divided by the withdrawal rate: 40,000 at 4% is
+      1,000,000, which is 25 times spending.
+    </li>
+    <li>
+      <strong>Coast number.</strong> The FIRE number divided by the growth between now and retirement. The calculator
+      gets that growth from the engine: it projects one invested account at your return after inflation, year by year,
+      and reads how much one unit becomes by each age.
+    </li>
+    <li>
+      <strong>Coast age.</strong> If you enter a yearly saving, the engine projects your balance with those savings added
+      each year. Your coast age is the first year end at which the balance is at or above the coast number for that
+      age. A second projection stops saving at that age, to show that growth alone still reaches the target.
+    </li>
+  </ol>
+  <p>
+    Everything is in today’s money: the return you enter is after inflation, and inflation is set to zero inside the
+    projection, so the figures need no conversion.
+  </p>
+
+  <h2>The formula</h2>
+  <p class="formula">Coast number = FIRE number ÷ (1 + r)<sup>n</sup></p>
+  <p>
+    Here <code>r</code> is the yearly return after inflation, compounded once a year, and <code>n</code> the number of years
+    until you retire. With a steady return the engine compounds exactly this way, so the two agree to the unit; the
+    calculator shows both under “Formula and engine side by side”.
+  </p>
+
+  <h2>Worked example</h2>
+  <p>
+    These numbers are produced by the calculator’s own code when this page is built, so they cannot drift from what the
+    calculator shows. Spending of {m(40_000)} at a 4% withdrawal rate gives a FIRE number of {m(ex1.target)}. A
+    30-year-old who plans to retire at 60 has <code>n</code> = 30. At 5% after inflation the growth factor is
+    1.05<sup>30</sup> = {g30.toFixed(4)}, so:
+  </p>
+  <p class="formula">Coast number = {m(ex1.target)} ÷ {g30.toFixed(4)} = {m(ex1.coastToday)}</p>
+  <p>
+    The engine’s projection of one invested account gives a growth factor of {ex1.growth.toFixed(4)} over those 30
+    years and the same coast number, {m(ex1.coastToday)}.
+  </p>
+  <p>
+    The second question, when you reach it while still saving: a 35-year-old holds {m(100_000)}, adds {m(30_000)} at
+    the end of each year, and keeps the same target at 60. At {35 + t2 - 1} the balance is {m(ex2.keep[t2 - 1] ?? 0)}{' '}
+    against a coast number of {m(ex2.coastByAge[t2 - 1] ?? 0)}: just short. At {35 + t2} it is {m(ex2.keep[t2] ?? 0)}{' '}
+    against {m(ex2.coastByAge[t2] ?? 0)}, so the coast age is {35 + t2}. Stopping all saving then, growth alone takes
+    the portfolio to {m(ex2.atRetirementStopAtCoast ?? 0)} at 60. (The example uses end-of-year savings, as the formula
+    does; the calculator’s default, savings in the middle of the year, gives them half a year of growth.)
+  </p>
+
+  <h2>Why the engine and the formula can differ</h2>
+  <ul>
+    <li>
+      <strong>Whole years.</strong> The engine steps one year at a time and checks the balance at each year end, so the
+      coast age is a whole age. The formula for the crossing point gives a fraction of a year.
+    </li>
+    <li>
+      <strong>When savings arrive.</strong> The engine credits each year’s saving with the share of the year’s return it
+      was invested for: all of it at the start of the year, half in the middle (the planner’s default), none at the end.
+      The formula the calculator shows uses the same convention, so the remaining difference is only the whole-year
+      check.
+    </li>
+  </ul>
+
+  <h2>What this assumes and leaves out</h2>
+  <ul>
+    <li>
+      <strong>One steady return.</strong> Real returns vary, and the coast number is very sensitive to the one you pick
+      (see the table of nearby returns in the results). A fall in the last years before retirement leaves little time to
+      recover.
+    </li>
+    <li>
+      <strong>Living costs until retirement.</strong> Coasting means your income covers your spending without drawing on
+      the portfolio.
+    </li>
+    <li>
+      <strong>No tax.</strong> A pre-tax pot grows to a pre-tax target. If withdrawals will be taxed, the target is
+      higher: at an illustrative 15% effective rate, 40,000 to spend needs about 47,059 withdrawn.
+    </li>
+    <li>
+      <strong>One accessible pot.</strong> Contribution limits and accounts you cannot touch before an access age are not
+      modelled.
+    </li>
+    <li>
+      <strong>No state pension or other income</strong> in retirement, which would lower the target, and a FIRE number
+      built for roughly 30 years of retirement: retiring early may need a larger one.
+    </li>
+  </ul>
+  <p>
+    The <a href="/blog/coast-fire-explained/">Coast FIRE article</a> works through each of these with numbers.
+  </p>
+</ToolPage>

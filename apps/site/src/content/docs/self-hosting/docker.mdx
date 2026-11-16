@@ -1,0 +1,109 @@
+---
+title: Install with Docker
+description: Run Glideworth in one Docker container with its data in a volume, protect first-run setup with a token, choose a passphrase, and create API keys.
+section: Self-hosting
+order: 1
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+import { site } from '../../../config/site';
+
+The self-hosted build is the whole product. It has every feature, no licence key and no paywall, and it has **no
+telemetry**: it reports no usage, errors, version checks or analytics to anyone. The only outbound connections the server
+makes are webhooks you configure yourself. In the browser, the API reference page at `/docs` loads its viewer script from
+a public CDN; nothing else in the app contacts a third party. The software is AGPL-3.0-only.
+
+Glideworth runs as one container: the web app, the REST API, the MCP server and the API reference are all served on one
+port, with the data in a single SQLite file on a volume.
+
+## Requirements
+
+- A Linux, macOS or Windows machine with **Docker Engine 24 or newer and the Compose plugin** (or Docker Desktop,
+  OrbStack and similar). The image is built for `linux/amd64` and `linux/arm64`, so a 64-bit Raspberry Pi 4 or newer
+  works.
+- About 1 GB of free memory and 1 GB of disk to start with. See [Sizing](#sizing).
+- For access from other devices over the internet: a domain name pointing at the machine, and ports 80 and 443 open for the
+  [reverse proxy](/docs/self-hosting/reverse-proxy/).
+- Without Docker you can run from source: Node 24 and pnpm 10, then `pnpm install`, `pnpm build`, `pnpm start`.
+
+## Install
+
+<Steps>
+1. Get the code and create your settings file.
+
+   <CodeBlock lang="bash" title="Terminal" code={`git clone ${site.repoUrl}.git\ncd glideworth\ncp .env.example .env`} />
+
+2. Edit `.env` before the first start. Set `GLIDEWORTH_SETUP_TOKEN` to a long random value of at least 8 characters, for
+   example the output of `openssl rand -hex 24`. This stops a stranger who finds the port from choosing your passphrase
+   first. Leave `GLIDEWORTH_BOOTSTRAP_KEY` **empty**, or set your own secret. The example development key in
+   `.env.example` is public and the server refuses it in production.
+3. Build and start.
+
+   ```bash
+   docker compose up -d --build
+   docker compose ps                    # the service should become "healthy"
+   docker compose logs -f glideworth
+   ```
+
+4. Open `http://localhost:8787` (change the host port with `GLIDEWORTH_PORT` in `.env`).
+</Steps>
+
+Data lives in the `glideworth-data` Docker volume and survives restarts and upgrades. Do not point `GLIDEWORTH_DB_PATH`
+anywhere outside `/data`. The container runs as a non-root user and has a health check on `/health`.
+
+To stop it: `docker compose stop`. To remove the container but keep the data: `docker compose down`.
+
+<Callout type="risk" title="Do not run down -v">
+  `docker compose down -v` deletes the volume and **all your data**.
+</Callout>
+
+## First run: passphrase and setup token
+
+On a fresh database the web app asks you to choose a passphrase of 12 or more characters and, if you set
+`GLIDEWORTH_SETUP_TOKEN`, to enter that token. You become the owner and are signed in. After that the setup screen is gone
+for good.
+
+- Use a password manager. There is no email, so there is no "forgot password" link.
+- **Forgot the passphrase?** On the host run:
+
+  ```bash
+  docker compose exec glideworth node dist/cli/admin.js reset-owner-passphrase
+  ```
+
+  It prints a one-time token. In the app choose "Use a reset token" and enter the token and a new passphrase. The owner is
+  signed out everywhere.
+- If you left the setup token empty, the server logs a warning at start-up. Set one, or keep the port reachable only from
+  your own machine, until you have chosen a passphrase.
+
+## API keys
+
+For scripts and AI assistants, create keys in the app under **Settings**, then **API keys**, or with:
+
+```bash
+docker compose exec glideworth node dist/cli/create-key.js --name laptop --scopes read
+```
+
+Give each tool the least scope it needs. MCP write tools stay off unless you set `GLIDEWORTH_MCP_ALLOW_WRITES=true`.
+
+## Sizing
+
+These are **estimates from one small test, not guarantees**. An idle container with the sample household used roughly
+190 MB of memory and almost no CPU, and the built image is about 500 MB. The database for a household is small: hundreds of
+kilobytes with the sample, a few megabytes after years of use with history and snapshots.
+
+| Use | CPU | Memory | Disk |
+| --- | --- | --- | --- |
+| One person or household, occasional use | 1 core | 512 MB | 2 GB |
+| Several households, regular use, 10,000-trial Monte Carlo runs | 2 to 4 cores | 1 to 2 GB | 5 GB plus backups |
+
+Monte Carlo runs use worker threads: `GLIDEWORTH_MAX_JOBS` run at once and each is split over up to
+`GLIDEWORTH_MC_SHARDS` threads. On a small machine, lower `GLIDEWORTH_MAX_JOBS` to 1. SQLite on one volume means one
+instance serves one database: run a single container, not several replicas, on local SSD storage rather than a network
+filesystem.
+
+## What this does not do
+
+It does not terminate TLS (see [reverse proxy](/docs/self-hosting/reverse-proxy/)), back up off the machine for you (see
+[backups](/docs/self-hosting/backups-and-restore/)), or run more than one replica. Support for self-hosters is community
+support: GitHub Discussions for questions and issues for reproducible bugs, with no service-level agreement.

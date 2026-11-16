@@ -1,0 +1,1208 @@
+{
+  "app": "cairn",
+  "schemaVersion": 1,
+  "household": {
+    "id": "hh-sample",
+    "name": "Avery & Jordan (sample)",
+    "planningMode": "couple",
+    "people": [
+      {
+        "id": "p-avery",
+        "name": "Avery",
+        "role": "primary",
+        "birthMonth": "1984-03",
+        "sex": "unspecified"
+      },
+      {
+        "id": "p-jordan",
+        "name": "Jordan",
+        "role": "partner",
+        "birthMonth": "1986-10",
+        "sex": "unspecified"
+      }
+    ],
+    "dependents": [
+      {
+        "id": "dep-robin",
+        "name": "Robin",
+        "birthMonth": "2017-05",
+        "independentAtAge": 18
+      }
+    ],
+    "location": {
+      "country": "US",
+      "region": "CO"
+    },
+    "currency": "USD",
+    "locale": "en-US"
+  },
+  "finances": {
+    "asOf": "2026-11",
+    "accounts": [
+      {
+        "id": "acc-cash",
+        "name": "High-yield savings",
+        "type": "savings",
+        "owner": "joint",
+        "balance": 28500,
+        "behaviour": {
+          "growth": {
+            "kind": "inherit"
+          },
+          "dividends": {
+            "yield": {
+              "kind": "inherit"
+            },
+            "treatment": "auto",
+            "reinvest": "inherit"
+          },
+          "fees": {
+            "kind": "none"
+          },
+          "bondAllocation": {
+            "kind": "inherit"
+          },
+          "withdrawals": {
+            "kind": "always"
+          },
+          "liquid": "whenWithdrawable",
+          "earlyWithdrawal": {
+            "enabled": false,
+            "qualifiedAge": 59.5,
+            "penaltyRate": 0.1
+          },
+          "distributions": {
+            "kind": "none"
+          },
+          "sepp": {
+            "method": "none"
+          },
+          "monteCarlo": "auto",
+          "isExcessCash": false
+        },
+        "archived": false
+      },
+      {
+        "id": "acc-brokerage",
+        "name": "Joint brokerage",
+        "type": "taxable",
+        "owner": "joint",
+        "balance": 164000,
+        "costBasis": 118000,
+        "behaviour": {
+          "growth": {
+            "kind": "inherit"
+          },
+          "dividends": {
+            "yield": {
+              "kind": "inherit"
+            },
+            "treatment": "auto",
+            "reinvest": "inherit"
+          },
+          "fees": {
+            "kind": "none"
+          },
+          "bondAllocation": {
+            "kind": "inherit"
+          },
+          "withdrawals": {
+            "kind": "always"
+          },
+          "liquid": "whenWithdrawable",
+          "earlyWithdrawal": {
+            "enabled": false,
+            "qualifiedAge": 59.5,
+            "penaltyRate": 0.1
+          },
+          "distributions": {
+            "kind": "none"
+          },
+          "sepp": {
+            "method": "none"
+          },
+          "monteCarlo": "auto",
+          "isExcessCash": false
+        },
+        "archived": false
+      },
+      {
+        "id": "acc-avery-401k",
+        "name": "Avery 401(k)",
+        "type": "401k",
+        "owner": "p-avery",
+        "balance": 286000,
+        "behaviour": {
+          "growth": {
+            "kind": "inherit"
+          },
+          "dividends": {
+            "yield": {
+              "kind": "inherit"
+            },
+            "treatment": "auto",
+            "reinvest": "inherit"
+          },
+          "fees": {
+            "kind": "none"
+          },
+          "bondAllocation": {
+            "kind": "inherit"
+          },
+          "withdrawals": {
+            "kind": "always"
+          },
+          "liquid": "whenWithdrawable",
+          "earlyWithdrawal": {
+            "enabled": true,
+            "qualifiedAge": 59.5,
+            "penaltyRate": 0.1
+          },
+          "distributions": {
+            "kind": "none"
+          },
+          "sepp": {
+            "method": "none"
+          },
+          "monteCarlo": "auto",
+          "isExcessCash": false
+        },
+        "archived": false
+      },
+      {
+        "id": "acc-jordan-roth",
+        "name": "Jordan Roth IRA",
+        "type": "roth-ira",
+        "owner": "p-jordan",
+        "balance": 71000,
+        "contributionBasis": 52000,
+        "behaviour": {
+          "growth": {
+            "kind": "inherit"
+          },
+          "dividends": {
+            "yield": {
+              "kind": "inherit"
+            },
+            "treatment": "auto",
+            "reinvest": "inherit"
+          },
+          "fees": {
+            "kind": "none"
+          },
+          "bondAllocation": {
+            "kind": "inherit"
+          },
+          "withdrawals": {
+            "kind": "always"
+          },
+          "liquid": "whenWithdrawable",
+          "earlyWithdrawal": {
+            "enabled": true,
+            "qualifiedAge": 59.5,
+            "penaltyRate": 0.1
+          },
+          "distributions": {
+            "kind": "none"
+          },
+          "sepp": {
+            "method": "none"
+          },
+          "monteCarlo": "auto",
+          "isExcessCash": false
+        },
+        "archived": false
+      },
+      {
+        "id": "acc-hsa",
+        "name": "Family HSA",
+        "type": "hsa",
+        "owner": "p-avery",
+        "balance": 14200,
+        "behaviour": {
+          "growth": {
+            "kind": "inherit"
+          },
+          "dividends": {
+            "yield": {
+              "kind": "inherit"
+            },
+            "treatment": "auto",
+            "reinvest": "inherit"
+          },
+          "fees": {
+            "kind": "none"
+          },
+          "bondAllocation": {
+            "kind": "inherit"
+          },
+          "withdrawals": {
+            "kind": "always"
+          },
+          "liquid": "whenWithdrawable",
+          "earlyWithdrawal": {
+            "enabled": false,
+            "qualifiedAge": 59.5,
+            "penaltyRate": 0.1
+          },
+          "distributions": {
+            "kind": "none"
+          },
+          "sepp": {
+            "method": "none"
+          },
+          "monteCarlo": "auto",
+          "isExcessCash": false
+        },
+        "archived": false
+      }
+    ],
+    "realAssets": [
+      {
+        "id": "ra-home",
+        "name": "Home",
+        "type": "house",
+        "owner": "joint",
+        "currentValue": 585000,
+        "purchasePrice": 470000,
+        "loan": {
+          "id": "loan-home",
+          "balance": 342000,
+          "interest": {
+            "apr": 0.0575,
+            "method": "compound",
+            "compounding": "monthly"
+          },
+          "monthlyPayment": {
+            "value": 2480,
+            "basis": "nominal"
+          }
+        },
+        "behaviour": {
+          "usage": "primary-residence",
+          "appreciation": {
+            "kind": "inflation",
+            "plus": 0.005
+          },
+          "propertyTax": {
+            "cost": {
+              "kind": "percentOfValue",
+              "rate": 0.0055
+            },
+            "assessedValue": {
+              "kind": "marketValue"
+            },
+            "reassessment": {
+              "kind": "auto"
+            }
+          },
+          "maintenance": {
+            "kind": "percentOfValue",
+            "rate": 0.008
+          },
+          "insurance": {
+            "kind": "amountPerYear",
+            "amount": {
+              "value": 2100,
+              "basis": "real"
+            }
+          },
+          "improvements": {
+            "kind": "none"
+          },
+          "hoa": {
+            "kind": "none"
+          },
+          "liquidateIfNeeded": true,
+          "excludeLoanFromLiquidNetWorth": false
+        },
+        "archived": false
+      }
+    ],
+    "debts": [
+      {
+        "id": "debt-car",
+        "name": "Car loan",
+        "type": "auto-loan",
+        "owner": "p-avery",
+        "balance": 12600,
+        "interest": {
+          "apr": 0.064,
+          "method": "compound",
+          "compounding": "monthly"
+        },
+        "monthlyPayment": {
+          "value": 410,
+          "basis": "nominal"
+        },
+        "behaviour": {
+          "paymentsStart": {
+            "kind": "planStart",
+            "offsetMonths": 0
+          },
+          "payFrom": {
+            "kind": "auto"
+          },
+          "interestTaxDeductible": false
+        },
+        "archived": false
+      }
+    ]
+  },
+  "plans": [
+    {
+      "id": "plan-main",
+      "householdId": "hh-sample",
+      "name": "Main plan",
+      "description": "Baseline: both work until Avery turns 57.",
+      "isMain": true,
+      "status": "active",
+      "startingConditions": {
+        "kind": "live"
+      },
+      "milestones": [
+        {
+          "id": "ms-retire",
+          "name": "Retirement",
+          "kind": "retirement",
+          "personId": "p-avery",
+          "combinator": "all",
+          "criteria": [
+            {
+              "kind": "age",
+              "personId": "p-avery",
+              "age": 57,
+              "when": "at"
+            }
+          ],
+          "effects": [],
+          "builtIn": true,
+          "enabled": true,
+          "showOnChart": true
+        },
+        {
+          "id": "ms-le-avery",
+          "name": "Avery life expectancy",
+          "kind": "life-expectancy",
+          "personId": "p-avery",
+          "combinator": "all",
+          "criteria": [
+            {
+              "kind": "age",
+              "personId": "p-avery",
+              "age": 92,
+              "when": "at"
+            }
+          ],
+          "effects": [],
+          "builtIn": true,
+          "enabled": true,
+          "showOnChart": true
+        },
+        {
+          "id": "ms-le-jordan",
+          "name": "Jordan life expectancy",
+          "kind": "life-expectancy",
+          "personId": "p-jordan",
+          "combinator": "all",
+          "criteria": [
+            {
+              "kind": "age",
+              "personId": "p-jordan",
+              "age": 94,
+              "when": "at"
+            }
+          ],
+          "effects": [],
+          "builtIn": true,
+          "enabled": true,
+          "showOnChart": true
+        },
+        {
+          "id": "ms-fi",
+          "name": "Financial independence",
+          "kind": "financial-independence",
+          "combinator": "all",
+          "criteria": [
+            {
+              "kind": "metric",
+              "metric": {
+                "kind": "liquidNetWorth"
+              },
+              "comparator": ">=",
+              "threshold": {
+                "kind": "multipleOf",
+                "multiple": 25,
+                "of": "spending",
+                "measurement": "current"
+              }
+            }
+          ],
+          "effects": [],
+          "builtIn": false,
+          "enabled": true,
+          "showOnChart": true
+        },
+        {
+          "id": "ms-mortgage-free",
+          "name": "Mortgage paid off",
+          "kind": "debt-free",
+          "combinator": "all",
+          "criteria": [
+            {
+              "kind": "metric",
+              "metric": {
+                "kind": "loanBalance",
+                "assetId": "ra-home"
+              },
+              "comparator": "<=",
+              "threshold": {
+                "kind": "amount",
+                "amount": {
+                  "value": 0,
+                  "basis": "nominal"
+                }
+              }
+            }
+          ],
+          "effects": [],
+          "builtIn": false,
+          "enabled": true,
+          "showOnChart": true
+        }
+      ],
+      "income": [
+        {
+          "id": "inc-avery-salary",
+          "name": "Avery salary",
+          "owner": "p-avery",
+          "amount": {
+            "value": 132000,
+            "basis": "real"
+          },
+          "frequency": "yearly",
+          "range": {
+            "start": {
+              "kind": "planStart",
+              "offsetMonths": 0
+            },
+            "end": {
+              "kind": "milestone",
+              "milestoneId": "ms-retire",
+              "offsetMonths": 0
+            },
+            "endInclusive": false
+          },
+          "change": {
+            "kind": "inflation",
+            "plus": 0.01
+          },
+          "growFromToday": true,
+          "enabled": true,
+          "tax": {
+            "character": "auto",
+            "withholding": {
+              "mode": "auto"
+            },
+            "exemptIn": []
+          },
+          "sendTo": {
+            "kind": "auto"
+          },
+          "type": "salary"
+        },
+        {
+          "id": "inc-jordan-salary",
+          "name": "Jordan salary",
+          "owner": "p-jordan",
+          "amount": {
+            "value": 7400,
+            "basis": "real"
+          },
+          "frequency": "monthly",
+          "range": {
+            "start": {
+              "kind": "planStart",
+              "offsetMonths": 0
+            },
+            "end": {
+              "kind": "milestone",
+              "milestoneId": "ms-retire",
+              "offsetMonths": 0
+            },
+            "endInclusive": false
+          },
+          "change": {
+            "kind": "inflation",
+            "plus": 0
+          },
+          "growFromToday": true,
+          "enabled": true,
+          "tax": {
+            "character": "auto",
+            "withholding": {
+              "mode": "auto"
+            },
+            "exemptIn": []
+          },
+          "sendTo": {
+            "kind": "auto"
+          },
+          "partTime": {
+            "range": {
+              "start": {
+                "kind": "age",
+                "personId": "p-jordan",
+                "age": 45,
+                "offsetMonths": 0
+              },
+              "end": {
+                "kind": "milestone",
+                "milestoneId": "ms-retire",
+                "offsetMonths": 0
+              },
+              "endInclusive": false
+            },
+            "share": 0.6
+          },
+          "type": "salary"
+        },
+        {
+          "id": "inc-avery-benefit",
+          "name": "Avery state benefit",
+          "owner": "p-avery",
+          "amount": {
+            "value": 2300,
+            "basis": "real"
+          },
+          "frequency": "monthly",
+          "range": {
+            "start": {
+              "kind": "age",
+              "personId": "p-avery",
+              "age": 67,
+              "offsetMonths": 0
+            },
+            "end": {
+              "kind": "planEnd",
+              "offsetMonths": 0
+            },
+            "endInclusive": false
+          },
+          "change": {
+            "kind": "inflation",
+            "plus": 0
+          },
+          "growFromToday": true,
+          "enabled": true,
+          "tax": {
+            "character": "auto",
+            "withholding": {
+              "mode": "auto"
+            },
+            "exemptIn": []
+          },
+          "sendTo": {
+            "kind": "auto"
+          },
+          "type": "social-security",
+          "mode": "amount"
+        },
+        {
+          "id": "inc-jordan-benefit",
+          "name": "Jordan state benefit",
+          "owner": "p-jordan",
+          "amount": {
+            "value": 1700,
+            "basis": "real"
+          },
+          "frequency": "monthly",
+          "range": {
+            "start": {
+              "kind": "age",
+              "personId": "p-jordan",
+              "age": 67,
+              "offsetMonths": 0
+            },
+            "end": {
+              "kind": "planEnd",
+              "offsetMonths": 0
+            },
+            "endInclusive": false
+          },
+          "change": {
+            "kind": "inflation",
+            "plus": 0
+          },
+          "growFromToday": true,
+          "enabled": true,
+          "tax": {
+            "character": "auto",
+            "withholding": {
+              "mode": "auto"
+            },
+            "exemptIn": []
+          },
+          "sendTo": {
+            "kind": "auto"
+          },
+          "type": "social-security",
+          "mode": "amount"
+        }
+      ],
+      "expenses": [
+        {
+          "id": "exp-living",
+          "name": "Living expenses",
+          "owner": "joint",
+          "amount": {
+            "value": 5200,
+            "basis": "real"
+          },
+          "frequency": "monthly",
+          "range": {
+            "start": {
+              "kind": "planStart",
+              "offsetMonths": 0
+            },
+            "end": {
+              "kind": "planEnd",
+              "offsetMonths": 0
+            },
+            "endInclusive": false
+          },
+          "change": {
+            "kind": "inflation",
+            "plus": 0
+          },
+          "growFromToday": true,
+          "enabled": true,
+          "spendingType": "essential",
+          "payFrom": {
+            "kind": "auto"
+          },
+          "tax": {
+            "treatment": "auto",
+            "deductible": false,
+            "itemized": false,
+            "deductibleIn": ["federal", "state", "local"]
+          },
+          "type": "living"
+        },
+        {
+          "id": "exp-travel",
+          "name": "Travel",
+          "owner": "joint",
+          "amount": {
+            "value": 9000,
+            "basis": "real"
+          },
+          "frequency": "yearly",
+          "range": {
+            "start": {
+              "kind": "planStart",
+              "offsetMonths": 0
+            },
+            "end": {
+              "kind": "age",
+              "personId": "p-avery",
+              "age": 80,
+              "offsetMonths": 0
+            },
+            "endInclusive": false
+          },
+          "change": {
+            "kind": "inflation",
+            "plus": 0
+          },
+          "growFromToday": true,
+          "enabled": true,
+          "spendingType": "discretionary",
+          "payFrom": {
+            "kind": "auto"
+          },
+          "tax": {
+            "treatment": "auto",
+            "deductible": false,
+            "itemized": false,
+            "deductibleIn": ["federal", "state", "local"]
+          },
+          "type": "travel"
+        },
+        {
+          "id": "exp-health",
+          "name": "Healthcare",
+          "owner": "joint",
+          "amount": {
+            "value": 6000,
+            "basis": "real"
+          },
+          "frequency": "yearly",
+          "range": {
+            "start": {
+              "kind": "milestone",
+              "milestoneId": "ms-retire",
+              "offsetMonths": 0
+            },
+            "end": {
+              "kind": "planEnd",
+              "offsetMonths": 0
+            },
+            "endInclusive": false
+          },
+          "change": {
+            "kind": "inflation",
+            "plus": 0.02
+          },
+          "growFromToday": true,
+          "enabled": true,
+          "spendingType": "essential",
+          "payFrom": {
+            "kind": "auto"
+          },
+          "tax": {
+            "treatment": "auto",
+            "deductible": false,
+            "itemized": false,
+            "deductibleIn": ["federal", "state", "local"]
+          },
+          "type": "healthcare",
+          "healthcare": {
+            "kind": "standard"
+          }
+        },
+        {
+          "id": "exp-car",
+          "name": "Replacement car",
+          "owner": "joint",
+          "amount": {
+            "value": 32000,
+            "basis": "real"
+          },
+          "frequency": "once",
+          "range": {
+            "start": {
+              "kind": "date",
+              "date": "2031-06",
+              "offsetMonths": 0
+            },
+            "end": {
+              "kind": "never"
+            },
+            "endInclusive": false
+          },
+          "change": {
+            "kind": "inflation",
+            "plus": 0
+          },
+          "growFromToday": true,
+          "enabled": true,
+          "spendingType": "hybrid",
+          "discretionaryShare": 0.4,
+          "payFrom": {
+            "kind": "auto"
+          },
+          "tax": {
+            "treatment": "auto",
+            "deductible": false,
+            "itemized": false,
+            "deductibleIn": ["federal", "state", "local"]
+          },
+          "type": "transportation"
+        }
+      ],
+      "flows": [
+        {
+          "id": "fl-401k",
+          "name": "Workplace retirement",
+          "owner": "p-avery",
+          "range": {
+            "start": {
+              "kind": "planStart",
+              "offsetMonths": 0
+            },
+            "end": {
+              "kind": "milestone",
+              "milestoneId": "ms-retire",
+              "offsetMonths": 0
+            },
+            "endInclusive": false
+          },
+          "mandatory": true,
+          "enabled": true,
+          "kind": "contribution",
+          "accountId": "acc-avery-401k",
+          "strategy": {
+            "kind": "indefinite"
+          },
+          "method": {
+            "kind": "amount",
+            "amount": {
+              "value": 23000,
+              "basis": "real"
+            },
+            "frequency": "yearly"
+          },
+          "limit": {
+            "kind": "none"
+          },
+          "route": "standard",
+          "fundFromAccountIds": []
+        },
+        {
+          "id": "fl-roth",
+          "name": "Roth IRA",
+          "owner": "p-jordan",
+          "range": {
+            "start": {
+              "kind": "planStart",
+              "offsetMonths": 0
+            },
+            "end": {
+              "kind": "milestone",
+              "milestoneId": "ms-retire",
+              "offsetMonths": 0
+            },
+            "endInclusive": false
+          },
+          "mandatory": false,
+          "enabled": true,
+          "kind": "contribution",
+          "accountId": "acc-jordan-roth",
+          "strategy": {
+            "kind": "indefinite"
+          },
+          "method": {
+            "kind": "amount",
+            "amount": {
+              "value": 7000,
+              "basis": "real"
+            },
+            "frequency": "yearly"
+          },
+          "limit": {
+            "kind": "none"
+          },
+          "route": "standard",
+          "fundFromAccountIds": []
+        },
+        {
+          "id": "fl-emergency",
+          "name": "Emergency fund to 6 months",
+          "owner": "joint",
+          "range": {
+            "start": {
+              "kind": "planStart",
+              "offsetMonths": 0
+            },
+            "end": {
+              "kind": "planEnd",
+              "offsetMonths": 0
+            },
+            "endInclusive": false
+          },
+          "mandatory": false,
+          "enabled": true,
+          "kind": "contribution",
+          "accountId": "acc-cash",
+          "strategy": {
+            "kind": "target",
+            "target": {
+              "value": 36000,
+              "basis": "real"
+            }
+          },
+          "method": {
+            "kind": "max"
+          },
+          "limit": {
+            "kind": "none"
+          },
+          "route": "standard",
+          "fundFromAccountIds": []
+        },
+        {
+          "id": "fl-taxable",
+          "name": "Invest the rest",
+          "owner": "joint",
+          "range": {
+            "start": {
+              "kind": "planStart",
+              "offsetMonths": 0
+            },
+            "end": {
+              "kind": "planEnd",
+              "offsetMonths": 0
+            },
+            "endInclusive": false
+          },
+          "mandatory": false,
+          "enabled": true,
+          "kind": "contribution",
+          "accountId": "acc-brokerage",
+          "strategy": {
+            "kind": "indefinite"
+          },
+          "method": {
+            "kind": "percentOfRemaining",
+            "share": 1
+          },
+          "limit": {
+            "kind": "none"
+          },
+          "route": "standard",
+          "fundFromAccountIds": []
+        }
+      ],
+      "leftover": {
+        "kind": "save",
+        "accountId": "acc-cash"
+      },
+      "accountSettings": {},
+      "plannedAccounts": [],
+      "realAssetSettings": {},
+      "plannedRealAssets": [],
+      "debtSettings": {},
+      "excludedIds": [],
+      "drawdown": {
+        "order": [
+          {
+            "kind": "category",
+            "category": "cash"
+          },
+          {
+            "kind": "category",
+            "category": "taxable"
+          },
+          {
+            "kind": "category",
+            "category": "crypto"
+          },
+          {
+            "kind": "category",
+            "category": "tax-deferred"
+          },
+          {
+            "kind": "category",
+            "category": "hsa"
+          },
+          {
+            "kind": "category",
+            "category": "tax-free"
+          },
+          {
+            "kind": "category",
+            "category": "education"
+          },
+          {
+            "kind": "category",
+            "category": "real-assets"
+          }
+        ],
+        "withinCategory": "ordered",
+        "splitByOwner": false
+      },
+      "flexSpending": {
+        "enabled": false,
+        "scope": "discretionary",
+        "interpolation": "step",
+        "rules": [
+          {
+            "drawdown": 0.2,
+            "cut": 0.3
+          }
+        ]
+      },
+      "assumptions": {
+        "inflation": {
+          "kind": "fixed",
+          "rate": 0.025
+        },
+        "stockReturn": {
+          "kind": "fixed",
+          "rate": 0.06
+        },
+        "dividendYield": {
+          "kind": "fixed",
+          "rate": 0.015
+        },
+        "bondReturn": {
+          "kind": "fixed",
+          "rate": 0.02
+        },
+        "bondYield": {
+          "kind": "fixed",
+          "rate": 0.03
+        },
+        "cashReturn": {
+          "kind": "fixed",
+          "rate": 0.01
+        },
+        "cryptoReturn": {
+          "kind": "fixed",
+          "rate": 0.07
+        },
+        "healthcareInflationPremium": 0.02,
+        "benefitColaModifier": 0,
+        "bondAllocation": {
+          "kind": "fixed",
+          "share": 0.3,
+          "points": [],
+          "interpolation": "linear",
+          "distribution": "even",
+          "locationPriority": []
+        },
+        "dividendReinvestment": {
+          "enabled": true
+        },
+        "yearAlignment": {
+          "kind": "calendar"
+        },
+        "end": {
+          "kind": "lastLifeExpectancy"
+        },
+        "maxYears": 100
+      },
+      "tax": {
+        "mode": "flat",
+        "jurisdictions": [],
+        "filingStatus": "married-joint",
+        "flat": {
+          "ordinary": 0.24,
+          "capitalGains": 0.15,
+          "dividends": 0.15,
+          "local": 0.04
+        },
+        "lawToggles": {},
+        "withholding": {
+          "taxDeferred": 0,
+          "taxable": 0,
+          "conversions": 0
+        },
+        "settlement": "same-period",
+        "firstYearPriorTaxDue": 0,
+        "estate": {
+          "liquidationCostRate": 0.06,
+          "adminCostRate": 0.02,
+          "stepUpBasis": true,
+          "heirTaxDeferredRate": 0.25,
+          "heirCapitalGainsRate": 0.15,
+          "charitableShare": 0
+        }
+      },
+      "monteCarlo": {
+        "method": "historical-random-restart",
+        "trials": 1000,
+        "blockLength": 5,
+        "seed": null,
+        "dataset": "us-1928",
+        "vary": {
+          "stocks": true,
+          "bonds": true,
+          "inflation": true,
+          "dividends": true,
+          "crypto": true
+        },
+        "distributions": {
+          "stocks": {
+            "mean": 0.07,
+            "stdDev": 0.17
+          },
+          "bonds": {
+            "mean": 0.02,
+            "stdDev": 0.07
+          },
+          "inflation": {
+            "mean": 0.03,
+            "stdDev": 0.02
+          },
+          "dividends": {
+            "mean": 0.015,
+            "stdDev": 0.005
+          },
+          "crypto": {
+            "mean": 0.07,
+            "stdDev": 0.6
+          },
+          "correlation": {
+            "stocksBonds": 0,
+            "stocksInflation": 0,
+            "bondsInflation": 0
+          }
+        },
+        "success": {
+          "kind": "all-funded"
+        },
+        "outcomeCategories": [
+          {
+            "id": "large-surplus",
+            "name": "Large surplus",
+            "kind": "success",
+            "threshold": 25,
+            "color": "moss"
+          },
+          {
+            "id": "comfortable",
+            "name": "Comfortable",
+            "kind": "success",
+            "threshold": 5,
+            "color": "sage"
+          },
+          {
+            "id": "barely",
+            "name": "Barely made it",
+            "kind": "success",
+            "threshold": 0,
+            "color": "ochre"
+          },
+          {
+            "id": "almost",
+            "name": "Almost made it",
+            "kind": "failure",
+            "threshold": 0.9,
+            "color": "clay"
+          },
+          {
+            "id": "failed-mid",
+            "name": "Failed in the middle",
+            "kind": "failure",
+            "threshold": 0.5,
+            "color": "rust"
+          },
+          {
+            "id": "failed-early",
+            "name": "Failed early",
+            "kind": "failure",
+            "threshold": 0,
+            "color": "ember"
+          }
+        ],
+        "percentiles": [0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95]
+      },
+      "version": 0
+    }
+  ],
+  "progress": [],
+  "settings": {
+    "theme": "system",
+    "valueBasis": "real",
+    "compactNumbers": true,
+    "reduceMotion": false,
+    "autoProgressSnapshots": true,
+    "spending": {
+      "includeTaxes": false,
+      "includeMortgage": true,
+      "includeMortgagePrincipal": false,
+      "includeConsumerDebtPrincipal": false
+    },
+    "effectiveTaxRate": {
+      "includeLocal": true,
+      "includeProperty": false,
+      "includePayroll": true
+    },
+    "onboarding": {
+      "completed": false
+    }
+  },
+  "exportedAt": "2026-11-15T12:00:00.000Z"
+}

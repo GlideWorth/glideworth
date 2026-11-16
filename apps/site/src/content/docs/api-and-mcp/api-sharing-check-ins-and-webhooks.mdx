@@ -1,0 +1,81 @@
+---
+title: API - share links, check-ins and webhooks
+description: Create read-only share links, schedule plan check-ins and read notifications, and receive signed webhook events with HMAC signature verification.
+section: API and MCP
+order: 17
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+
+All paths are under `/api/v1`.
+
+## Share links
+
+A share link serves a **snapshot of computed results** taken when it is created, without an account. It never contains the
+household, people, accounts, balances, settings or other plans.
+
+| Route | Purpose |
+| --- | --- |
+| `POST /plans/{id}/share-links` | Create (editor). Body: `label`, `privacy` (`full`, `percent` or `hidden`), `basis`, `expiresInDays` (1 to 365, default 30), `includeSuccessRate`. The token is shown once. |
+| `GET /share-links?planId=` | List with status `active`, `expired` or `revoked`, and view counts. |
+| `DELETE /share-links/{id}` | Revoke at once. |
+| `POST /share-links/{id}/refresh` | Retake the snapshot; token and expiry stay. |
+| `GET /shared/{token}` | Public and rate limited (`GLIDEWORTH_SHARE_RATE_LIMIT_PER_MIN`, default 60). Unknown, expired and revoked tokens are all `404`. |
+
+## Scheduled check-ins
+
+An in-process scheduler re-runs the main active plan of every household on a cadence (default weekly; off with
+`GLIDEWORTH_SCHEDULER=false`).
+
+| Route | Purpose |
+| --- | --- |
+| `GET/PATCH /schedule` | `enabled`, `cadence` (`daily`, `weekly`, `monthly`, `quarterly`) and `thresholds`: `successRateDelta` (0.05), `milestoneSlipMonths` (6), `netWorthBehindPlan` (0.1). |
+| `POST /plans/{id}/checkins` | Check in now. |
+| `GET /plans/{id}/health` | The plan health time series. |
+| `GET /plans/{id}/changes-since-checkin` | What changed since the last check-in. `refresh=true` takes a new one first (needs `write`). |
+| `GET /notifications`, `POST /notifications/read` | Notifications and marking them read. |
+
+## Webhooks
+
+Webhooks are owner-only. Create one, and keep the secret, which is returned once:
+
+```bash
+api -X POST $GLIDEWORTH/api/v1/webhooks -d '{"url": "https://example.com/glideworth-hook", "events": ["plan.updated", "simulation.completed"]}'
+# => { "id": "whk_...", "secret": "whsec_..." }
+```
+
+Routes: `/webhooks` (CRUD), `POST /webhooks/{id}/ping`, `GET /webhooks/{id}/deliveries`.
+
+| Event | Fired when |
+| --- | --- |
+| `plan.updated` | A plan is created, changed (including apply, restore, branch rebuild) or deleted. |
+| `simulation.completed` | An asynchronous job succeeds. |
+| `snapshot.created`, `snapshot.updated` | A progress snapshot is recorded, or today's automatic one is updated. |
+| `checkin.completed` | A check-in finished. |
+| `notification.created` | A check-in raised a notification. |
+| `webhook.ping` | You called the ping route. |
+
+Each delivery is a `POST` with `content-type: application/json` and the body
+`{ "id": "dlv_...", "event": "...", "createdAt": "...", "data": {...} }`, with the headers `X-Glideworth-Event`,
+`X-Glideworth-Delivery` and `X-Glideworth-Signature: t=<unix seconds>,v1=<hex>`, where `v1` is
+`HMAC-SHA256(secret, "<t>.<raw body>")`. Verify the signature over the raw body and reject old timestamps:
+
+```js
+import { createHmac, timingSafeEqual } from 'node:crypto';
+function verify(secret, rawBody, header, toleranceSeconds = 300) {
+  const { t, v1 } = Object.fromEntries(header.split(',').map((p) => p.split('=')));
+  if (Math.abs(Date.now() / 1000 - Number(t)) > toleranceSeconds) return false;
+  const expected = createHmac('sha256', secret).update(`${t}.${rawBody}`).digest('hex');
+  return expected.length === v1.length && timingSafeEqual(Buffer.from(expected), Buffer.from(v1));
+}
+```
+
+Non-2xx responses and network errors are retried after 1 second, 5 seconds and 30 seconds. Redirects are not followed. The
+outcome of each delivery is in the deliveries route.
+
+<Callout type="warning" title="Private addresses are blocked">
+  As a guard against server-side request forgery, webhook URLs that point at loopback, private, link-local or reserved
+  addresses are refused at registration and again at delivery. To deliver to a service on your own network, set
+  `GLIDEWORTH_WEBHOOK_ALLOW_PRIVATE=true` on the server, and only if you trust everyone with webhook access.
+</Callout>

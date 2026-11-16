@@ -1,0 +1,91 @@
+---
+/**
+ * A bordered content card. With `href`, the whole card is a link (the title carries the link text).
+ *   <Card title="Monte Carlo" href="/features/monte-carlo/" eyebrow="Analysis">Short description.</Card>
+ */
+import { externalLinkProps } from '../lib/links';
+
+interface Props {
+  title?: string;
+  href?: string;
+  eyebrow?: string;
+  /** Heading level for the title. */
+  as?: 'h2' | 'h3' | 'h4';
+  tone?: 'plain' | 'raised' | 'accent';
+  class?: string;
+}
+const { title, href, eyebrow, as: Heading = 'h3', tone = 'plain', class: className } = Astro.props;
+---
+
+<article class:list={['card', `card-${tone}`, { 'card-link': !!href }, className]}>
+  {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+  {
+    title && (
+      <Heading class="card-title">
+        {href ? <a href={href} {...externalLinkProps(href)}>{title}</a> : title}
+      </Heading>
+    )
+  }
+  <div class="card-body"><slot /></div>
+  <slot name="footer" />
+</article>
+
+<style>
+  .card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    padding: clamp(1.25rem, 1rem + 1vw, 1.75rem);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-l);
+    box-shadow: var(--shadow-1);
+    transition:
+      border-color 160ms var(--ease),
+      transform 160ms var(--ease);
+  }
+  .card-raised {
+    background: var(--surface-2);
+    box-shadow: none;
+  }
+  .card-accent {
+    background: var(--accent-soft);
+    border-color: color-mix(in oklab, var(--accent) 25%, transparent);
+  }
+  .card-title {
+    font-size: var(--text-xl);
+  }
+  /* A card directly under the page title is an h2 for the outline; it keeps the h3 look. */
+  h2.card-title {
+    line-height: var(--leading-snug);
+    letter-spacing: -0.015em;
+  }
+  .card-title a {
+    color: inherit;
+    text-decoration: none;
+  }
+  /* The title link stretches over the whole card. */
+  .card-link .card-title a::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+  .card-link:hover {
+    border-color: var(--line-strong);
+  }
+  .card-link:has(a:focus-visible) {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+  }
+  .card-link .card-title a:focus-visible {
+    outline: none;
+  }
+  .card-body {
+    color: var(--ink-2);
+  }
+  .card-body :global(p + p) {
+    margin-top: var(--space-xs);
+  }
+</style>

@@ -1,0 +1,401 @@
+---
+import Callout from '../components/Callout.astro';
+import CodeBlock from '../components/CodeBlock.astro';
+import CTABand from '../components/CTABand.astro';
+import FAQ from '../components/FAQ.astro';
+import FeatureGrid from '../components/FeatureGrid.astro';
+import Figure from '../components/Figure.astro';
+import Section from '../components/Section.astro';
+import AgentFlow from '../components/visuals/AgentFlow.astro';
+import { page } from '../config/pages';
+import { site } from '../config/site';
+import PageLayout from '../layouts/PageLayout.astro';
+import { facts } from '../lib/facts';
+import type { FaqItem } from '../lib/jsonld';
+
+const ops = facts.apiOperations;
+const tools = facts.mcpTools;
+const readTools = facts.mcpReadTools;
+const writeTools = facts.mcpWriteTools;
+
+const faq: FaqItem[] = [
+  {
+    q: 'Can an assistant change my plan without asking me?',
+    a: '<p>Not through plan edits. Edits are change sets: the assistant proposes them, you see the readable diff and the before-and-after result, and only an explicit apply changes the plan. Applying is refused if the plan changed after the proposal. A few tools write household data directly (balances, progress snapshots, imports), and they exist only when you have switched writes on and given the key write scope.</p>',
+  },
+  {
+    q: 'Can an assistant delete my data?',
+    a: '<p>No. There are no delete tools. Even reverting to an earlier plan version is a proposal you approve, and history is append-only.</p>',
+  },
+  {
+    q: 'Does Glideworth send my plan to an AI provider?',
+    a: '<p>No. Glideworth has no AI in it and sends nothing anywhere. An assistant you connect sees what its tools return, within its key&rsquo;s scopes, and the provider of that assistant sees it too. Use a local model if that matters.</p>',
+  },
+  {
+    q: 'Which assistants work?',
+    a: '<p>Any client that speaks the Model Context Protocol over Streamable HTTP or stdio. The documentation covers Claude Code and Claude Desktop; the connection details for other clients are the same URL and header, or the same command.</p>',
+  },
+  {
+    q: 'Is the hosted endpoint available?',
+    a: '<p>Not yet. The hosted service is about to open, and a stable HTTPS address with OAuth sign-in is part of its plan. Today the MCP server runs on your own machine or server.</p>',
+  },
+];
+
+const claudeHttp = `# 1. Create a key that can only read and simulate (inside the repository)
+pnpm keys:create -- --name claude --scopes read
+
+# 2. Add the server to Claude Code over HTTP
+claude mcp add --transport http glideworth http://localhost:8787/mcp \\
+  --header "Authorization: Bearer glideworth_ab12cd34_<rest of your key>"`;
+
+const claudeStdio = `# stdio: nothing else needs to run; the server reads the SQLite file directly (after pnpm build)
+claude mcp add glideworth \\
+  -e GLIDEWORTH_DB_PATH=/abs/path/to/glideworth/apps/api/data/glideworth.db \\
+  -e GLIDEWORTH_MCP_ALLOW_WRITES=false \\
+  -- node /abs/path/to/glideworth/apps/api/dist/mcp/stdio.js`;
+
+const desktop = `{
+  "mcpServers": {
+    "glideworth": {
+      "command": "node",
+      "args": ["/abs/path/to/glideworth/apps/api/dist/mcp/stdio.js"],
+      "env": {
+        "GLIDEWORTH_DB_PATH": "/abs/path/to/glideworth/apps/api/data/glideworth.db",
+        "GLIDEWORTH_MCP_ALLOW_WRITES": "false"
+      }
+    }
+  }
+}`;
+
+const docker = `{
+  "mcpServers": {
+    "glideworth": {
+      "command": "docker",
+      "args": ["exec", "-i", "-e", "GLIDEWORTH_MCP_ALLOW_WRITES=false", "glideworth", "node", "dist/mcp/stdio.js"]
+    }
+  }
+}`;
+
+const generic = `HTTP   URL      http://localhost:8787/mcp
+       Header   Authorization: Bearer <key>
+stdio  command  node apps/api/dist/mcp/stdio.js
+       env      GLIDEWORTH_DB_PATH=/abs/path/to/glideworth.db
+
+# Try it without any assistant:
+npx @modelcontextprotocol/inspector`;
+
+const step1 = `list_plans {}
+get_plan_summary { "planId": "plan-main" }
+# -> compact plan (ids and amounts like "5200 real/monthly"), outcome, 5-yearly table.
+#    The assistant notes plan version 4 and that dining lives in the expense exp-living.`;
+
+const step2 = `preview_changes {
+  "planId": "plan-main",
+  "ops": [{ "op": "replace", "path": "/expenses/[id=exp-living]/amount/value", "value": 5700 }]
+}
+# -> { "planVersion": 4,
+#      "changes": ["Living expenses raised from 5,200 to 5,700 per month"],
+#      "preview": { "before": { "endNetWorthReal": 910000 }, "after": { "endNetWorthReal": 802000 } } }
+#    Nothing is stored.`;
+
+const step3 = `propose_change_set {
+  "planId": "plan-main",
+  "baseVersion": 4,
+  "summary": "Living expenses +500/month (dining)",
+  "ops": [{ "op": "replace", "path": "/expenses/[id=exp-living]/amount/value", "value": 5700 }]
+}
+# -> { "id": "cs_9f2c1a", "status": "proposed", ... }   The plan is untouched.`;
+
+const step4 = `apply_change_set { "changeSetId": "cs_9f2c1a" }
+# -> { "status": "applied", "planId": "plan-main", "newVersion": 5 }
+
+# If you edited the plan in the app in the meantime:
+# -> { "error": { "code": "CHANGESET_CONFLICT", "details": { "baseVersion": 4, "currentVersion": 5 } } }
+#    Nothing is merged. The assistant re-reads, proposes again, and asks you again.`;
+
+const step5 = `list_plan_versions { "planId": "plan-main" }
+# -> version 5: by { kind: "mcp", label: "..." }, changeSetId "cs_9f2c1a"
+propose_revert { "planId": "plan-main", "version": 4 }   # review, then apply_change_set
+# History is append-only: the revert is version 6, holding version 4's content.`;
+
+const rest = `export GLIDEWORTH=http://localhost:8787 KEY=glideworth_ab12cd34_<rest of your key>
+
+# Who am I, and what can this key do?
+curl -s -H "Authorization: Bearer $KEY" $GLIDEWORTH/api/v1/me
+
+# Deterministic projection, compact, in today's money
+curl -s -X POST $GLIDEWORTH/api/v1/plans/plan-main/simulate \\
+  -H "Authorization: Bearer $KEY" -H 'content-type: application/json' \\
+  -d '{"view":{"basis":"real","fromYear":2030,"everyNYears":5,"series":["netWorth","taxes"]}}'
+
+# Propose an edit (nothing is written), then apply it
+curl -s -X POST $GLIDEWORTH/api/v1/plans/plan-main/change-sets \\
+  -H "Authorization: Bearer $KEY" -H 'content-type: application/json' \\
+  -d '{"summary":"Raise travel to 15k","baseVersion":4,"ops":[{"op":"replace","path":"/expenses/[id=exp-travel]/amount/value","value":15000}]}'
+curl -s -X POST $GLIDEWORTH/api/v1/change-sets/<id>/apply -H "Authorization: Bearer $KEY"`;
+---
+
+<PageLayout
+  {...page('/api/')}
+  heading="Your plan, open to your AI assistant"
+  eyebrow="API and MCP for AI agents"
+  lede={`A REST API with ${ops} operations, described in OpenAPI 3.1, and an MCP server with ${tools} tools. Scripts and AI assistants can read plans, run simulations and propose changes that you approve.`}
+  crumbs={[{ label: 'API and MCP', href: '/api/' }]}
+>
+  <Section eyebrow="What an assistant can do" title="Read, simulate, propose." tight>
+    <div class="split">
+      <FeatureGrid
+        columns={2}
+        items={[
+          { glyph: 'ledger', title: 'Read', body: 'Households, accounts, plans, history, progress, check-ins and cross-border rules. Money comes back in today\'s money unless you ask otherwise.' },
+          { glyph: 'solver', title: 'Simulate', body: 'Projections, Monte Carlo, backtests, solvers, guardrails, tax breakdowns, explanations and the assumption audit, all read-only.' },
+          { glyph: 'branch', title: 'Propose', body: 'Edits are change sets: a readable diff and a before-and-after result, applied only when you say so. Or a what-if branch that leaves the plan alone.' },
+          { glyph: 'plug', title: 'Two doors, one engine', body: 'Every MCP tool has a REST twin. Use MCP for assistants and REST for scripts, webhooks and your own software.' },
+        ]}
+      />
+      <Figure screenshot="mcp-session" caption="Tool names are real; figures are illustrative.">
+        <AgentFlow />
+      </Figure>
+    </div>
+    <p class="counts">
+      {readTools} tools read and compute and are all marked read-only; {writeTools} tools write and exist only when you
+      switch writes on. More on <a href="/features/mcp-server/">the MCP server</a> and
+      <a href="/features/rest-api/">the REST API</a>.
+    </p>
+  </Section>
+
+  <Section eyebrow="Safety model" title="An assistant can only do what its key allows." tone="raised">
+    <FeatureGrid
+      columns={3}
+      items={[
+        { glyph: 'lock', title: 'Read-only by default', body: 'The write tools do not exist until you set the server flag and the connecting key has write scope. A client cannot call a tool it cannot see.' },
+        { glyph: 'people', title: 'Scoped keys and roles', body: 'Keys carry read, simulate or write scope, and never more than their person\'s role allows. A viewer\'s connection has no write tools at all.' },
+        { glyph: 'branch', title: 'Change sets', body: 'Each proposal is tied to the plan version it was written for. If the plan moved, the apply is refused and nothing is merged.' },
+        { glyph: 'ledger', title: 'An audit trail', body: 'Every apply is a plan version with the assistant\'s identity, and every write is in the audit log under the person whose key or consent it was.' },
+        { glyph: 'code', title: 'No delete tool', body: 'Anything destructive is a proposal. Reverting to an earlier version is a change set too, and history is append-only.' },
+        { glyph: 'plug', title: 'Hashed, shown-once secrets', body: 'API keys, sessions and OAuth tokens are stored only as hashes. A key is shown once, when you create it.' },
+      ]}
+    />
+    <div class="scopes">
+      <table>
+        <caption>What each key scope can reach</caption>
+        <thead>
+          <tr><th scope="col">Scope</th><th scope="col">Reads data</th><th scope="col">Runs simulations</th><th scope="col">Proposes and applies edits</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row"><code>read</code></th><td>Yes</td><td>Yes</td><td>No</td></tr>
+          <tr><th scope="row"><code>simulate</code></th><td>No (a calculator key)</td><td>Yes</td><td>No</td></tr>
+          <tr><th scope="row"><code>write</code></th><td>Yes</td><td>Yes</td><td>Yes, if the server has writes on</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <Callout type="warning" title="What the model sees">
+      <p>
+        An assistant sees whatever its tools return, within the scopes of its key, and the company that runs the
+        model sees it too. Glideworth itself runs no AI on your data and sends nothing anywhere. If that is a concern,
+        use a read-only key, or a local model.
+      </p>
+    </Callout>
+  </Section>
+
+  <Section eyebrow="A worked session" title="“Can I spend 500 more a month on dining?”" intro="One assistant, a read and write key, and writes switched on. Every call is a real tool from the MCP server; the numbers are illustrative." width="narrow">
+    <ol class="session">
+      <li>
+        <h3>Orient</h3>
+        <p>The assistant reads the plan summary, the best first call, and notes the plan's version.</p>
+        <CodeBlock lang="bash" title="MCP tool calls" code={step1} />
+      </li>
+      <li>
+        <h3>Ask "what if", storing nothing</h3>
+        <CodeBlock lang="bash" title="MCP tool calls" code={step2} />
+      </li>
+      <li>
+        <h3>Propose it, still without applying anything</h3>
+        <p>The proposal is written against the version that was read.</p>
+        <CodeBlock lang="bash" title="MCP tool calls" code={step3} />
+      </li>
+      <li>
+        <h3>Show you, and wait</h3>
+        <p>
+          The assistant tells you: "That takes about 108k off end net worth in today's money (910k to 802k), and the
+          plan still never runs short. Want me to apply it?" Only when you say yes:
+        </p>
+        <CodeBlock lang="bash" title="MCP tool calls" code={step4} />
+      </li>
+      <li>
+        <h3>Undo is also a proposal</h3>
+        <CodeBlock lang="bash" title="MCP tool calls" code={step5} />
+      </li>
+    </ol>
+    <p class="note">
+      Other tasks use other tools: <code>run_monte_carlo</code> and <code>explain_year</code> for "why does it fail?",
+      <code>solve_max_spending</code> for "the most I can spend at 90%", <code>solve_retirement_date</code> for "how
+      early can I retire?", <code>audit_plan</code> for "find problems with my assumptions", and
+      <code>compare_stay_or_move</code> for "should we move abroad?".
+    </p>
+  </Section>
+
+  <Section eyebrow="Connect" title="Connect Claude or any MCP client." tone="raised" width="narrow">
+    <p class="note">
+      Commands use the repository's scripts and the <code>GLIDEWORTH_*</code> variables. Create a least-privilege key
+      first: <code>read</code> is enough for analysis. Use absolute paths in every config, and do not start a stdio
+      server through <code>pnpm run</code>, which prints a banner into the protocol channel.
+    </p>
+    <h3>Claude Code, over HTTP</h3>
+    <CodeBlock lang="bash" title="Terminal" code={claudeHttp} />
+    <h3>Claude Code, over stdio</h3>
+    <CodeBlock lang="bash" title="Terminal" code={claudeStdio} />
+    <h3>Claude Desktop</h3>
+    <p class="note">Edit <code>claude_desktop_config.json</code> and restart the app.</p>
+    <CodeBlock lang="json" title="claude_desktop_config.json" code={desktop} />
+    <p class="note">If Glideworth runs in Docker, use the container's copy of the server instead:</p>
+    <CodeBlock lang="json" title="claude_desktop_config.json (Docker)" code={docker} />
+    <h3>Any other MCP client</h3>
+    <CodeBlock lang="text" title="Connection details" code={generic} />
+    <p class="note">
+      Step-by-step: <a href="/docs/api-and-mcp/mcp-setup/">Connect an AI assistant</a>. To let an assistant propose
+      edits, set <code>GLIDEWORTH_MCP_ALLOW_WRITES=true</code> on the server and use a key with <code>write</code> scope; leave
+      both off otherwise.
+    </p>
+    <p class="note">
+      Clients that connect to a server by URL, with no pasted key, sign in with OAuth 2.1 (PKCE, rotating refresh
+      tokens, scopes capped by your role). The self-hosted server supports this behind your own HTTPS address when you set
+      <code>GLIDEWORTH_PUBLIC_URL</code>. Bearer keys keep working.
+    </p>
+  </Section>
+
+  <Section eyebrow="REST API" title="The same operations as plain HTTP." intro={`${ops} operations under /api/v1, described by an OpenAPI 3.1 document your tools can read.`} width="narrow">
+    <CodeBlock lang="bash" title="Terminal" code={rest} />
+    <ul class="points">
+      <li>
+        <strong>The OpenAPI document</strong> is served by every running server at <code>/openapi.json</code>, generated from the same
+        schemas as the engine, and an interactive reference is at <code>/docs</code>. The same document is listed by tag, method and path in the <a href="/docs/api-and-mcp/api-reference/">API reference</a> on this site. That reference page loads its viewer script
+        from a public CDN, so it needs internet access; the document and every API call work offline. Generate a typed client with
+        a standard tool such as <code>openapi-typescript</code>.
+      </li>
+      <li>
+        <strong>Idempotency.</strong> Send an <code>Idempotency-Key</code> header on any write; a retry within 24 hours replays the
+        first response. Using a key for a different request is an error.
+      </li>
+      <li>
+        <strong>Concurrency.</strong> Plans and households have an <code>ETag</code> version. Send <code>If-Match</code> and a stale
+        write is a <code>409</code>, not an overwrite.
+      </li>
+      <li>
+        <strong>Long jobs</strong> (Monte Carlo, solvers) return a job. Add <code>?wait=60</code> to block, or poll, or stream progress
+        as server-sent events.
+      </li>
+      <li>
+        <strong>Webhooks</strong> deliver signed events (plan updated, simulation completed, snapshot created, check-in completed,
+        notification created). Each carries an HMAC-SHA256 signature over a timestamp and the body, with retries, and the server
+        refuses to deliver to private network addresses unless you allow it.
+      </li>
+      <li>
+        <strong>Limits.</strong> 600 requests a minute per key and a 10 MiB request body by default, both configurable on your own
+        server.
+      </li>
+    </ul>
+  </Section>
+
+  <Section eyebrow="Hosted endpoint" title="A stable address, planned." tone="raised" width="narrow">
+    {
+      !site.cloudLaunched && (
+        <Callout type="note" title="Not live yet">
+          <p>The hosted service is about to open. This section describes what its design adds; none of it is running today.</p>
+        </Callout>
+      )
+    }
+    <p>
+      Self-hosting an MCP server for a chat app that connects by URL means putting it behind HTTPS on an address that
+      app can reach, or running a tunnel. For the hosted service, the plan is a stable HTTPS address with OAuth sign-in, so
+      that Claude and other MCP clients can connect without either. It would also bring fair-use limits on
+      server-side simulation jobs, and the MCP write tools would stay off for a new workspace until the owner turns them on.
+    </p>
+    <p>
+      The API and the MCP tools themselves are the same code in both places. See <a href="/pricing/">pricing</a> for the plan,
+      and <a href="/security/">security</a> for what is built and what is planned.
+    </p>
+  </Section>
+
+  <Section eyebrow="Questions" title="Questions about assistants and your data." width="narrow">
+    <FAQ items={faq} />
+  </Section>
+  <CTABand title="Try it on a sample household." secondary={{ label: 'Self-host it free', href: '/self-hosting/' }} />
+</PageLayout>
+
+<style>
+  .split {
+    display: grid;
+    gap: var(--space-xl);
+    align-items: start;
+  }
+  @media (min-width: 64rem) {
+    .split {
+      grid-template-columns: 1.2fr 1fr;
+    }
+  }
+  .counts,
+  .note {
+    margin-top: var(--space-s);
+    color: var(--ink-2);
+    font-size: var(--text-sm);
+  }
+  .scopes {
+    margin-block: var(--space-l);
+    overflow-x: auto;
+  }
+  .scopes table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+  }
+  .scopes caption {
+    text-align: left;
+    font-weight: 650;
+    padding-bottom: var(--space-xs);
+  }
+  .scopes th,
+  .scopes td {
+    text-align: left;
+    padding: 0.55rem 0.75rem 0.55rem 0;
+    border-bottom: 1px solid var(--line);
+    font-weight: 400;
+  }
+  .scopes thead th {
+    font-weight: 650;
+    color: var(--ink-2);
+  }
+  .session {
+    display: grid;
+    gap: var(--space-l);
+    list-style: none;
+    padding: 0;
+    counter-reset: step;
+  }
+  .session li {
+    display: grid;
+    gap: var(--space-xs);
+    counter-increment: step;
+  }
+  .session h3 {
+    font-size: var(--text-lg);
+  }
+  .session h3::before {
+    content: counter(step) '. ';
+    color: var(--accent-text);
+  }
+  .session p {
+    color: var(--ink-2);
+  }
+  .points {
+    display: grid;
+    gap: var(--space-s);
+    padding-left: 1.2rem;
+    list-style: disc;
+    margin-top: var(--space-m);
+    color: var(--ink-2);
+  }
+  h3 {
+    margin-top: var(--space-m);
+  }
+</style>

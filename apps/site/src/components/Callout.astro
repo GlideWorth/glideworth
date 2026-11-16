@@ -1,0 +1,83 @@
+---
+/**
+ * A boxed note inside prose or a page.
+ *   <Callout type="note" title="Estimates, not advice">Body text.</Callout>
+ * Types: note (spruce), tip (spruce, softer), warning (ochre), risk (terracotta), draft (for unreviewed text).
+ */
+interface Props {
+  type?: 'note' | 'tip' | 'warning' | 'risk' | 'draft';
+  title?: string;
+  class?: string;
+}
+const { type = 'note', title, class: className } = Astro.props;
+const labels: Record<NonNullable<Props['type']>, string> = {
+  note: 'Note',
+  tip: 'Tip',
+  warning: 'Warning',
+  risk: 'Important',
+  draft: 'Draft',
+};
+---
+
+<!-- role="note" on every type: a bare <aside> is a complementary landmark, and a page with several
+     callouts would list several unnamed landmarks. -->
+<aside class:list={['callout', `callout-${type}`, className]} role="note">
+  <p class="callout-title">
+    <span class="callout-label">{labels[type]}</span>
+    {title && <span class="callout-heading">{title}</span>}
+  </p>
+  <div class="callout-body"><slot /></div>
+</aside>
+
+<style>
+  .callout {
+    --c-edge: var(--accent);
+    --c-bg: var(--accent-soft);
+    --c-label: var(--accent-text);
+    border: 1px solid color-mix(in oklab, var(--c-edge) 28%, transparent);
+    border-left: 3px solid var(--c-edge);
+    background: var(--c-bg);
+    border-radius: var(--radius-m);
+    padding: var(--space-s) var(--space-m);
+    color: var(--ink);
+    font-size: var(--text-sm);
+    line-height: 1.6;
+  }
+  .callout-tip {
+    --c-bg: color-mix(in oklab, var(--accent-soft) 55%, var(--surface));
+  }
+  .callout-warning,
+  .callout-draft {
+    --c-edge: var(--ochre-mark);
+    --c-bg: var(--ochre-soft);
+    --c-label: var(--ochre);
+  }
+  .callout-risk {
+    --c-edge: var(--risk);
+    --c-bg: var(--risk-soft);
+    --c-label: var(--risk);
+  }
+  .callout-title {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.6rem;
+    align-items: baseline;
+    margin-bottom: 0.3rem;
+  }
+  .callout-label {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--c-label);
+  }
+  .callout-heading {
+    font-weight: 640;
+  }
+  .callout-body :global(> * + *) {
+    margin-top: 0.6em;
+  }
+  .callout-body :global(a) {
+    color: var(--ink);
+  }
+</style>

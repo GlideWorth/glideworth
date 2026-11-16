@@ -1,0 +1,68 @@
+---
+import { getCollection } from 'astro:content';
+import CTABand from '../../components/CTABand.astro';
+import { page } from '../../config/pages';
+import PageLayout from '../../layouts/PageLayout.astro';
+import { facts } from '../../lib/facts';
+
+const pagesByCode = new Map(
+  (await getCollection('countries')).map((e) => [e.data.countryCode, `/planning/${e.id}/`]),
+);
+---
+
+<PageLayout
+  {...page('/planning/')}
+  heading="Planning by country"
+  eyebrow="Countries"
+  lede={`Glideworth estimates tax in ${facts.taxCountryCount} countries, each for stated tax years and with a written list of what it leaves out. Flat or custom rates cover anywhere else.`}
+  crumbs={[{ label: 'Planning by country', href: '/planning/' }]}
+>
+  <div class="container body">
+    <ul class="countries" role="list">
+      {
+        facts.taxCountries.map((c) => {
+          const href = pagesByCode.get(c.code);
+          return (
+            <li>
+              {href ? <a href={href}>{c.name}</a> : <span>{c.name}</span>}
+              <span class="status">{href ? 'Guide' : 'Guide coming'}</span>
+            </li>
+          );
+        })
+      }
+    </ul>
+    <p class="note">
+      Moving between countries? The engine models residency changes over time, tax on income sourced in a country you
+      have left, and treaty relief, and the app has screens for the residency timeline and the stay-or-move
+      comparison. Read <a href="/planning/moving-country/">the guide to moving country</a>.
+    </p>
+  </div>
+  <CTABand />
+</PageLayout>
+
+<style>
+  .body {
+    padding-bottom: var(--section-y);
+  }
+  .countries {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+    border-top: 1px solid var(--line-strong);
+  }
+  .countries li {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.9rem 1rem 0.9rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .status {
+    font-size: var(--text-xs);
+    color: var(--ink-3);
+  }
+  .note {
+    margin-top: var(--space-l);
+    color: var(--ink-2);
+    max-width: 50rem;
+  }
+</style>

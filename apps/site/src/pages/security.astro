@@ -1,0 +1,332 @@
+---
+import Callout from '../components/Callout.astro';
+import CTABand from '../components/CTABand.astro';
+import FeatureGrid from '../components/FeatureGrid.astro';
+import Section from '../components/Section.astro';
+import { page } from '../config/pages';
+import { site } from '../config/site';
+import PageLayout from '../layouts/PageLayout.astro';
+
+type Status = 'Available' | 'Planned';
+interface Row {
+  measure: string;
+  detail: string;
+  status: Status;
+}
+
+/** What the self-hosted software does today. Each row is true of the code (docs/API.md "Security model", README "Privacy model"). */
+const selfHosted: Row[] = [
+  {
+    measure: 'Your machine, one file',
+    detail: 'Your data is one SQLite file on your computer or Docker volume. Nothing is sent anywhere.',
+    status: 'Available',
+  },
+  {
+    measure: 'No telemetry',
+    detail:
+      'No usage reports, error reports, version checks or analytics. The only network calls the server makes are webhooks you configure, blocked for private addresses unless you allow them.',
+    status: 'Available',
+  },
+  {
+    measure: 'One optional CDN request',
+    detail:
+      'In the browser, the optional API reference page at /docs loads its viewer script from the jsDelivr CDN. The web app itself contacts no third party.',
+    status: 'Available',
+  },
+  {
+    measure: 'Hashed credentials',
+    detail:
+      'Passphrases are hashed with scrypt. API keys and sessions are stored only as hashes, and keys are shown once.',
+    status: 'Available',
+  },
+  {
+    measure: 'Sessions and CSRF',
+    detail:
+      'Session cookies are HttpOnly and SameSite=Strict, with a CSRF token and an origin check on writes. Failed sign-ins and setup-token guesses are throttled, including parallel bursts.',
+    status: 'Available',
+  },
+  {
+    measure: 'Scoped keys and roles',
+    detail:
+      "API keys carry read, simulate or write scope, capped by the person's role. Every route declares its scope, and tests walk the whole API to check it.",
+    status: 'Available',
+  },
+  {
+    measure: 'Safe AI access',
+    detail:
+      'MCP write tools are off by default, plan edits are proposals you approve, there is no delete tool, and every apply is attributed.',
+    status: 'Available',
+  },
+  {
+    measure: 'Webhook protection',
+    detail:
+      'Webhook destinations are checked at registration and again when connecting, so a public name that points at private space is refused. Deliveries are signed.',
+    status: 'Available',
+  },
+  {
+    measure: 'Audit log',
+    detail:
+      'Every write by a person, key or connected app, and every refused write, is recorded for the owner to read.',
+    status: 'Available',
+  },
+  {
+    measure: 'Clean errors',
+    detail:
+      'Unexpected failures return "internal error" with no stack trace, SQL or file path. Queries are parameterised, and requests that address __proto__ or constructor are refused.',
+    status: 'Available',
+  },
+  {
+    measure: 'Account export',
+    detail: 'Export a household as JSON, or take a consistent whole-database backup while the server runs.',
+    status: 'Available',
+  },
+];
+
+/** The hosted service's design (docs/design/cloud-architecture.md). None of it is running. */
+const hosted: Row[] = [
+  {
+    measure: 'Per-customer database files',
+    detail:
+      'Each customer workspace gets its own SQLite file, with no shared tables between customers, so isolation is structural, one customer\'s restore never touches another\'s, and export is "copy the file".',
+    status: 'Planned',
+  },
+  { measure: 'Encryption in transit', detail: 'TLS everywhere, with HSTS.', status: 'Planned' },
+  {
+    measure: 'Encryption at rest',
+    detail: 'An encrypted data volume, and backups encrypted with a separate key for each workspace.',
+    status: 'Planned',
+  },
+  {
+    measure: 'Not end-to-end encrypted',
+    detail:
+      'Our servers can read your plans. That is what lets scheduled check-ins and AI assistants work. We will not claim otherwise.',
+    status: 'Planned',
+  },
+  {
+    measure: 'No financial values in logs',
+    detail:
+      'A rule, enforced by a scrubbing logger that drops any field not on an allow-list and by a test that fails if a sample amount, plan name or token appears in log output.',
+    status: 'Planned',
+  },
+  {
+    measure: 'Two-factor sign-in',
+    detail:
+      'Authenticator-app codes (TOTP) with single-use recovery codes. Owners are prompted to turn it on, not forced.',
+    status: 'Planned',
+  },
+  {
+    measure: 'Automatic backups',
+    detail:
+      'Changed workspaces are backed up every 15 minutes, kept for 48 hours, then one a day for 30 days, with restore tests. Backups are encrypted per workspace.',
+    status: 'Planned',
+  },
+  {
+    measure: 'Export and deletion',
+    detail:
+      'Export a whole workspace as a database you could run yourself. Deleting a workspace removes its live database at once and destroys the key to its backups; backup files are removed within 30 days and provider snapshots expire within 7.',
+    status: 'Planned',
+  },
+  {
+    measure: 'EU hosting',
+    detail: 'The chosen host is DigitalOcean in Frankfurt, Germany, a single EU region. Nothing has been deployed there yet.',
+    status: 'Planned',
+  },
+  {
+    measure: 'Operator access limits',
+    detail:
+      'Staff cannot see inside a workspace. The one exception is a read-only, time-limited support grant that the owner creates, which is audited and emailed to the owner when first used.',
+    status: 'Planned',
+  },
+];
+
+const reportRows = [
+  ['Acknowledge your report', 'within 3 working days'],
+  ['First assessment', 'within 10 working days'],
+  ['Fix or mitigation for critical and high severity', 'aim for 30 days from confirmation'],
+  ['Public advisory', 'after a fix, normally within 90 days of the report, coordinated with you'],
+];
+---
+
+<PageLayout
+  {...page('/security/')}
+  heading="Security and privacy"
+  eyebrow="Trust"
+  lede="Financial data deserves care. Here is how the software handles it today, what the hosted service is designed to add, and what is not built yet."
+  crumbs={[{ label: 'Security and privacy', href: '/security/' }]}
+>
+  <Section tight>
+    <FeatureGrid
+      as="h2"
+      columns={2}
+      items={[
+        { glyph: 'lock', title: 'Self-hosted: your machine, your data', body: 'One SQLite file on a computer you control. No telemetry, no accounts to link, no bank connections. Every measure in the first table below is in the code today.' },
+        { glyph: 'globe', title: 'Hosted: designed, not running', body: 'The hosted service is not open yet. Everything in the second table is a design for it and is marked Planned, even where some of the code already exists in the repository.' },
+      ]}
+    />
+  </Section>
+
+  <Section id="self-hosted" eyebrow="Self-hosted" title="What the software does today." intro="Taken from the code and its tests, not from intentions." tone="raised">
+    <div class="tablewrap" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
+      <table>
+        <caption class="visually-hidden">Security measures in the self-hosted software</caption>
+        <thead><tr><th scope="col">Measure</th><th scope="col">What it means</th><th scope="col">Status</th></tr></thead>
+        <tbody>
+          {
+            selfHosted.map((r) => (
+              <tr>
+                <th scope="row">{r.measure}</th>
+                <td>{r.detail}</td>
+                <td><span class:list={['badge', r.status.toLowerCase()]}>{r.status}</span></td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+    <Callout type="warning" title="What is your job when you self-host">
+      <p>
+        Glideworth does not encrypt the database file itself. Use an encrypted disk, put TLS in front of it, set the
+        setup token before exposing a new instance, and keep backups as protected as the live data: a backup holds your
+        whole plan and your hashed credentials. An AI assistant you connect sees what its tools return, and the
+        provider of its model sees that too; use a read-only key, or a local model. See <a href="/self-hosting/">self-hosting</a>.
+      </p>
+    </Callout>
+  </Section>
+
+  <Section id="hosted" eyebrow="Hosted service" title="What the hosted service is designed to do." intro="Each measure is marked exactly as true today. None of the hosted service is live." >
+    {
+      !site.cloudLaunched && (
+        <Callout type="note" title="Not live yet">
+          <p>
+            Sign-up, billing, two-factor sign-in, automatic backups and email delivery are designed and partly written as
+            separate packages in the repository, but they are not wired into the app or running anywhere. We would
+            rather tell you that than imply otherwise.
+          </p>
+        </Callout>
+      )
+    }
+    <div class="tablewrap" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
+      <table>
+        <caption class="visually-hidden">Security measures designed for the hosted service</caption>
+        <thead><tr><th scope="col">Measure</th><th scope="col">The design</th><th scope="col">Status</th></tr></thead>
+        <tbody>
+          {
+            hosted.map((r) => (
+              <tr>
+                <th scope="row">{r.measure}</th>
+                <td>{r.detail}</td>
+                <td><span class:list={['badge', r.status.toLowerCase()]}>{r.status}</span></td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="note">
+      The hosted service will use a few outside services, for example a payment processor, an email provider and a bot
+      check at sign-up. They are listed on the <a href="/legal/subprocessors/">sub-processors page</a> and in the
+      <a href="/legal/privacy/">privacy policy</a>, which take effect when the hosted service opens and have not been
+      reviewed by a lawyer. Check-in emails are designed to carry a link, not your figures.
+    </p>
+  </Section>
+
+  <Section id="never" eyebrow="What Glideworth does not do" title="Things we do not do, and will not." tone="raised">
+    <FeatureGrid
+      columns={3}
+      items={[
+        { glyph: 'plug', title: 'No bank connections', body: 'No aggregation, no stored bank credentials, no account linking. You enter balances or import files.' },
+        { glyph: 'lock', title: 'No selling or sharing your data', body: 'Your plans are not sold, rented or used to build profiles. They are not shared except through links and keys that you create.' },
+        { glyph: 'code', title: 'No advertising trackers', body: 'This website loads no analytics, advertising or third-party scripts, and the app has no telemetry.' },
+        { glyph: 'solver', title: 'No AI run on your data by Glideworth', body: 'There is no model in the server, and no hosted AI chat. An assistant you choose can connect through MCP, under a key you control.' },
+        { glyph: 'ledger', title: 'No certifications claimed', body: 'Glideworth holds no security certification and makes no claim of an independent audit. Tests and a published design are what we can point to.' },
+        { glyph: 'people', title: 'No end-to-end encryption claim', body: 'Even in the design, servers can read your plans. Self-hosting keeps them on a machine you control.' },
+      ]}
+    />
+  </Section>
+
+  <Section id="reporting" eyebrow="Responsible disclosure" title="Report a vulnerability." width="narrow">
+    <p>
+      Please do not open a public issue, discussion or pull request for a security problem. Use GitHub's private
+      vulnerability reporting on the repository's Security tab, or email
+      <a href={`mailto:${site.contact.security}`}>{site.contact.security}</a>. Plain email is acceptable. Include what is
+      affected (the self-hosted app, the hosted service, the REST API, the MCP server, the Docker image), the version, the
+      steps to reproduce with synthetic data, and what an attacker gains. Do not send real financial data or live
+      credentials.
+    </p>
+    <div class="tablewrap" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
+      <table>
+        <caption>What to expect</caption>
+        <tbody>
+          {reportRows.map(([a, b]) => <tr><th scope="row">{a}</th><td>{b}</td></tr>)}
+        </tbody>
+      </table>
+    </div>
+    <p>
+      These are targets, not guarantees: the project is run by very few people, and we would rather promise what can be
+      kept. You are credited in the advisory if you wish. There is no bug-bounty programme and no payment is promised.
+      We will not pursue action against good-faith research on your own instance or your own account that stays in
+      scope, and we ask you not to test against other people's data or to degrade the service. Tax or calculation
+      errors are bugs, not vulnerabilities: use the tax-rule correction form on the repository. The full policy is
+      <code>SECURITY.md</code> in the repository, and <a href="/contact/">contact</a> lists every address.
+    </p>
+  </Section>
+
+  <CTABand title="Prefer to keep it all on your own machine?" body="Self-hosting is free, with every feature." primary={{ label: 'Self-host it', href: '/self-hosting/' }} secondary={{ label: 'API and MCP safety model', href: '/api/' }} />
+</PageLayout>
+
+<style>
+  .tablewrap {
+    overflow-x: auto;
+    margin-block: var(--space-m);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+  }
+  caption {
+    text-align: left;
+    font-weight: 650;
+    padding-bottom: var(--space-xs);
+  }
+  th,
+  td {
+    text-align: left;
+    vertical-align: top;
+    padding: 0.7rem 0.9rem 0.7rem 0;
+    border-bottom: 1px solid var(--line);
+    font-weight: 400;
+  }
+  tbody th {
+    font-weight: 620;
+    min-width: 10rem;
+  }
+  thead th {
+    font-weight: 650;
+    color: var(--ink-2);
+  }
+  td {
+    color: var(--ink-2);
+  }
+  .badge {
+    display: inline-block;
+    font-size: var(--text-xs);
+    font-weight: 650;
+    padding: 0.05rem 0.55rem;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .available {
+    background: var(--accent-soft);
+    color: var(--accent-text);
+  }
+  .planned {
+    background: var(--ochre-soft);
+    color: var(--ochre);
+  }
+  .note {
+    margin-top: var(--space-s);
+    font-size: var(--text-sm);
+    color: var(--ink-2);
+  }
+</style>

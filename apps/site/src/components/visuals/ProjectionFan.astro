@@ -1,0 +1,227 @@
+---
+/**
+ * A Monte Carlo fan chart drawn in SVG from ILLUSTRATIVE numbers (a smooth formula, not the engine and
+ * not a forecast). It shows what the product's chart communicates: the median path, the middle half
+ * and the 10th-90th percentile range of portfolio value by age, with retirement marked.
+ * Always keep the "Illustrative" label visible.
+ *   <ProjectionFan />  or  <ProjectionFan retireAge={58} successRate={0.81} />
+ */
+interface Props {
+  retireAge?: number;
+  /** Shown in the badge; illustrative. */
+  successRate?: number;
+  class?: string;
+}
+const { retireAge = 60, successRate = 0.86, class: className } = Astro.props;
+
+const startAge = 45;
+const endAge = 95;
+const W = 640;
+const H = 380;
+const pad = { l: 52, r: 18, t: 28, b: 40 };
+const maxY = 3000; // thousands, today's money
+
+// Illustrative median: growth with savings until retirement, then a gentle drawdown.
+function median(age: number): number {
+  const i = age - startAge;
+  const r = retireAge - startAge;
+  if (i <= r) return 420 + 55 * i + 420 * (1.042 ** i - 1);
+  const peak = 420 + 55 * r + 420 * (1.042 ** r - 1);
+  const k = (age - retireAge) / (endAge - retireAge);
+  return peak * (1 - 0.72 * k ** 1.35);
+}
+function spread(age: number, z: number): number {
+  const i = age - startAge;
+  const m = median(age);
+  const s = 0.085 * Math.sqrt(i);
+  const v = m * Math.exp(z * s);
+  // Low tails also suffer from withdrawals in bad sequences.
+  const drag = z < 0 && age > retireAge ? 13 * (age - retireAge) * -z : 0;
+  return Math.max(0, v - drag);
+}
+
+const ages = Array.from({ length: endAge - startAge + 1 }, (_, i) => startAge + i);
+const x = (age: number) => pad.l + ((age - startAge) / (endAge - startAge)) * (W - pad.l - pad.r);
+const y = (v: number) => H - pad.b - (Math.min(v, maxY) / maxY) * (H - pad.t - pad.b);
+const fmt = (n: number) => n.toFixed(1);
+const line = (f: (a: number) => number) =>
+  ages.map((a, i) => `${i ? 'L' : 'M'}${fmt(x(a))} ${fmt(y(f(a)))}`).join(' ');
+const band = (lo: (a: number) => number, hi: (a: number) => number) =>
+  `${line(hi)} ${[...ages]
+    .reverse()
+    .map((a) => `L${fmt(x(a))} ${fmt(y(lo(a)))}`)
+    .join(' ')} Z`;
+
+const outer = band(
+  (a) => spread(a, -1.28),
+  (a) => spread(a, 1.28),
+);
+const inner = band(
+  (a) => spread(a, -0.67),
+  (a) => spread(a, 0.67),
+);
+const mid = line(median);
+const yTicks = [0, 1000, 2000, 3000];
+const xTicks = [45, 55, 65, 75, 85, 95];
+const pct = Math.round(successRate * 100);
+---
+
+<figure class:list={['fan', className]}>
+  <div class="fan-head">
+    <div>
+      <p class="fan-kicker">Portfolio value by age, today's money</p>
+      <p class="fan-title">Monte Carlo, 1,000 trials</p>
+    </div>
+    <p class="fan-badge"><span class="num">{pct}%</span> chance of success</p>
+  </div>
+  <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-labelledby="fan-t fan-d" class="fan-svg">
+    <title id="fan-t">Illustrative projection fan chart</title>
+    <desc id="fan-d">
+      Illustrative numbers. Portfolio value grows until retirement at {retireAge}, then declines. The middle half
+      of outcomes and the 10th to 90th percentile range widen with time; in the weakest trials the money runs out
+      in the mid-eighties.
+    </desc>
+    {
+      yTicks.map((t) => (
+        <g>
+          <line x1={pad.l} x2={W - pad.r} y1={y(t)} y2={y(t)} class="grid" />
+          <text x={pad.l - 10} y={y(t) + 4} text-anchor="end" class="tick">
+            {t === 0 ? '$0' : `$${t / 1000}M`}
+          </text>
+        </g>
+      ))
+    }
+    {
+      xTicks.map((a) => (
+        <text x={x(a)} y={H - pad.b + 22} text-anchor="middle" class="tick">
+          {a}
+        </text>
+      ))
+    }
+    <path d={outer} class="band-outer"></path>
+    <path d={inner} class="band-inner"></path>
+    <line x1={x(retireAge)} x2={x(retireAge)} y1={pad.t - 6} y2={H - pad.b} class="retire"></line>
+    <text x={x(retireAge) + 8} y={pad.t + 6} class="retire-label">Retire at {retireAge}</text>
+    <path d={mid} class="median"></path>
+    <circle cx={x(retireAge)} cy={y(median(retireAge))} r="4.5" class="dot"></circle>
+  </svg>
+  <figcaption class="fan-legend">
+    <span><i class="key key-median"></i>Median</span>
+    <span><i class="key key-inner"></i>Middle 50%</span>
+    <span><i class="key key-outer"></i>10th–90th percentile</span>
+    <span class="illustrative">Illustrative numbers, not a forecast</span>
+  </figcaption>
+</figure>
+
+<style>
+  .fan {
+    display: grid;
+    gap: 0.75rem;
+    padding: clamp(1rem, 0.8rem + 1vw, 1.5rem);
+    background: var(--surface);
+  }
+  .fan-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    gap: 1rem;
+  }
+  .fan-kicker {
+    font-size: var(--text-xs);
+    color: var(--ink-3);
+  }
+  .fan-title {
+    font-weight: 620;
+    font-size: var(--text-sm);
+  }
+  .fan-badge {
+    flex: none;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent-text);
+    font-size: var(--text-xs);
+    font-weight: 600;
+  }
+  .fan-badge .num {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    margin-right: 0.15rem;
+  }
+  .fan-svg {
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+  .grid {
+    stroke: var(--chart-grid);
+    stroke-width: 1;
+  }
+  .tick {
+    fill: var(--ink-3);
+    font-size: 13px;
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
+  }
+  .band-outer {
+    fill: color-mix(in oklab, var(--accent) 14%, transparent);
+  }
+  .band-inner {
+    fill: color-mix(in oklab, var(--accent) 26%, transparent);
+  }
+  .median {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 2.25;
+    stroke-linejoin: round;
+  }
+  .retire {
+    stroke: var(--ochre-mark);
+    stroke-width: 1.25;
+    stroke-dasharray: 3 4;
+  }
+  .retire-label {
+    fill: var(--ochre);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--font-sans);
+  }
+  .dot {
+    fill: var(--ochre-mark);
+    stroke: var(--surface);
+    stroke-width: 2;
+  }
+  .fan-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.1rem;
+    font-size: var(--text-xs);
+    color: var(--ink-2);
+  }
+  .fan-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .key {
+    display: inline-block;
+    width: 14px;
+    height: 10px;
+    border-radius: 2px;
+  }
+  .key-median {
+    height: 2.5px;
+    background: var(--accent);
+  }
+  .key-inner {
+    background: color-mix(in oklab, var(--accent) 34%, transparent);
+  }
+  .key-outer {
+    background: color-mix(in oklab, var(--accent) 16%, transparent);
+  }
+  .illustrative {
+    margin-left: auto;
+    color: var(--ink-3);
+    font-style: italic;
+  }
+</style>

@@ -1,0 +1,53 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`golden: UK single accumulate -> retire -> drawdown > is stable (golden real net worth every 5 years, rounded to 100) 1`] = `
+[
+  [
+    2030,
+    372700,
+  ],
+  [
+    2035,
+    538300,
+  ],
+  [
+    2040,
+    589300,
+  ],
+  [
+    2045,
+    525100,
+  ],
+  [
+    2050,
+    508700,
+  ],
+  [
+    2055,
+    492600,
+  ],
+  [
+    2060,
+    502400,
+  ],
+  [
+    2065,
+    529800,
+  ],
+  [
+    2070,
+    560000,
+  ],
+]
+`;
+
+exports[`golden: US couple sample (accumulate, retire, survivor) > is stable 1`] = `
+{
+  "endNetWorthReal": 646000,
+  "fi": null,
+  "lifetimeTaxesReal": 1673000,
+  "mortgageFree": "2045-12",
+  "retirementYear": 2041,
+  "success": true,
+}
+`;

@@ -1,0 +1,1 @@
+ALTER TABLE `memberships` ADD `oauth_revoke_pending_at` text;

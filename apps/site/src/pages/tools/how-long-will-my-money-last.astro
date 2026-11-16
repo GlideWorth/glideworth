@@ -1,0 +1,121 @@
+---
+import { MARKET_DATASETS } from '@glideworth/core';
+import ToolPage from '../../components/tools/ToolPage.astro';
+import { depletionYears } from '../../tools/closed-form';
+import { engineYears, HISTORY_WINDOW, historyYears } from '../../tools/engine/how-long';
+import { HISTORY_DATASET } from '../../tools/engine/model';
+import { money, wholeYears } from '../../tools/format';
+
+const m = (x: number) => money(x, 'USD');
+const ds = MARKET_DATASETS[HISTORY_DATASET];
+// The article's worked example, computed by the calculator's own engine code at build time.
+const ex = { balance: 500_000, spend: 30_000, ret: 4, age: 65, tax: 0, stocks: 60, timing: 'end', cur: 'USD' } as const;
+const end = engineYears(ex);
+const start = engineYears({ ...ex, timing: 'start' });
+const byReturn = [2, 3, 4, 5, 6].map((r) => {
+  const e = engineYears({ ...ex, ret: r });
+  const f = depletionYears(500_000, 30_000, r / 100, 'end');
+  return [`${r}%`, Number.isFinite(f) ? f.toFixed(1) : 'never', Number.isFinite(e.years) ? e.years.toFixed(1) : 'never'];
+});
+const hist = historyYears(ex);
+const lasted = hist.filter((h) => h.full).length;
+const worst = hist.reduce((a, b) => (b.years < a.years ? b : a));
+
+const faq = [
+  {
+    q: 'How do I work out how long my money will last?',
+    a: '<p>With a fixed yearly withdrawal <em>W</em> from a balance <em>B</em> earning a steady real return <em>r</em>, taken at the end of each year, the money lasts −ln(1 − r × B ÷ W) ÷ ln(1 + r) years. 500,000 with 30,000 a year at 4% lasts 28.0 years. This calculator runs the same plan through the planning engine and replays it through US market history.</p>',
+  },
+  {
+    q: 'Should the return be real or nominal?',
+    a: '<p>Real (after inflation), because the withdrawal is in today’s money and rises with inflation. Using a nominal return with a real withdrawal overstates how long the money lasts.</p>',
+  },
+  {
+    q: 'Why does history give such different answers from the formula?',
+    a: '<p>The formula assumes the same return every year. Real returns vary, and when you are withdrawing, the order matters: bad years early do more damage than the same years late. That is sequence-of-returns risk, and the history chart shows its range.</p>',
+  },
+  {
+    q: 'Can I include a pension?',
+    a: '<p>Only roughly here, by lowering the withdrawal by the pension. If income starts or stops part-way, the full planner or the Monte Carlo calculator’s income option handles it year by year.</p>',
+  },
+];
+---
+
+<ToolPage
+  id="how-long"
+  heading="How long will my money last?"
+  lede="How many years your savings pay a yearly withdrawal at a steady return, then the same plan replayed through every start year of US market history since 1928. It runs the Glideworth planning engine in your browser; nothing you type is sent anywhere."
+  faq={faq}
+  adds="This calculator has one withdrawal, one return and no other income."
+  related={[
+    { href: '/blog/monte-carlo-retirement-simulations/', label: 'Monte Carlo retirement simulations: reading the result' },
+    { href: '/features/monte-carlo/', label: 'Monte Carlo and historical backtests in the planner' },
+    { href: '/docs/methodology/historical-data/', label: 'The historical data the engine uses' },
+  ]}
+>
+  <h2>How the calculator works</h2>
+  <ol>
+    <li>
+      <strong>Steady return.</strong> The engine projects your savings year by year at your return after inflation,
+      taking the withdrawal each year (rising with inflation, so it stays the same in today’s money). The answer is the
+      number of years paid in full plus the share of the next year it could still pay.
+    </li>
+    <li>
+      <strong>History.</strong> The engine then replays the same withdrawal through real US returns and inflation,
+      starting once in every year from {ds.firstYear} that leaves a full {HISTORY_WINDOW}-year window, with a mix of
+      stocks and 10-year Treasury bonds (60/40 by default), rebalanced yearly. The chart shows how many years each start
+      year paid in full, up to {HISTORY_WINDOW}.
+    </li>
+  </ol>
+
+  <h2>The formula</h2>
+  <p class="formula">years = −ln(1 − r × B ÷ W) ÷ ln(1 + r)</p>
+  <p>
+    <code>B</code> is the starting balance, <code>W</code> the yearly withdrawal taken at the end of each year and
+    <code>r</code> the real return. It only has an answer when r × B is less than W; otherwise growth covers the
+    withdrawal and the money never runs out. For withdrawals at the start of the year, replace W with W × (1 + r); for
+    the middle of the year, W × (1 + r)<sup>½</sup>. With a flat tax on withdrawals, W is the amount you spend divided by
+    (1 − tax).
+  </p>
+
+  <h2>Worked example</h2>
+  <p>
+    Computed by the calculator’s own code when this page was built. {m(500_000)}, withdrawals of {m(30_000)} at the end
+    of each year, 4% after inflation: r × B = {m(20_000)}, 1 − 20,000 ÷ 30,000 = 0.33333, −ln(0.33333) = 1.09861 and
+    ln(1.04) = 0.03922, so the formula gives {depletionYears(500_000, 30_000, 0.04, 'end').toFixed(2)} years. The
+    engine pays {Math.floor(end.years)} full years: after 27 withdrawals {m(end.path[27] ?? 0)} is left, after 28 only
+    {' '}{m(end.path[28] ?? 0)}, so its answer is {end.years.toFixed(2)} years. With withdrawals at the start of each
+    year instead, it is {start.years.toFixed(1)} years.
+  </p>
+  <table>
+    <caption>Same balance and withdrawal at other steady returns (end-of-year withdrawals)</caption>
+    <thead><tr><th>Return after inflation</th><th>Formula (years)</th><th>Engine (years)</th></tr></thead>
+    <tbody>{byReturn.map((r) => <tr>{r.map((c) => <td>{c}</td>)}</tr>)}</tbody>
+  </table>
+  <p>
+    Through history, the same {m(500_000)} paying {m(30_000)} a year with 60% in stocks lasted the whole
+    {' '}{HISTORY_WINDOW}-year window in {lasted} of {hist.length} start years from {hist[0]?.startYear} to
+    {' '}{hist[hist.length - 1]?.startYear}. The shortest, starting in {worst.startYear}, paid {wholeYears(worst.years)}
+    {' '}in full: a steady-return answer of 28 years hides that range.
+  </p>
+
+  <h2>Why the engine and the formula can differ</h2>
+  <p>
+    With a positive return they agree to a hundredth of a year. The engine credits each withdrawal with the share of
+    the year’s return set by the timing option, exactly as the formula’s W′ does, and the last withdrawal can only take
+    what is left at the moment it is made. With a negative return and start or middle timing the engine can differ by a
+    few hundredths of a year, because in a losing year it does not let a withdrawal exceed the reduced balance.
+  </p>
+
+  <h2>What this assumes and leaves out</h2>
+  <ul>
+    <li>A steady return in the first answer. Real returns vary, and their order matters while you withdraw.</li>
+    <li>A fixed withdrawal in today’s money: no cuts in bad years, no pension or other income.</li>
+    <li>No fees, and no tax unless you set the flat rate.</li>
+    <li>
+      History is one country’s past ({ds.label}): a record of what happened there, not a forecast. Data: Aswath
+      Damodaran, <em>Historical Returns on Stocks, Bonds and Bills</em> (NYU Stern), and US Bureau of Labor Statistics
+      CPI-U. Start years are not independent: consecutive windows share most of their years.
+    </li>
+  </ul>
+</ToolPage>

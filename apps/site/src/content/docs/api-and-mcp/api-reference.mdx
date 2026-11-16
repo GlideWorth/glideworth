@@ -1,0 +1,32 @@
+---
+title: API reference
+description: Every Glideworth REST API operation by group, with method, path, summary, required key scope, parameters and the request and response schema names.
+section: API and MCP
+order: 18
+lastChecked: 2026-11-16
+---
+
+import ApiReference from '../../../components/ApiReference.astro';
+import Callout from '../../../components/Callout.astro';
+
+This page lists every operation in the OpenAPI 3.1 document that the Glideworth server generates from its own route
+definitions. It is plain HTML, so you can search all of it with your browser's find command. Conventions that apply to
+every call (units, errors, pagination, idempotency, concurrency) are on
+[REST API overview and conventions](/docs/api-and-mcp/api-overview/); keys and scopes are on
+[API authentication, scopes and roles](/docs/api-and-mcp/api-authentication/).
+
+<Callout type="note" title="How this page is made">
+  It is built from a snapshot of the document (`apps/site/src/data/openapi.json`), taken from the API's code with
+  `pnpm --filter @glideworth/site snapshot:openapi`. Your own server serves the live document at `/openapi.json`, with
+  an interactive viewer at `/docs`. Request and response schema names are the names in that document's
+  `components.schemas`; fetch the document for the full shapes.
+</Callout>
+
+- **Scope** is the lowest key scope that may call the operation: `read`, `simulate` or `write`. A `write` key can also
+  read and simulate. Operations marked "no API-key scope" are the browser sign-in routes and the public share-link read.
+- **Headers.** Every write accepts an `Idempotency-Key` header for safe retries. Operations that change a plan or
+  household accept `If-Match` with the version from the `ETag` you read.
+- **Errors.** The listed error codes are the ones the document declares; the body is always
+  `{ "error": { "code", "message", "details" } }`.
+
+<ApiReference />

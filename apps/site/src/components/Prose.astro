@@ -1,0 +1,104 @@
+---
+/**
+ * Long-form typography for Markdown and MDX bodies. Layouts wrap rendered content in it; pages can too:
+ *   <Prose><Content /></Prose>
+ */
+interface Props {
+  class?: string;
+  /** Wider measure for docs with tables and code. */
+  wide?: boolean;
+}
+const { class: className, wide = false } = Astro.props;
+---
+
+<div class:list={['prose', { 'prose-wide': wide }, className]}>
+  <slot />
+</div>
+
+<style>
+  .prose {
+    max-width: var(--measure);
+    color: var(--ink);
+    font-size: var(--text-base);
+    line-height: var(--leading-body);
+  }
+  .prose-wide {
+    max-width: 50rem;
+  }
+  .prose :global(> * + *) {
+    margin-top: 1.15em;
+  }
+  .prose :global(h2) {
+    font-size: var(--text-2xl);
+    margin-top: 2.2em;
+  }
+  .prose :global(h3) {
+    font-size: var(--text-xl);
+    margin-top: 1.9em;
+  }
+  .prose :global(h4) {
+    margin-top: 1.6em;
+  }
+  .prose :global(:is(h2, h3, h4) + *) {
+    margin-top: 0.7em;
+  }
+  .prose :global(:is(ul, ol)) {
+    padding-left: 1.3em;
+  }
+  .prose :global(li + li) {
+    margin-top: 0.4em;
+  }
+  .prose :global(li::marker) {
+    color: var(--ink-3);
+  }
+  .prose :global(strong) {
+    font-weight: 640;
+  }
+  .prose :global(blockquote) {
+    border-left: 3px solid var(--ochre-mark);
+    padding-left: var(--space-m);
+    color: var(--ink-2);
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+  }
+  .prose :global(table) {
+    font-size: var(--text-sm);
+  }
+  .prose :global(.table-scroll) {
+    margin-block: 1.4em;
+  }
+  .prose :global(th) {
+    text-align: left;
+    font-weight: 620;
+    color: var(--ink-2);
+    border-bottom: 1px solid var(--line-strong);
+  }
+  .prose :global(:is(th, td)) {
+    padding: 0.55em 0.9em 0.55em 0;
+    vertical-align: top;
+  }
+  .prose :global(td) {
+    border-bottom: 1px solid var(--line);
+  }
+  .prose :global(thead td) {
+    border-bottom-color: var(--line-strong);
+  }
+  /* A row label (MdxTable) is a header cell that looks like the data cell it used to be. */
+  .prose :global(tbody th) {
+    font-weight: inherit;
+    color: inherit;
+    border-bottom-color: var(--line);
+  }
+  .prose :global(h2 a.heading-anchor),
+  .prose :global(h3 a.heading-anchor) {
+    color: inherit;
+    text-decoration: none;
+  }
+  .prose :global(pre) {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  .prose :global(img) {
+    border-radius: var(--radius-m);
+  }
+</style>

@@ -1,0 +1,71 @@
+---
+title: API - change sets and safe edits
+description: Propose, preview, apply or discard plan edits as change sets with conflict detection, and a worked example of an agent editing a plan safely with curl.
+section: API and MCP
+order: 15
+lastChecked: 2026-11-16
+---
+
+A change set is a proposed list of RFC 6902 operations against one plan version. Proposing it changes nothing: you get a
+readable diff and a before and after simulation summary. Then you apply or discard it.
+
+| Route | Purpose |
+| --- | --- |
+| `POST /plans/{id}/change-sets` | Propose. Nothing is written to the plan. |
+| `GET /plans/{id}/change-sets`, `GET /change-sets/{id}` | List and read. |
+| `POST /change-sets/{id}/apply` | Apply atomically. Writes a plan version attributed to the caller. |
+| `POST /change-sets/{id}/discard` | Drop it. |
+| `POST /plans/{id}/preview` | The same what-if without storing a change set. |
+
+If the plan changed after the proposal, apply fails with `409 CHANGESET_CONFLICT` (`details.baseVersion`,
+`details.currentVersion`) and nothing is merged. Proposing against a stale `baseVersion`, or with an operation whose path
+does not exist, fails at once with `VERSION_CONFLICT` or `PATCH_CONFLICT`. Undo is
+`POST /plans/{id}/versions/{n}/restore`.
+
+## Worked example
+
+The user asks an agent: "Can I spend 500 more a month on dining?" The agent has a `read` plus `write` key. The numbers are
+illustrative.
+
+<Steps>
+1. Read the plan and note its version, and the id of what to change.
+
+   ```bash
+   api $GLIDEWORTH/api/v1/plans/plan-main/expenses/exp-living -i | egrep -i '^etag|"amount"'
+   # ETag: "4"    amount: { value: 5200, basis: "real" }, frequency: "monthly"
+   ```
+
+2. Ask "what if" first. Nothing is stored.
+
+   ```bash
+   api -X POST $GLIDEWORTH/api/v1/plans/plan-main/preview -d '{
+     "ops": [{ "op": "replace", "path": "/expenses/[id=exp-living]/amount/value", "value": 5700 }]
+   }'
+   ```
+
+3. Propose it against the version that was read.
+
+   ```bash
+   api -X POST $GLIDEWORTH/api/v1/plans/plan-main/change-sets -d '{
+     "summary": "Living expenses +500/month (dining)",
+     "rationale": "User asked about spending 500/month more on dining",
+     "baseVersion": 4,
+     "ops": [{ "op": "replace", "path": "/expenses/[id=exp-living]/amount/value", "value": 5700 }]
+   }'
+   ```
+
+4. Show the user the changes and the before and after. Apply only after they agree.
+
+   ```bash
+   api -X POST $GLIDEWORTH/api/v1/change-sets/cs_9f2c.../apply
+   ```
+
+5. To undo, restore the earlier version, which writes it as a new one.
+
+   ```bash
+   api -X POST $GLIDEWORTH/api/v1/plans/plan-main/versions/4/restore -d '{}'
+   ```
+</Steps>
+
+If someone edited the plan between steps 3 and 4, the apply is refused with `CHANGESET_CONFLICT`. Re-read and propose
+again. The same flow over MCP is in [MCP examples](/docs/api-and-mcp/mcp-examples/).

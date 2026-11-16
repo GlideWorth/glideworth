@@ -1,0 +1,182 @@
+---
+import Callout from '../components/Callout.astro';
+import CodeBlock from '../components/CodeBlock.astro';
+import CTABand from '../components/CTABand.astro';
+import FAQ from '../components/FAQ.astro';
+import Section from '../components/Section.astro';
+import Steps from '../components/Steps.astro';
+import { page } from '../config/pages';
+import PageLayout from '../layouts/PageLayout.astro';
+import type { FaqItem } from '../lib/jsonld';
+
+const install = `git clone <repository address>   # the repository is being prepared for public release
+cd glideworth
+cp .env.example .env
+
+# Edit .env: set GLIDEWORTH_SETUP_TOKEN to a long random value
+# (for example the output of: openssl rand -hex 24) and leave GLIDEWORTH_BOOTSTRAP_KEY empty.
+
+docker compose up -d --build
+docker compose ps                  # wait for "healthy"
+# Open http://localhost:8787 and choose a passphrase of 12 or more characters.`;
+
+const backup = `# A consistent copy, safe while the server runs
+docker compose exec glideworth node dist/cli/admin.js backup --out /data/backups/manual.db
+
+# Copy it off the volume, and then off the machine
+docker compose cp glideworth:/data/backups/manual.db ./glideworth-backup.db`;
+
+const restore = `docker compose stop glideworth
+docker compose run --rm --no-deps \\
+  -v "$PWD/glideworth-backup.db:/restore/backup.db:ro" \\
+  glideworth node dist/cli/admin.js restore --from /restore/backup.db --force
+docker compose up -d`;
+
+const upgrade = `docker compose exec glideworth node dist/cli/admin.js backup --out /data/backups/pre-upgrade.db
+git pull
+docker compose up -d --build
+docker compose logs --tail 50 glideworth   # migrations run at start-up`;
+
+const caddy = `glideworth.example.com {
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:8787
+}`;
+
+const faq: FaqItem[] = [
+  {
+    q: 'Is anything switched off in the self-hosted build?',
+    a: '<p>No. It is the whole product under the AGPL-3.0 licence: no licence key, no feature that needs payment, and no telemetry. Code that exists for the hosted service, such as billing and multi-customer accounts, is in the same repository and stays out of the way of a self-hosted install.</p>',
+  },
+  {
+    q: 'What happens if I forget my passphrase?',
+    a: '<p>There is no email, so there is no reset link. On the host, run the admin command <code>reset-owner-passphrase</code>, which prints a one-time token you enter in the app with a new passphrase. The owner is signed out everywhere.</p>',
+  },
+  {
+    q: 'Can I run several copies for availability?',
+    a: '<p>No. SQLite on one volume means one instance serves one database. Run a single container, with the volume on local SSD storage rather than a network filesystem.</p>',
+  },
+  {
+    q: 'Can I move to the hosted service later, or back?',
+    a: '<p>Yes in principle: both run the same code and Glideworth imports its own export file. The hosted service is not open yet, so only the self-hosted direction can be done today.</p>',
+  },
+];
+---
+
+<PageLayout
+  {...page('/self-hosting/')}
+  heading="Run Glideworth yourself, free"
+  eyebrow="Self-hosting"
+  lede="One container or one Node process serves the web app, the REST API, the MCP server and the API reference on one port. Your data lives in a single SQLite file."
+  crumbs={[{ label: 'Self-hosting', href: '/self-hosting/' }]}
+>
+  <Section eyebrow="The short path" title="Four steps to a running planner." width="narrow" tight>
+    <Steps
+      items={[
+        { title: 'Get the code', body: 'Clone the repository. You need Docker with the Compose plugin, or Node 24 and pnpm 10 to run from source.' },
+        { title: 'Configure', body: 'Copy .env.example to .env and set a setup token, so nobody else can choose your passphrase first.' },
+        { title: 'Start it', body: 'docker compose up -d --build, then open port 8787 and choose a passphrase of 12 or more characters.' },
+        { title: 'Back it up', body: 'The database is one file. The backup command is safe while the server runs. Copy backups off the machine.' },
+      ]}
+    />
+    <CodeBlock lang="bash" title="Terminal" code={install} />
+    <p class="note">
+      The full guide, with a reverse proxy, every setting, upgrades and troubleshooting, is
+      <a href="/docs/self-hosting/docker/">Self-host with Docker</a>. Running from source is described in the repository's README.
+    </p>
+  </Section>
+
+  <Section eyebrow="Requirements" title="What you need." tone="raised" width="narrow">
+    <ul class="points">
+      <li>A Linux, macOS or Windows machine running <strong>Docker Engine 24 or newer with the Compose plugin</strong> (or Docker Desktop, OrbStack and similar). The image is built for amd64 and arm64, so a 64-bit Raspberry Pi 4 or newer works.</li>
+      <li>About <strong>1 GB of free memory and 1 GB of disk</strong> to start. As a rough guide from one small test, an idle container with the sample household used about 190 MB of memory; simulations are the heavy part, and more cores make them faster. These are estimates, not guarantees.</li>
+      <li>To reach it from other devices over the internet: a domain name, a reverse proxy that terminates TLS, and ports 80 and 443 open.</li>
+      <li>Without Docker: Node 24 and pnpm 10, then <code>pnpm install</code>, <code>pnpm build</code> and <code>pnpm start</code>.</li>
+    </ul>
+  </Section>
+
+  <Section eyebrow="Your responsibilities" title="What you run and maintain yourself." width="narrow">
+    <p>
+      Self-hosting is free of charge and not free of work. Running the server means you are the operator.
+    </p>
+    <ul class="points">
+      <li><strong>HTTPS.</strong> The container speaks plain HTTP. Bind it to loopback and put a reverse proxy that terminates TLS in front, then set <code>GLIDEWORTH_TRUST_PROXY=true</code> and <code>GLIDEWORTH_PUBLIC_URL</code>. Caddy needs three lines:</li>
+    </ul>
+    <CodeBlock lang="text" title="Caddyfile" code={caddy} />
+    <ul class="points">
+      <li><strong>Backups.</strong> A backup on the same volume protects against mistakes, not against losing the disk. Copy backups elsewhere regularly, and store them as carefully as the live data, because a backup holds your whole plan and your hashed credentials.</li>
+      <li><strong>Upgrades.</strong> You choose when. Read the release notes, back up first, then pull and rebuild. Database migrations run automatically at start-up. Tax-table updates and fixes reach you when you upgrade.</li>
+      <li><strong>Security.</strong> Keep the image up to date, set the setup token before exposing a new instance, and keep the port off the public internet until you have a passphrase and TLS.</li>
+      <li><strong>Your passphrase.</strong> With no email, recovery is a command on the host.</li>
+      <li><strong>One instance.</strong> A single container per database, on local storage.</li>
+    </ul>
+  </Section>
+
+  <Section eyebrow="Backups and upgrades" title="Both are a few commands." tone="raised" width="narrow">
+    <h3>Back up</h3>
+    <CodeBlock lang="bash" title="Terminal" code={backup} />
+    <h3>Restore</h3>
+    <p class="note">Stop the server first. The current database is kept next to the restored one in case you need to undo it.</p>
+    <CodeBlock lang="bash" title="Terminal" code={restore} />
+    <h3>Upgrade</h3>
+    <p class="note">Use release tags rather than the development branch for anything you rely on.</p>
+    <CodeBlock lang="bash" title="Terminal" code={upgrade} />
+    <p class="note">
+      You can also export one household as portable JSON from the app. That is not a full backup, since it leaves
+      out users, API keys and version history.
+    </p>
+  </Section>
+
+  <Section eyebrow="Network behaviour" title="What the server talks to." width="narrow">
+    <p>
+      A self-hosted Glideworth is local-first. Your data lives in one SQLite file on your machine or Docker volume. It
+      sends no telemetry, no analytics and no version check, uses no hosted AI and links to no accounts. The only network
+      calls the server makes are the webhooks you configure, and those are blocked for private addresses unless you allow
+      them. In the browser there is one optional dependency on the internet: the API reference page at
+      <code>/docs</code> loads its viewer script from the jsDelivr CDN. The web app itself does not. Building the Docker image
+      downloads dependencies once, which is you fetching software, not the app reporting anything.
+    </p>
+    <p>
+      If you connect an AI assistant, it sees what its tools return, within the scopes of its key, and the provider of
+      the model sees that too. See <a href="/api/">API and MCP</a> and <a href="/security/">security</a>.
+    </p>
+  </Section>
+
+  <Section id="support" eyebrow="Support" title="The support boundary." tone="raised" width="narrow">
+    <p>
+      Self-hosting support is <strong>community support</strong>. Questions go to GitHub Discussions and reproducible
+      bugs to GitHub issues, with logs and without real financial data, passphrases or API
+      keys. There is no service-level agreement, no private support channel and no guaranteed response time for people who
+      run it themselves. Security problems go to the <a href="/security/#reporting">private route</a>, never to a public issue.
+    </p>
+    <Callout type="note" title="Rather not run a server?">
+      <p>
+        The hosted service runs the same software, with backups and updates handled for you. It is about to open; its
+        accounts, billing, backups and email are planned. See <a href="/pricing/">pricing</a>.
+      </p>
+    </Callout>
+  </Section>
+
+  <Section eyebrow="Questions" title="Self-hosting questions." width="narrow">
+    <FAQ items={faq} />
+  </Section>
+  <CTABand title="Rather not run a server?" body="Glideworth Cloud runs the same code for you." secondary={{ label: 'See pricing', href: '/pricing/' }} />
+</PageLayout>
+
+<style>
+  .note {
+    margin-top: var(--space-s);
+    color: var(--ink-2);
+    font-size: var(--text-sm);
+  }
+  .points {
+    display: grid;
+    gap: var(--space-s);
+    padding-left: 1.2rem;
+    list-style: disc;
+    color: var(--ink-2);
+  }
+  h3 {
+    margin-top: var(--space-m);
+    font-size: var(--text-lg);
+  }
+</style>

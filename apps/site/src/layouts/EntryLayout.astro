@@ -1,0 +1,80 @@
+---
+/**
+ * A collection entry page: PageLayout's header, the rendered body in Prose, and an "On this page"
+ * column on wide screens. Slots: "before" (above the body), "after" (below it), "aside" (under the
+ * table of contents), "head".
+ *   const { Content, headings } = await render(entry);
+ *   <EntryLayout title=… description=… headings={headings} crumbs={…}><Content /></EntryLayout>
+ */
+import type { MarkdownHeading } from 'astro';
+import CTABand from '../components/CTABand.astro';
+import Prose from '../components/Prose.astro';
+import RelatedLinks from '../components/RelatedLinks.astro';
+import type { SeoProps } from '../components/SEO.astro';
+import TableOfContents from '../components/TableOfContents.astro';
+import type { Crumb } from '../lib/jsonld';
+import PageLayout from './PageLayout.astro';
+
+interface Props extends Omit<SeoProps, 'canonicalPath'> {
+  path?: string;
+  heading?: string;
+  eyebrow?: string;
+  lede?: string;
+  crumbs?: Crumb[];
+  headings?: MarkdownHeading[];
+  /** Show the closing call-to-action band. */
+  cta?: boolean;
+}
+const { headings = [], cta = true, ...rest } = Astro.props;
+---
+
+<PageLayout {...rest}>
+  <slot name="head" slot="head" />
+  <div class="container entry">
+    <div class="entry-main">
+      <slot name="before" />
+      <Prose><slot /></Prose>
+      <slot name="after" />
+      <RelatedLinks />
+    </div>
+    <aside class="entry-aside" aria-label="Page navigation">
+      <TableOfContents headings={headings} />
+      <slot name="aside" />
+    </aside>
+  </div>
+  {cta && <CTABand />}
+</PageLayout>
+
+<style>
+  .entry {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-xl);
+    padding-bottom: var(--section-y);
+  }
+  .entry-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-l);
+    min-width: 0;
+  }
+  .entry-aside {
+    min-width: 0;
+  }
+  .entry-aside:empty {
+    display: none;
+  }
+  @media (min-width: 64rem) {
+    .entry {
+      grid-template-columns: minmax(0, 1fr) 15rem;
+      gap: var(--space-2xl);
+    }
+    .entry-aside {
+      position: sticky;
+      top: calc(var(--header-h) + 2rem);
+      align-self: start;
+      display: grid;
+      gap: var(--space-l);
+    }
+  }
+</style>

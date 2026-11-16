@@ -1,0 +1,43 @@
+---
+title: Glideworth JSON backup and restore
+description: Export a household as one JSON file, restore it into any Glideworth instance, and how replace and merge modes treat existing plans and history.
+section: Importing
+order: 4
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+
+A Glideworth JSON export holds one household: the household, its finances, its plans, progress snapshots and settings. It
+round-trips: exporting and importing again gives the same household. It is how you move a household between instances,
+including between the hosted service and a self-hosted one.
+
+## Export
+
+Open **Import &amp; export**, then the **Backup &amp; export** tab, and use "Everything, in one file". Over the API:
+`GET /api/v1/households/{id}/export`.
+
+## Restore
+
+<Steps>
+1. On the **Backup &amp; export** tab, choose a backup file ("Choose a Glideworth backup").
+2. Choose a mode: create, replace or merge.
+3. Confirm. A file written by an older version is migrated to the current schema.
+</Steps>
+
+Over the API, `POST /api/v1/import` with `{ "data": ... }` (and `"mode"`). The modes:
+
+- **create** (default): `409` if the household exists.
+- **replace**: the document becomes the household. Plans and snapshots not in it are removed.
+- **merge**: the household, finances and the plans in the document are updated; everything else is kept; settings are left
+  alone.
+
+Plan version history is preserved: an existing plan keeps its earlier versions and the import is its next version. If the
+plans name a different household, the import is a `422` that says which `householdId` to set.
+
+## What this does not do
+
+<Callout type="warning" title="Not a full server backup">
+  A household export has no users, API keys or history of other households. For a full backup of an instance, back up the
+  database file. See [Backups and restore](/docs/self-hosting/backups-and-restore/).
+</Callout>

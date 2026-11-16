@@ -1,0 +1,103 @@
+---
+title: MCP worked examples
+description: Five example conversations with the tool calls an assistant makes, from summarising a plan to editing one safely with your approval at each step.
+section: API and MCP
+order: 23
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+
+Each example shows what you say and the tool calls an assistant would make. All numbers are illustrative. The first four
+need only a `read` key. The fifth needs writes enabled and a `write` key. See [Set up](/docs/api-and-mcp/mcp-setup/).
+
+## 1. "Summarise my finances and plan"
+
+1. `get_plan_summary {}` returns, in one call, the compact plan, current finances, the deterministic outcome (does the plan
+   fund every year, end net worth, first shortfall) and a 5-yearly net worth table. `planId` defaults to the main plan.
+2. `get_household {}` if you want account detail.
+
+The assistant reports in today's money, for example: "Your plan is funded to age 92 and ends with about 910,000 in today's
+money" (an illustrative figure).
+
+## 2. "What is my chance of success, and why does it fail when it fails?"
+
+1. `run_monte_carlo { "trials": 1000 }` returns a one-sentence headline, the success rate, outcome counts and, when trials
+   fail, `failureAnalysis`: the years in which shortfalls first land, success by early returns, and failures before and
+   after retirement.
+2. `explain_year { "year": 2041 }` on the `earliestFailureYear` from the analysis, to see where the money went.
+3. `explain_projection {}` and `sensitivity {}` for why, and which assumptions matter most.
+
+The assistant should say that this is a stress test against historical returns, not a forecast.
+
+## 3. "What if I retire three years earlier? Save it as a branch"
+
+1. `list_whatif_templates {}` to confirm the `early-retirement` template and its parameters.
+2. `preview_whatif { "templateId": "early-retirement", "params": { "years": 3 } }` shows the operations, the readable
+   changes and before and after. Nothing is stored.
+3. `create_branch_from_template { "templateId": "early-retirement", "params": { "years": 3 }, "name": "Retire three years earlier" }`
+   (needs writes) stores it as a branch. The main plan is untouched.
+4. `run_monte_carlo { "planId": "<main>" }` and `run_monte_carlo { "planId": "<branch id>" }`.
+5. `compare_plans { "planIds": ["<main>", "<branch id>"], "explain": true }` for the difference and why.
+
+The `retire_earlier_as_branch` prompt does these steps for you.
+
+## 4. "What is the most I can spend at 90% success?"
+
+1. `solve_max_spending { "targetSuccessRate": 0.9 }` waits for the job and returns an `answer` sentence in money per
+   year, the `details`, the same answer at nearby targets, and the `ops` that apply it. If it is not ready within `wait`
+   seconds it returns a `jobId`, and the assistant calls `get_job { "jobId": "...", "wait": 60 }`.
+2. To see the effect before applying, `preview_changes { "ops": [...] }` with the returned `ops`.
+
+The assistant should quote the figure with its target ("at a 90 percent chance of success") and offer, not make, the
+change. The `how_much_can_i_spend` prompt does this.
+
+## 5. "Can I spend 500 more a month on dining?" (an edit, with approval)
+
+The server has `GLIDEWORTH_MCP_ALLOW_WRITES=true` and the key has `write`.
+
+1. Orient: `list_plans {}` returns the plan with its version (say 4). `get_plan_summary { "planId": "plan-main" }` shows
+   the ids, such as `exp-living` with `5200 real/monthly`.
+2. Ask "what if", storing nothing:
+
+   ```json
+   preview_changes {
+     "planId": "plan-main",
+     "ops": [{ "op": "replace", "path": "/expenses/[id=exp-living]/amount/value", "value": 5700 }]
+   }
+   ```
+
+3. Propose it against the version that was read. Still nothing is applied.
+
+   ```json
+   propose_change_set {
+     "planId": "plan-main",
+     "baseVersion": 4,
+     "summary": "Living expenses +500/month (dining)",
+     "rationale": "User asked whether they can spend 500/month more on dining",
+     "ops": [{ "op": "replace", "path": "/expenses/[id=exp-living]/amount/value", "value": 5700 }]
+   }
+   ```
+
+4. The assistant shows you the changes and before and after, and waits. Only after you say yes:
+
+   ```json
+   apply_change_set { "changeSetId": "cs_9f2c1a" }
+   ```
+
+5. If you edited the plan in the app between steps 3 and 4, the apply is refused with `CHANGESET_CONFLICT` and nothing
+   merges. The assistant re-reads, proposes again against the new version, and asks you again.
+6. To undo: `propose_revert { "planId": "plan-main", "version": 4 }`, review, then `apply_change_set`. History is append-only,
+   so the revert is a new version holding the old content.
+
+<Callout type="note" title="Other tasks worth trying">
+  "Review my assumptions and show what changing the top finding would do" uses `audit_plan`, `preview_changes` with the finding's suggested change,
+  `propose_change_set`, and `apply_change_set` after you agree. "Update my balances and record a snapshot" uses
+  `list_accounts` then `update_account_balances` with `recordSnapshot: true`. "What if the market crashes in 2035?" uses
+  `preview_whatif` with the `market-crash` template and `{ "year": 2035, "drop": 0.4 }`.
+</Callout>
+
+## What this does not do
+
+The assistant cannot apply an edit you have not seen, cannot delete anything, and cannot overwrite a plan. It is still only
+as reliable as the model: check its summary against the diff before you say yes.

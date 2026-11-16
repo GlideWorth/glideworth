@@ -1,0 +1,105 @@
+---
+import { type CollectionEntry, getCollection, render } from 'astro:content';
+import Callout from '../../components/Callout.astro';
+import { mdxComponents } from '../../components/mdx';
+import EntryLayout from '../../layouts/EntryLayout.astro';
+
+export async function getStaticPaths() {
+  return (await getCollection('countries')).map((entry) => ({
+    params: { country: entry.id },
+    props: { entry },
+  }));
+}
+interface Props {
+  entry: CollectionEntry<'countries'>;
+}
+const { entry } = Astro.props;
+const { Content, headings } = await render(entry);
+const d = entry.data;
+---
+
+<EntryLayout
+  title={d.title}
+  description={d.description}
+  noindex={d.noindex}
+  eyebrow={`Planning in ${d.countryName}`}
+  lede={d.description}
+  headings={headings}
+  crumbs={[
+    { label: 'Planning by country', href: '/planning/' },
+    { label: d.countryName, href: `/planning/${entry.id}/` },
+  ]}
+>
+  <Fragment slot="before">
+    <div class="model">
+      <section aria-labelledby="modelled-h" class="col">
+        <h2 id="modelled-h">What the estimate covers</h2>
+        <ul role="list" class="list list-yes">{d.modelled.map((m) => <li>{m}</li>)}</ul>
+      </section>
+      <section aria-labelledby="not-h" class="col">
+        <h2 id="not-h">What it leaves out</h2>
+        <ul role="list" class="list list-no">{d.notModelled.map((m) => <li>{m}</li>)}</ul>
+      </section>
+    </div>
+    <p class="years">
+      <strong>Read the right-hand list as limits of the model, not of the law.</strong> Where the law allows something
+      that Glideworth leaves out, the entry says so.
+    </p>
+    <p class="years"><strong>Tax years in the tables:</strong> {d.taxYears.join('; ')}.</p>
+    <Callout type="note" title="Estimates, not tax advice">
+      <p>Every figure is an estimate from the rules above and the assumptions you enter.</p>
+    </Callout>
+  </Fragment>
+  <Content components={mdxComponents} />
+</EntryLayout>
+
+<style>
+  .model {
+    display: grid;
+    gap: var(--space-m);
+  }
+  @media (min-width: 48rem) {
+    .model {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  .col {
+    padding: var(--space-m);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-l);
+    background: var(--surface);
+  }
+  .col h2 {
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    font-weight: 650;
+    margin-bottom: var(--space-s);
+  }
+  .list {
+    display: grid;
+    gap: 0.55rem;
+    font-size: var(--text-sm);
+    color: var(--ink-2);
+  }
+  .list li {
+    position: relative;
+    padding-left: 1.4rem;
+  }
+  .list li::before {
+    position: absolute;
+    left: 0;
+    font-weight: 700;
+  }
+  .list-yes li::before {
+    content: '+';
+    color: var(--accent-text);
+  }
+  .list-no li::before {
+    content: '−';
+    color: var(--risk);
+  }
+  .years {
+    font-size: var(--text-sm);
+    color: var(--ink-2);
+  }
+</style>

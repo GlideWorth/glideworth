@@ -1,0 +1,325 @@
+---
+import Button from '../components/Button.astro';
+import Callout from '../components/Callout.astro';
+import CTABand from '../components/CTABand.astro';
+import FAQ from '../components/FAQ.astro';
+import Section from '../components/Section.astro';
+import Steps from '../components/Steps.astro';
+import { page } from '../config/pages';
+import { formatPrice, pricing } from '../config/pricing';
+import { site } from '../config/site';
+import PageLayout from '../layouts/PageLayout.astro';
+import type { FaqItem } from '../lib/jsonld';
+
+const licences = [
+  ['The application: engine, API, MCP server, web app, scripts and docs', 'GNU AGPL v3.0 only', 'LICENSE'],
+  [
+    'The importers and exporters package (ProjectionLab, CSV, bank files, JSON, report)',
+    'MIT',
+    'packages/importers/LICENSE',
+  ],
+  [
+    'Bundled data: market-history series, tax tables, samples',
+    'Each source has its own terms',
+    'DATA-LICENSES.md',
+  ],
+  ['Third-party dependencies', 'Their own licences', 'THIRD-PARTY-NOTICES.md'],
+  ['The Glideworth name and logo', 'Not licensed by any of the above', 'TRADEMARKS.md'],
+];
+
+const split: { what: string; self: string; hosted: string }[] = [
+  {
+    what: 'Engine, tax models, Monte Carlo, solvers, explanations, importers and exports',
+    self: 'Yes',
+    hosted: 'Yes',
+  },
+  { what: 'Owner, editor and viewer sign-ins, share links', self: 'Yes', hosted: 'Yes' },
+  {
+    what: 'REST API and MCP server',
+    self: 'Yes, on your own server',
+    hosted: 'Yes, at a stable HTTPS address with OAuth (planned)',
+  },
+  {
+    what: 'Scheduled check-ins and alerts',
+    self: 'Yes, through webhooks',
+    hosted: 'Also by email (planned)',
+  },
+  {
+    what: 'Tax-table updates and fixes',
+    self: 'In the open repository when released; you upgrade',
+    hosted: 'Applied for you',
+  },
+  { what: 'Backups', self: 'You run them; one command', hosted: 'Automatic and encrypted (planned)' },
+  { what: 'Two-factor sign-in', self: 'No; passphrase sign-in', hosted: 'Planned' },
+  { what: 'Support', self: 'Community', hosted: 'Email support (planned)' },
+];
+
+const faq: FaqItem[] = [
+  {
+    q: 'Can I use Glideworth at work, or for clients?',
+    a: '<p>Yes. The AGPL lets you use it for any purpose, including commercially. Running an unmodified copy for yourself, your family or your company needs nothing further. If you modify it and let other people use your modified version over a network, you must offer them its source.</p>',
+  },
+  {
+    q: 'Can I embed it in closed-source software?',
+    a: "<p>Not under the AGPL. Software that only reads and writes Glideworth's file formats can use the MIT-licensed importers package, though that package depends on the AGPL core, so check with your own lawyer how that affects what you build. Commercial licensing is a question for the project; no commercial terms are published.</p>",
+  },
+  {
+    q: 'Could the self-hosted build lose features later?',
+    a: '<p>The stated rule is that the self-hosted build is the whole product. If that rule is ever changed for a future feature, the change will be announced in advance and recorded in the licensing file. Code that only the hosted service needs, such as billing, lives in the same repository under the same licence.</p>',
+  },
+  {
+    q: 'Can I run my own hosted copy for other people?',
+    a: '<p>Yes, under your own name and brand, following the AGPL and publishing your changes. You may not present it as Glideworth.</p>',
+  },
+];
+---
+
+<PageLayout
+  {...page('/open-source/')}
+  heading="Open source, with nothing held back"
+  eyebrow="Open source"
+  lede="Glideworth's planner is open source. The build you can run yourself is the whole product: the hosted service sells convenience, not features."
+  crumbs={[{ label: 'Open source', href: '/open-source/' }]}
+>
+  <Section id="licences" eyebrow="Licences" title="What is licensed how, and why." tight>
+    <div class="tablewrap" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
+      <table>
+        <caption class="visually-hidden">Licences by part of the repository</caption>
+        <thead><tr><th scope="col">Part</th><th scope="col">Licence</th><th scope="col">Where the text is</th></tr></thead>
+        <tbody>
+          {licences.map(([a, b, c]) => <tr><th scope="row">{a}</th><td>{b}</td><td><code>{c}</code></td></tr>)}
+        </tbody>
+      </table>
+    </div>
+    <div class="why">
+      <div>
+        <h3>Why the AGPL</h3>
+        <p>
+          You may use, study, change and share the planner for any purpose, including commercially. If you distribute a
+          copy you pass on the same licence and the source. The part that differs from the ordinary GPL is the network
+          clause: if you change it and let other people use your modified version over a network, you must offer them
+          your source. That keeps a hosted copy from quietly becoming a closed fork, and it is the licence the project's
+          own hosted service runs under, too.
+        </p>
+      </div>
+      <div>
+        <h3>Why MIT for importers</h3>
+        <p>
+          The importers and exporters are MIT so other software can read and write Glideworth's formats, and the
+          ProjectionLab, CSV and bank-file readers, without taking on the AGPL's network clause. That package depends on
+          the AGPL core, so check with your own lawyer how this affects what you build on it.
+        </p>
+      </div>
+    </div>
+    <p class="note">
+      "Only" means version 3 and no later version, unless the copyright holders deliberately change the licence (the contributor
+      agreement below is how contributions allow that). Copyright is held by {site.entity.name}, {site.entity.description}, which runs
+      Glideworth.
+    </p>
+  </Section>
+
+  <Section id="complete" eyebrow="Self-hosted gets everything" title="No edition, no key, no switch." tone="raised" width="narrow">
+    <p>
+      The build in the repository is the whole product. There is no separate paid edition, no feature that is switched
+      off unless you pay, no licence key and no usage reporting. Tax-table updates and fixes go into the open repository
+      for self-hosters and the hosted service alike: we never charge for correctness. Code that only the hosted service
+      needs is in the same repository under the same licence, and stays out of the way of a self-hosted install.
+    </p>
+    <p>
+      If this rule is ever changed for a future feature, the change will be announced in advance and recorded in the
+      licensing file. You can hold the project to that.
+    </p>
+  </Section>
+
+  <Section id="funding" eyebrow="How the work is funded" title="The hosted service pays for the project." width="narrow">
+    <p>
+      {pricing.planName} is {formatPrice(pricing.monthly)} a month or {formatPrice(pricing.yearly)} a year, after a
+      {pricing.trialDays}-day trial with no card. It runs the same open-source code for you: servers, backups, updates, and a stable
+      address for your AI assistant. That is the whole business model: convenience, not features. There is no advertising, no sale of
+      data and no paid tier of the code.
+    </p>
+    <div class="tablewrap" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
+      <table>
+        <caption>What is the same, and what the hosted service adds</caption>
+        <thead><tr><th scope="col">Capability</th><th scope="col">Self-hosted, free</th><th scope="col">{pricing.planName}</th></tr></thead>
+        <tbody>
+          {split.map((r) => <tr><th scope="row">{r.what}</th><td>{r.self}</td><td>{r.hosted}</td></tr>)}
+        </tbody>
+      </table>
+    </div>
+    {
+      !site.cloudLaunched && (
+        <Callout type="note" title="Before launch">
+          <p>
+            The hosted service is not open yet, and items marked planned are not built. Self-hosting works today. Bank-data
+            aggregation and an AI chat run by Glideworth are not offered, and are not planned for launch. See
+            <a href="/pricing/">pricing</a>.
+          </p>
+        </Callout>
+      )
+    }
+  </Section>
+
+  <Section id="contribute" eyebrow="Contribute" title="How to help, and what a good contribution looks like." tone="raised">
+    <Callout type="draft" title="The repository is being prepared for public release">
+      <p>
+        These are the project's contribution rules.
+        Until then, please read, but do not expect a pull request to be merged.
+      </p>
+    </Callout>
+    <p class="intro">
+      Because Glideworth produces numbers people may act on, correctness and evidence matter more than speed. Bugs and
+      requests go through the issue templates, questions through GitHub Discussions, and larger changes (a new feature, a new
+      package, a schema change) start with an issue, so you do not build something that will not be merged.
+    </p>
+    <h3>Updating or adding a tax year</h3>
+    <Steps
+      items={[
+        { title: 'Open an issue first', body: 'Use the tax-rule correction template if you are not sure what has changed.' },
+        { title: 'Use official sources only', body: 'The tax authority\'s published rates and thresholds, the legislation, or the government\'s own guidance. Not blogs, forums or other calculators. They may point you to the right page.' },
+        { title: 'Record the evidence', body: 'In the pull request and in a comment next to each figure: the URL, the document and section or table, and the date you read it. A figure you could not confirm is marked provisional.' },
+        { title: 'State the tax year exactly', body: 'For example 2026/27 for the UK or 2026 for the US, and say what happens for later years.' },
+        { title: 'Add test vectors', body: 'At least one worked example per changed band, allowance or rule, with synthetic inputs, the expected tax and where it comes from, plus the edges just below, at and just above each threshold.' },
+        { title: 'Update the docs and run the checks', body: 'The tax-year table, the list of figures that could not be confirmed, and the country\'s simplifications. Typecheck, lint, test and build must pass.' },
+      ]}
+    />
+    <h3>The rest of the rules</h3>
+    <ul class="points">
+      <li><strong>Synthetic data only.</strong> Never commit real balances, account numbers, names, exports from your own planner or bank, tokens or database files. Pull requests containing real data are closed.</li>
+      <li><strong>A new country</strong> needs a maintainer who can verify it against official sources, a written list of what the estimate leaves out, and tests. A country nobody can verify will not be merged.</li>
+      <li><strong>The self-hosted build keeps every feature.</strong> No feature reachable only with a key, a payment or a hosted flag, and no telemetry of any kind.</li>
+      <li><strong>Machine-generated contributions are allowed, with conditions.</strong> A human reviews and can defend every line, runs the tests, and discloses the tool in the pull request. A generator cannot be the source of a tax rate or rule: each figure needs an official source that a person has opened and read. Fully automated pull requests are not accepted.</li>
+      <li><strong>A code of conduct applies,</strong> and the project is run by very few people, so please be patient.</li>
+    </ul>
+    <p class="actions">
+      <Button href={site.repoUrl} variant="secondary" arrow>Source code</Button>
+      <Button href="/self-hosting/" variant="ghost" arrow>Self-hosting</Button>
+    </p>
+  </Section>
+
+  <Section id="agreement" eyebrow="Contributor agreement" title="What you agree to, in plain words." width="narrow">
+    <ul class="points">
+      <li>You sign once, in your first pull request, by posting a comment. The signature covers your later contributions.</li>
+      <li>You keep the copyright in what you write.</li>
+      <li>You give the project, and everyone who receives the software, a licence to use, change, distribute and sublicense your contribution, and a patent licence for the claims your contribution necessarily infringes.</li>
+      <li><strong>You also let the project owner relicense your contribution</strong> under other terms, including later versions of the same licence and proprietary or commercial ones. That is the reason the project asks for an agreement at all, and you should be comfortable with it before signing. The agreement also carries a written promise that your contribution always also stays available under an open-source licence.</li>
+      <li>In the MIT-licensed importers package, your contribution is also available to everyone under the MIT terms.</li>
+      <li>You confirm the work is yours to give, that it contains no real financial data, and that you reviewed anything machine-generated. If an employer may own your work, get their permission first.</li>
+    </ul>
+    <Callout type="warning" title="Not reviewed by a lawyer">
+      <p>
+        The agreement is based on the Apache Software Foundation's individual agreement, rewritten in original wording. It has
+        not been reviewed by a lawyer, so if you want advice before you sign, get your own. It applies once the repository is
+        public and outside contributions open.
+      </p>
+    </Callout>
+  </Section>
+
+  <Section id="trademark" eyebrow="Trademarks" title="The name is separate from the code." tone="raised" width="narrow">
+    <p>
+      The licence lets you copy, change and host the code. It does not give you the right to use the Glideworth name or logo,
+      so people can always tell the real service from a copy, especially one that holds their financial plans. You may say
+      your project is based on, a fork of, or compatible with Glideworth, write about it, run it for yourself under any
+      hostname, redistribute unmodified official releases, and link to the official site. You may not name a product, service,
+      domain or account Glideworth (or something confusingly similar), use the logo, run a service that presents itself as
+      Glideworth or as endorsed by it, or suggest endorsement that does not exist. Forks and hosted copies should choose their
+      own name and say they are unofficial. The policy is the owner's statement of how it will treat uses of the name, it has not been reviewed by a
+      lawyer, and no trademark has been registered yet.
+    </p>
+  </Section>
+
+  <Section id="data" eyebrow="Data provenance" title="Where the numbers come from." width="narrow">
+    <p>
+      Some files in the repository are data rather than code: historical return and inflation series, tax tables, and
+      synthetic samples. They come from public sources with their own conditions, recorded source by source in the
+      data-licence file, with the attribution each requires. The AGPL does not replace those conditions.
+    </p>
+    <ul class="points">
+      <li><strong>Tax tables</strong> are taken from official sources where possible, for stated tax years, and figures that could not be confirmed are marked provisional. Reuse terms differ by country.</li>
+      <li><strong>Market history:</strong> US stock, bond and bill returns come from Aswath Damodaran's published series and US inflation from the US Bureau of Labor Statistics. The UK history is being replaced with an openly licensed set, built from openly licensed public sources.</li>
+      <li><strong>Samples</strong> are synthetic. Nothing real ships with the code.</li>
+    </ul>
+    <p>
+      The data-licence file was written from an audit on 2026-11-16. It lists a few sources whose terms are still to be
+      settled, or that will be replaced, and says which. If you redistribute or host the software, follow the terms it lists.
+      See also <a href="/features/monte-carlo/">Monte Carlo</a> for what the history covers.
+    </p>
+  </Section>
+
+  <Section id="faq" eyebrow="Questions" title="Licence questions." tone="raised" width="narrow">
+    <FAQ items={faq} />
+  </Section>
+  <CTABand title="Read it, run it, or let us run it." body="Self-hosting is free. The hosted service funds the work." secondary={{ label: 'Self-hosting', href: '/self-hosting/' }} />
+</PageLayout>
+
+<style>
+  .tablewrap {
+    overflow-x: auto;
+    margin-block: var(--space-m);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+  }
+  caption {
+    text-align: left;
+    font-weight: 650;
+    padding-bottom: var(--space-xs);
+  }
+  th,
+  td {
+    text-align: left;
+    vertical-align: top;
+    padding: 0.65rem 0.9rem 0.65rem 0;
+    border-bottom: 1px solid var(--line);
+    font-weight: 400;
+    color: var(--ink-2);
+  }
+  tbody th {
+    font-weight: 620;
+    color: var(--ink);
+  }
+  thead th {
+    font-weight: 650;
+  }
+  .why {
+    display: grid;
+    gap: var(--space-l);
+    margin-top: var(--space-l);
+  }
+  @media (min-width: 52rem) {
+    .why {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  .why p,
+  .note,
+  .intro {
+    color: var(--ink-2);
+  }
+  .note {
+    margin-top: var(--space-m);
+    font-size: var(--text-sm);
+  }
+  .intro {
+    margin-block: var(--space-m);
+  }
+  h3 {
+    margin-block: var(--space-m) var(--space-xs);
+    font-size: var(--text-lg);
+  }
+  .points {
+    display: grid;
+    gap: var(--space-s);
+    padding-left: 1.2rem;
+    list-style: disc;
+    color: var(--ink-2);
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-s);
+    margin-top: var(--space-l);
+  }
+</style>

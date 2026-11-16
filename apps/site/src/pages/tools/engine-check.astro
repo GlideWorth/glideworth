@@ -1,0 +1,91 @@
+---
+/**
+ * Hidden test page (noindex, left out of the sitemap): proves that @glideworth/core runs in the browser
+ * bundle, resolved from TypeScript source through the `@glideworth/source` export condition.
+ *  1. On load, a small function (progressiveTax) is imported statically and its result rendered.
+ *  2. On request, src/lib/engine-demo.ts (the full engine and the synthetic sample household) is
+ *     imported lazily as its own chunk, and a deterministic projection runs in the page.
+ * The calculators in a later wave follow the same pattern. See README.md.
+ */
+import { page } from '../../config/pages';
+import PageLayout from '../../layouts/PageLayout.astro';
+---
+
+<PageLayout
+  {...page('/tools/engine-check/')}
+  heading="Engine check"
+  eyebrow="Internal"
+  lede="This page runs the Glideworth engine in your browser. It is for development and is not listed anywhere."
+>
+  <div class="container-narrow body">
+    <section class="check" aria-labelledby="tax-h">
+      <h2 id="tax-h">1. A small function, loaded with the page</h2>
+      <p>
+        <code>progressiveTax(60000, brackets)</code> with illustrative brackets 0% to 10,000, 20% to 50,000, 40% above:
+      </p>
+      <p class="result">Tax: <output id="tax-result" class="num">not run yet</output></p>
+    </section>
+    <section class="check" aria-labelledby="sim-h">
+      <h2 id="sim-h">2. The full engine, loaded on request</h2>
+      <p>Runs <code>simulate()</code> on the synthetic sample household, entirely in this tab.</p>
+      <button type="button" class="run" id="run-sim">Run a projection</button>
+      <p class="result"><output id="sim-result">not run yet</output></p>
+    </section>
+  </div>
+</PageLayout>
+
+<script>
+  import { progressiveTax } from '@glideworth/core';
+
+  const taxOut = document.getElementById('tax-result');
+  const { tax } = progressiveTax(60_000, {
+    basis: 'nominal',
+    brackets: [
+      { from: 0, rate: 0 },
+      { from: 10_000, rate: 0.2 },
+      { from: 50_000, rate: 0.4 },
+    ],
+  });
+  if (taxOut) taxOut.textContent = tax.toLocaleString('en-US', { maximumFractionDigits: 0 });
+
+  const button = document.getElementById('run-sim');
+  const simOut = document.getElementById('sim-result');
+  button?.addEventListener('click', async () => {
+    if (!simOut) return;
+    simOut.textContent = 'Loading the engine…';
+    try {
+      const { runSampleProjection } = await import('../../lib/engine-demo');
+      const r = runSampleProjection();
+      simOut.textContent = `Engine ${r.engineVersion}: ${r.periods} periods from ${r.startMonth} to ${r.endMonth} in ${r.ms} ms.`;
+      simOut.dataset.ok = 'true';
+    } catch (error) {
+      simOut.textContent = `Failed: ${error instanceof Error ? error.message : String(error)}`;
+    }
+  });
+</script>
+
+<style>
+  .body {
+    display: grid;
+    gap: var(--space-xl);
+    padding-bottom: var(--section-y);
+  }
+  .check {
+    display: grid;
+    gap: var(--space-xs);
+  }
+  .check h2 {
+    font-size: var(--text-xl);
+  }
+  .result {
+    font-weight: 600;
+  }
+  .run {
+    justify-self: start;
+    border: 1px solid var(--line-strong);
+    background: var(--surface);
+    border-radius: 999px;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+  }
+</style>

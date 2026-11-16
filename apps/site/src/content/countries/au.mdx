@@ -1,0 +1,102 @@
+---
+title: Retirement planning in Australia
+description: "How Glideworth plans Australian retirement: resident tax for 2025-26 to 2027-28, Medicare levy, franking, capital gains, superannuation, and what it leaves out."
+ogTitle: Retirement planning in Australia
+countryCode: AU
+countryName: Australia
+taxYears:
+  - 2025-26
+  - 2026-27
+  - 2027-28 (legislated)
+modelled:
+  - Resident income tax, with the legislated cut in the first rate from 16% to 15% (July 2026) and 14% (July 2027)
+  - Medicare levy at 2%, with the low-income shade-in using the single threshold
+  - The low income tax offset and franking credits
+  - Capital gains tax with the 50% discount; a main home is exempt
+  - Superannuation, accumulation and pension phases, with 15% contributions tax, Division 293 tax, and the concessional and non-concessional caps
+  - Benefits tax-free from age 60, and a 15% offset on the taxable component below 60
+  - Minimum pension drawdown rates by age
+notModelled:
+  - Non-resident and working-holiday tax rates
+  - Family Medicare levy thresholds and the Medicare levy surcharge for those without private cover
+  - SAPTO, the private health insurance rebate and HELP or HECS repayments
+  - Carry-forward of unused concessional contributions cap (which the law allows in some cases), the transfer balance cap and excess non-concessional contributions tax
+  - Untaxed elements of super benefits
+  - Loss harvesting; gains are realised in proportion to cost basis and treated as long-term
+---
+
+import { facts } from '../../lib/facts';
+
+Australia has a detailed model for resident individuals, with {facts.simplificationCount('au')} written simplifications shown beside your
+tax results. New Australian households default to the local income year, 1 July to 30 June.
+
+Years after 2027-28 carry the last rates forward and index thresholds with the plan's threshold policy.
+
+## Income tax and the Medicare levy
+
+For 2026-27 the resident rates are: nil to A$18,200; 15% to A$45,000; 30% to A$135,000; 37% to A$190,000;
+45% above. In 2025-26 the first rate was 16%; for 2027-28 it is 14% as legislated. The Medicare levy is 2% of
+taxable income, phasing in from the low-income threshold of A$27,222 for a single person. The low income tax offset
+is A$700 for incomes up to A$37,500, reducing to nil as income rises. Dividends carry franking credits at the 30%
+company rate. Capital gains get a 50% discount, and all gains are treated as held over 12 months.
+
+## Superannuation
+
+Glideworth models accumulation-phase and pension-phase super accounts.
+
+- Contributions tax of 15% on concessional contributions; Division 293 adds a further 15% above A$250,000.
+- Concessional contributions cap of A$30,000 in 2025-26 and A$32,500 in 2026-27; non-concessional cap of A$120,000
+  and A$130,000 respectively.
+- The model uses one age, 60, both for when you can access super and for when benefits become tax-free. Below 60,
+  the taxable component is taxed with a 15% offset. Pension-phase earnings are untaxed.
+- Minimum annual pension drawdown: 4% under 65; 5% at 65 to 74; 6% at 75 to 79; 7% at 80 to 84; 9% at 85 to 89;
+  11% at 90 to 94; 14% from 95.
+
+Glideworth does not default a government age pension for Australian households; if you receive one, enter it as
+income.
+
+## Worked example
+
+<Callout type="note" title="Illustrative">
+  Made-up figures, to show the arithmetic with the 2026-27 table. It assumes a resident with no deductions, offsets
+  or private cover issues. It is not a forecast or advice.
+</Callout>
+
+A resident has taxable income of A$80,000 in 2026-27.
+
+- Income tax: nil on the first A$18,200; 15% × (A$45,000 − A$18,200 = A$26,800) = A$4,020; 30% × (A$80,000 −
+  A$45,000 = A$35,000) = A$10,500. Total **A$14,520**.
+- Low income tax offset: nil, because at A$80,000 the A$700 offset has fully reduced away.
+- Medicare levy: 2% × A$80,000 = **A$1,600**, as income is above the point where the levy is fully charged.
+- Income tax and levy together: A$14,520 + A$1,600 = **A$16,120**.
+
+## Historical data for simulations
+
+No Australian market history is bundled. Australian households are tested against US history by default (S&P 500,
+10-year Treasuries, T-bills and CPI-U, 1928 to 2025, in US dollars).
+Australian history is on the project's list of data sets to add.
+
+## What to treat with care
+
+- The Medicare levy low-income thresholds are the 2024-25 values (A$27,222 for a single person) for every year. The
+  2026-27 Budget announced a 2.9% increase from 1 July 2025 (A$28,011 for a single person), which is not applied, and
+  thresholds for 2026-27 have not been published.
+- 2027-28 rates are legislated; later years are projected.
+- Medicare levy uses the single low-income threshold for each person, so a family with children is shown a different
+  figure from the real one.
+
+## Official sources
+
+- [ATO: tax rates for Australian residents](https://www.ato.gov.au/tax-rates-and-codes/tax-rates-australian-residents)
+- [ATO: Medicare levy reduction for low-income earners](https://www.ato.gov.au/individuals-and-families/medicare-and-private-health-insurance/medicare-levy/medicare-levy-reduction-for-low-income-earners)
+  and [2026-27 Budget Paper No. 2](https://budget.gov.au/content/bp2/download/bp2_2026-27.pdf) (low-income thresholds)
+- [ATO: contributions caps](https://www.ato.gov.au/tax-rates-and-codes/key-superannuation-rates-and-thresholds/contributions-caps)
+- [ATO: low income tax offset](https://www.ato.gov.au/individuals-and-families/income-deductions-offsets-and-records/tax-offsets/low-income-tax-offset)
+
+Leaving Australia triggers a deemed sale of taxable investments in the model; see the
+[moving-country page](/planning/moving-country/).
+
+<Callout type="note" title="Estimates, not advice">
+  Glideworth is planning software. Its tax figures help you compare choices under your own assumptions; they
+  are not a tax return and not tax advice.
+</Callout>

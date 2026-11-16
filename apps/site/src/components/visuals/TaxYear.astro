@@ -1,0 +1,132 @@
+---
+/**
+ * One plan year's tax, as the product lays it out: lines by kind and person, plus the model's own
+ * list of what it leaves out. Amounts are ILLUSTRATIVE; the "leaves out" lines are real entries from
+ * the UK model's simplifications (packages/core/src/tax/data/anglo.ts).
+ */
+import { facts } from '../../lib/facts';
+
+const lines = [
+  { label: 'Income tax', who: 'Alex', amount: 6_486 },
+  { label: 'Income tax', who: 'Sam', amount: 3_686 },
+  { label: 'Capital gains tax', who: 'Alex', amount: 540 },
+  { label: 'Dividend tax', who: 'Sam', amount: 0, note: 'within allowance' },
+];
+const total = lines.reduce((s, l) => s + l.amount, 0);
+const gbp = (n: number) => `£${n.toLocaleString('en-GB')}`;
+const leavesOut = [
+  'Unused pension annual allowance is not carried forward',
+  'One basic and one higher capital gains rate for all assets',
+  'No Class 2, voluntary Class 3 or employer National Insurance',
+];
+---
+
+<div class="taxyear">
+  <div class="ty-head">
+    <p class="ty-title">Tax in 2034/35 <span class="ty-sub">United Kingdom, two people</span></p>
+    <p class="ty-flag">Illustrative amounts</p>
+  </div>
+  <table>
+    <caption class="visually-hidden">Illustrative tax lines for one plan year</caption>
+    <thead>
+      <tr><th scope="col">Line</th><th scope="col">Person</th><th scope="col" class="r">Amount</th></tr>
+    </thead>
+    <tbody>
+      {
+        lines.map((l) => (
+          <tr>
+            <td>{l.label}{l.note && <span class="note"> · {l.note}</span>}</td>
+            <td>{l.who}</td>
+            <td class="r num">{gbp(l.amount)}</td>
+          </tr>
+        ))
+      }
+    </tbody>
+    <tfoot>
+      <tr><th scope="row" colspan="2">Total</th><td class="r num">{gbp(total)}</td></tr>
+    </tfoot>
+  </table>
+  <div class="leaves">
+    <p class="leaves-title">What this estimate leaves out <span class="muted">(3 of {facts.simplificationCount('uk')} shown)</span></p>
+    <ul>
+      {leavesOut.map((t) => <li>{t}</li>)}
+    </ul>
+  </div>
+</div>
+
+<style>
+  .taxyear {
+    padding: clamp(1rem, 0.8rem + 1vw, 1.5rem);
+    background: var(--surface);
+    display: grid;
+    gap: 1rem;
+  }
+  .ty-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    gap: 1rem;
+  }
+  .ty-title {
+    font-weight: 640;
+    font-size: var(--text-sm);
+  }
+  .ty-sub {
+    display: block;
+    font-weight: 400;
+    color: var(--ink-3);
+    font-size: var(--text-xs);
+  }
+  .ty-flag {
+    font-size: var(--text-xs);
+    color: var(--ink-3);
+    font-style: italic;
+  }
+  table {
+    font-size: var(--text-sm);
+  }
+  th,
+  td {
+    text-align: left;
+    padding: 0.45rem 0.5rem 0.45rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  thead th {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--ink-3);
+  }
+  tfoot th,
+  tfoot td {
+    border-bottom: 0;
+    font-weight: 650;
+  }
+  .r {
+    text-align: right;
+    padding-right: 0;
+  }
+  .note {
+    color: var(--ink-3);
+    font-size: var(--text-xs);
+  }
+  .leaves {
+    border-radius: var(--radius-m);
+    background: var(--ochre-soft);
+    padding: 0.75rem 0.9rem;
+    font-size: var(--text-xs);
+    color: var(--ink);
+  }
+  .leaves-title {
+    font-weight: 650;
+    margin-bottom: 0.35rem;
+  }
+  .leaves-title .muted {
+    color: var(--ink-2);
+    font-weight: 400;
+  }
+  .leaves ul {
+    padding-left: 1.1em;
+    display: grid;
+    gap: 0.2rem;
+  }
+</style>

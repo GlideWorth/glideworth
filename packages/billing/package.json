@@ -1,0 +1,33 @@
+{
+  "name": "@glideworth/billing",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Stripe subscription billing for Glideworth Cloud: pricing config, checkout, portal, webhook, access rules. Loaded only in cloud mode.",
+  "license": "AGPL-3.0-only",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "@glideworth/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "stripe:setup": "tsx --conditions=@glideworth/source scripts/stripe-setup.ts",
+    "sync-prices": "tsx --conditions=@glideworth/source scripts/stripe-setup.ts"
+  },
+  "dependencies": {
+    "stripe": "23.1.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "tsx": "4.23.15"
+  }
+}

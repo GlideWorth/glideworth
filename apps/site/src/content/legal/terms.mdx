@@ -1,0 +1,239 @@
+---
+title: Terms of service
+description: Terms for the Glideworth hosted service, covering your account, trial and subscription, cancellation and refunds, your data, and what we do and do not promise.
+lastUpdated: 2026-11-16
+draft: true
+order: 2
+---
+
+import { site } from '../../config/site';
+import { pricing, formatPrice } from '../../config/pricing';
+
+<Callout type="risk" title="Glideworth is not financial, tax, investment or legal advice">
+  Glideworth is a calculator. It shows what your own assumptions imply. It does not tell you what to do with
+  your money. Read the [disclaimer](/legal/disclaimer/) before you rely on any result.
+</Callout>
+
+<Callout type="note" title="Which service these terms cover">
+  These terms cover the hosted service at app.glideworth.com. The hosted service is not open yet, so this text
+  describes how it is designed to work, and the terms take effect when it opens. The open-source software has
+  its own licence (section 12). If you run Glideworth yourself, these terms do not apply to you.
+</Callout>
+
+## 1. Who we are and what the service is
+
+The service is provided by **{site.entity.name}**, a free zone company in Dubai, United Arab Emirates, with its
+registered address at {site.entity.address} ("we"). Glideworth is our product and trading name. Contact:
+<a href={`mailto:${site.contact.support}`}>{site.contact.support}</a>.
+
+The service is a web app, a REST API and an MCP server for personal financial and retirement planning:
+projections, tax estimates, simulations and explanations based on the information you enter. The
+[privacy policy](/legal/privacy/), [acceptable use policy](/legal/acceptable-use/) and
+[disclaimer](/legal/disclaimer/) are part of these terms.
+
+## 2. Who can use it
+
+You must be 18 or over and able to make a binding contract. We ask you to confirm that you are 18 or over when
+you sign up. If you sign up for an organisation, you confirm you may bind it. Your use must be lawful where you
+are.
+
+## 3. Your account
+
+- Give a real email address and keep it up to date. Use a strong password. We encourage two-factor sign-in once
+  it is available.
+- Keep your password, recovery codes and API keys secret. You are responsible for what happens under your
+  account unless we caused it. Tell us at once if you think someone else has access.
+- A workspace has one owner, who manages billing, members, export and deletion. Members you invite can be
+  editors or viewers, within the limits of the plan. Do not share one account between people.
+- One trial per person (section 5). We may refuse sign-ups that look like abuse.
+
+## 4. The plan and price
+
+The hosted plan, "{pricing.planName}", costs {formatPrice(pricing.monthly)} a month or {formatPrice(pricing.yearly)} a year,
+in {pricing.currency} (other currencies may be offered). These prices do not include tax. Where tax applies to
+your purchase, it is added to the price, and checkout shows the total, including any tax, before you pay.
+
+**Payment.** Payments are taken by our payment provider. We never see your full card number. If a payment fails
+we tell you and the provider retries. You have a grace period of 14 days; after that the workspace becomes
+read-only (section 8).
+
+## 5. The free trial
+
+New workspaces get a {pricing.trialDays}-day free trial of the full service. **You do not need a card to start
+it, and a trial never turns into a paid plan by itself. We never charge you at the end of a trial.** To keep full
+access, you must choose to subscribe. If you subscribe part-way through the trial, the first charge is made when
+the trial would have ended, and checkout says so before you pay. There is one trial per person, and the same
+email address cannot start a second one.
+
+## 6. Renewal, price changes, cancellation and refunds
+
+**Renewal.** A paid subscription renews automatically each month or year at the then-current price for your plan
+until you cancel. We email you before an annual renewal.
+
+**Price changes.** Existing subscribers stay on their current price until we move them. We will give at least
+30 days' notice by email before a price change applies to you, and it will never apply to a period you have
+already paid for. You may cancel before it applies.
+
+**Cancelling.** You can cancel at any time in the billing portal, without contacting us. You can also ask us by
+email. You keep full access until the end of the period you have paid for, you are not charged again, and then
+the workspace becomes read-only (section 8).
+
+**Refunds.** These rules apply to every customer, in every country, and are in addition to any rights the law
+gives you.
+
+- **Your first payment.** Whether you chose the monthly plan or the annual plan, you can ask for a full refund of
+  your first payment, including any tax, within 14 days of the payment. You do not need to give a reason. Using
+  the service during those 14 days does not reduce or remove your refund.
+- **Renewals.** You can ask for a full refund of any renewal charge, monthly or annual, within 14 days of that
+  charge, with no reason needed.
+- **Our mistakes.** If something went wrong on our side, such as a double charge, we will correct it.
+- **How.** Email <a href={`mailto:${site.contact.support}`}>{site.contact.support}</a> and say which payment you
+  mean. Any clear message is enough: no form is needed. We refund to the payment method you used, within 14
+  days of your request.
+- **After a refund** the paid period ends and the workspace becomes read-only (section 8). You can still export
+  your data.
+- **Your legal rights stay.** Nothing in this section limits rights you have by law, including any right to
+  cancel a distance contract. If the law gives you more than this section does, you get the more generous
+  result.
+
+## 7. Your data and our licence to host it
+
+- **It stays yours.** You own what you enter. We do not claim ownership of your plans, figures or files.
+- **What we may do with it.** You give us a limited licence to store, copy, process and display your data only as
+  needed to run the service for you: hosting, backups, showing results, scheduled check-ins, the API and MCP
+  server, security and support you ask for. We do not use it for advertising, sell it, or train AI models on it.
+- **Your responsibility.** You are responsible for the accuracy of what you enter and for having the right to
+  enter it. If you put in information about other people, such as a spouse or clients, you must have the right to
+  do that. Advisers and others who need Article 28 terms should use the [data processing
+  agreement](/legal/dpa/).
+- **Export.** The workspace owner can download a complete copy of the workspace at any time, including after a
+  lapse. It opens in the self-hosted app.
+- **Deletion.** The workspace owner can delete the workspace in the app. The live database is deleted at once, and
+  encrypted backups age out within a further 35 days. See the [privacy policy](/legal/privacy/), section 7.
+
+## 8. When a subscription ends or a payment lapses
+
+If a trial ends without a subscription, a subscription is cancelled or refunded, or a payment is not made after
+the grace period, the workspace becomes **read-only**. In read-only mode:
+
+- you can sign in, see your plans and results, run quick projections, and export your data;
+- you cannot save changes, import data, or start background jobs; scheduled check-ins and outbound webhooks
+  stop; MCP write tools are switched off;
+- you can still revoke keys and share links, delete your data, and subscribe again to restore full access.
+
+**How long we keep a read-only workspace.** We do not keep it forever.
+
+- A workspace whose trial ended without it ever being paid for is deleted **12 months after the trial ended**.
+- A workspace whose paid subscription ended is deleted **12 months after the end of the last paid period**.
+- We email the workspace owner **30 days and again 7 days** before deletion, at the account email address. Export
+  your data before then if you want to keep it, or subscribe to keep the workspace.
+- You can delete your workspace sooner, at any time. Subscribing again before deletion restores full access, and
+  a new 12-month period starts if the workspace later lapses again. Signing in does not extend the period.
+
+Deletion follows the timetable in the privacy policy, section 7.
+
+## 9. Acceptable use, API and MCP use
+
+You must follow the [acceptable use policy](/legal/acceptable-use/).
+
+The API and MCP server are included in the plan within fair-use limits. At launch the planned defaults are:
+
+| Limit | Planned default |
+|---|---|
+| Requests | 600 a minute per key; 1,200 a minute and 100,000 a day per workspace |
+| Background jobs | 1 running and 10 queued; 300 a day; 300 seconds per job |
+| Simulation size | 20,000 trials per run |
+| Webhooks | 10 subscriptions; 5,000 deliveries a day |
+| Share links | 50 active; 10,000 public views a day |
+| API keys | 25 active |
+| Members | 2 editors including the owner; 3 viewers |
+| Storage | 200 MiB per workspace |
+
+These are defaults, not promises. We may change them, and we will update this page and the docs when we do. Do not
+work around them. We may slow down or block use that threatens the service for others.
+
+**AI assistants.** You may connect an AI assistant to your workspace with a key you create. What the assistant
+says or does is the responsibility of whoever runs it and of you as the person who connected it, not ours.
+Glideworth itself runs no AI on your data. Writes through MCP are off until you turn them on. See the
+privacy policy, section 9.
+
+## 10. Not advice
+
+The service gives information and calculations only. **It is not financial, tax, investment, pension or legal
+advice, and we are not an adviser.** {site.entity.name} is not licensed or regulated as a financial adviser,
+investment adviser, tax adviser or financial consultant in any country. The service makes no personal
+recommendation to you and no recommendation of any investment, product or provider. It is a calculation tool
+that shows the results of the assumptions you enter. Projections are estimates, and the future will differ. Tax
+figures are estimates for the tax years and countries stated, using simplified models that leave things out.
+Where a feature points out something to look at or try (for example an assumption check or a strategy
+comparison), it is showing the effect of changing your own inputs, not recommending that you act. Decide for
+yourself, and ask a qualified professional where it matters. The [disclaimer](/legal/disclaimer/) has more.
+
+## 11. Availability and changes to the service
+
+We work to keep the service running and back it up, but **we do not promise any level of uptime**. The service
+may be unavailable for maintenance or for reasons outside our control. It is run by a very small team, so help
+outside working hours is best effort. Backups are made regularly, but you should keep your own copy by using the
+export.
+
+We may improve, change or remove features. If we make a change that materially reduces what a paying customer
+gets, we will tell you in advance, you can cancel, and you can ask for a refund of the unused part of what you
+have prepaid. Tax tables and historical data are updated over time; results can change when they are.
+
+## 12. The open-source licence is separate
+
+The Glideworth software is open source under the GNU Affero General Public License v3.0 (see
+<RepoLink path="LICENSING.md">LICENSING.md</RepoLink> and the [open-source and data notices](/legal/notices/)). That
+licence lets you run, study and change the code yourself. It does not make these terms apply to your own copy,
+and these terms do not take away any right the licence gives you. These terms apply only to the hosted service
+we run. The name and logo are not covered by the licence; see the trademark policy.
+
+## 13. Our responsibility to you
+
+- **What cannot be limited stays unlimited.** Nothing in these terms excludes or limits any liability that cannot
+  lawfully be excluded or limited. That includes liability for death or personal injury caused by negligence, and
+  for fraud or fraudulent misrepresentation. If you are a consumer, nothing in these terms takes away the rights
+  you have under the mandatory laws of the country where you live, such as the right to have a service provided
+  with reasonable care and skill, or to a remedy if it is not.
+- **What we promise.** We provide the service with reasonable care and skill, and we take reasonable care that the
+  calculations do what the documentation says. We will do what these terms say about refunds, cancellation,
+  export and deletion.
+- **What we do not promise.** We do not promise that results are right for your situation, that tax rules have
+  not changed, that your assumptions are sound, that the service will always be available, or that it will be free
+  of mistakes. Check results that matter against official sources.
+- **If you use the service for a business**, our total liability to you for anything arising from the service
+  in any period of twelve months is limited to the fees you paid us in the previous twelve months. This limit
+  does not apply to anything the law does not allow us to limit. It does not apply to consumers.
+- **Other people.** We are not responsible for what your own AI assistant or another third party does.
+
+## 14. Ending the contract
+
+You may stop using the service at any time and delete your workspace.
+
+We may suspend or end your access if you seriously or repeatedly break these terms or the acceptable use policy,
+if you use the service unlawfully, or if keeping you would put the service or others at risk. We will give notice
+and a chance to fix the problem unless that is not safe or lawful. Even then you will be able to export or delete
+your data, unless the law or a court prevents it. If we end your access for any reason other than your serious
+breach, we refund any prepaid period you will not receive. If we decide to close the hosted service, we will give
+at least 90 days' notice and a way to export your data, and refund any prepaid period you will not receive.
+
+## 15. Changes to these terms
+
+We may change these terms. We will email you at least 30 days before a change that matters to you takes effect.
+A change does not apply to a period you have already paid for, unless the law requires it or it only benefits
+you. If you do not accept a change, you can cancel before it takes effect and ask for a refund of the unused
+part of what you prepaid. If you keep using the service after the date, you accept the change.
+
+## 16. Law and disputes
+
+These terms are governed by the laws applicable in the Emirate of Dubai and the federal laws of the United Arab
+Emirates, and the courts of Dubai have jurisdiction. **If you are a consumer**, that jurisdiction is not
+exclusive: you may also bring a claim in the courts of the country where you live, and you keep the protection of
+the mandatory laws of that country. Please contact us first so we can try to settle a problem.
+
+## 17. Contact
+
+Questions about these terms: <a href={`mailto:${site.contact.support}`}>{site.contact.support}</a>.
+Privacy: <a href={`mailto:${site.contact.privacy}`}>{site.contact.privacy}</a>.
+Security reports: <a href={`mailto:${site.contact.security}`}>{site.contact.security}</a>.
+Postal address: {site.entity.name}, {site.entity.address}.

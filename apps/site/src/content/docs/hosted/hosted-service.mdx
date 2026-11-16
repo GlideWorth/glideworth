@@ -1,0 +1,53 @@
+---
+title: The hosted service
+description: What the Glideworth hosted service will add to the software you can self-host today, what is planned but not built, and why self-hosting stays free. It is not open yet.
+section: Getting started
+order: 4
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+import { formatPrice, pricing } from '../../../config/pricing';
+import { site } from '../../../config/site';
+
+The hosted service is the same software, run for you. {site.cloudLaunched ? '' : 'It is not open yet, and no date is promised.'}
+
+<Callout type="note" title="Not open yet">
+  Sign-up and billing are not built. Nothing on this page is available to buy today. To use Glideworth now,
+  [self-host it](/docs/self-hosting/docker/).
+</Callout>
+
+## Already in the software
+
+These are true of the open-source software today, so you can self-host them now. The hosted service will include all of them.
+
+<ul>
+  {pricing.features.filter((f) => f.status === 'available').map((f) => (
+    <li><strong>{f.label}.</strong>{f.detail ? ` ${f.detail}` : ''}</li>
+  ))}
+</ul>
+
+## Only the hosted service, planned and not built
+
+<ul>
+  {pricing.features.filter((f) => f.status === 'planned').map((f) => (
+    <li><strong>{f.label}.</strong>{f.detail ? ` ${f.detail}` : ''}</li>
+  ))}
+</ul>
+
+## Price
+
+The planned price is {formatPrice(pricing.monthly)} a month or {formatPrice(pricing.yearly)} a year ({pricing.currency}),
+after a {pricing.trialDays}-day free trial with no card. See the [pricing page](/pricing/) for the current terms.
+
+## What stays the same
+
+- The self-hosted build is the whole product. There is no licence key and no feature that only the hosted
+  service has.
+- The source code is AGPL-3.0-only.
+- Your data can leave: export a household as JSON at any time, and import it into a self-hosted instance. See
+  [Glideworth JSON](/docs/importing/glideworth-json/).
+
+## What this page does not say
+
+It does not promise an opening date, uptime, or certifications. Those will be stated where they are true.

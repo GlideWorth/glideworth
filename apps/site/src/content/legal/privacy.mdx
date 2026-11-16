@@ -1,0 +1,249 @@
+---
+title: Privacy policy
+description: What personal data the Glideworth hosted service collects, why, where it is stored, who processes it, how long it is kept, and your rights wherever you live.
+lastUpdated: 2026-11-16
+draft: true
+order: 1
+---
+
+import { site } from '../../config/site';
+
+<Callout type="note" title="Which service this covers">
+  This policy covers this website and the hosted service at app.glideworth.com. The hosted service is not open
+  yet, so parts of this text describe how it is designed to work, and take effect when it opens. If you run
+  Glideworth yourself, none of this applies to you: the self-hosted app sends nothing to us.
+</Callout>
+
+## 1. Who we are
+
+The controller of your personal data is **{site.entity.name}**, {site.entity.description}, with its registered
+address at {site.entity.address}. In this policy "we" means that company. Glideworth is our product and trading
+name.
+
+Contact for anything about your data: <a href={`mailto:${site.contact.privacy}`}>{site.contact.privacy}</a>.
+
+We have not appointed a data protection officer. We have not appointed a representative in the European Union
+or the United Kingdom. Write to the address above, or complain to your local data protection authority (section
+12).
+
+## 2. The short version
+
+- We hold the plans and figures you enter so that we can show you projections. We do not use them for anything
+  else.
+- We do not sell personal data. We do not use advertising trackers. We do not connect to your banks.
+- Your data is encrypted in transit and at rest. It is **not end-to-end encrypted**: our servers can read your
+  plans. That is what lets scheduled check-ins and AI assistants you connect work.
+- Glideworth runs no AI on your data. If you connect your own AI assistant, that assistant's provider receives
+  what its tools return (see section 9).
+- We give everyone the data protection rights described in section 11, wherever you live.
+- We do not keep data forever. Section 7 gives every retention period.
+- You can export everything and delete your workspace yourself, in the app.
+
+## 3. What we collect
+
+| Category | What it includes | Where it comes from |
+|---|---|---|
+| Account data | Email address, name, a salted hash of your password (if you set one), two-factor settings (planned), sign-in history and security events, the devices you signed in from, your workspace's name and members | You, and your browser when you sign in |
+| Google sign-in, only if you use it | The identifier Google gives your Google account (a number that does not change), the email address on that Google account, whether Google has verified that address, and the name on the account (we only suggest it as your name when you sign up; you can change it). We record which Google account is linked to your Glideworth account, when it was linked and when it was last used. We do not receive your Google password. Google's answer also includes a link to your profile picture: we ignore it and never fetch or store the picture. We do not ask for access to your contacts, files or any other Google service, and we do not store any token Google gives us | Google, when you choose "Continue with Google" (section 5.1) |
+| Planning data | Everything you enter or import: households, people, ages, accounts and balances, income, spending, assumptions, plans, scenarios, results, notes, share-link snapshots, check-in settings, API keys (stored as hashes) | You, or files you import |
+| Billing data | Name, billing address, tax number if you give one, the card or payment method, invoices and payment status. **Our payment provider holds this**, not us. We keep your plan, subscription status, billing dates and a payment provider customer reference | You, through the payment provider |
+| Technical logs | IP address, time, route and status code of each request, error names and codes. Never financial values (see section 3.1) | Your browser and our servers |
+| Email events | That we sent you a message, which kind, and whether it was delivered or bounced. We do not store the body | Our email provider |
+| Sign-up checks | Your IP address and browser signals, checked by a bot-protection service when you sign up, reset a password, or fail several sign-ins | Your browser |
+| Anti-abuse record | A keyed hash of your email address, kept so that one address cannot start a free trial again and again | Derived from your email |
+| Age confirmation | That you confirmed you are 18 or over when you signed up. We do not ask for your date of birth for this | You |
+
+We do not collect your bank logins, card numbers (the payment provider does), or any special category data on
+purpose. You decide what to type in notes and names. Please do not put health, religion or similar information
+there.
+
+### 3.1 The logging rule
+
+No financial value, plan content, household name, plan name, request body, query string, cookie, token or error
+message text goes into our logs or error reports. Logs hold only an allowed list of fields: identifiers,
+counts, durations, status codes, error names and codes, and route templates. A test in our build fails if a
+sample amount or plan name shows up in captured logs. Web server access logs do include your IP address; section 7
+says how long they are kept.
+
+## 4. Why we use it, and our lawful bases
+
+We treat everyone as having the rights in the UK GDPR and the EU GDPR, wherever they live. This table gives our
+reason for each use and the legal basis for it under those laws.
+
+| Purpose | Data | Lawful basis |
+|---|---|---|
+| Create and run your account and workspace; show projections; scheduled check-ins; the API and MCP server | Account, planning | Contract (Article 6(1)(b)): you ask us to provide the service |
+| Sign you in with Google, if you choose it, and keep your Google account linked to your Glideworth account | Google sign-in data | Contract: you ask us to let you sign in this way |
+| Take payment, issue invoices, handle refunds and failed payments | Billing, account | Contract |
+| Send service emails you need: verification, password reset, trial, payment, renewal, export and deletion notices, and warnings before an account is deleted | Account, email events | Contract |
+| Send optional check-in summary emails (never with figures) | Account | Contract. You can turn them off in settings or with the link in the email |
+| Run the service: backups, monitoring, error reports, fixing faults | Logs, planning (in encrypted backups only) | Contract |
+| Answer your support requests, including through a support grant you create | Account, what you tell us, planning (only if you create a grant) | Contract |
+| Keep tax and accounting records, and respond to legal requests we are bound by | Billing, tombstone record | Legal obligation (Article 6(1)(c)) |
+| Keep the service secure and stop abuse: sign-in throttling and alerts, bot checks, audit trail of security events, sign-up limits, one trial per person | Account, logs, sign-up checks, anti-abuse record | Legitimate interests (Article 6(1)(f)), only for security and abuse prevention. Our interest is protecting the service and its users. You can object (section 11) |
+
+We do not rely on consent for anything at launch, because we collect nothing optional. If that ever changes, we
+will ask for your consent first and explain what it is for, and you will be able to say no and still use the
+service. We do not take automated decisions about you with legal or similar effects. We do not profile you for
+marketing.
+
+## 5. Who we share it with
+
+We do not sell personal data and we do not share it for advertising. We use a small number of service providers
+(sub-processors) who process data on our instructions. They are listed, with what each one sees and where, on
+the [sub-processor list](/legal/subprocessors/). We also share data where the law requires it, and with a buyer
+if the business is sold (you would be told first).
+
+### 5.1 Signing in with Google
+
+Signing in with Google is optional. You can always use an email address and password instead. If you choose
+"Continue with Google":
+
+- **What we send to Google.** Only the sign-in request: our app's identifier at Google, the page on our site
+  that Google returns you to, the kinds of information we ask for (your Google account's identifier, email
+  address and name), and random values that protect the request against forgery. We send Google nothing else
+  about you, and nothing from your workspace. The app does not load any Google script; the button is a plain link.
+- **What Google learns.** Google sees that you are signing in to Glideworth, and when. Google handles that under
+  its own privacy policy, as the provider of your Google account. For this, Google is not our sub-processor:
+  it acts for you, not on our instructions.
+- **What we receive and keep.** See the table in section 3. We use Google's identifier, not the email address,
+  to recognise your Google account. We use what Google sends once to sign you in and then discard it, apart from
+  that identifier, the email address at the time you linked the account, and the link and last-used dates.
+- **Your existing account is protected.** If an account with the same email address already exists, signing in
+  with Google does not open it. You sign in with your password first and link Google in your security settings.
+- **Two-step sign-in still applies.** If you turned it on, we still ask for your code after Google.
+- **Unlinking.** You can unlink Google in your security settings once your account has a password. Unlinking
+  deletes the record of the link. Deleting your account deletes it too.
+
+Our staff cannot see inside your workspace by default. The operator console shows account facts (email, plan,
+status, sizes, counts) but not your households, plans, balances or results. The one exception is a **support
+grant**: you can allow a named operator read-only access to your workspace for up to 7 days. Each view is
+recorded and you are emailed when it is first used.
+
+## 6. Where your data is, and who can reach it
+
+**Where it is stored.** We plan to store your data in the European Union: the main servers and the backups in
+Germany. Some providers are based in, or may process data in, other countries, notably the United States (for
+example payments and bot checks). The sub-processor list says where each provider is.
+
+**Where we are.** Our company, and the people who run the service, are in the United Arab Emirates. They may
+reach data stored in the EU from the UAE. They do so only for support and for operating the service, and only
+under the access controls in section 8: the operator console is on a private interface with mandatory
+two-factor sign-in, it does not show workspace contents, and the only route to your workspace contents is a
+support grant that you create, which is logged and which you are told about.
+
+**What protects it.** The EU has not made an adequacy decision for the UAE (we checked the European
+Commission's list on 16 November 2026), and we do not rely on an adequacy decision from the UK or any other
+country for the UAE. That means we cannot say the UAE is recognised as giving your data the same level of
+protection as the EU or UK law does. We rely instead on the controls in this policy, the limits on who can reach
+your data, and the contract terms we agree with providers. For providers outside the UK and the EU, we will use a
+provider only where a lawful transfer mechanism applies, such as an adequacy decision that covers the provider
+(for example the EU-US Data Privacy Framework, for certified providers) or standard contractual clauses. UAE
+data protection law may also apply to us, and nothing in this policy limits any right it gives you. You can ask
+for a description of the safeguards at the contact address above.
+
+## 7. How long we keep it
+
+| Data | How long |
+|---|---|
+| A workspace whose trial ended and which was **never paid for** | Read-only, then deleted **12 months after the trial ended**. We email you 30 days and 7 days before |
+| A workspace whose **paid subscription ended** (cancelled, refunded or lapsed) | Read-only, then deleted **12 months after the end of the last paid period**. We email you 30 days and 7 days before. You can delete it sooner |
+| A workspace you delete | If you delete it in the app, the live database is deleted at once. If you ask us to delete it by email, we do it within 30 days of your request. Encrypted backup copies age out within a further 35 days |
+| Your user account when you delete it | If you delete it in the app, your profile, sessions, tokens and two-factor data are deleted at once. If you ask us by email, we do it within 30 days of your request |
+| Backups | Every backup for 48 hours, then the newest one per day for 30 days. Each workspace's backups use their own key. A deleted workspace's backups are gone within 35 days |
+| Account security events (sign-ins, security changes) | 12 months |
+| The link to your Google account (Google's identifier, the email address at the time of linking, link and last-used dates) | Until you unlink Google or delete your user account |
+| The temporary record of a Google sign-in in progress (held in encrypted form while you are at Google or confirming your details) | 10 to 15 minutes, then deleted within a day |
+| The inside-workspace audit log (data changes) | While the workspace exists, covering the latest 400 days |
+| Web server access logs (include IP address) | Up to 30 days |
+| Application logs and error reports | Up to 30 days. They contain no financial values and no IP address |
+| Email delivery records (no message body) | 90 days |
+| Anti-abuse record (keyed hash of your email) | 12 months after the end of the trial it relates to |
+| Billing and tax records (held by the payment provider, plus a small record of ours: workspace identifier, deletion date and payment provider customer reference) | As long as tax and accounting law requires: up to 7 years. UAE corporate tax law requires records for 7 years. If the tax law of another country in which we have to account for tax on a sale requires a longer period for that sale, we keep only what that law requires, for that period |
+
+The 12-month deletion happens whether or not you sign in. Signing in does not extend it. Subscribing before
+deletion restores full access. You can export your workspace at any time, including while it is read-only.
+
+If you ask us to delete your data, we do it within 30 days, except billing and tax records that the law requires
+us to keep.
+
+## 8. How we protect it
+
+- Encrypted in transit (TLS) and at rest. Each workspace's backups are encrypted with a key of its own.
+  Passwords are stored only as salted hashes. Tokens, API keys and recovery codes are stored as hashes. Two-factor
+  secrets are encrypted.
+- **Not end-to-end encrypted.** Our servers can read your plans. We have chosen not to claim otherwise.
+- Each workspace is its own database file, so one customer's data is not mixed into another's.
+- Sign-in throttling, bot checks on sign-up, re-confirmation of your password before sensitive actions, session
+  lists you can revoke, and alerts when a new device signs in.
+- Staff access to workspace contents only through your support grant.
+- A logging rule that keeps financial values out of logs and error reports (section 3.1).
+
+No system is perfectly secure. If a personal data breach affects your data, we will tell you without undue delay,
+and we will tell the data protection authority where the law requires it. Report a vulnerability to
+<a href={`mailto:${site.contact.security}`}>{site.contact.security}</a> (see [security](/security/)).
+
+## 9. AI assistants you connect
+
+Glideworth has a REST API and an MCP server. You can connect an AI assistant of your choice with a key whose
+scopes you set. Writes through MCP are **off by default** for new workspaces; you turn them on.
+
+- **Glideworth runs no AI on your data.** We do not train models on it and we do not send it to an AI provider.
+- When your assistant calls a tool, the tool's answer goes to the assistant, and so to whoever runs it. That
+  provider's own privacy terms apply to what it receives. If that matters, use a local model.
+- We cannot see or control what your assistant does with the data. You can revoke a key or connection at any
+  time in the app.
+
+## 10. Cookies and similar technologies
+
+See the [cookie policy](/legal/cookies/). In short: the marketing site sets no cookies. The app sets
+sign-in cookies that it needs to work, and stores some settings in your browser. There are no advertising or
+analytics cookies, and so no consent banner. If that ever changes, we will ask for your consent first.
+
+## 11. Your rights
+
+Wherever you live, you can ask us to: give you access to your data; correct it; delete it; restrict how we use
+it; give you a portable copy; and stop using it where we rely on legitimate interests. These are the rights in
+the UK GDPR and EU GDPR, and we give them to everyone. You also keep any rights your own country's law gives you.
+You can withdraw consent at any time, if we ever rely on it.
+
+You can do most of this yourself:
+
+- **Export.** The workspace owner can download a complete copy of the workspace as a database file that opens
+  in the self-hosted app. Each household also has a JSON export. A separate download gives you the account data
+  we hold about you (profile, memberships, linked sign-in methods such as Google, sessions and security events).
+- **Delete.** The workspace owner can delete the workspace, and you can delete your user account, in the app.
+  Section 7 says what happens next.
+- **Change** your name, email and sign-in settings in the app, including linking or unlinking Google.
+
+For anything else, email <a href={`mailto:${site.contact.privacy}`}>{site.contact.privacy}</a>. We will answer
+within one month and we do not charge for this. We may need to check who you are first. If you are a member of
+someone else's workspace (for example a household member or an adviser's client), the workspace owner may be the
+right person to ask, and we will tell you if so.
+
+## 12. Complaints
+
+You can complain to your data protection authority. In the UK that is the Information Commissioner's Office
+(ico.org.uk). In the EU it is the authority in the country where you live, work or think a breach happened.
+Elsewhere, it is the authority for your country or region. We would like a chance to put things right first, so
+please contact us, but you do not have to.
+
+## 13. Children
+
+Glideworth is for adults. You must be 18 or over to have an account, and we ask you to confirm it when you sign
+up. We do not knowingly collect data from children. If you think a child has given us data, email us and we will
+delete it.
+
+## 14. If you live in the United States
+
+We do not sell personal information and we do not share it for cross-context behavioural advertising, as those
+terms are used in US state privacy laws such as the California Consumer Privacy Act. The categories in section 3
+are the categories we collect. We give you the rights in section 11 whichever state you live in, including the
+rights to know, delete, correct and get a copy of your data, and we do not treat you worse for using them. Use the
+contact address above. You may appeal a refusal by replying to it.
+
+## 15. Changes
+
+We will update this policy when what we do changes. If a change matters to you, for example a new
+sub-processor, we will email account holders at least 30 days beforehand. The date at the top shows the
+latest version.

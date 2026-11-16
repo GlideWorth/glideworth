@@ -1,0 +1,50 @@
+name: Bug report
+description: Something does not work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Do not paste real financial data.** Reduce the problem to synthetic numbers.
+        Security problems go through SECURITY.md, not here. A wrong tax figure is better reported with the
+        "Tax-rule correction" form.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include a synthetic plan or API request if you can.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Release, image tag or commit.
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How are you running it?
+      options: [Docker, "From source (pnpm)", Hosted service, Other]
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Remove anything personal. Redact values and keys.
+      render: shell
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Checks
+      options:
+        - label: I removed real financial data, passphrases, API keys and tokens from this report.
+          required: true

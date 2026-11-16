@@ -1,0 +1,104 @@
+---
+title: Monte Carlo and historical simulation
+description: Run your plan through thousands of market histories, historical or random, and see how often it works, when it fails, and why. Seeded and repeatable.
+ogTitle: Monte Carlo and historical simulation
+summary: Thousands of market paths, from history or from a distribution, with failure analysis and milestone timing.
+order: 5
+---
+
+A single projection assumes one future. Monte Carlo runs the same plan through many: each trial draws a sequence
+of market returns, dividends and inflation, and the result is how often the plan meets its goals, the spread of
+outcomes year by year, and an analysis of the trials that fail. "85% chance of success" means that in 85 of 100
+replays every year's spending was fully funded. It measures how fragile the plan is. It is not a forecast.
+
+<Figure caption="The shape of a result: median, middle half and 10th to 90th percentile of portfolio value by age. Illustrative, not a forecast.">
+  <ProjectionFan retireAge={58} />
+</Figure>
+
+## Methods
+
+- **Historical restart** starts each trial at a random year of market history and continues forward.
+- **Historical sequential** runs every start year once, so the trial count is set by the data.
+- **Block bootstrap** resamples runs of consecutive years, which keeps some of history's streaks.
+- **Normal** draws from a distribution fitted to history, with **lognormal** and **fat-tailed** (Student-t)
+  options.
+- Each series (stocks, bonds, inflation, dividends, crypto) can follow the method, come from a distribution, or
+  stay fixed at the plan's assumption.
+- Optional **exchange-rate risk** for plans that hold more than one currency (see [multi-currency](/features/multi-currency/)).
+
+Only the market varies in a trial (and exchange rates, if you switch that on). Your income, spending, tax rules
+and dates are the plan's, in every trial. A run can use up to 10,000 trials and defaults to 1,000.
+
+## Seeded and repeatable
+
+Unless you set a seed, a fixed default is used, so the same plan and settings give the same result, and "same
+plan, change one number" compares like with like because both runs share the same random draws. The seed is
+recorded in the result. Results are cached per plan version, and a large run is split across worker threads
+and merged into exactly the result a single thread would give. Ask for a fresh random seed when you want one.
+
+## What you learn
+
+- The chance of success, and the range of balances and spending over time (the fan above).
+- **Why it fails when it fails:** the years in which first shortfalls land, sequence-of-returns risk by how good
+  or bad the early returns were, and failures before versus after retirement.
+- **When milestones are reached** across trials, such as the distribution of retirement or financial
+  independence dates.
+- **Backtests:** replay the plan through every historical start year, and by-start-year results.
+- Success can be defined strictly (every year funded), or as never depleted, liquid assets staying above a
+  floor, or an end-of-plan floor.
+
+## Worked illustration
+
+This is the shape of a call, with illustrative figures. Over the REST API (`GW` is your server's address):
+
+```bash
+curl -s -X POST \
+  "$GW/api/v1/plans/plan-main/monte-carlo?wait=60" \
+  -H "Authorization: Bearer $KEY" \
+  -H 'content-type: application/json' \
+  -d '{"settings":{"trials":2000}}'
+# -> a job; numbers at links.result:
+# successRate 0.86, p10/p50/p90, failures
+```
+
+A result reads like this: "86% of 2,000 trials fully funded every year. Of the 14% that failed, most first ran
+short in the 2050s, and the weakest early-return quintile accounts for most of them." The follow-up is a
+question the next feature answers: what to change. See [solvers](/features/solvers/) and
+[explanations](/features/explanations-and-audit/).
+
+## The market data
+
+- **United States:** 1928 to 2025, the default for every country, including the UK.
+- **United Kingdom:** 1983 to 2025, from openly licensed UK sources (inflation, Bank Rate, gilts), with US shares
+  converted to sterling because no open UK share history exists. It is short and more optimistic than long UK
+  history, which is why UK plans default to the US set; you can choose it in the settings.
+- **Canada, Australia and the euro area** have no history of their own in the data, so they are tested against US history.
+- **Crypto** has no history here and is sampled from a distribution.
+- Datasets are not updated automatically. Where the data comes from, and under what terms, is recorded in the
+  repository's data-licence file; see [open source](/open-source/#data).
+
+<Callout type="warning" title="Past returns do not predict the future">
+  A plan that works in every historical replay can still fail, and one that fails in some can work. The result is
+  a stress test of your assumptions.
+</Callout>
+
+## What it does not do
+
+- **Lifespan and care costs are not randomised.** You set life expectancy; a long-term-care scenario is a what-if,
+  not a random shock. Randomised lifespan is on the [roadmap](/roadmap/).
+- **Annual steps,** so intra-year sequence effects are not seen.
+- **No published validation report.** The engine is compared with an independent historical calculator in a test,
+  and seeded runs are reproducible, but a formal validation report is not published.
+- **Plans do not re-run on every edit:** runs start on request.
+
+<FAQ items={[
+  { q: 'Is a higher chance of success always better?', a: '<p>Not necessarily. A 99% plan may be leaving a lot of lifetime spending unused. The <a href="/features/solvers/">solvers</a> show the most you could spend at a target you choose, such as 85% or 90%.</p>' },
+  { q: 'Why does the same plan give the same answer twice?', a: '<p>Runs use a fixed default seed so comparisons are fair and repeatable. You can set your own seed or ask for a fresh random one.</p>' },
+  { q: 'Which history does a UK plan use?', a: '<p>The bundled UK series, which ends in 2020 and is being replaced with an openly licensed set. Other countries without their own history use US history.</p>' },
+]} />
+
+## Go further
+
+[Solvers](/features/solvers/), [withdrawal strategies and guardrails](/features/withdrawal-strategies/),
+[the API](/features/rest-api/) and [MCP](/features/mcp-server/), where `run_monte_carlo` returns a one-sentence
+headline plus the failure analysis.

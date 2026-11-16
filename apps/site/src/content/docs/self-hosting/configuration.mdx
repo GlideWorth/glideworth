@@ -1,0 +1,45 @@
+---
+title: Configuration reference
+description: Every Glideworth environment variable, its default and what it does, for the Docker image and for running from source.
+section: Self-hosting
+order: 2
+lastChecked: 2026-11-16
+---
+
+Set these in `.env` next to `docker-compose.yml` (the compose file passes the ones it lists to the container), or in the
+container's environment. All are optional. Values are read at start-up: restart after a change (`docker compose up -d`). A
+bad value makes the server refuse to start and say which. Defaults are those of the Docker image where they differ from the
+server's own.
+
+| Variable | Default | What it does |
+| --- | --- | --- |
+| `GLIDEWORTH_PORT` | `8787` | Compose only: the host port that maps to the container. |
+| `GLIDEWORTH_API_PORT` | `8787` | The port the server listens on inside the container. Leave it. |
+| `GLIDEWORTH_HOST` | all interfaces | Interface to bind. Use `127.0.0.1` when running from source behind a proxy on the same host. |
+| `GLIDEWORTH_DB_PATH` | `/data/glideworth.db` (image) | The SQLite file. Must be on the `/data` volume in Docker. |
+| `GLIDEWORTH_SETUP_TOKEN` | none | Required in the first-run setup when set (8 or more characters). Set it on any instance others can reach. |
+| `GLIDEWORTH_BOOTSTRAP_KEY` | none | An API key to create on first boot when no key exists. Never use the public example key. |
+| `GLIDEWORTH_BROWSER_AUTH` | `true` | Passphrase and session-cookie sign-in for the browser. API keys always work. |
+| `GLIDEWORTH_SESSION_TTL_HOURS` | `168` | Absolute session lifetime (7 days). |
+| `GLIDEWORTH_SESSION_IDLE_HOURS` | `24` | Idle timeout. |
+| `GLIDEWORTH_LOGIN_MAX_ATTEMPTS` | `5` | Failed sign-ins per client in the window before throttling. |
+| `GLIDEWORTH_LOGIN_WINDOW_MINUTES` | `15` | The throttling window. |
+| `GLIDEWORTH_COOKIE_SECURE` | `auto` | `auto` sets the Secure flag when the request is HTTPS (or the proxy says so); `true` or `false` forces it. |
+| `GLIDEWORTH_TRUST_PROXY` | `false` | Trust `X-Forwarded-*` headers. Only behind a proxy you control. |
+| `GLIDEWORTH_PUBLIC_URL` | the request's origin | Public base URL: the OAuth issuer and base of OAuth endpoints. Set it behind a proxy. |
+| `GLIDEWORTH_MCP_ALLOW_WRITES` | `false` | Enables the MCP write tools (which also need a key with write scope). |
+| `GLIDEWORTH_RATE_LIMIT_PER_MIN` | `600` | Requests per minute per key or session; `0` disables. |
+| `GLIDEWORTH_SHARE_RATE_LIMIT_PER_MIN` | `60` | Public share-link reads per minute per client; `0` is unlimited. |
+| `GLIDEWORTH_MAX_BODY_MB` | `10` | The largest request body accepted (up to 200). |
+| `GLIDEWORTH_MAX_JOBS` | `2` | Simulations (Monte Carlo and solvers) that run at once, 1 to 16. |
+| `GLIDEWORTH_MC_SHARDS` | lesser of CPUs and 4 | Worker threads one Monte Carlo run is split across, 1 to 32 (1 disables sharding). |
+| `GLIDEWORTH_SCHEDULER` | `true` | Run scheduled check-ins in this process. |
+| `GLIDEWORTH_WEBHOOK_ALLOW_PRIVATE` | `false` | Let webhooks deliver to loopback or private addresses. Off by default as a guard against server-side request forgery. |
+| `GLIDEWORTH_SEED_SAMPLE` | `false` (image) | Insert a synthetic sample household on first start. The server's own default is `true` for development. |
+| `GLIDEWORTH_SERVE_WEB` | on in production | Serve the built web app from the API process. |
+| `GLIDEWORTH_WEB_DIST` | `/app/web` (image) | The directory of the built web app. |
+| `GLIDEWORTH_WEB_ORIGIN` | none in production | A browser origin allowed to call the API (development only). Leave it empty in production. |
+| `NODE_ENV` | `production` (image) | Production mode: stricter defaults, web app served, the public example key refused. |
+
+Running from source, `pnpm dev` starts the API on port 8787 and the web app on 5173, and `pnpm start` (after `pnpm build`)
+serves everything on one port. In development the dev server adds the API key for the browser, so no sign-in is needed.

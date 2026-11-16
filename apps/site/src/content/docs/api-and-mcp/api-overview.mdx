@@ -1,0 +1,94 @@
+---
+title: REST API overview and conventions
+description: Base URL, units, errors, pagination, optimistic concurrency with ETag and If-Match, idempotency keys, rate limits and partial updates for the Glideworth REST API.
+section: API and MCP
+order: 10
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+
+Glideworth exposes everything the web app does over a versioned REST API, and runs simulations on the server. The
+MCP server is a thin adapter over the same services, so the two behave identically.
+
+- **Base URL:** `http://localhost:8787` on a default install. All resource routes are under `/api/v1`.
+- **OpenAPI:** `GET /openapi.json` on a running instance returns the OpenAPI 3.1 document, generated from the same schemas
+  as the engine. It lists every operation with its schemas, tags and required scope (`x-required-scope`).
+- **Interactive reference:** served at `/docs` of the app. Its viewer script loads from a public CDN, so that page needs
+  internet access; `/openapi.json` and every API call work offline.
+- **Public routes:** `/health`, `/openapi.json`, `/docs`, the browser sign-in routes under `/api/v1/auth`, and the public
+  share-link route.
+
+<Callout type="note" title="Every operation is listed in the API reference">
+  This page describes conventions and route groups. The [API reference](/docs/api-and-mcp/api-reference/) lists every
+  operation with its method, path, scope, parameters and schema names, generated from the OpenAPI document.
+</Callout>
+
+## Units
+
+Money is a JSON number in **major currency units** (`1234.56`), never cents. Rates are decimal fractions (`0.07` is 7
+percent). Every user-entered amount is `{ "value", "basis": "real" | "nominal" }` plus a `frequency`, so "20,000 a
+month" can never be read as "20,000 a year". Engine results are nominal with a per-period `priceIndex`; compact views
+default to real (today's) money.
+
+## Errors
+
+Every error has one envelope and a stable `code`:
+
+```json
+{ "error": { "code": "VERSION_CONFLICT", "message": "plan is at version 3, not 2", "details": { "currentVersion": 3 } } }
+```
+
+| Status | Codes |
+| --- | --- |
+| 400 | `VALIDATION` (details are the schema issues), `INVALID_TOKEN` |
+| 401, 403 | `UNAUTHORIZED`, `FORBIDDEN` (`details.required` is the scope or `owner` role you lack), `CSRF` |
+| 404 | `NOT_FOUND` |
+| 409 | `VERSION_CONFLICT`, `CONFLICT`, `IN_USE`, `PATCH_CONFLICT`, `CHANGESET_CONFLICT`, `CHANGESET_NOT_PROPOSED`, `PARENT_MOVED`, `LAST_WRITE_KEY`, `JOB_NOT_FINISHED`, `JOB_FAILED`, `JOB_CANCELLED`, `ALREADY_CONFIGURED`, `SETUP_REQUIRED`, `LOGIN_TAKEN`, `OWNER_PROTECTED`, `CHECKIN_RUNNING` |
+| 413 | `PAYLOAD_TOO_LARGE`: the body exceeds `GLIDEWORTH_MAX_BODY_MB` (default 10) |
+| 422 | Scenario errors (dangling reference, circular milestone), `IMPORT_FAILED`, `IDEMPOTENCY_KEY_REUSED` |
+| 429 | `RATE_LIMITED`, with `Retry-After` |
+| 501 | `NOT_IMPLEMENTED`, with `details.feature`: the plan uses something the engine does not model yet |
+
+Unexpected failures are `500 INTERNAL` with no stack trace, SQL or file path in the response.
+
+## Pagination
+
+List endpoints take `limit` (1 to 200, default 50) and `cursor`, and return
+`{ "items": [...], "nextCursor": "..." or null, "total": n }`.
+
+## Concurrency: ETag and If-Match
+
+Plans and households return `ETag: "<version>"`. Both start at version 1 and every write adds one. Send
+`If-Match: "<version>"` on writes; a stale version is `409 VERSION_CONFLICT`. `PUT /plans/{id}` requires it; elsewhere
+it is optional, and leaving it out means "last write wins". `If-None-Match` on a GET returns `304`.
+
+## Idempotency
+
+Send `Idempotency-Key: <unique string>` on any `POST`, `PUT`, `PATCH` or `DELETE`. The first successful response is
+stored for 24 hours and replayed verbatim for retries, with `Idempotent-Replay: true`. Reusing a key with a different
+request is `422 IDEMPOTENCY_KEY_REUSED`. Creating API keys and webhooks is exempt, because their one-time secrets are
+never stored for replay.
+
+## Rate limits and size
+
+600 requests a minute per key or session by default (`GLIDEWORTH_RATE_LIMIT_PER_MIN`, `0` turns it off), with
+`X-RateLimit-Limit` and `X-RateLimit-Remaining` headers. Bodies over `GLIDEWORTH_MAX_BODY_MB` (default 10 MiB) are
+refused before they are read. A full household export is about 12 KB.
+
+## Partial updates
+
+- **JSON Merge Patch** (RFC 7386) on `PATCH` of any single resource, such as `PATCH /plans/{id}/expenses/{itemId}` with
+  `{"amount": {"value": 6000}}`.
+- **JSON Patch** (RFC 6902) on a whole plan: `PATCH /plans/{id}` with content type `application/json-patch+json`, with one
+  extension: address array items by id, not index, as in `/income/[id=salary]/amount/value`.
+
+## Long-running work
+
+Monte Carlo, solvers and some insights are asynchronous jobs: they return `202` with a job you poll, stream or wait on.
+See [Simulation, solvers and jobs](/docs/api-and-mcp/api-simulation-and-jobs/).
+
+## What this does not do
+
+The API does not have per-household access control (roles are instance-wide), and OAuth tokens work on `/mcp` only, never
+on the REST API. See [Authentication and scopes](/docs/api-and-mcp/api-authentication/).

@@ -1,0 +1,56 @@
+---
+/** One labelled calculator input: label, input with unit, helper text and an inline error slot. */
+import { inputText } from '../../tools/format';
+import type { Field } from '../../tools/types';
+
+interface Props {
+  field: Field;
+  hidden: boolean;
+  symbol: string;
+}
+const { field: f, hidden, symbol } = Astro.props;
+const suffix =
+  f.kind !== 'number' ? '' : f.unit === 'percent' ? '%' : f.unit === 'years' ? 'years' : f.unit === 'age' ? 'years old' : '';
+const describedBy = `f-${f.key}-help f-${f.key}-error`;
+---
+
+<div class="tool-field" data-field={f.key} hidden={hidden}>
+  <label for={`f-${f.key}`}>{f.label}</label>
+  {
+    f.kind === 'number' ? (
+      <div class="tool-input">
+        {f.unit === 'money' && (
+          <span class="tool-affix" data-currency aria-hidden="true">
+            {symbol}
+          </span>
+        )}
+        <input
+          id={`f-${f.key}`}
+          name={f.key}
+          type="text"
+          inputmode={f.min < 0 ? 'text' : 'decimal'}
+          autocomplete="off"
+          spellcheck="false"
+          value={inputText(f.default, f.unit)}
+          aria-describedby={describedBy}
+          aria-invalid="false"
+        />
+        {suffix && (
+          <span class="tool-affix" aria-hidden="true">
+            {suffix}
+          </span>
+        )}
+      </div>
+    ) : (
+      <select id={`f-${f.key}`} name={f.key} aria-describedby={describedBy}>
+        {f.options.map((o) => (
+          <option value={o.value} selected={o.value === f.default}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    )
+  }
+  <p class="tool-help" id={`f-${f.key}-help`}>{f.help}</p>
+  <p class="tool-error" id={`f-${f.key}-error`} hidden></p>
+</div>

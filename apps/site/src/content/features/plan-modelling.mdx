@@ -1,0 +1,91 @@
+---
+title: Plan modelling
+description: Describe a household, its accounts, assets, debts, income, spending and milestones once, then build as many plans on top of it as you like.
+summary: A household, what it owns and owes, and plans built from income, expenses, milestones and savings flows.
+order: 1
+---
+
+Glideworth separates two things that most spreadsheets mix together. **Current finances** are where you are
+today: balances, property, debts. A **plan** is a scenario built on top of them: when you stop work, what you
+spend, where surplus money goes and what has to be true for you to feel secure. You can keep as many plans as
+you like on one set of finances, and update the finances without rewriting any of them.
+
+## What you describe
+
+**The household.** One person or a couple, with birth months, where each lives and a currency. Dependents
+(children, people you support) are separate from the people, so a child's costs can start and stop on their own
+dates. Adding a second person switches the household to couple mode.
+
+**Accounts.** Cash and savings with a rate, taxable investments with a cost basis, tax-deferred and tax-free
+retirement accounts, health and education accounts, crypto. Account types follow the country: ISAs, LISAs and
+pensions in the UK, 401(k)s, IRAs and Roth accounts in the US, TFSAs and RRSPs in Canada, super in Australia,
+and the wrappers of the other countries the planner estimates tax for. Each account has an owner (you, your
+partner or joint), a growth assumption, fees, and rules for when it can be touched.
+
+**Real assets and debts.** Property, vehicles and other assets, owned outright or financed, with appreciation,
+running costs, rental income and a planned sale or purchase. Debts compound and amortise, and can be paid down
+by a flow you define.
+
+**Income and expenses.** Salary, self-employment, bonuses, share vesting, defined-benefit and annuity income,
+state pensions, windfalls and inheritances; spending by type (housing, healthcare, education, travel, charity
+and so on), marked essential or discretionary. Each item starts and ends on a date, an age, a year or a
+milestone, can change faster or slower than inflation, and can repeat.
+
+**Milestones.** Named moments the plan hangs things on: retirement, life expectancy, mortgage-free,
+financial independence, or your own, defined as a date, an age, a condition such as "investments at least 25
+times annual spending", or several joined with AND and OR. Tie an income or expense to a milestone and moving
+the milestone moves everything attached to it. If a milestone is never reached, the plan says so.
+
+**Flows.** What happens to money left over each year, in priority order: fill the emergency fund to a target,
+take the employer match, fill the ISA or 401(k), then invest the rest. The order is the priority.
+
+## A worked illustration
+
+The planner ships with synthetic sample households (no real data) so you can see the shape of a plan. This is
+the structure of the UK sample, with amounts in today's money:
+
+| Part | What the plan says |
+| --- | --- |
+| Household | One person born June 1978, living in the UK, planning to age 92 |
+| Accounts | Easy-access savings, stocks-and-shares ISA, general investment account, a small crypto holding, a SIPP and a workplace pension |
+| Income | £58,000 salary until the retirement milestone, then the State Pension from its start age |
+| Expenses | £2,300 a month of living costs and £4,000 a year of travel |
+| Milestones | Retirement at 60; life expectancy at 92 |
+| Flows | Pension contribution with employer match, then ISA, then SIPP, then invest the rest |
+
+Move the retirement milestone from 60 to 57 and the salary ends earlier, the pension flow stops earlier, the
+State Pension stays where it is, and the drawdown starts sooner. Nothing else needed editing. That is the point
+of building a plan from milestones rather than from dated rows.
+
+<Callout type="note" title="Amounts and units">
+  Every amount you enter carries a basis (today's money or future money) and a frequency, so "2,000 a
+  month" cannot be read as "2,000 a year". See [projections and the ledger](/features/projections-and-ledger/).
+</Callout>
+
+## Several plans, one set of finances
+
+Plans that start "now" read your current finances; plans can also freeze a snapshot of them. Update a balance
+(by hand, from a CSV import, or from a script over the [API](/features/rest-api/)) and every live plan moves.
+Each update can also record a progress snapshot, at most one automatic snapshot a day, so you can compare
+reality with the plan over time (see [progress and check-ins](/features/progress-and-check-ins/)).
+
+## What it does not do
+
+- **No monthly resolution.** The engine steps by year (calendar, fiscal or rolling), prorating events by
+  month inside a year. A crash in March and a recovery by December are not seen separately.
+- **No bank connections.** You enter balances, import files or push them from a script. Glideworth never asks for
+  bank credentials. See [importing](/features/import-and-export/).
+- **No means-tested benefits.** UK Universal Credit and Pension Credit are not modelled; neither are loss
+  harvesting or specific-lot selling.
+- **Some tax-specific items are simplified.** The municipal and Treasury bond-income split is not modelled, and
+  each country's tax model lists what else it leaves out. See [tax estimates](/features/tax-estimates/).
+- **Per-person privacy inside a household** is not modelled: everyone who can sign in to a household sees all
+  of it.
+- **Switching a couple to one person** keeps balances, but partner-owned accounts and income stay as they are
+  until you reassign them.
+
+## Go further
+
+- [Projections and the year-by-year ledger](/features/projections-and-ledger/): what the engine produces from a plan.
+- [Branches, change sets and history](/features/branches-and-change-sets/): try "retire at 57" without touching the plan.
+- [Importing from ProjectionLab, CSV and bank files](/features/import-and-export/) if you already have your numbers elsewhere.

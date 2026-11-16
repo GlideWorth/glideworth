@@ -1,0 +1,462 @@
+---
+import Button from '../components/Button.astro';
+import Card from '../components/Card.astro';
+import CTABand from '../components/CTABand.astro';
+import FeatureGrid, { type FeatureItem } from '../components/FeatureGrid.astro';
+import Figure from '../components/Figure.astro';
+import Section from '../components/Section.astro';
+import AgentFlow from '../components/visuals/AgentFlow.astro';
+import ProjectionFan from '../components/visuals/ProjectionFan.astro';
+import TaxYear from '../components/visuals/TaxYear.astro';
+import { page } from '../config/pages';
+import { formatPrice, priceSentence, pricing } from '../config/pricing';
+import { site, trialCta } from '../config/site';
+import PageLayout from '../layouts/PageLayout.astro';
+import { facts } from '../lib/facts';
+import { organization, softwareApplication, website } from '../lib/jsonld';
+
+const n = facts.taxCountryCount;
+
+const differences: FeatureItem[] = [
+  {
+    glyph: 'code',
+    title: 'Open source, all of it',
+    body: `The engine, the app, the API and the MCP server are open source under ${site.license}. Self-host the whole planner for free, with every feature, or, when it opens, let us run it for you.`,
+    href: '/open-source/',
+  },
+  {
+    glyph: 'globe',
+    title: `Tax estimates for ${n} countries`,
+    body: 'The UK, the US with every state, Canada, Australia, five European countries, Israel, New Zealand and the UAE. The planner also follows residency moves, non-resident rules and treaty relief.',
+    href: '/planning/',
+  },
+  {
+    glyph: 'fan',
+    title: 'Monte Carlo on market history',
+    body: 'Thousands of trials from historical returns, block bootstrap or fat-tailed distributions, with optional exchange-rate risk, backtests and sequence-of-returns analysis.',
+    href: '/features/monte-carlo/',
+  },
+  {
+    glyph: 'solver',
+    title: 'Answers, not just charts',
+    body: 'The most you can spend at a chosen chance of success, the earliest date you can retire, the savings you need, a safe withdrawal rate, spending guardrails.',
+    href: '/features/',
+  },
+  {
+    glyph: 'ledger',
+    title: 'Explanations you can check',
+    body: 'Why the plan fails when it fails, where the money went in any year, an audit of your assumptions, and which edit explains the gap between two plans.',
+    href: '/features/',
+  },
+  {
+    glyph: 'plug',
+    title: 'Built for AI assistants',
+    body: `A REST API with ${facts.apiOperations} operations and an MCP server with ${facts.mcpTools} tools. Assistants read plans and run simulations; any edit is a proposal you approve.`,
+    href: '/api/',
+  },
+];
+
+const proof = [
+  { value: String(n), label: 'countries with tax estimates' },
+  { value: String(facts.apiOperations), label: 'REST API operations, OpenAPI 3.1' },
+  { value: String(facts.mcpTools), label: 'MCP tools for AI assistants' },
+  { value: '1', label: 'SQLite file holds all your data when you self-host' },
+];
+---
+
+<PageLayout {...page('/')} jsonLd={[organization(), website(), softwareApplication()]}>
+  <Fragment slot="hero">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <span class="eyebrow">Open-source financial and retirement planner</span>
+          <h1 id="hero-title">Plan your <em>glide path</em> to and through retirement.</h1>
+          <p class="lede">
+            Glideworth projects your household's finances decades ahead, year by year, with tax estimated in
+            every year. It tells you how often your plan works, why it fails when it does, and what to
+            change. Run it on your own machine today, or in our cloud once it opens, and let your AI assistant work on it with you.
+          </p>
+          <div class="hero-actions">
+            <Button href={trialCta.href} size="lg" arrow>{trialCta.label}</Button>
+            {
+              site.cloudLaunched ? (
+                <Button href="/self-hosting/" size="lg" variant="secondary">Self-host it free</Button>
+              ) : (
+                <Button href="/pricing/" size="lg" variant="secondary">See the hosted plan</Button>
+              )
+            }
+          </div>
+          <p class="hero-note">
+            {priceSentence()}
+            {!site.cloudLaunched && <span> The hosted service opens soon.</span>}
+          </p>
+        </div>
+        <div class="hero-visual">
+          <Figure
+            screenshot="hero-chance-of-success"
+            caption="The chance-of-success view summarises thousands of simulated futures. Drawn here from illustrative numbers."
+          >
+            <ProjectionFan />
+          </Figure>
+        </div>
+      </div>
+      <div class="container">
+        <dl class="proof">
+          {
+            proof.map((p) => (
+              <div>
+                <dt>{p.label}</dt>
+                <dd class="num">{p.value}</dd>
+              </div>
+            ))
+          }
+        </dl>
+      </div>
+    </section>
+  </Fragment>
+
+  <Section
+    id="different"
+    eyebrow="What makes it different"
+    title="A serious planner you can open up, run anywhere, and talk to."
+    intro="Glideworth shows its working, runs wherever you choose, and gives software a proper way in."
+  >
+    <FeatureGrid items={differences} />
+  </Section>
+
+  <Section id="working" tone="raised">
+    <div class="split">
+      <div class="split-copy">
+        <span class="eyebrow">Every number shows its working</span>
+        <h2 id="working-title">See the ledger behind the headline.</h2>
+        <p class="lede">
+          Each projection is a year-by-year ledger of income, spending, saving, withdrawals, returns and tax, for
+          every account and every person. Nothing is a black box.
+        </p>
+        <ul class="ticks" role="list">
+          <li>Tax by year and by jurisdiction, in today's money or future money.</li>
+          <li>Every country's estimate lists what it leaves out, next to the result.</li>
+          <li>Ask why the plan fails, where the money went in a year, or what changed between two plans.</li>
+          <li>An assumption audit flags what looks off, most severe first.</li>
+        </ul>
+      </div>
+      <Figure screenshot="results-taxes" caption="One plan year's tax, as Glideworth lays it out. Amounts are illustrative.">
+        <TaxYear />
+      </Figure>
+    </div>
+  </Section>
+
+  <Section id="agents">
+    <div class="split split-reverse">
+      <div class="split-copy">
+        <span class="eyebrow">API and MCP</span>
+        <h2 id="agents-title">Give your AI assistant a plan to work on, not your passwords.</h2>
+        <p class="lede">
+          Connect Claude or any MCP client with a key scoped to what it may do. It can read your plans, run
+          simulations and solvers, and explain the results. When it suggests a change, it writes a proposal; you
+          preview it and decide.
+        </p>
+        <ul class="ticks" role="list">
+          <li>{facts.mcpReadTools} read and compute tools; {facts.mcpWriteTools} write tools that stay off unless you enable them.</li>
+          <li>Plan edits are change sets: proposed, previewed, then applied or discarded. Nothing can be deleted over MCP.</li>
+          <li>A REST API with {facts.apiOperations} operations, scoped keys, signed webhooks and conflict-safe writes.</li>
+        </ul>
+        <p><Button href="/api/" variant="ghost" arrow>How the API and MCP server work</Button></p>
+      </div>
+      <Figure screenshot="mcp-session" caption="An assistant answering a what-if over MCP. Tool names are real; figures are illustrative.">
+        <AgentFlow />
+      </Figure>
+    </div>
+  </Section>
+
+  <Section
+    id="countries"
+    tone="raised"
+    eyebrow="Planning across borders"
+    title={`Tax estimates for ${n} countries, and for moving between them.`}
+    intro="Each country model covers stated tax years and lists its own simplifications. For households that move, the planner follows each person's residency over time (the app has a timeline editor and a stay-or-move comparison), taxes income where it is sourced, and applies treaty relief."
+  >
+    <ul class="countries" role="list">
+      {
+        facts.taxCountries.map((c) => (
+          <li>
+            <span class="code">{c.code === 'GB' ? 'UK' : c.code}</span>
+            {c.name}
+          </li>
+        ))
+      }
+    </ul>
+    <p class="countries-foot">
+      Flat or custom rates cover anywhere else. The United States includes federal tax, payroll tax, every state
+      and DC, and some cities. These are estimates, not tax advice. <a href="/planning/">How each country is modelled</a>.
+    </p>
+  </Section>
+
+  <Section
+    id="ways"
+    eyebrow="Two ways to run it"
+    title="The same planner, wherever you want it."
+    intro="The hosted service and the self-hosted build run the same open-source code. You pay for convenience, never for features."
+  >
+    <div class="ways">
+      <Card title={pricing.planName} as="h3" tone="accent">
+        <p class="way-price"><span class="num">{formatPrice(pricing.monthly)}</span> a month or <span class="num">{formatPrice(pricing.yearly)}</span> a year</p>
+        <p>
+          {site.cloudLaunched ? 'We run it' : 'Planned: we run it'}, apply engine and tax-table updates, and host the API and MCP server at a stable HTTPS
+          address with OAuth, so assistants connect without tunnels. {pricing.trialDays}-day free trial, no card needed.
+          {!site.cloudLaunched && ' The hosted service is not open yet; the software is, and you can self-host it today.'}
+        </p>
+        <Fragment slot="footer"><Button href="/pricing/" arrow>See pricing</Button></Fragment>
+      </Card>
+      <Card title="Self-hosted" as="h3">
+        <p class="way-price"><span class="num">Free</span>, with every feature</p>
+        <p>
+          One Docker container or one Node process on your own computer or server, with your data in a single
+          SQLite file. Backups are one command. No licence key, no sign-up with us, no telemetry.
+        </p>
+        <Fragment slot="footer"><Button href="/self-hosting/" variant="secondary" arrow>Self-hosting guide</Button></Fragment>
+      </Card>
+    </div>
+  </Section>
+
+  <Section id="data" tone="raised" width="wide">
+    <div class="data-grid">
+      <div>
+        <span class="eyebrow">Your data</span>
+        <h2 id="data-title">Your finances stay yours.</h2>
+      </div>
+      <dl class="data-points">
+        <div>
+          <dt>No bank connections</dt>
+          <dd>You enter balances or import files: ProjectionLab exports, bank and budgeting CSVs, OFX, QFX and QIF.</dd>
+        </div>
+        <div>
+          <dt>No telemetry</dt>
+          <dd>A self-hosted server makes no network calls except the webhooks you set up. This website loads no trackers.</dd>
+        </div>
+        <div>
+          <dt>Everything exports</dt>
+          <dd>Take your data out as JSON, CSV tables or a printable report, and import it into another instance.</dd>
+        </div>
+        <div>
+          <dt>Code you can read</dt>
+          <dd>Every rule that turns your inputs into numbers is in the open repository.</dd>
+        </div>
+      </dl>
+    </div>
+  </Section>
+
+  <CTABand />
+</PageLayout>
+
+<style>
+  .hero {
+    position: relative;
+    padding-block: clamp(2.5rem, 1.5rem + 4vw, 5.5rem) clamp(2.5rem, 2rem + 2vw, 4rem);
+    overflow: hidden;
+  }
+  .hero::before {
+    /* A faint glide path behind the hero, echoing the mark. */
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: no-repeat right -8rem top 2rem / min(70rem, 120%) auto
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400'%3E%3Cpath d='M0 40C360 40 420 360 800 360' fill='none' stroke='%232a5a4c' stroke-opacity='.08' stroke-width='2'/%3E%3C/svg%3E");
+    pointer-events: none;
+  }
+  .hero-grid {
+    position: relative;
+    display: grid;
+    gap: clamp(2.5rem, 2rem + 2vw, 4rem);
+    align-items: center;
+  }
+  @media (min-width: 64rem) {
+    .hero-grid {
+      grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    }
+  }
+  .hero-copy {
+    display: grid;
+    gap: var(--space-m);
+  }
+  .hero h1 {
+    font-size: var(--text-4xl);
+    max-width: 13em;
+  }
+  .hero h1 em {
+    font-style: italic;
+    font-weight: 480;
+    color: var(--accent-text);
+  }
+  .hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    margin-top: var(--space-2xs);
+  }
+  .hero-note {
+    font-size: var(--text-sm);
+    color: var(--ink-3);
+  }
+  .proof {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-m);
+    margin-top: clamp(2.5rem, 2rem + 2vw, 4rem);
+    padding-top: var(--space-m);
+    border-top: 1px solid var(--line);
+  }
+  @media (min-width: 48rem) {
+    .proof {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+  .proof div {
+    display: grid;
+    grid-template-rows: auto auto;
+    align-content: start;
+    gap: 0.35rem;
+  }
+  .proof dd {
+    grid-row: 1;
+  }
+  .proof dt {
+    grid-row: 2;
+  }
+  .proof dd {
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    font-weight: 520;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .proof dt {
+    font-size: var(--text-xs);
+    color: var(--ink-3);
+    max-width: 16em;
+  }
+
+  .split {
+    display: grid;
+    gap: clamp(2rem, 1.5rem + 3vw, 4.5rem);
+    align-items: center;
+  }
+  @media (min-width: 60rem) {
+    .split {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+    .split-reverse > :first-child {
+      order: 2;
+    }
+  }
+  .split-copy {
+    display: grid;
+    gap: var(--space-s);
+  }
+  .split-copy h2 {
+    font-size: var(--text-3xl);
+  }
+  .ticks {
+    display: grid;
+    gap: 0.7rem;
+    margin-top: var(--space-2xs);
+  }
+  .ticks li {
+    position: relative;
+    padding-left: 1.6rem;
+    color: var(--ink-2);
+  }
+  .ticks li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.62em;
+    width: 0.85rem;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--ochre-mark);
+  }
+
+  .countries {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+    gap: 0;
+    border-top: 1px solid var(--line-strong);
+  }
+  .countries li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.8rem;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid var(--line);
+    font-size: var(--text-base);
+  }
+  .code {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--ochre);
+    min-width: 1.6rem;
+  }
+  .countries-foot {
+    margin-top: var(--space-m);
+    color: var(--ink-2);
+    max-width: 52rem;
+  }
+
+  .ways {
+    display: grid;
+    gap: var(--space-m);
+  }
+  @media (min-width: 52rem) {
+    .ways {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  .ways :global(.card) {
+    gap: var(--space-s);
+  }
+  .ways :global(.card .btn) {
+    margin-top: var(--space-xs);
+    align-self: start;
+  }
+  .way-price {
+    color: var(--ink);
+    font-size: var(--text-lg);
+  }
+  .way-price .num {
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    font-weight: 540;
+  }
+
+  .data-grid {
+    display: grid;
+    gap: var(--space-xl);
+  }
+  @media (min-width: 60rem) {
+    .data-grid {
+      grid-template-columns: 1fr 2fr;
+    }
+  }
+  .data-grid h2 {
+    margin-top: var(--space-s);
+    font-size: var(--text-3xl);
+  }
+  .data-points {
+    display: grid;
+    gap: var(--space-l) var(--space-xl);
+  }
+  @media (min-width: 40rem) {
+    .data-points {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  .data-points dt {
+    font-weight: 640;
+    margin-bottom: 0.35rem;
+  }
+  .data-points dd {
+    color: var(--ink-2);
+    font-size: var(--text-sm);
+  }
+</style>

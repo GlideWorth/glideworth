@@ -1,0 +1,89 @@
+---
+title: "Withdrawal strategies compared: four rules, one test"
+description: "Fixed real, fixed percentage, Guyton-Klinger guardrails and VPW defined precisely, then tested side by side on income stability and depletion risk."
+pubDate: 2026-11-16
+author: [glideworth-team]
+tags: [Withdrawal rates, Retirement, Methodology]
+draft: false
+---
+
+import Callout from '../../components/Callout.astro';
+
+A withdrawal strategy is a rule for how much to take from a portfolio each year. The four classic rules sit on a line between two goals. One end holds your income steady and risks running out of money. The other end never runs out and lets your income move with the market. **Fixed real** withdrawals are at the first end, **fixed percentage** at the second, and **Guyton-Klinger guardrails** and **variable percentage withdrawal (VPW)** are two ways of trading between them. This article defines each rule precisely, cites where it comes from, and runs all four through the same simulation so the trade-off is measured, not described.
+
+<Callout type="note" title="Education, not advice">
+  This article describes published rules and tests them on an assumed market model. It does not recommend any rule.
+  See the [not-advice notice](/legal/disclaimer/).
+</Callout>
+
+## The four rules, defined
+
+### 1. Constant real dollars ("fixed real")
+
+Year 1: withdraw a chosen percentage of the starting portfolio. Every later year: withdraw the same amount raised by inflation. The portfolio's value is never consulted. This is the rule inside the studies behind the "4% rule". In William Bengen's ["Determining Withdrawal Rates Using Historical Data"](https://www.financialplanningassociation.org/sites/default/files/2021-04/MAR04%20Determining%20Withdrawal%20Rates%20Using%20Historical%20Data.pdf) (*Journal of Financial Planning*, October 1994), a first-year withdrawal is "followed by inflation-adjusted withdrawals in subsequent years". Its strength is predictable spending. Its weakness is that it keeps taking the same amount from a shrinking portfolio. The [FIRE number article](/blog/what-is-your-fire-number/) covers what the studies found.
+
+### 2. A fixed percentage of the portfolio
+
+Every year: withdraw a fixed percentage, such as 4%, of the portfolio's current value. The portfolio can fall but cannot reach zero, because each year's withdrawal is a fraction of what is left. The cost is that income moves with the portfolio: a 25% fall in value is a 25% fall in the next year's income. Glideworth calls this rule "fixed percent".
+
+### 3. Guyton-Klinger guardrails
+
+Jonathan Guyton's ["Decision Rules and Portfolio Management for Retirees: Is the 'Safe' Initial Withdrawal Rate Too Safe?"](https://www.financialplanningassociation.org/sites/default/files/2020-05/6%20Decision%20Rules%20and%20Portfolio%20management%20for%20Retirees%20Is%20Safe%20Initial%20Withdrawal%20Rate%20Too%20Safe.pdf) (*Journal of Financial Planning*, October 2004) and Guyton and William Klinger's ["Decision Rules and Maximum Initial Withdrawal Rates"](https://www.financialplanningassociation.org/sites/default/files/2021-11/2006%20-%20Guyton%20and%20Klinger%20-%20Decision%20Rules%20and%20SWR%20(1).PDF) (March 2006) set out a group of decision rules. In the 2006 form:
+
+- **Withdrawal rule.** Withdrawals rise each year with inflation, except that there is no increase after a year in which the portfolio's total return was negative and that year's withdrawal rate would be greater than the initial withdrawal rate. There is no make-up for a missed increase.
+- **Capital preservation rule.** If the current year's withdrawal rate has risen more than 20% above the initial rate, the withdrawal is cut by 10%. The rule expires 15 years before the maximum age the retiree wants to plan for.
+- **Prosperity rule.** If the current year's withdrawal rate is more than 20% below the initial rate, the withdrawal is raised by 10%.
+- **Portfolio management rule.** Governs which assets are drawn on for the year's income. (The 2004 paper lists it with the rules for the sources of annual withdrawals.)
+
+The authors describe the capital preservation and prosperity rules as "guardrails" that act under extreme conditions, and note that unless the withdrawal rate strays more than 20% from the initial rate, the other rules govern. A worked decision: a household starts with 1,000,000 and spends 50,000, an initial rate of 5%. After a bad year, inflation lifts the planned spending to 51,000 while the portfolio has fallen to 760,000. The current rate is 51,000 ÷ 760,000 = 6.7%, above the upper guardrail of 5% × 1.2 = 6%. The rule cuts spending by 10% to 45,900. The portfolio value at which the cut would trigger is 51,000 ÷ 6% = 850,000.
+
+The 2006 paper reports that, for portfolios with at least 65% in equities, initial withdrawal rates of 5.2% to 5.6% were sustainable over 40 years at its 99% confidence standard, rising to 5.7% to 6.2% at 95%. That used Monte Carlo analysis on a 40-year horizon with multi-asset-class equity data, and the authors' definition of success includes keeping purchasing power. It is not comparable to a 30-year, US-history 4% figure. The authors' preliminary work suggests the key trade-off is between the initial withdrawal rate and the purchasing power maintained, rather than the probability of success.
+
+### 4. Variable percentage withdrawal (VPW)
+
+VPW takes a percentage of the current balance, as the fixed-percentage rule does, but the percentage rises as the remaining horizon shortens. In the community description, each year's withdrawal is that year's percentage multiplied by the current portfolio balance, with the percentage read from a table by age and asset allocation. The [finiki page on VPW](https://www.finiki.org/wiki/Variable_percentage_withdrawal) says it was developed collaboratively by members of the Bogleheads investing forum, and that its worksheet stops the percentage growing past 10%. The page also recommends pairing it with guaranteed income and describes it as adapting withdrawals to the retirement horizon.
+
+The idea behind such a table can be written as an amortisation: the percentage that would spend the portfolio exactly over the remaining `n` years at an assumed real return `r`, with withdrawals at the start of each year, is `r ÷ ((1 + r) × (1 − (1 + r)^−n))`. For 30 years at 3% that is 4.95%, then 5.1% a year later, and so on, up to 100% in the final year. That formula is a simplified stand-in, not the Bogleheads table, which has its own asset assumptions and caps.
+
+## A side-by-side test
+
+All four rules were run on the same 10,000 simulated 30-year retirements. The market model is the one used in the [Monte Carlo article](/blog/monte-carlo-retirement-simulations/): real returns that are log-normal with an arithmetic average of 5% and a standard deviation of 12%, drawn independently each year, seed 2026. Starting portfolio 1,000,000, with 40,000 the target first-year spending (4%). Withdrawals are taken at the start of each year. There are no taxes, fees or other income. Inflation is a constant 2.5%, which matters only for Guyton-Klinger's freeze.
+
+How each rule was implemented: *fixed real* takes 40,000 a year in today's money; *fixed percentage* takes 4% of the current balance; *Guyton-Klinger* starts at 4%, applies the inflation-freeze rule, a cut of 10% when the rate exceeds 120% of the initial rate (switched off after year 15) and a raise of 10% when it is below 80% of it, using a single asset so that the portfolio management rule does not apply; *VPW-style* uses the amortisation percentage above with a 3% assumed return and a 30-year horizon. Amounts are in today's money.
+
+| Rule | Year-1 income | Median year-15 income | 10th percentile, year 15 | 10th percentile, year 30 | Trials with income below 30,000 in any year | Median largest one-year cut |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Fixed real | 40,000 | 40,000 | 40,000 | 0 | 12.5% | 0% |
+| Fixed percentage (4%) | 40,000 | 41,185 | 23,552 | 19,119 | 54.1% | 20.1% |
+| Guyton-Klinger | 40,000 | 39,645 | 23,933 | 24,091 | 29.9% | 10.0% |
+| VPW-style | 49,533 | 59,712 | 34,146 | 32,821 | 18.2% | 19.2% |
+
+In the fixed real rule, 12.9% of the trials could not pay a full year of spending at some point, which is the equivalent of a 87.1% success rate. A second seed (7) gave similar values: for fixed percentage, a median year-15 income of 40,939 and 53.3% of trials with income below 30,000. The [retirement withdrawal calculator](/tools/retirement-withdrawal-calculator/) runs the four rules side by side with your own inputs.
+
+### What the table shows
+
+- **Fixed real is stable until it fails.** The median trial never cuts income, and the 10th percentile is still 40,000 in year 15. But about one trial in eight runs short, and when it does, income falls to zero, not by a tenth.
+- **Fixed percentage never runs out and gives up stability.** The typical worst single-year cut is a fifth of income, and more than half of trials see income dip below 30,000 at some point, a 25% fall from the start.
+- **Guyton-Klinger buys steadiness with rules.** Its largest typical cut is 10%, by design, and fewer trials dip below 30,000 than under a fixed percentage. On a bad path it pays less than fixed real does while fixed real is still funded (10th percentile 23,933 in year 15 against 40,000), but in this test it does not collapse to zero.
+- **VPW-style starts higher and spends down.** Its first year is 49,533 because the rule is built to use the portfolio over the horizon: the median trial ends with nothing, by construction. Of the three rules that adjust income, it has the highest 10th-percentile income at both dates, because its percentage rises as the horizon shrinks. It suits a retiree with no plan to leave the portfolio to others, and a pension or other income as a floor.
+
+### Limits of this test
+
+The results depend on the model. A different average return, volatility or horizon changes every row, and a 5% start for Guyton-Klinger, closer to what its authors tested, would change that row. Independent annual returns understate runs of bad years. The Guyton-Klinger implementation is a simplified reading of the rules as described above, with one asset class. Taxes and fees would reduce every row. The point of the table is the pattern: where each rule puts its risk, not any ranking.
+
+## Choosing between them
+
+The trade-off has three parts, and each person weighs them differently:
+
+1. **Income stability.** How much does a cut in income hurt, and how much of spending is fixed?
+2. **Depletion risk.** How bad is running out, and is there a fallback such as a state pension?
+3. **What is left.** Whether you want a remainder for others, or a plan that uses the money.
+
+A rule that adjusts spending, however simple, handles a bad sequence in a different way from a rule that does not. The [article on how long money lasts](/blog/how-long-will-my-money-last/) shows with a small computed example why the order of returns matters when money is being withdrawn.
+
+Glideworth models these rules and more: fixed amount, initial percent, fixed percent, 1/N, VPW, ratcheting, a Clyatt 95% floor and Guyton-Klinger with a configurable guardrail (20%) and adjustment (10%), each with an optional floor and ceiling. It also offers risk-based guardrails, which react to the plan's chance of success. The [withdrawal strategies page](/features/withdrawal-strategies/) describes them, and over MCP a `guyton_klinger` tool states the portfolio level at which a cut or raise applies. The hosted service is about to open. The free [retirement withdrawal calculator](/tools/retirement-withdrawal-calculator/) compares the four rules for simple cases.
+
+<FAQ items={[
+  { q: 'Is Guyton-Klinger the same as guardrails?', a: '<p>Guyton and Klinger describe two of their rules as guardrails, and the name is now used for any rule that changes spending when a trigger is crossed. Glideworth also has risk-based guardrails that trigger on the chance of success, not on the withdrawal rate.</p>' },
+  { q: 'Can a percentage-of-portfolio rule fail?', a: '<p>It cannot reach zero, because each withdrawal is a share of what remains. But income can fall to a level that does not cover spending, which is a failure of a different kind.</p>' },
+]} />

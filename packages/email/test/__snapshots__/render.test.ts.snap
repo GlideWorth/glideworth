@@ -1,0 +1,408 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`templates > account-deleted > text snapshot 1`] = `
+"Subject: Your Glideworth workspace has been deleted
+
+Glideworth
+
+Your workspace has been deleted
+
+Hello Sam Example,
+
+Your workspace "Sample household" was deleted on 16 November 2026.
+
+We deleted its live database at once and destroyed the key that encrypts its backups, so every backup copy is now unreadable.
+
+The encrypted backup files are removed from storage by 16 December 2026.
+
+If you did not ask for this, write to support@example.test straight away.
+
+--
+Glideworth
+Questions? Write to support@example.test.
+This is a service email about your account, so you cannot unsubscribe from it.
+"
+`;
+
+exports[`templates > checkin-summary > text snapshot 1`] = `
+"Subject: Your scheduled Glideworth check-in is ready
+
+Glideworth
+
+Your check-in is ready
+
+Hello,
+
+Your scheduled check-in has finished. We checked 3 plans.
+
+What changed:
+
+- The chance of success moved on at least one plan.
+- A milestone slipped on at least one plan.
+- At least one plan is behind plan.
+- There is a new assumption finding.
+
+See the details:
+https://app.example.test/checkins/latest?t=sample-token
+
+--
+Glideworth
+Questions? Write to support@example.test.
+You get this because check-in emails are switched on. Unsubscribe: https://app.example.test/email/unsubscribe?t=sample-token
+"
+`;
+
+exports[`templates > deletion-warning > text snapshot 1`] = `
+"Subject: Your Glideworth workspace will be deleted
+
+Glideworth
+
+Your workspace will be deleted
+
+Hello Sam Example,
+
+Your workspace "Sample household" has no active subscription. It will be deleted on 16 November 2027, in 30 days, together with everything in it.
+
+Subscribing again before that date keeps the workspace and everything in it.
+
+Subscribe to keep your workspace:
+https://app.example.test/billing?t=sample-token
+
+Or download a copy of your data first:
+https://app.example.test/settings/workspace?t=sample-token
+
+--
+Glideworth
+Questions? Write to support@example.test.
+This is a service email about your account, so you cannot unsubscribe from it.
+"
+`;
+
+exports[`templates > email-change-confirm > text snapshot 1`] = `
+"Subject: Confirm your new email address
+
+Glideworth
+
+Confirm your new email address
+
+Hello Sam Example,
+
+You asked to change the email address on your Glideworth account to sam.new@example.test. Please confirm that this address is yours.
+
+Confirm new email address:
+https://app.example.test/confirm-email?t=sample-token
+
+This link works for 24 hours. If you did not ask for this, ignore this email and nothing will change.
+
+--
+Glideworth
+Questions? Write to support@example.test.
+This is a service email about your account, so you cannot unsubscribe from it.
+"
+`;
+
+exports[`templates > export-ready > text snapshot 1`] = `
+"Subject: Your Glideworth export is ready
+
+Glideworth
+
+Your export is ready
+
+Hello Sam Example,
+
+The export of your workspace is ready. It is a copy of your data that you can run yourself.
+
+Download your export:
+https://app.example.test/exports/sample?t=sample-token
+
+The link can be used once and expires at 17 November 2026, 09:14 UTC. You need to be signed in to download it.
+
+If you did not ask for an export, change your password and contact us.
+
+--
+Glideworth
+Questions? Write to support@example.test.
+This is a service email about your account, so you cannot unsubscribe from it.
+"
+`;
+
+exports[`templates > invitation > text snapshot 1`] = `
+"Subject: You have been invited to a Glideworth workspace
+
+Glideworth
+
+You have been invited to a workspace
+
+Robin Sample has invited you to join the workspace "Sample household" on Glideworth as an editor, who can change plans and settings.
+
+View the invitation:
+https://app.example.test/invitations/accept?t=sample-token
+
+The invitation expires in 7 days. You need a Glideworth account with this email address to accept it; if you do not have one yet, you can create one first.
+
+If you were not expecting this, you can ignore this email.
+
+--
+Glideworth
+Questions? Write to support@example.test.
+This is a service email about your account, so you cannot unsubscribe from it.
+"
+`;
+
+exports[`templates > password-reset > text snapshot 1`] = `
+"Subject: Reset your Glideworth password
+
+Glideworth
+
+Reset your password
+
+Hello Sam Example,
+
+We received a request to reset the password for your Glideworth account.
+
+Choose a new password:
+https://app.example.test/reset?t=sample-token
+
+This link works for 30 minutes and can be used once. If you did not ask for this, ignore this email and your password will stay as it is.
+
+--
+Glideworth
+Questions? Write to support@example.test.
+This is a service email about your account, so you cannot unsubscribe from it.
+"
+`;
+
+exports[`templates > payment-problem > text snapshot 1`] = `
+"Subject: Action needed: your Glideworth payment did not go through
+
+Glideworth
+
+Your payment did not go through
+
+Hello Sam Example,
+
+We could not take your latest payment for Glideworth. This is usually an expired card or a bank block.
+
+Update your payment details:
+https://app.example.test/billing/portal?t=sample-token
+
+If this is not sorted out by 30 November 2026, your workspace will become read-only: you will still be able to look at your plans and export your data, but not change them. Nothing is deleted.
+
+--
+Glideworth
+Questions? Write to support@example.test.
+This is a service email about your account, so you cannot unsubscribe from it.
+"
+`;
+
+exports[`templates > payment-receipt > text snapshot 1`] = `
+"Subject: Your Glideworth receipt
+
+Glideworth
+
+Thank you for your payment
+
+Hello Sam Example,
+
+We received your payment of £8.00. Thank you.
+
+View your invoice:
+https://app.example.test/invoices/in_sample?t=sample-token
+
+--
+Glideworth
+Questions? Write to support@example.test.
+This is a service email about your account, so you cannot unsubscribe from it.
+"
+`;
+
+exports[`templates > renewal-reminder > text snapshot 1`] = `
+"Subject: Your Glideworth subscription renews soon
+
+Glideworth
+
+Your subscription renews soon
+
+Hello Sam Example,
+
+Your annual subscription renews on 30 November 2026. The payment method on your account will be charged then.
+
+You can see the amount, change your payment method or cancel before that date on your billing page. If you cancel, you keep access until the end of the period you have paid for.
+
+If you are charged and do not want the renewal, you can ask for a full refund within 14 days of the charge.
+
+Open your billing page:
+https://app.example.test/billing?t=sample-token
+
+--
+Glideworth
+Questions? Write to support@example.test.
+This is a service email about your account, so you cannot unsubscribe from it.
+"
+`;
+
+exports[`templates > security-change > text snapshot 1`] = `
+"Subject: A security setting changed on your Glideworth account
+
+Glideworth
+
+A security setting changed
+
+Hello Sam Example,
+
+Your password was changed.
+
+This happened at 16 November 2026, 09:14 UTC.
+
+If you made this change, there is nothing to do.
+
+If you did not, secure your account here and then contact us:
+https://app.example.test/settings/security?t=sample-token
+
+--
+Glideworth
+Questions? Write to support@example.test.
+This is a service email about your account, so you cannot unsubscribe from it.
+"
+`;
+
+exports[`templates > signin-alert > text snapshot 1`] = `
+"Subject: New sign-in to your Glideworth account
+
+Glideworth
+
+New sign-in to your account
+
+Hello Sam Example,
+
+We noticed a sign-in to your Glideworth account from a device we have not seen before.
+
+When: 16 November 2026, 09:14 UTC
+Device: Firefox on Linux
+IP address: 203.0.113.7
+
+If this was you, there is nothing to do.
+
+If it was not you, sign out the other devices and change your password here:
+https://app.example.test/settings/sessions?t=sample-token
+
+--
+Glideworth
+Questions? Write to support@example.test.
+This is a service email about your account, so you cannot unsubscribe from it.
+"
+`;
+
+exports[`templates > signup-existing-account > text snapshot 1`] = `
+"Subject: You already have a Glideworth account
+
+Glideworth
+
+You already have an account
+
+Someone, probably you, tried to sign up to Glideworth with this email address. There is already an account for it, so we did not create a new one.
+
+Sign in:
+https://app.example.test/signin?t=sample-token
+
+If you have forgotten your password, you can reset it here:
+https://app.example.test/forgot?t=sample-token
+
+If this was not you, you do not need to do anything. Your account has not been changed.
+
+--
+Glideworth
+Questions? Write to support@example.test.
+This is a service email about your account, so you cannot unsubscribe from it.
+"
+`;
+
+exports[`templates > subscription-canceled > text snapshot 1`] = `
+"Subject: Your Glideworth subscription is cancelled
+
+Glideworth
+
+Your subscription is cancelled
+
+Hello Sam Example,
+
+Your Glideworth subscription is cancelled. You keep full access until 31 December 2026.
+
+After that your workspace becomes read-only. Nothing is deleted, and you can export your data at any time.
+
+Resubscribe:
+https://app.example.test/billing?t=sample-token
+
+--
+Glideworth
+Questions? Write to support@example.test.
+This is a service email about your account, so you cannot unsubscribe from it.
+"
+`;
+
+exports[`templates > trial-ending > text snapshot 1`] = `
+"Subject: Your Glideworth trial ends soon
+
+Glideworth
+
+Your trial ends soon
+
+Hello Sam Example,
+
+Your free trial ends on 23 November 2026.
+
+After that your workspace becomes read-only: you can still look at your plans and export your data, but you cannot change anything. Nothing is deleted.
+
+Subscribe to keep editing:
+https://app.example.test/billing?t=sample-token
+
+--
+Glideworth
+Questions? Write to support@example.test.
+This is a service email about your account, so you cannot unsubscribe from it.
+"
+`;
+
+exports[`templates > trial-expired > text snapshot 1`] = `
+"Subject: Your Glideworth trial has ended
+
+Glideworth
+
+Your trial has ended
+
+Hello Sam Example,
+
+Your free trial has ended, so your workspace is now read-only. You can still look at your plans and export your data. Nothing has been deleted.
+
+Subscribe to keep editing:
+https://app.example.test/billing?t=sample-token
+
+--
+Glideworth
+Questions? Write to support@example.test.
+This is a service email about your account, so you cannot unsubscribe from it.
+"
+`;
+
+exports[`templates > verify-email > text snapshot 1`] = `
+"Subject: Confirm your email address for Glideworth
+
+Glideworth
+
+Confirm your email address
+
+Hello Sam Example,
+
+Please confirm your email address to finish setting up your Glideworth account.
+
+Confirm email address:
+https://app.example.test/verify?t=sample-token
+
+This link works for 24 hours. If you did not create an account, you can ignore this email.
+
+--
+Glideworth
+Questions? Write to support@example.test.
+This is a service email about your account, so you cannot unsubscribe from it.
+"
+`;

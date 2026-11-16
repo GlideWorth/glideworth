@@ -1,0 +1,27 @@
+---
+title: Self-hosting troubleshooting
+description: Fix a container that is unhealthy, sign-in loops behind HTTPS, throttling, imports that fail with 413, blocked webhooks, restore errors and slow simulations.
+section: Self-hosting
+order: 6
+lastChecked: 2026-11-16
+---
+
+| Symptom | Check |
+| --- | --- |
+| Container is "unhealthy" or exits | `docker compose logs glideworth`. The health check requests `/health` inside the container. A bad value in `.env` makes the server refuse to start and say which. |
+| Port already in use | Another process uses 8787. Set `GLIDEWORTH_PORT` to a free port in `.env` and run `docker compose up -d`. |
+| "Setup token" is rejected | The value must equal `GLIDEWORTH_SETUP_TOKEN` exactly. Wrong tokens count towards the sign-in throttle; wait for the window to pass. |
+| Cannot sign in over HTTPS, redirects back to the sign-in page | Set `GLIDEWORTH_TRUST_PROXY=true` and make sure the proxy sends `X-Forwarded-Proto: https`; leave `GLIDEWORTH_COOKIE_SECURE=auto`. |
+| "Too many attempts" | Sign-in throttling (`GLIDEWORTH_LOGIN_MAX_ATTEMPTS` in `GLIDEWORTH_LOGIN_WINDOW_MINUTES`). Wait. Behind a proxy without `GLIDEWORTH_TRUST_PROXY=true`, all users look like one client and share the limit. |
+| Everything is empty after an upgrade | You started a different volume. Check `docker volume ls` and that the compose project name did not change (run from the same directory). Restore a backup if needed. |
+| Imports fail with 413 | The body is larger than `GLIDEWORTH_MAX_BODY_MB`. Raise it, and raise `client_max_body_size` in nginx. |
+| A webhook to an internal address is blocked | By design. Set `GLIDEWORTH_WEBHOOK_ALLOW_PRIVATE=true` only if you trust everyone with webhook access. |
+| Restore says "not a ... database" or fails an integrity check | The file is not a Glideworth backup or is corrupt. Try an earlier backup. |
+| An MCP client cannot connect | The URL is `https://<your host>/mcp` with `Authorization: Bearer <key>`. Check the key's scope, and for OAuth clients that `GLIDEWORTH_PUBLIC_URL` is correct. |
+| Simulations are slow | Lower the trial count, or give the container more CPUs. See [Sizing](/docs/self-hosting/docker/#sizing). |
+| Docker build fails on `better-sqlite3` | The image compiles it when no prebuilt binary exists for your platform. Make sure the build has network access and enough memory (2 GB). |
+| Forgot the passphrase | `docker compose exec glideworth node dist/cli/admin.js reset-owner-passphrase` prints a one-time token. In the app choose "Use a reset token". |
+
+If you are stuck, collect `docker compose logs --tail 200 glideworth` and the output of `docker compose ps`, remove anything
+personal, and ask in GitHub Discussions. Never post real financial data, passphrases or API keys. Security problems go to the
+private reporting route in the repository's `SECURITY.md`, not to a public issue.

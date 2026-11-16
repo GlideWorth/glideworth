@@ -1,0 +1,33 @@
+{
+  "name": "@glideworth/importers",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Importers (ProjectionLab JSON, CSV) and exporters for Glideworth documents. Pure TS; browser + Node.",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "@glideworth/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "cli": "tsx --conditions=@glideworth/source cli/main.ts",
+    "gen:mapping-doc": "tsx --conditions=@glideworth/source scripts/gen-mapping-doc.ts"
+  },
+  "dependencies": {
+    "@glideworth/core": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "4.23.15"
+  }
+}

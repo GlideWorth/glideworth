@@ -1,0 +1,85 @@
+---
+/**
+ * Plan history with a what-if branch. Version numbers, names and the change are ILLUSTRATIVE; the
+ * mechanics (append-only versions, a branch that stores only its differences and follows its parent,
+ * a change set applied as a new version) are the product's.
+ */
+---
+
+<figure class="bt">
+  <svg viewBox="0 0 640 190" role="img" aria-label="Plan history: versions 1 to 4 of the main plan, a branch called Retire at 57 created from version 3 that follows the parent, and an applied change set making version 5.">
+    <line x1="40" y1="52" x2="560" y2="52" class="trunk" />
+    {
+      [
+        [40, 'v1', 'created'],
+        [180, 'v2', 'edited'],
+        [320, 'v3', 'edited'],
+        [460, 'v4', 'edited'],
+        [600, 'v5', 'change set'],
+      ].map(([x, v, l]) => (
+        <g>
+          <circle cx={x as number} cy="52" r="9" class="node" />
+          <text x={x as number} y="56" text-anchor="middle" class="v">{(v as string).slice(1)}</text>
+          <text x={x as number} y="30" text-anchor="middle" class="l">{v}: {l}</text>
+        </g>
+      ))
+    }
+    <line x1="560" y1="52" x2="591" y2="52" class="trunk" />
+    <path d="M320 61 C 320 110, 340 128, 380 128 L 540 128" class="branch" />
+    <circle cx="380" cy="128" r="6" class="bnode" />
+    <circle cx="540" cy="128" r="6" class="bnode" />
+    <text x="380" y="154" text-anchor="middle" class="l">branch: Retire at 57</text>
+    <text x="380" y="170" text-anchor="middle" class="s">stores only its differences</text>
+    <text x="540" y="154" text-anchor="middle" class="l">follows the parent</text>
+    <text x="540" y="170" text-anchor="middle" class="s">picks up v4 and v5</text>
+  </svg>
+  <figcaption>Illustrative. History is append-only: undo is a new version holding old content.</figcaption>
+</figure>
+
+<style>
+  .bt {
+    padding: clamp(0.75rem, 0.6rem + 1vw, 1.25rem);
+    background: var(--surface);
+    display: grid;
+    gap: 0.4rem;
+  }
+  svg {
+    width: 100%;
+    height: auto;
+  }
+  .trunk {
+    stroke: var(--line-strong);
+    stroke-width: 2;
+  }
+  .node {
+    fill: var(--ink);
+  }
+  .v {
+    font: 600 10px var(--font-sans);
+    fill: var(--bg);
+  }
+  .l {
+    font: 600 11px var(--font-sans);
+    fill: var(--ink-2);
+  }
+  .s {
+    font: 10px var(--font-sans);
+    fill: var(--ink-3);
+  }
+  .branch {
+    fill: none;
+    stroke: var(--accent-text);
+    stroke-width: 2;
+    stroke-dasharray: 5 4;
+  }
+  .bnode {
+    fill: var(--accent-soft);
+    stroke: var(--accent-text);
+    stroke-width: 1.5;
+  }
+  figcaption {
+    font-size: var(--text-xs);
+    font-style: italic;
+    color: var(--ink-3);
+  }
+</style>

@@ -1,0 +1,71 @@
+---
+title: FAQ and troubleshooting
+description: Quick answers on accuracy, privacy, tax estimates, chance of success, importing, AI assistants, self-hosting and the hosted service, with fixes for common problems.
+section: Reference
+order: 5
+lastChecked: 2026-11-16
+---
+
+import { facts } from '../../../lib/facts';
+
+<FAQ
+  as="h2"
+  items={[
+    {
+      q: 'Is Glideworth financial advice?',
+      a: '<p>No. It is a planning tool. It does not know your circumstances, your tax residence in detail or your risk tolerance. Talk to a regulated adviser before acting on a projection.</p>',
+    },
+    {
+      q: 'How accurate are the tax figures?',
+      a: `<p>They are estimates. The engine has a national tax model for ${facts.taxCountryCount} countries, built from stated tax-year tables and simplified rules, and each country lists what its estimate leaves out. No country has been checked against every official calculator. Treat a figure as an estimate and check anything you will act on. See <a href="/docs/methodology/known-limitations/">Known limitations</a>.</p>`,
+    },
+    {
+      q: 'What does "85% chance of success" mean?',
+      a: '<p>By default, 85 of 100 replays of your plan against different market histories funded every year of spending. It is a stress test of how fragile the plan is, not a probability of the future. See <a href="/docs/methodology/monte-carlo/">Monte Carlo and historical replay</a>.</p>',
+    },
+    {
+      q: 'Why does my result differ from another planner?',
+      a: '<p>Planners make different choices: when in the year money moves (cash-flow timing), how inflation and tax are applied, and which market history is used. Glideworth states its choices on <a href="/docs/methodology/how-projections-work/">How a projection is computed</a>. Two tools giving different answers for the same inputs is expected.</p>',
+    },
+    {
+      q: 'Why do the first and last years look odd?',
+      a: '<p>The plan starts in the month your balances are dated and ends at its horizon, so those years often cover fewer than 12 months. They are labelled, for example "2026*", and an Annualised switch scales them to a full year.</p>',
+    },
+    {
+      q: 'Does Glideworth send my data anywhere?',
+      a: '<p>The self-hosted server has no telemetry and makes no outbound connections other than webhooks you configure. The API reference page at /docs loads its viewer script from a public CDN. An AI assistant you connect sees what its tools return, and its model provider sees that data too; use a local model if that matters.</p>',
+    },
+    {
+      q: 'Does it connect to my bank?',
+      a: '<p>No. You enter balances, or import a CSV, an OFX, QFX or QIF file, or a ProjectionLab export. Direct balance sync is not built.</p>',
+    },
+    {
+      q: 'Can I import from ProjectionLab?',
+      a: '<p>Yes. Export your data as JSON from ProjectionLab and use Import &amp; export, then From ProjectionLab. The report says what mapped exactly, what was approximated and what has no equivalent. See <a href="/docs/importing/projectionlab/">Import from ProjectionLab</a>.</p>',
+    },
+    {
+      q: 'Can an AI assistant change my plan?',
+      a: '<p>Only if you enable write tools on the server and give its key write scope. Even then, plan edits are proposals you preview and approve, and nothing can be deleted. See <a href="/docs/api-and-mcp/mcp-overview/">the MCP safety model</a>.</p>',
+    },
+    {
+      q: 'I forgot my passphrase.',
+      a: '<p>There is no email reset. On the host, run <code>docker compose exec glideworth node dist/cli/admin.js reset-owner-passphrase</code>. It prints a one-time token; in the app choose "Use a reset token".</p>',
+    },
+    {
+      q: 'I cannot sign in over HTTPS.',
+      a: '<p>Set <code>GLIDEWORTH_TRUST_PROXY=true</code> and make sure your proxy sends <code>X-Forwarded-Proto: https</code>. See <a href="/docs/self-hosting/troubleshooting/">Self-hosting troubleshooting</a>.</p>',
+    },
+    {
+      q: 'My MCP client shows no write tools.',
+      a: '<p>The server flag <code>GLIDEWORTH_MCP_ALLOW_WRITES</code> is off, or the key lacks write scope. Reconnect after changing either.</p>',
+    },
+    {
+      q: 'Is self-hosting missing anything the hosted service has?',
+      a: '<p>No. The self-hosted build is the whole product, with no licence key. The hosted service is the same software, run for you, and it is not open yet. See <a href="/docs/hosted/hosted-service/">the hosted service</a>.</p>',
+    },
+    {
+      q: 'How do I move between self-hosted and hosted?',
+      a: '<p>Export a household as JSON and import it on the other side. See <a href="/docs/importing/glideworth-json/">Glideworth JSON backup and restore</a>.</p>',
+    },
+  ]}
+/>

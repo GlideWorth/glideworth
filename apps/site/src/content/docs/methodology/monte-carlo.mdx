@@ -1,0 +1,87 @@
+---
+title: Monte Carlo and historical replay
+description: How the chance of success is computed, with sampling methods, seeds, what counts as success, failure analysis, and a comparison with FIRECalc.
+section: Reference
+order: 2
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+
+The chance of success replays your plan many times, each time with a different sequence of market returns,
+dividends and inflation, and counts how often the plan succeeds. Every trial is a full run of the same engine used
+for the deterministic projection.
+
+## What varies and what does not
+
+Only the market varies: stock and bond returns, dividends, inflation, and optionally exchange rates. Your income,
+spending, tax rules and dates are the plan's, in every trial. Crypto has no long history, so historical runs draw
+it from a distribution.
+
+## Sampling methods
+
+| In the app | Method | How a trial is built |
+| --- | --- | --- |
+| Historical, random start years | `historical-random-restart` (the default) | Starts in a random historical year and restarts at a random year when the data runs out. |
+| Historical, every start year | `historical-sequential` | One trial per historical start year, with no looping. The number of trials is set by the data. |
+| Block bootstrap | `block-bootstrap` | Stitches random blocks of consecutive historical years (block length 1 to 30 years, default 5). |
+| Random (normal distributions) | `normal` | Independent draws from correlated normal distributions for stocks, bonds and inflation. Optional log-normal shape (returns cannot fall below minus 100 percent) and fat tails (a Student-t with 2.5 to 1,000 degrees of freedom, keeping the standard deviation). |
+
+Trials run from 1 to 10,000, default 1,000. A series switched off for variation uses the deterministic
+projection's rates. Datasets are described on [Historical data](/docs/methodology/historical-data/).
+
+## Seeds and reproducibility
+
+The random number generator is seeded, and each trial derives its own seed from the run's seed and the trial number.
+Two consequences:
+
+- The same seed gives the same answer. Splitting a run across worker threads and merging the slices gives exactly the
+  result of a single-threaded run.
+- Through the API and MCP, a run without a seed uses a fixed default seed, so "same plan, change one number" compares
+  like with like and repeat requests come from cache. Ask for a fresh seed with `randomSeed: true` on the API.
+
+In the plan editor's Chance of success section, "Random seed" is either "New each run" or "Fixed" with a value. A
+fresh seed is recorded in the result so a run can be repeated.
+
+## What counts as success
+
+The default is **every year funded**: a trial succeeds if every year's spending was fully funded. The engine supports
+four definitions:
+
+| Definition | Success means |
+| --- | --- |
+| `all-funded` | No unfunded shortfall in any year. |
+| `liquid-floor` | Liquid net worth never drops below a floor you set (today's money). |
+| `never-depleted` | Liquid net worth stays above zero (spending may still have been cut). |
+| `end-floor` | The final value of liquid net worth or net worth is at least a floor (shortfalls along the way allowed). |
+
+The app's "Success means" control offers "Every year funded" and "Savings above a floor". Results also sort trials into
+outcome categories: large surplus, comfortable, barely made it, almost made it, failed in the middle and failed early.
+
+## What the results include
+
+Percentile bands for every series (in today's money and nominal), the success rate, the outcome categories, a histogram
+of the years in which failing trials first run short, milestone timing across trials, and sequence-of-returns buckets
+(success by the returns in the first years, default 10, adjustable from 1 to 40). It also keeps representative best,
+worst, median, 10th and 90th percentile trials so you can inspect one simulated future in full.
+
+## Exchange-rate risk
+
+Off by default. When on, each foreign currency gets a yearly volatility and a correlation. Zero volatility reproduces
+the deterministic run.
+
+## How it was checked
+
+The engine's Monte Carlo was compared with FIRECalc on one case: a 60/40 portfolio of 1,000,000 dollars, 4 percent
+inflation-adjusted withdrawals, 30 years and 0.18 percent fees. FIRECalc, on US data from 1871, gave 96.8 percent: 4 of
+126 cycles failed. Glideworth's bundled US data starts in 1928, so it has 69 cycles. With cash-flow timing at `start`
+(FIRECalc's convention) 4 of them fail, all mid-1960s starts: 94.2 percent. Counting FIRECalc's 57 earlier cycles,
+which all succeed, as successes gives 96.8 percent. At `mid` (the default) the result is 95.7 percent and at `end`
+98.6 percent; the spread shows how much the timing convention alone matters. It is one comparison, not a published
+validation report.
+
+<Callout type="warning" title="What this does not do">
+  Past returns do not predict the future. A plan that works in every historical replay can still fail, and one that
+  fails in some can work. Randomised lifespan and care costs are not sampled inside the Monte Carlo (you set a life
+  expectancy). A solver's search is not itself spread across workers; a single evaluation runs in one thread.
+</Callout>

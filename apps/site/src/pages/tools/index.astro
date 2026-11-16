@@ -1,0 +1,172 @@
+---
+import Callout from '../../components/Callout.astro';
+import { page } from '../../config/pages';
+import PageLayout from '../../layouts/PageLayout.astro';
+import { TAX_COUNTRIES } from '../../tools/engine/model';
+import { TOOLS } from '../../tools/registry';
+
+const groups = [
+  { id: 'fire', title: 'Financial independence', intro: 'How much is enough, and when you get there.' },
+  { id: 'retirement', title: 'Drawing down in retirement', intro: 'How long a portfolio lasts and how to take money out of it.' },
+] as const;
+---
+
+<PageLayout
+  {...page('/tools/')}
+  heading="Free retirement and FIRE calculators"
+  eyebrow="Free tools"
+  lede="Calculators that run the same planning engine as Glideworth, in your browser, with no sign-up. Nothing you type is sent anywhere, and every result links to the method behind it."
+  crumbs={[{ label: 'Free tools', href: '/tools/' }]}
+>
+  <div class="container tools-index">
+    {
+      groups.map((g) => (
+        <section class="tools-group" aria-labelledby={`g-${g.id}`}>
+          <div class="tools-group-head">
+            <h2 id={`g-${g.id}`}>{g.title}</h2>
+            <p>{g.intro}</p>
+          </div>
+          <ul class="tools-grid" role="list">
+            {TOOLS.filter((t) => t.group === g.id).map((t) => (
+              <li class="tools-card">
+                <p class="tools-q">{t.question}</p>
+                <h3>
+                  <a href={t.path}>{t.name}</a>
+                </h3>
+                <p>{t.summary}</p>
+                <p class="tools-article">
+                  Background: <a href={t.article.href}>{t.article.title}</a>
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))
+    }
+
+    <section class="tools-group" aria-labelledby="g-how">
+      <div class="tools-group-head">
+        <h2 id="g-how">How these calculators work</h2>
+      </div>
+      <ul class="tools-points">
+        <li>
+          <strong>The real engine.</strong> Results come from Glideworth’s planning engine, the same code the planner uses,
+          running in your browser. Where a textbook formula exists, it is shown next to the engine’s answer with the reason
+          for any difference.
+        </li>
+        <li>
+          <strong>Private by design.</strong> Your inputs are kept in the page address so you can share or bookmark a result.
+          Nothing is sent to a server, and there are no analytics.
+        </li>
+        <li>
+          <strong>Today’s money.</strong> Amounts and returns are after inflation unless a page says otherwise. Currency is
+          for display only.
+        </li>
+        <li>
+          <strong>Reproducible.</strong> Simulations are seeded: the same inputs and seed give the same answer. Historical
+          runs use US data from 1928 to 2025.
+        </li>
+        <li>
+          <strong>No tax by default.</strong> Some calculators offer a single flat rate. Tax estimates for {TAX_COUNTRIES}{' '}
+          countries are in the full planner. Country-specific calculators are planned.
+        </li>
+      </ul>
+    </section>
+
+    <Callout type="note" title="Education, not advice">
+      <p>
+        The calculators show what follows from the numbers you enter and the assumptions on each page. They are not
+        forecasts or financial advice. See the <a href="/legal/disclaimer/">not-advice notice</a>.
+      </p>
+    </Callout>
+  </div>
+</PageLayout>
+
+<style>
+  .tools-index {
+    display: grid;
+    gap: clamp(2.5rem, 2rem + 2vw, 4rem);
+    padding-bottom: var(--section-y);
+  }
+  .tools-group {
+    display: grid;
+    gap: var(--space-m);
+  }
+  .tools-group-head {
+    display: grid;
+    gap: 0.4rem;
+    max-width: 48rem;
+  }
+  .tools-group-head h2 {
+    font-size: var(--text-2xl, var(--text-xl));
+  }
+  .tools-group-head p {
+    color: var(--ink-2);
+  }
+  .tools-grid {
+    display: grid;
+    gap: var(--space-m);
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+    list-style: none;
+    padding: 0;
+  }
+  .tools-card {
+    position: relative;
+    display: grid;
+    gap: 0.5rem;
+    align-content: start;
+    padding: clamp(1.25rem, 1rem + 1vw, 1.75rem);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-l);
+  }
+  .tools-card:hover {
+    border-color: var(--line-strong);
+  }
+  .tools-card h3 {
+    font-size: var(--text-xl);
+  }
+  .tools-card h3 a {
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .tools-card h3 a::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+  .tools-card h3 a:focus-visible {
+    outline: none;
+  }
+  .tools-card:has(h3 a:focus-visible) {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+  }
+  .tools-q {
+    font-size: var(--text-xs);
+    font-weight: 650;
+    color: var(--accent-text);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .tools-card p {
+    color: var(--ink-2);
+  }
+  .tools-article {
+    font-size: var(--text-sm);
+    position: relative;
+    z-index: 1;
+  }
+  .tools-points {
+    display: grid;
+    gap: var(--space-s);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+    list-style: none;
+    padding: 0;
+    color: var(--ink-2);
+  }
+  .tools-index :global(.callout) {
+    max-width: 48rem;
+  }
+</style>

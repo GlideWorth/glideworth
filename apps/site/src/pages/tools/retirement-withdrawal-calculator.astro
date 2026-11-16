@@ -1,0 +1,160 @@
+---
+import ToolPage from '../../components/tools/ToolPage.astro';
+import { compareRules, CUT_LINE } from '../../tools/engine/withdrawal';
+import { money, pct } from '../../tools/format';
+
+const m = (x: number) => money(x, 'USD');
+// The article's market model, computed by the calculator's own engine code at build time.
+const ex = {
+  balance: 1_000_000,
+  rate: 4,
+  years: 30,
+  method: 'parametric',
+  mean: 5,
+  vol: 12,
+  stocks: 60,
+  trials: '2000',
+  seed: 2026,
+  tax: 0,
+  timing: 'start',
+  cur: 'USD',
+} as const;
+const stats = await compareRules(ex);
+const rows = stats.map((s) => [
+  s.name,
+  m(s.year1),
+  m(s.medianMid),
+  m(s.p10Last),
+  pct(s.belowLine, 1),
+  pct(s.medianLargestCut, 1),
+  pct(s.shortAny, 1),
+]);
+const constant = stats.find((s) => s.id === 'constant')!;
+
+const ext = { rel: 'noopener noreferrer' };
+const faq = [
+  {
+    q: 'What is the best retirement withdrawal strategy?',
+    a: '<p>There is no best rule, only a trade-off. Constant real withdrawals keep income steady and risk running out; a fixed percentage never runs out and lets income move with the market; guardrails and VPW sit between. Which suits you depends on how much of your spending is fixed, what other income you have and whether you want to leave money behind.</p>',
+  },
+  {
+    q: 'Is Guyton-Klinger the same as guardrails?',
+    a: '<p>Guyton and Klinger described two of their rules as guardrails, and the name is now used for any rule that changes spending when a trigger is crossed. The full planner also has risk-based guardrails that react to the plan’s chance of success instead of its withdrawal rate.</p>',
+  },
+  {
+    q: 'Can a percentage-of-portfolio rule fail?',
+    a: '<p>It cannot reach zero, because each withdrawal is a share of what is left. But income can fall to a level that does not cover your spending, which is a failure of a different kind; the column for income below 75% of year 1 measures that.</p>',
+  },
+  {
+    q: 'Why do the numbers differ from the blog article?',
+    a: '<p>The article’s table came from an independent script with its own random draws, start-of-year withdrawals and a simpler VPW. This calculator runs the planner’s engine. The pattern is the same; individual figures differ by a point or two, and VPW starts higher because the engine’s VPW assumes a higher return.</p>',
+  },
+];
+---
+
+<ToolPage
+  id="withdrawal"
+  heading="Retirement withdrawal calculator: four rules compared"
+  lede="Constant real withdrawals, a fixed percentage, Guyton-Klinger guardrails and VPW, run on the same simulated markets so you can see where each rule puts its risk: in your income, or in running out. It runs the Glideworth planning engine in your browser; nothing you type is sent anywhere."
+  faq={faq}
+  adds="The planner runs these rules, and more, on your whole plan with other income and tax."
+  related={[
+    { href: '/features/withdrawal-strategies/', label: 'Withdrawal strategies in the planner' },
+    { href: '/docs/planning/solvers-and-guardrails/', label: 'Guide: solvers and guardrails' },
+    { href: '/blog/what-is-your-fire-number/', label: 'Where the 4% rule came from' },
+  ]}
+>
+  <h2>The four rules</h2>
+  <ul>
+    <li>
+      <strong>Constant real (“the 4% rule”).</strong> Year 1 takes your initial rate of the starting portfolio; every
+      later year takes the same amount raised by inflation. The portfolio’s value is never consulted. This is the rule
+      inside William Bengen’s <a {...ext}
+        href="https://www.financialplanningassociation.org/sites/default/files/2021-04/MAR04%20Determining%20Withdrawal%20Rates%20Using%20Historical%20Data.pdf"
+        >1994 study</a
+      >.
+    </li>
+    <li>
+      <strong>Fixed percentage.</strong> Every year takes the same percentage of the current portfolio. It cannot run
+      out, and income moves with the portfolio: a 25% fall in value is a 25% fall in next year’s income.
+    </li>
+    <li>
+      <strong>Guyton-Klinger guardrails</strong>, from Guyton’s <a {...ext}
+        href="https://www.financialplanningassociation.org/sites/default/files/2020-05/6%20Decision%20Rules%20and%20Portfolio%20management%20for%20Retirees%20Is%20Safe%20Initial%20Withdrawal%20Rate%20Too%20Safe.pdf"
+        >2004</a
+      > and Guyton and Klinger’s <a {...ext}
+        href="https://www.financialplanningassociation.org/sites/default/files/2021-11/2006%20-%20Guyton%20and%20Klinger%20-%20Decision%20Rules%20and%20SWR%20(1).PDF"
+        >2006</a
+      > papers. Withdrawals rise with inflation, except after a year with a negative return when the current rate is above
+      the initial rate. If the current rate is more than 20% above the initial rate, spending is cut by 10% (not in the
+      last 15 years); if it is more than 20% below, spending is raised by 10%.
+    </li>
+    <li>
+      <strong>VPW (variable percentage withdrawal).</strong> Each year takes the payment that would spend the portfolio
+      exactly over the years left at an assumed return, so the percentage rises as the horizon shortens. The engine
+      assumes 5% a year after inflation for stocks and 1.9% for bonds, weighted by the mix (the random-returns model
+      counts as all stocks). The community version is described on the <a {...ext}
+        href="https://www.finiki.org/wiki/Variable_percentage_withdrawal">finiki VPW page</a
+      >.
+    </li>
+  </ul>
+
+  <h2>How the calculator works</h2>
+  <p>
+    Each rule is set as the plan’s withdrawal strategy in the engine and run through the same Monte Carlo simulations:
+    the same seed, so every rule sees exactly the same sequences of returns. “Income” is what the rule actually paid
+    each year, in today’s money. The calculator then reads, for each rule, the first-year income, the middle and bad-luck
+    income later on, how often income fell below {pct(CUT_LINE, 0)} of its first year, the typical largest one-year cut,
+    and how often the rule could not pay its own amount.
+  </p>
+  <p>
+    Two market models are offered: random real returns drawn independently each year from a log-normal distribution
+    (average 5%, volatility 12% by default, the model in the blog article), or US history from 1928 to 2025 with random
+    start years and a stock and bond mix.
+  </p>
+
+  <h2>Worked example</h2>
+  <p>
+    Computed by the calculator’s own code when this page was built: {m(1_000_000)}, a 4% initial rate, 30 years,
+    random real returns averaging 5% with 12% volatility, 2,000 simulations with seed 2026, withdrawals at the start of
+    each year, no tax.
+  </p>
+  <table>
+    <caption>Four rules on the same 2,000 simulated retirements (today’s money)</caption>
+    <thead>
+      <tr>
+        <th>Rule</th><th>Year-1 income</th><th>Median, year 15</th><th>10th percentile, year 30</th><th
+          >Income ever below 75% of year 1</th
+        ><th>Median largest one-year cut</th><th>A year not paid in full</th>
+      </tr>
+    </thead>
+    <tbody>{rows.map((r) => <tr>{r.map((c) => <td>{c}</td>)}</tr>)}</tbody>
+  </table>
+  <p>
+    The pattern is the one the <a href="/blog/withdrawal-strategies-compared/">withdrawal strategies article</a> found
+    with its own script: constant real income never moves until it fails (in {pct(constant.shortAny, 1)} of these
+    simulations a year went unpaid); a fixed percentage never runs out but often cuts income; guardrails cap the typical
+    cut at 10%; VPW starts higher and spends the portfolio down. For VPW, “a year not paid in full” is mostly its final
+    year: the engine asks for the whole remaining balance grown at the assumed return, and a final year below that
+    return leaves a small part unpaid.
+  </p>
+
+  <h2>What this assumes and leaves out</h2>
+  <ul>
+    <li>
+      The results depend on the market model: a different return, volatility or horizon changes every row.
+      Independent yearly returns understate runs of bad years; the history model keeps them but has few independent
+      sequences.
+    </li>
+    <li>One portfolio, rebalanced yearly; no fees; no tax unless you set the flat rate.</li>
+    <li>No pension or other income. A floor of guaranteed income changes which rule suits you most.</li>
+    <li>
+      The Guyton-Klinger rules are applied as the engine implements them (one asset mix, so the portfolio management
+      rule does not apply).
+    </li>
+    <li>
+      History data: Aswath Damodaran, <em>Historical Returns on Stocks, Bonds and Bills</em> (NYU Stern), and US Bureau
+      of Labor Statistics CPI-U.
+    </li>
+  </ul>
+</ToolPage>

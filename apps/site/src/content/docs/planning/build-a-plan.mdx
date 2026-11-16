@@ -1,0 +1,93 @@
+---
+title: Build a plan
+description: Enter accounts, real assets, debts, income, expenses, savings flows, milestones, drawdown order and assumptions in the Current finances page and the Plan editor.
+section: Planning
+order: 1
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+
+A plan has two layers. **Current finances** is what you own and owe today. The **Plan editor** is what
+happens next. Change today's balances in one place and every plan that starts now follows.
+
+**Before you start:** a household, which [the first-plan setup](/docs/getting-started/first-plan/) creates.
+
+## Current finances
+
+Open **Current finances** in the sidebar (under Overview). The page lists accounts, real assets and debts,
+and a household sheet with the people ("About you").
+
+<Steps>
+1. **Accounts.** Add each account with its type, owner and balance. The type matters: an ISA is tax-free,
+   a SIPP or pension is taxed as income when drawn (with a share tax-free where the country allows),
+   a general investment account pays capital gains and dividend tax. Cash, investments and pensions
+   behave differently in drawdown.
+2. **Real assets.** A home, a car or a rental: a current value, an optional loan, and running costs.
+   A rental can carry rent and costs, and an asset can be sold at a milestone.
+3. **Debts.** A balance, an interest rate and a monthly payment.
+4. **Foreign items.** Accounts, property, debts and income each have a **Country** field. When the country
+   implies a different currency, the app offers to switch and asks for an exchange rate if it has none.
+   See [Tax settings and currency](/docs/planning/tax-and-currency/).
+5. **Update balances later** from the **Progress** page with "Update balances", which can record a snapshot.
+   See [Progress and check-ins](/docs/planning/progress-and-check-ins/).
+</Steps>
+
+## The Plan editor
+
+Open **Plans**, choose a plan, and use the Plan editor. Its sections are, in order: Timeline, Milestones,
+Where you live, Income, Expenses, Flows, Accounts, Property &amp; debts, Withdrawals, Assumptions, Taxes,
+Chance of success, What-if and Plan details.
+
+### Milestones
+
+Named moments with a date, an age or a condition. Typical ones: "Retirement" at age 60, "Mortgage paid off",
+"Life expectancy" (the plan runs to the last life-expectancy milestone, never more than 100 years), and
+"Financial independence" (say, when investments reach 25 times your spending). Income, expenses and flows can
+start or end at a milestone. A milestone that is never reached is reported.
+
+### Income and expenses
+
+Each item has an amount (value, basis, frequency), an owner, a start and an end. Income covers salary,
+pensions (including defined benefit), the State Pension in the UK, Social Security estimates in the US,
+rental and other sources. Expenses can be essential or discretionary, and a category can follow its own
+inflation rate (healthcare, education, housing or your own).
+
+### Flows and the savings waterfall
+
+Flows decide what happens to money left over each year, **in priority order**: for example top up an
+emergency fund to a target, contribute to the workplace pension (with the employer match), fill the ISA,
+then the SIPP, then invest the rest. The order of the list is the funding priority. Whatever is
+left after the last flow is saved to cash, or counts as spending, as you choose. Contribution limits come
+from the account's country.
+
+### Drawdown order
+
+**Withdrawals** sets where money comes from when spending exceeds income. The default order is cash, then
+taxable investments, then pensions, then tax-free accounts. You can reorder it and set when each account
+can be touched. Pension wrappers that cannot legally be drawn early stay locked until their access age unless
+you model an early-withdrawal penalty. Withdrawals are taxed according to the account type. The same section
+holds the withdrawal strategy (fixed amount, percentage, guardrails, variable percentage withdrawal and
+others) and flexible spending.
+
+### Assumptions
+
+Growth, dividends, inflation, fees, the cash-flow timing setting (`start`, `mid` or `end`) and
+exchange rates. Defaults come from your country. Inflation can vary by category.
+
+### Taxes
+
+How tax is calculated. See [Tax settings and currency](/docs/planning/tax-and-currency/).
+
+## What this does not do
+
+- It does not add survivor pensions beyond what you enter. A survivor what-if says so.
+- It does not model events inside a year, randomised lifespan, or care costs inside the Monte Carlo
+  (a care scenario is a what-if).
+- It does not tell you if an input is wrong. The audit under **Insights** catches common mistakes, such as
+  counting housing twice, not every one.
+
+<Callout type="tip" title="Save before you experiment">
+  Every change to a plan is a new version, so you can always go back. To try an idea without touching your
+  main plan, make a branch. See [Branches, compare and what-ifs](/docs/planning/branches-and-what-ifs/).
+</Callout>

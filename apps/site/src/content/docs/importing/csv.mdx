@@ -1,0 +1,53 @@
+---
+title: Import from CSV
+description: Import account balances, net-worth history or transactions from Monarch, YNAB and generic CSV files, with a dry run that shows what will change first.
+section: Importing
+order: 2
+lastChecked: 2026-11-16
+---
+
+CSV import brings in three kinds of data. Every import starts as a dry run: you see what would change before anything is
+written.
+
+**Before you start:** a household, and a CSV file with a header row. Glideworth detects the delimiter, the column layout
+and the number format.
+
+## The three kinds
+
+| Kind | What it does |
+| --- | --- |
+| Account balances | Reconciles balances against your current finances: matched, created and unmatched accounts, with before and after balances. |
+| Progress snapshots | Backfills your net-worth history. |
+| Transactions | Summarises spending into annual expense events on a plan. |
+
+## Presets
+
+The importer recognises these layouts. It shows "Detected: ..." and you can pick a preset or choose none.
+
+- **Transactions:** YNAB register export, Monarch Money, Mint, Copilot Money, Actual Budget, Monzo, Starling Bank, and a
+  UK bank statement with Debit and Credit columns.
+- **Account balances:** a generic layout (Date, Account, Balance) and Glideworth's own account export.
+- **Progress snapshots:** a generic net-worth tracker (Date, Net Worth) and Glideworth's own progress export.
+
+A file that matches no preset can still be imported by mapping columns by hand.
+
+## Import it
+
+<Steps>
+1. Open **Import &amp; export** and choose the **CSV files** tab (or "Import CSV files" on the Welcome page).
+2. Choose the kind of data and drop the file.
+3. Check the detected preset and columns, and the issues list.
+4. For balances, map unmatched accounts to your accounts, or let the importer create missing ones.
+5. Review the before and after reconciliation, then apply. Finances, snapshots and the plan are written in one
+   transaction. Blocking errors change nothing.
+</Steps>
+
+Over the API, `POST /api/v1/households/{id}/import/csv` takes `text`, `kind`, optional `options` (such as `accountMap`
+and `createMissing`), `planId` and `dryRun`. `dryRun` defaults to `true`. `kind` is `account-balances`,
+`progress-snapshots` or `transactions`. See [Import, export and reports](/docs/api-and-mcp/api-import-export-and-reports/).
+
+## What this does not do
+
+- It does not sync. A CSV is a one-off import. Direct sync with budgeting apps is not built.
+- Transactions become annual expense estimates, not a transaction ledger. Transfers, income and card payments are excluded.
+- It does not guess currencies: foreign-currency accounts keep their currency and need an exchange rate.

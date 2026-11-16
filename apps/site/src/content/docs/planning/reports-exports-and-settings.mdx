@@ -1,0 +1,48 @@
+---
+title: Reports, exports and settings
+description: Print a plan report, export tables and backups, and what each section of Settings controls, from locale and planning defaults to API keys and webhooks.
+section: Planning
+order: 9
+lastChecked: 2026-11-16
+---
+
+## Reports
+
+Open **Report** in the sidebar for a printable report of a plan: key figures, milestones, assumptions, current
+finances, a year-by-year table and standing caveats. Printing uses the browser's print dialog, so a PDF is a
+"print to PDF". The report does not produce a PDF on the server.
+
+## Exports
+
+Under **Import &amp; export**, the **Backup &amp; export** tab offers:
+
+- **Everything, in one file**: a full JSON backup of a household. See [Glideworth JSON](/docs/importing/glideworth-json/).
+- **Tables as CSV**: for a plan and a basis ("Amounts in"), the tables year-by-year, cash-flow, taxes and
+  account-balances. Plots cannot be exported as tables; four tables are available.
+- A progress history as CSV.
+
+## Settings
+
+Open **Settings**. Its sections, by group:
+
+| Group | Section | What it controls |
+| --- | --- | --- |
+| You | Profile &amp; locale | Currency, number and date formats, tax year. |
+| You | Appearance | Theme, density, motion and chart preferences. |
+| Planning | Planning defaults | New-plan assumptions, spending and tax definitions, simulation and success bands. |
+| Planning | Check-ins | Scheduled plan health checks and notification thresholds. |
+| People | Share links | Links to a plan's results. |
+| People | People &amp; access | Invites, roles and resets. |
+| People | Connected apps | OAuth clients and grants (such as an MCP client you connected). |
+| People | Audit log | Who changed what. |
+| Data | Data | Backup, export and restore. |
+| Developers | API keys | Create and revoke keys with scopes. |
+| Developers | Webhooks | Signed event deliveries. |
+| Developers | AI &amp; integrations | Connecting assistants. See [MCP](/docs/api-and-mcp/mcp-setup/). |
+| Glideworth | About | Version and licences. |
+
+## What this does not do
+
+- No server-side PDF.
+- Settings that live on the server (people, keys, webhooks, share links) need a server; a browser-only workspace
+  says "Sharing needs the server".

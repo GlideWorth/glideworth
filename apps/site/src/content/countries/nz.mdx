@@ -1,0 +1,73 @@
+---
+title: Retirement planning in New Zealand
+description: "How Glideworth estimates New Zealand tax at a basic level for 2026-27: income tax, ACC levy, imputation, KiwiSaver, NZ Super, and the gaps to know about."
+ogTitle: Retirement planning in New Zealand
+countryCode: NZ
+countryName: New Zealand
+taxYears:
+  - 2026-27 (tax year ending 31 March 2027)
+modelled:
+  - Resident income tax on the five bands
+  - The ACC earners' levy up to the maximum liable earnings
+  - Dividends, assumed fully imputed at the 28% company rate, with the imputation credit
+  - No general capital gains tax
+  - KiwiSaver as a pension account, with withdrawals from age 65 tax-free
+  - A default NZ Superannuation age of 65
+notModelled:
+  - The bright-line test, land-dealing and trader rules, and the foreign investment fund (FIF) rules for overseas shares
+  - Prescribed investor rates for PIE funds and resident withholding tax; interest is taxed at the marginal rate
+  - The government KiwiSaver contribution and employer superannuation contribution tax
+  - The independent earner tax credit, Working for Families and student loan repayments
+---
+
+import { facts } from '../../lib/facts';
+
+New Zealand is estimated at a **basic level**: the main rules are in, with {facts.simplificationCount('nz')} written
+simplifications, and it has had less checking than the United Kingdom or the United States. The plan year defaults to the
+tax year from 1 April to 31 March, and the table is for 2026-27.
+
+## What is modelled
+
+- **Income tax**: 10.5% to NZ$15,600; 17.5% to NZ$53,500; 30% to NZ$78,100; 33% to NZ$180,000; 39% above.
+- **ACC earners' levy**: 1.75% from 1 April 2026, on earnings up to NZ$156,641.
+- **Dividends** are assumed fully imputed at the 28% company rate: the dividend is grossed up and the credit
+  deducted. Interest is taxed at the marginal rate.
+- **No general capital gains tax**, so gains are not taxed.
+- **KiwiSaver**: contributions come from taxed pay with no deduction, fund earnings are taxed inside the fund, and
+  withdrawals from age 65 are tax-free.
+- **NZ Superannuation**: the default age is 65, and you enter the amount yourself.
+
+## Worked example
+
+<Callout type="note" title="Illustrative">
+  Made-up figures, to show the arithmetic with the 2026-27 table. It is not a forecast or advice.
+</Callout>
+
+An employee earns NZ$70,000 in the 2026-27 tax year.
+
+- Income tax: 10.5% × NZ$15,600 = NZ$1,638.00; 17.5% × (NZ$53,500 − NZ$15,600 = NZ$37,900) = NZ$6,632.50; 30% ×
+  (NZ$70,000 − NZ$53,500 = NZ$16,500) = NZ$4,950.00. Total **NZ$13,220.50**.
+- ACC earners' levy: 1.75% × NZ$70,000 = **NZ$1,225.00**.
+- Together: NZ$13,220.50 + NZ$1,225.00 = **NZ$14,445.50**.
+
+## Historical data for simulations
+
+No New Zealand market history is bundled. New Zealand households are tested against US history by default
+(S&P 500, 10-year Treasuries, T-bills and CPI-U, 1928 to 2025, in US dollars).
+
+## Figures that could not be confirmed
+
+- The income tax rates are Inland Revenue's rates "from 1 April 2025", which its page lists with no end date (checked
+  16 November 2026), so they cover 2026-27. Later years carry them forward.
+- No preset has been checked line by line against an official calculator for every case.
+
+## Official sources
+
+- [Inland Revenue: tax rates for individuals](https://www.ird.govt.nz/income-tax/income-tax-for-individuals/tax-codes-and-tax-rates-for-individuals/tax-rates-for-individuals)
+- [Inland Revenue: ACC earners' levy rates](https://www.ird.govt.nz/income-tax/income-tax-for-individuals/acc-clients-and-carers/acc-earners-levy-rates)
+- [Inland Revenue: how KiwiSaver works](https://www.ird.govt.nz/kiwisaver/kiwisaver-individuals/how-kiwisaver-works)
+
+<Callout type="note" title="Estimates, not advice">
+  Glideworth is planning software. Its tax figures help you compare choices under your own assumptions; they
+  are not a tax return and not tax advice.
+</Callout>

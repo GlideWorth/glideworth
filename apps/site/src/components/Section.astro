@@ -1,0 +1,92 @@
+---
+/**
+ * A page section with consistent vertical rhythm and an optional heading block.
+ *   <Section eyebrow="Monte Carlo" title="How often does the plan work?" intro="…">…</Section>
+ * tone: "plain" (page background), "raised" (a slightly darker paper band), "band" (deep spruce).
+ * width: "wide" (default container) or "narrow" (reading width).
+ */
+interface Props {
+  id?: string;
+  eyebrow?: string;
+  title?: string;
+  intro?: string;
+  tone?: 'plain' | 'raised' | 'band';
+  width?: 'wide' | 'narrow';
+  /** Heading level for the title. */
+  as?: 'h1' | 'h2' | 'h3';
+  align?: 'start' | 'center';
+  /** Less vertical padding. */
+  tight?: boolean;
+  class?: string;
+}
+const {
+  id,
+  eyebrow,
+  title,
+  intro,
+  tone = 'plain',
+  width = 'wide',
+  as: Heading = 'h2',
+  align = 'start',
+  tight = false,
+  class: className,
+} = Astro.props;
+const headingId = id && title ? `${id}-title` : undefined;
+---
+
+<section
+  id={id}
+  class:list={['section', `section-${tone}`, { 'section-tight': tight }, className]}
+  aria-labelledby={headingId}
+>
+  <div class={width === 'narrow' ? 'container-narrow' : 'container'}>
+    {
+      (eyebrow || title || intro) && (
+        <header class:list={['section-head', `align-${align}`]}>
+          {eyebrow && <span class="eyebrow">{eyebrow}</span>}
+          {title && <Heading id={headingId}>{title}</Heading>}
+          {intro && <p class="lede">{intro}</p>}
+        </header>
+      )
+    }
+    <slot />
+  </div>
+</section>
+
+<style>
+  .section {
+    padding-block: var(--section-y);
+  }
+  .section-tight {
+    padding-block: calc(var(--section-y) * 0.6);
+  }
+  .section-raised {
+    background: var(--surface-2);
+    border-block: 1px solid var(--line);
+  }
+  .section-band {
+    background: var(--band);
+    color: var(--band-ink);
+    --ink: var(--band-ink);
+    --ink-2: var(--band-ink-2);
+    --ink-3: var(--band-ink-2);
+    --line: var(--band-line);
+    --accent-text: var(--band-accent);
+    --ochre: var(--band-accent);
+    --surface: var(--band-2);
+  }
+  .section-head {
+    display: grid;
+    gap: var(--space-s);
+    margin-bottom: clamp(2rem, 1.5rem + 2vw, 3.5rem);
+    max-width: 46rem;
+  }
+  .section-head.align-center {
+    margin-inline: auto;
+    text-align: center;
+    justify-items: center;
+  }
+  .section-head .lede {
+    margin-top: var(--space-3xs);
+  }
+</style>

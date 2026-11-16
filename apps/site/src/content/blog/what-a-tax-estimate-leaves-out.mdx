@@ -1,0 +1,58 @@
+---
+title: What a tax estimate leaves out, and why we say so
+description: "Glideworth estimates tax in {{taxCountryCount}} countries. Each estimate comes with a list of what it leaves out. Here is why that list matters and how to read it."
+pubDate: 2026-11-16
+author: [glideworth-team]
+tags: [Tax, Methodology]
+---
+
+import { facts } from '../../lib/facts';
+
+import Callout from '../../components/Callout.astro';
+
+A retirement projection is only as good as its tax figures. Tax decides how much of a pension you
+keep, which account to draw from first, and whether a plan that looks comfortable before tax still
+works after it. So Glideworth estimates tax every year of a plan, for every person in the household,
+in {facts.taxCountryCount} countries: the United Kingdom, the United States (federal, payroll, all fifty states and
+DC, and some cities), Canada, Australia, Germany, the Netherlands, France, Spain, Israel, Ireland,
+New Zealand and the United Arab Emirates. Flat and custom rates cover everywhere else.
+
+Every one of those is an **estimate**, and we say so on purpose.
+
+## Every country comes with a list of simplifications
+
+Tax codes are long, and a planner that claims to model all of one is either very narrow or not
+telling you something. Glideworth takes the other route: each country's model ships with a written
+list of what it does not do, kept in the code next to the rules themselves and shown beside your tax
+results. A few examples from that list today:
+
+- **United Kingdom:** National Insurance covers Class 1 employee and Class 4 contributions only; the
+  pension annual allowance is tapered, but the model does not carry forward unused allowance from the three
+  previous tax years, as UK law allows; one basic and one higher capital gains rate apply to all assets.
+- **United States:** the SALT cap and the phase-outs of itemised deductions are not applied
+  automatically, and there is no earned income credit or education credits.
+- **Everywhere:** gains are realised in proportion to cost basis when a taxable account is drawn, all
+  of them are treated as long-term, and losses are never harvested.
+
+None of these is hidden in a footnote. If a simplification matters to your situation, you can see it
+next to the number it affects and adjust the plan, or enter the amount yourself.
+
+## Tables are dated, and later years are carried forward
+
+Each country's tables are for stated tax years: for example 2025/26 and 2026/27 in the UK, with the
+announced 2027/28 and 2029/30 changes, and 2026 for the US federal rules. Years after the last table
+carry the latest rates forward and index thresholds with inflation, or keep them frozen where the
+law freezes them. That is a reasonable default, and it is wrong whenever the law changes. Tables
+have to be updated every year, and each update will be listed in the [changelog](/changelog/).
+
+<Callout type="note" title="Estimates, not advice">
+  Glideworth is planning software. Its tax figures help you compare choices under your own
+  assumptions; they are not a tax return and not tax advice.
+</Callout>
+
+## Why tell you at all
+
+Because a plan you cannot inspect is a plan you have to trust. Glideworth is open source, so the
+rules are readable, and the list of what each model leaves out is the honest summary of those rules.
+When you know where an estimate is thin, you know where to be cautious, where to leave a margin, and
+when to ask a professional.

@@ -1,0 +1,86 @@
+---
+title: Progress tracking and scheduled check-ins
+description: Record balances over time against your plan, and let scheduled check-ins tell you when your chance of success, a milestone or your net worth moves.
+ogTitle: Progress tracking and check-ins
+summary: Balance snapshots against the plan, and scheduled check-ins that raise a notification when something material changes.
+order: 11
+---
+
+A plan is a prediction, and the useful question a year later is whether reality is following it. Glideworth keeps
+two records for that: **progress snapshots** of what you actually have, and a **plan health history** of what the
+plan now says.
+
+## Progress
+
+Each update to your balances can record a snapshot of net worth. The app overlays actual against projected, with
+per-account history that you can edit, and the dashboard shows net worth over a chosen range. Snapshots come from
+four places:
+
+- **By hand:** update balances in the app. At most one automatic snapshot is recorded per day, and a second update
+  the same day changes that day's snapshot rather than adding another. A snapshot you recorded yourself is never
+  overwritten by an automatic one.
+- **From a script:** `POST /api/v1/households/{id}/balances` updates accounts, property values, mortgage and loan
+  balances and debts in one all-or-nothing call, with an idempotency key so a retried sync is harmless.
+- **From a file:** CSV balance and history imports, and bank statement files, reconcile against your current
+  finances first (see [importing](/features/import-and-export/)).
+- **Backfilled history:** a bulk call loads past snapshots.
+
+Writes that move no balance, such as renames, never snapshot. A setting turns automatic snapshots off.
+
+## Check-ins
+
+A check-in re-runs a plan: the deterministic projection, a [Monte Carlo](/features/monte-carlo/) chance of success
+and the [assumption audit](/features/explanations-and-audit/). Each run is one row of the plan's health history:
+chance of success, financial-independence year, actual net worth against planned, end net worth, depletion year,
+milestone dates and open findings. You can check in on demand, or let a built-in scheduler do it for the main active
+plan of every household, daily, weekly, monthly or quarterly (weekly by default). The first run is a baseline.
+
+A change is **material**, and raises a notification, when:
+
+- the chance of success moves by more than a threshold (5 percentage points by default);
+- a milestone slips later by a threshold (6 months by default) or is no longer reached;
+- the audit finds a new warning or critical issue; or
+- your net worth is more than a threshold (10% by default) below what the previous check-in projected for today.
+
+You can change every threshold. "What changed since my last check-in?" is a single question: material changes, the
+edits made since and by whom, and how net worth has moved.
+
+## A worked illustration
+
+An illustrative quarterly check-in on a made-up plan:
+
+| | Last check-in | Now |
+| --- | --- | --- |
+| Chance of success | 86% | 79% |
+| Retirement milestone | March 2038 | March 2038 |
+| Net worth against plan | on plan | 12% behind |
+| Open audit findings | 1 | 1 |
+
+That raises two notifications, one for the 7-point fall in the chance of success and one for being 12% behind the
+plan, and fires a `checkin.completed` webhook and a `notification.created` webhook for each. The "what changed"
+answer lists the plan edits made since the last check-in and who made them, because the plan history records the
+actor.
+
+## Notifications and webhooks
+
+Notifications appear in the app's notification centre and over the API (`GET /api/v1/notifications`). For
+automation, the signed webhooks `checkin.completed` and `notification.created` carry the figures a script needs. A
+webhook can post to a chat tool or a home server. See [the API](/features/rest-api/).
+
+## What it does not do
+
+- **No email in the self-hosted app.** Check-ins notify in the app and by webhook; you can point a webhook at
+  anything that sends email. Email delivery is planned for the hosted service and not built yet.
+- **It runs only while the server runs.** The scheduler is an in-process timer, not an external job service.
+- **"Behind plan" is approximate:** the previous check-in's projection is interpolated across the year, in
+  today's money.
+- **No live balance sync.** Integrations with budgeting tools such as Lunch Money, YNAB, Monarch and Actual are
+  on the [roadmap](/roadmap/); today you push balances from a script or import files. There are no bank connections.
+- **Plans are not re-run on every edit.** Results are produced when a run starts or a check-in is due.
+- **There is no completeness score** for how thoroughly you have filled in your finances.
+
+## Go further
+
+- [Projections and the ledger](/features/projections-and-ledger/) for the projected line the overlay is drawn against.
+- [Sharing and roles](/features/sharing-and-roles/): show an adviser your progress without an account.
+- [MCP server](/features/mcp-server/): the `monthly_checkin` prompt walks an assistant through a balance update.

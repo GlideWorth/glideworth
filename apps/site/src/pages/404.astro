@@ -1,0 +1,26 @@
+---
+import Button from '../components/Button.astro';
+import { page } from '../config/pages';
+import PageLayout from '../layouts/PageLayout.astro';
+---
+
+<PageLayout
+  {...page('/404/')}
+  heading="This page went off the glide path."
+  eyebrow="404"
+  lede="The page you asked for does not exist, or has moved. The site map in the footer lists every page."
+>
+  <div class="container actions">
+    <Button href="/" arrow>Home</Button>
+    <Button href="/docs/" variant="secondary">Documentation</Button>
+  </div>
+</PageLayout>
+
+<style>
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-s);
+    padding-bottom: var(--section-y);
+  }
+</style>

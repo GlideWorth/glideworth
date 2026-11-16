@@ -1,0 +1,69 @@
+---
+title: Moving country and cross-border plans
+description: Model a move between countries with a residency timeline, source-country tax, treaty relief and wrapper rules, and compare staying with moving.
+section: Planning
+order: 4
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+
+The engine models residency changes, tax on income where it arises for non-residents, and treaty relief.
+The app's editing screens cover the timeline, per-person details and item countries, and a "Stay or move?"
+comparison.
+
+**Before you start:** a plan, with a country set on any account, property, debt or income that sits abroad.
+
+## How it works
+
+- **Where you live, over time.** Your household's country is where you live at the start. Add moves to the plan's
+  residency timeline (a month, a country and region, and one person or both), or put a relocation effect on a
+  milestone. Partners can live in different countries. A move part-way through a tax year splits it by months.
+- **Where each thing is.** Every account, property, debt and income has a country. It defaults to the household's
+  country (or the account type's: an ISA is British), and it does not change when you move.
+- **Which country may tax what.** The country you live in taxes worldwide income. A country where something is
+  may also tax it as source (rent and property gains almost everywhere). A treaty table says who keeps the right to
+  tax each kind of income, and your country of residence gives a credit for tax paid elsewhere. US citizens and
+  green-card holders also pay US tax wherever they live, after the foreign earned income exclusion and a credit.
+
+## Add a move
+
+<Steps>
+1. Open the **Plan editor** and choose **Where you live**. Each person's residence is a strip over the plan.
+2. Add a dated move: who, when, and where (country and region). Or add a "Relocate" effect on a milestone.
+3. Read the warnings: countries without rules, unknown treaty pairs and missing exchange rates (with an inline box
+   to add the rate).
+4. In **Current finances**, open **About you**, then "Citizenship, past residence and state pension" to add
+   citizenships, a US green card, where you lived before the plan and state-pension records.
+5. Open **Taxes** to see tax by country and by reason, and "How this is taxed, and why" for any item.
+</Steps>
+
+## Stay or move?
+
+Open **Insights** and choose **Stay or move?**. Pick where, when, who and whether you come back ("Move to",
+"From", "Back in"). The comparison runs two deterministic projections and shows lifetime tax by country for both,
+where the difference in end net worth comes from, the plan changes, and buttons to save it as a branch or compare.
+For a chance-of-success comparison, branch the move and run [Chance of success](/docs/planning/read-your-results/) on both.
+
+## What changes when you move
+
+- **Wrappers.** An ISA keeps its UK shelter but you cannot pay in while you live abroad. UK pension contributions
+  get relief on up to 3,600 pounds a year for five tax years after leaving. Canadian TFSA and RRSP contributions
+  stop. A new country may not recognise a foreign tax-free account; by default the growth is taxed on withdrawal.
+- **Exit and arrival.** Leaving Canada or Australia triggers a deemed sale (you can defer it); arriving resets cost
+  to market value. Returning to the UK within five years makes gains realised abroad taxable in the year you return.
+- **State pensions.** A UK State Pension is frozen where it is not uprated, and returns to the current rate if you
+  come back. The audit shows years short and the cost of voluntary contributions.
+- **Inheritance tax.** After leaving the UK you stay in scope of UK inheritance tax on your worldwide estate for 3 to
+  10 years, depending on how long you lived there.
+
+The United Arab Emirates is covered: no personal income, capital gains, dividend, interest, wealth or inheritance
+tax for individuals, the end-of-service gratuity, DEWS and the federal savings scheme as accounts.
+
+<Callout type="risk" title="What this does not do">
+  It applies no residence test: you are resident where your timeline says (no statutory residence test, no 183-day
+  rule or tie-breaker). Split years are prorated by months. Treaty relief is assumed claimed. Only UK-UAE is
+  implemented article by article; UK-US, UK-Australia, UK-Canada, UK-Spain, UK-France and US-Canada are basic;
+  other pairs use the credit method with a warning. Departure taxes cover taxable investment accounts only. Not
+  tax advice.
+</Callout>

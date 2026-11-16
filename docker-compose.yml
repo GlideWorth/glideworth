@@ -1,0 +1,60 @@
+# One container: the API, the web app (apps/web/dist), the MCP endpoint and SQLite on a volume.
+#
+#   docker compose up -d --build        # then open http://localhost:8787 and set a passphrase
+#   docker compose exec glideworth node dist/cli/admin.js backup --out /data/backups/manual.db
+#
+# Values come from the environment or from `.env` next to this file (see .env.example). Each setting reads
+# GLIDEWORTH_<NAME> and falls back to the pre-rename CAIRN_<NAME>, so an existing `.env` keeps working.
+# The data directory is fixed to the volume; do not point GLIDEWORTH_DATA_DIR or GLIDEWORTH_DB_PATH elsewhere.
+# The hosted (cloud) mode of the same image has its own deployment; this file is for self-hosting.
+# Upgrading from Cairn (service, image and container were named `cairn`): run
+# `docker compose up -d --build --remove-orphans` once. See docs/SELF-HOSTING.md, "Upgrading from Cairn".
+services:
+  glideworth:
+    build: .
+    image: glideworth:local
+    container_name: glideworth
+    restart: unless-stopped
+    ports:
+      - "${GLIDEWORTH_PORT:-${CAIRN_PORT:-8787}}:8787"
+    environment:
+      NODE_ENV: production
+      GLIDEWORTH_API_PORT: "8787"
+      # Self-host (the default mode). The database is /data/glideworth.db; on a volume created before the
+      # rename, /data/cairn.db exists and is used (never moved or copied).
+      GLIDEWORTH_MODE: selfhost
+      GLIDEWORTH_DATA_DIR: /data
+      GLIDEWORTH_SEED_SAMPLE: "false"
+      # Optional API key created on first boot when none exists (for scripts / MCP). Leave empty to
+      # use only the browser passphrase and keys you create later.
+      GLIDEWORTH_BOOTSTRAP_KEY: "${GLIDEWORTH_BOOTSTRAP_KEY:-${CAIRN_BOOTSTRAP_KEY:-}}"
+      # Require this token in the first-run setup request (recommended when the port is reachable by others).
+      GLIDEWORTH_SETUP_TOKEN: "${GLIDEWORTH_SETUP_TOKEN:-${CAIRN_SETUP_TOKEN:-}}"
+      GLIDEWORTH_MCP_ALLOW_WRITES: "${GLIDEWORTH_MCP_ALLOW_WRITES:-${CAIRN_MCP_ALLOW_WRITES:-false}}"
+      GLIDEWORTH_MAX_JOBS: "${GLIDEWORTH_MAX_JOBS:-${CAIRN_MAX_JOBS:-2}}"
+      GLIDEWORTH_MC_SHARDS: "${GLIDEWORTH_MC_SHARDS:-${CAIRN_MC_SHARDS:-}}"
+      GLIDEWORTH_RATE_LIMIT_PER_MIN: "${GLIDEWORTH_RATE_LIMIT_PER_MIN:-${CAIRN_RATE_LIMIT_PER_MIN:-600}}"
+      GLIDEWORTH_MAX_BODY_MB: "${GLIDEWORTH_MAX_BODY_MB:-${CAIRN_MAX_BODY_MB:-10}}"
+      # Webhooks to loopback/private addresses are blocked unless you set this to true (SSRF guard).
+      GLIDEWORTH_WEBHOOK_ALLOW_PRIVATE: "${GLIDEWORTH_WEBHOOK_ALLOW_PRIVATE:-${CAIRN_WEBHOOK_ALLOW_PRIVATE:-false}}"
+      # Behind a TLS-terminating reverse proxy: let the server see the real client address and scheme.
+      GLIDEWORTH_TRUST_PROXY: "${GLIDEWORTH_TRUST_PROXY:-${CAIRN_TRUST_PROXY:-false}}"
+      GLIDEWORTH_COOKIE_SECURE: "${GLIDEWORTH_COOKIE_SECURE:-${CAIRN_COOKIE_SECURE:-auto}}"
+    volumes:
+      # The volume keeps the name it had before the rename, so existing installs keep their data.
+      - cairn-data:/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8787/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+volumes:
+  cairn-data:

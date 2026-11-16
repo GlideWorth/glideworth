@@ -1,0 +1,15 @@
+---
+/**
+ * Emits one JSON-LD block. Pass a node from src/lib/jsonld.ts, or several with graph().
+ *   <JsonLd data={graph([faqPage(items)])} />
+ */
+import { type JsonLdObject, serialize } from '../lib/jsonld';
+
+interface Props {
+  data: JsonLdObject;
+}
+const { data } = Astro.props;
+const json = serialize('@context' in data ? data : { '@context': 'https://schema.org', ...data });
+---
+
+<script type="application/ld+json" is:inline set:html={json} />

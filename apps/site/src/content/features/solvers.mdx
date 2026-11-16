@@ -1,0 +1,83 @@
+---
+title: Solvers for spending and retirement date
+description: Ask how much you can spend, how early you can retire, how much to save or what withdrawal rate holds, and get an answer in money or dates.
+ogTitle: Solvers for spending and retirement
+summary: Goal-seek answers to "how much can I spend?" and "how early can I retire?" at a success rate you choose.
+order: 6
+---
+
+import SolverSearch from '../../components/diagrams/SolverSearch.astro';
+
+Most planners show you a result and leave you to find the change that fixes it by trial and error. Solvers turn
+the question around. You name a target, such as a 90% chance of success, and the solver searches for the
+answer: a spending figure in money, a retirement month, a savings amount.
+
+## The solvers
+
+- **Maximum spending:** the most you can spend, optionally limited to chosen expenses, while keeping the chance
+  of success at your target.
+- **Earliest retirement:** the earliest month a chosen milestone can happen, reported as a month and an age.
+- **Required savings:** how much a chosen savings flow must be. If you name a flow that cannot be solved for, the
+  tool says which flows can.
+- **Required portfolio:** how large your invested balances must be, as a scale on the accounts you choose.
+- **Safe withdrawal rate:** the highest constant withdrawal rate that works over a horizon of years (30 by default).
+- **Goal seek:** any variable against any objective, within bounds you set, for questions the named solvers
+  do not cover.
+- **Tax-strategy ranking:** compares candidate tax strategies (see [withdrawal strategies](/features/withdrawal-strategies/)).
+
+Every solver returns the same things: an answer written as a sentence, the supporting details, the answer at
+neighbouring targets so you can see the trade-off, and the plan edits that would apply it. Nothing is applied
+until you choose to.
+
+## How one works
+
+A solver runs the plan many times at different values of the thing it is solving for, each run a full
+[Monte Carlo](/features/monte-carlo/) simulation, and narrows in on the value that meets the target.
+
+<Figure caption="A spending solver at a 90% target. Each dot is a full simulation at one spending level. Illustrative figures.">
+  <SolverSearch />
+</Figure>
+
+Because each solver evaluation is a simulation, runs are jobs: they start in worker threads and report progress,
+and you can wait for the result or poll for it. Settings trade accuracy for speed: fewer trials per evaluation
+make a faster, noisier answer, and a cap on evaluations bounds the search. Runs use the seeded default draws, so
+asking the same question twice gives the same answer.
+
+## A worked illustration
+
+On the synthetic UK sample household, asked at 90%, the spending solver answers in pounds a year what the
+household could spend instead of its planned £31,600 (about £36,100 in the project's sample run), and offers the
+edit as a change set. Asked about retirement at an 85% target, the earliest-retirement solver gives a month and an
+age (about 56 and a half). These are illustrative results for a made-up household and one set of assumptions;
+yours will differ.
+
+The same questions work over MCP. A prompt named `how_much_can_i_spend` runs `solve_max_spending` and quotes the
+figure per year; `can_i_retire_earlier` runs `solve_retirement_date`, explains the trade-off and offers a
+branch. Over the REST API they are `POST /api/v1/plans/{id}/solve/max-spending`, `/earliest-retirement`,
+`/required-savings`, `/required-portfolio`, `/safe-withdrawal-rate` and `/goal-seek`.
+
+## Reading an answer
+
+A solver result carries two statuses. The job status says whether the work finished. The solver's own outcome says
+whether it converged on a value or ran out of evaluations first. A solver that stops at its evaluation cap gives
+its best value so far, and says so.
+
+An answer at 90% is not "safe". It is the point where, under your assumptions and the chosen market history,
+nine of ten replays fund every year. Check the neighbouring targets, and read the
+[failure analysis](/features/monte-carlo/) before acting.
+
+## What it does not do
+
+- **It answers inside your assumptions.** Garbage in, garbage out: if growth, inflation or tax settings are off,
+  the answer is precisely wrong. The [assumption audit](/features/explanations-and-audit/) catches common mistakes.
+- **It is not an optimiser of everything at once.** The tax-strategy ranking compares generated or custom
+  candidates; it has no beam search or search-depth setting yet.
+- **Randomised lifespan and care costs** are not inside the simulations it runs.
+- **It does not give advice.** It tells you what your model says is possible.
+- **No Flex versus No-Flex comparison table.** Risk-based guardrails are compared instead.
+
+## Go further
+
+- [Withdrawal strategies and guardrails](/features/withdrawal-strategies/): "what should I spend this year?"
+- [Branches and change sets](/features/branches-and-change-sets/): apply an answer safely.
+- [MCP server](/features/mcp-server/) and the [API](/features/rest-api/).

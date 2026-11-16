@@ -1,0 +1,52 @@
+---
+import { type CollectionEntry, getCollection, render } from 'astro:content';
+import Callout from '../../components/Callout.astro';
+import { mdxComponents } from '../../components/mdx';
+import EntryLayout from '../../layouts/EntryLayout.astro';
+import { formatDate, isoDate } from '../../lib/content';
+
+export async function getStaticPaths() {
+  return (await getCollection('legal')).map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+interface Props {
+  entry: CollectionEntry<'legal'>;
+}
+const { entry } = Astro.props;
+const { Content, headings } = await render(entry);
+const d = entry.data;
+---
+
+<EntryLayout
+  title={d.title}
+  description={d.description}
+  noindex={d.noindex || d.draft}
+  eyebrow="Legal"
+  headings={headings}
+  cta={false}
+  crumbs={[
+    { label: 'Legal', href: '/legal/' },
+    { label: d.title, href: `/legal/${entry.id}/` },
+  ]}
+>
+  <Fragment slot="before">
+    {
+      d.draft && (
+        <Callout type="note" title="Takes effect when the hosted service opens">
+          <p>
+            These terms take effect when the hosted service opens. Last updated{' '}
+            <time datetime={isoDate(d.lastUpdated)}>{formatDate(d.lastUpdated)}</time>.
+          </p>
+        </Callout>
+      )
+    }
+    {!d.draft && <p class="updated">Last updated <time datetime={isoDate(d.lastUpdated)}>{formatDate(d.lastUpdated)}</time></p>}
+  </Fragment>
+  <Content components={mdxComponents} />
+</EntryLayout>
+
+<style>
+  .updated {
+    color: var(--ink-3);
+    font-size: var(--text-sm);
+  }
+</style>

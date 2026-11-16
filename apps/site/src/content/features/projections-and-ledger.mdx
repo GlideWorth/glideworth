@@ -1,0 +1,85 @@
+---
+title: Projections and the year-by-year ledger
+description: A deterministic projection with a ledger for every year, in today's money or future money, where each year's money in, money out and balances reconcile.
+summary: A year-by-year ledger of income, tax, spending, withdrawals and growth, with a reconciliation on every year.
+order: 2
+---
+
+import LedgerExcerpt from '../../components/diagrams/LedgerExcerpt.astro';
+
+A projection takes your plan and your assumptions and walks forward one year at a time. It is deterministic:
+the same inputs always give the same result, using one set of assumptions such as a fixed growth rate and
+inflation. It is the baseline that [Monte Carlo](/features/monte-carlo/) then stresses with many market
+histories.
+
+## What you get
+
+For each year: income by source, tax by jurisdiction and kind, spending, contributions, withdrawals by account,
+investment returns, and the balance of every account and asset. Charts show net worth stacked by category,
+and tables export as JSON or CSV (year by year, cash flow, taxes and account balances). A cash-flow view shows one
+year's money moving from sources to uses.
+
+Each year can be opened as a **drill-down**, and the drill-down ends with a reconciliation: money in equals money
+out, each account's opening balance plus its flows and growth equals its closing balance, and last year's net
+worth plus this year's changes equals this year's. If a number cannot be traced to the ledger, that is a bug,
+and we want to hear about it.
+
+<Figure caption="One year as the ledger lays it out. The figures are illustrative; the structure follows the app.">
+  <LedgerExcerpt />
+</Figure>
+
+## How a year is calculated
+
+- **Income and expenses first.** Each period adds income, takes off tax and expenses, and the surplus goes down
+  your [flows](/features/plan-modelling/) in priority order. A shortfall is drawn from accounts in your drawdown
+  order (by default cash, then taxable investments, then crypto, then tax-deferred, HSA and tax-free accounts),
+  which you can reorder and set start dates for.
+- **Tax and withdrawals depend on each other.** Withdrawals create tax, and tax creates a bigger shortfall, so
+  the engine repeats the calculation until the two agree.
+- **Growth** applies to the opening balance. Money added or taken out during the year earns part of the year's
+  return according to a cash-flow timing setting: mid-year by default (half a year's return), or start or end.
+  Different planners choose differently, which is one reason two planners can disagree on identical inputs.
+- **Tax can be paid in the same year** (the simplest) **or settled in the next**, like tax withheld during a year
+  with the balance paid after.
+
+## Today's money and future money
+
+Every amount you enter says which it is. The engine calculates in nominal money with a price index for each
+period, so any series can be shown in today's money or in the money of the year. The toggle is only a change of
+view; it does not change the plan. Flows deflate by the index at the start of the period and balances by the
+index at the end, and the year drill-down shows an **Inflation** line for the buying power that a year's money
+lost in between, so every figure matches the one shown elsewhere.
+
+## Partial years are labelled
+
+A plan starts in the month your balances are dated and ends at its horizon, so the first and last years are
+often shorter than twelve months. Their income and spending look low next to full years, so they are labelled
+(for example 2026\*) and can be shown annualised. Balances, rates, multi-year totals and CSV exports always use
+the actual months.
+
+## Warnings
+
+The projection flags what you would want to know about: a year when spending is not fully funded, an early
+withdrawal that carries a penalty, a milestone that is never reached. The [assumption audit](/features/explanations-and-audit/)
+checks for modelling mistakes, such as counting housing twice or mixing today's and future money.
+
+## What it does not do
+
+- **Annual steps only.** Monthly or daily resolution is reserved in the schema and rejected today. Sequence
+  effects within a year are not seen.
+- **One path is not a forecast.** A deterministic run uses one set of assumptions. For how fragile the plan is,
+  use [Monte Carlo](/features/monte-carlo/).
+- **Law changes are your assumption.** Rules are as stated for the tax years in the tables, plus what is already
+  legislated. See [tax estimates](/features/tax-estimates/).
+- **Behaviour is not modelled:** panic selling, windfalls you have not planned, a marriage or divorce you have
+  not entered.
+- **No "results changed because" note yet.** After a tax-table or engine update, results can change; a report
+  saying why is planned, not built. Results are cached per plan version and engine version, so a stale number is
+  never served after an update.
+- **Reports are a printable view** produced by your browser. Server-side PDF is not built.
+
+## Go further
+
+- [Tax estimates](/features/tax-estimates/) for how the tax lines are built and what they leave out.
+- [Explanations and the assumption audit](/features/explanations-and-audit/) to ask "where did the money go in 2041?".
+- [The REST API](/features/rest-api/): `POST /api/v1/plans/{id}/simulate` returns a compact projection with a `view` of your choosing.

@@ -1,0 +1,334 @@
+---
+/**
+ * Static API reference, rendered at build time from the OpenAPI snapshot in src/data/openapi.json
+ * (regenerate with `pnpm --filter @glideworth/site snapshot:openapi`). Every operation is printed in full on
+ * the page, grouped by tag, so the browser's find-in-page searches all of it. No script, no viewer, no
+ * request to any other origin.
+ */
+import raw from '../data/openapi.json?raw';
+import { facts } from '../lib/facts';
+
+type Schema = Record<string, unknown> | undefined;
+interface Param {
+  name: string;
+  in: string;
+  required?: boolean;
+  description?: string;
+  schema?: Schema;
+}
+interface Operation {
+  operationId?: string;
+  summary?: string;
+  description?: string;
+  tags?: string[];
+  parameters?: Param[];
+  requestBody?: { required?: boolean; content?: Record<string, { schema?: Schema }> };
+  responses?: Record<string, { description?: string; content?: Record<string, { schema?: Schema }> }>;
+  'x-required-scope'?: string;
+}
+interface Doc {
+  openapi: string;
+  info: { title: string; version: string };
+  tags?: { name: string; description?: string }[];
+  paths: Record<string, Record<string, Operation>>;
+}
+
+const doc = JSON.parse(raw) as Doc;
+const METHODS = ['get', 'post', 'put', 'patch', 'delete'] as const;
+const methodRank = (m: string) => METHODS.indexOf(m as (typeof METHODS)[number]);
+
+interface Row {
+  method: string;
+  path: string;
+  op: Operation;
+}
+const rows: Row[] = [];
+for (const [path, item] of Object.entries(doc.paths)) {
+  for (const [method, op] of Object.entries(item)) {
+    if (methodRank(method) >= 0) rows.push({ method, path, op });
+  }
+}
+if (rows.length !== facts.apiOperations) {
+  throw new Error(
+    `src/data/openapi.json has ${rows.length} operations but facts.apiOperations is ${facts.apiOperations}. ` +
+      'Run `pnpm --filter @glideworth/site snapshot:openapi` and update src/lib/facts.ts.',
+  );
+}
+
+/** "#/components/schemas/Plan" -> "Plan"; arrays, unions and plain types described in a few words. */
+function label(schema: Schema): string {
+  if (!schema) return 'no body';
+  const ref = schema.$ref;
+  if (typeof ref === 'string') return ref.split('/').pop() ?? ref;
+  for (const key of ['oneOf', 'anyOf', 'allOf'] as const) {
+    const parts = schema[key];
+    if (Array.isArray(parts))
+      return parts.map((p) => label(p as Schema)).join(key === 'allOf' ? ' & ' : ' | ');
+  }
+  const type = schema.type;
+  if (type === 'array') return `${label(schema.items as Schema)}[]`;
+  if (Array.isArray(type)) return type.join(' | ');
+  if (typeof type === 'string') return type;
+  return 'object';
+}
+const mediaLabel = (content: Record<string, { schema?: Schema }> | undefined) => {
+  if (!content) return undefined;
+  const entries = Object.entries(content);
+  const [type, value] = entries.find(([t]) => t === 'application/json') ?? entries[0] ?? [];
+  return type ? { type, schema: label(value?.schema) } : undefined;
+};
+
+const slug = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+const described = new Map((doc.tags ?? []).map((t) => [t.name, t.description ?? '']));
+const known = (doc.tags ?? []).map((t) => t.name);
+const used = [...new Set(rows.flatMap((r) => r.op.tags ?? ['Other']))];
+const order = [...known.filter((t) => used.includes(t)), ...used.filter((t) => !known.includes(t)).sort()];
+const groups = order.map((tag) => ({
+  tag,
+  description: described.get(tag) ?? '',
+  rows: rows
+    .filter((r) => (r.op.tags ?? ['Other']).includes(tag))
+    .sort((a, b) => a.path.localeCompare(b.path) || methodRank(a.method) - methodRank(b.method)),
+}));
+const scoped = rows.filter((r) => r.op['x-required-scope']).length;
+---
+
+<div class="api-ref">
+  <p class="api-ref-meta">
+    {doc.info.title} {doc.info.version}, OpenAPI {doc.openapi}: <strong>{rows.length} operations</strong> in
+    {groups.length} groups. {scoped} need an API key with a stated scope; {rows.length - scoped} are the browser
+    sign-in and share-link routes.
+  </p>
+
+  <nav class="api-ref-jump" aria-label="API groups">
+    <ul role="list">
+      {
+        groups.map((g) => (
+          <li>
+            <a href={`#tag-${slug(g.tag)}`}>{g.tag}</a> <span class="count">{g.rows.length}</span>
+          </li>
+        ))
+      }
+    </ul>
+  </nav>
+
+  {
+    groups.map((g) => (
+      <section class="api-group" aria-labelledby={`tag-${slug(g.tag)}`}>
+        <h2 id={`tag-${slug(g.tag)}`}>{g.tag}</h2>
+        {g.description && <p class="api-group-desc">{g.description}</p>}
+        <ul role="list" class="ops">
+          {g.rows.map(({ method, path, op }) => {
+            const params = (op.parameters ?? []).filter((p) => p.in !== 'header');
+            const headers = (op.parameters ?? []).filter((p) => p.in === 'header');
+            const body = mediaLabel(op.requestBody?.content);
+            const ok = Object.entries(op.responses ?? {}).filter(([code]) => code.startsWith('2'));
+            const errors = Object.keys(op.responses ?? {}).filter((code) => !code.startsWith('2'));
+            return (
+              <li class="op" id={op.operationId}>
+                <div class="op-head">
+                  <span class={`method method-${method}`}>{method.toUpperCase()}</span>
+                  <code class="op-path">{path}</code>
+                  <span class="op-scope">
+                    {op['x-required-scope'] ? `scope: ${op['x-required-scope']}` : 'no API-key scope'}
+                  </span>
+                </div>
+                <p class="op-summary">
+                  {op.summary}
+                  {op.operationId && <span class="op-id"> <code>{op.operationId}</code></span>}
+                </p>
+                <dl class="op-detail">
+                  {params.length > 0 && (
+                    <>
+                      <dt>Parameters</dt>
+                      <dd>
+                        {params.map((p, i) => (
+                          <>
+                            {i > 0 && ', '}
+                            <code>{p.name}</code> ({p.in}
+                            {p.required ? ', required' : ''}, {label(p.schema)})
+                          </>
+                        ))}
+                      </dd>
+                    </>
+                  )}
+                  {headers.length > 0 && (
+                    <>
+                      <dt>Headers</dt>
+                      <dd>
+                        {headers.map((h, i) => (
+                          <>
+                            {i > 0 && ', '}
+                            <code>{h.name}</code>
+                            {h.required ? ' (required)' : ''}
+                          </>
+                        ))}
+                      </dd>
+                    </>
+                  )}
+                  {body && (
+                    <>
+                      <dt>Request body</dt>
+                      <dd>
+                        <code>{body.schema}</code> <span class="media">{body.type}</span>
+                      </dd>
+                    </>
+                  )}
+                  <dt>Responses</dt>
+                  <dd>
+                    {ok.map(([code, r], i) => {
+                      const media = mediaLabel(r.content);
+                      return (
+                        <>
+                          {i > 0 && '; '}
+                          {code} {r.description}
+                          {media ? <> (<code>{media.schema}</code>)</> : null}
+                        </>
+                      );
+                    })}
+                    {errors.length > 0 && <span class="errors"> Errors: {errors.join(', ')}.</span>}
+                  </dd>
+                </dl>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    ))
+  }
+</div>
+
+<style>
+  .api-ref {
+    display: grid;
+    gap: var(--space-l);
+    min-width: 0;
+  }
+  .api-ref-meta {
+    color: var(--ink-2);
+  }
+  .api-ref-jump ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.9rem;
+    font-size: var(--text-sm);
+  }
+  .count {
+    color: var(--ink-3);
+    font-size: var(--text-xs);
+  }
+  .api-group {
+    display: grid;
+    gap: var(--space-s);
+    min-width: 0;
+  }
+  .api-group h2 {
+    margin-top: var(--space-l);
+    font-size: var(--text-2xl);
+    padding-bottom: var(--space-xs);
+    border-bottom: 1px solid var(--line-strong);
+  }
+  .api-group-desc {
+    color: var(--ink-2);
+  }
+  .ops {
+    display: grid;
+    gap: 0;
+  }
+  .op {
+    padding: var(--space-s) 0;
+    border-bottom: 1px solid var(--line);
+    display: grid;
+    gap: 0.3rem;
+    min-width: 0;
+    scroll-margin-top: calc(var(--header-h) + 1rem);
+  }
+  .op-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.4rem 0.7rem;
+  }
+  .method {
+    display: inline-block;
+    min-width: 3.9rem;
+    padding: 0.05rem 0.45rem;
+    border: 1px solid var(--line-strong);
+    border-left-width: 4px;
+    border-radius: var(--radius-s);
+    background: var(--surface-2);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    text-align: center;
+  }
+  .method-get {
+    border-left-color: var(--accent);
+  }
+  .method-post {
+    border-left-color: var(--ochre-mark);
+  }
+  .method-put,
+  .method-patch {
+    border-left-color: var(--ink-3);
+  }
+  .method-delete {
+    border-left-color: var(--risk);
+  }
+  .op-path {
+    font-size: var(--text-sm);
+    background: none;
+    border: 0;
+    padding: 0;
+    overflow-wrap: anywhere;
+    min-width: 0;
+  }
+  .op-scope {
+    margin-left: auto;
+    color: var(--ink-3);
+    font-size: var(--text-xs);
+  }
+  .op-summary {
+    margin: 0;
+  }
+  .op-id {
+    color: var(--ink-3);
+    font-size: var(--text-xs);
+  }
+  .op-detail {
+    display: grid;
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+    gap: 0.15rem var(--space-s);
+    font-size: var(--text-sm);
+    color: var(--ink-2);
+  }
+  .op-detail dt {
+    color: var(--ink-3);
+  }
+  .op-detail dd {
+    margin: 0;
+    min-width: 0;
+  }
+  .media,
+  .errors {
+    color: var(--ink-3);
+    font-size: var(--text-xs);
+  }
+  @media (max-width: 36rem) {
+    .op-detail {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0;
+    }
+    .op-detail dt {
+      margin-top: 0.3rem;
+    }
+    .op-scope {
+      margin-left: 0;
+    }
+  }
+</style>

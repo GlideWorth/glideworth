@@ -1,0 +1,78 @@
+---
+title: Importing and exporting your data
+description: Bring in a ProjectionLab export, bank and budgeting CSVs, and OFX, QFX or QIF statements with a dry run first, and take your data out as JSON, CSV or a report.
+ogTitle: Importing and exporting
+summary: ProjectionLab JSON, CSV presets and bank files in, each with a preview; JSON, CSV tables and a printable report out.
+order: 12
+---
+
+Glideworth never connects to your bank, so your numbers arrive by file or from a script you control. Every importer
+is built around the same rule: **show what would change before changing anything**.
+
+## Importing
+
+**ProjectionLab JSON.** Export your data from ProjectionLab (account menu, JSON export), then drop the file into
+the app's Import screen or send it to `POST /api/v1/import` with `"format": "projectionlab"`. The import report
+lists every key by path, with per-entity counts, and sorts them into what mapped exactly, what was approximated
+and what has no equivalent. It never echoes your values. Anything marked approximated or unsupported needs a
+manual check. A ProjectionLab plugin API key found in the file is discarded. Re-importing an existing household
+needs an explicit mode: create (the default), replace, or merge.
+
+**CSV.** Three kinds: account balances, progress history, and transactions (summarised into annual expense events
+on a plan). Presets cover Monarch and YNAB exports, and a generic mode detects the delimiter, columns and number
+formats. For balances you see a reconciliation (matched, created and unmatched accounts with before-and-after
+balances) before applying. The dry run is the default; applying is atomic, so finances, snapshots and the plan
+change in one transaction or not at all.
+
+**OFX, QFX and QIF.** Bank, card and investment statements. Balances reconcile like a CSV balance import.
+Spending is summarised into annual expense events, with transfers, income and card payments left out. Account
+numbers are masked to their last four digits. OFX 1.x and 2.x are both read.
+
+**Glideworth's own export,** to move a household between instances, between a self-hosted server and (once it
+opens) the hosted service, or back from a backup.
+
+A dry-run report, as a person would read it (counts are illustrative):
+
+| Result | Entities | Example |
+| --- | --- | --- |
+| Mapped exactly | 41 | Accounts, balances, salary |
+| Approximated | 6 | A growth schedule with no equal in Glideworth |
+| No equivalent | 2 | A chart preference |
+
+## Worked illustration
+
+You export a household from another planner and a month of statements from your bank. Dry-run the planner file:
+41 items map exactly, 6 are approximated and 2 have no equivalent, each listed by key path. You fix the
+approximated growth schedule in the plan editor, then apply the import. Next, preview the bank file: the report
+says three accounts matched, one debt was not found, and the savings balance differs by £212, with the before and
+after shown. You map the debt, apply, and a progress snapshot is recorded. Counts are illustrative.
+
+## Exporting
+
+- **The household document** as JSON: household, current finances, plans, progress and settings, in a
+  schema-versioned file that Glideworth can import again. Older files are migrated when read.
+- **Tables as CSV or JSON:** year by year, cash flow, taxes and account balances, in the basis you choose, plus
+  progress history.
+- **A report** with key figures, milestones, assumptions, current finances and standing caveats, as data and as a
+  printable view. Your browser's print function makes the PDF.
+- **A whole-database backup** is separate: see [self-hosting](/self-hosting/).
+
+The importers and exporters are a separate package under the MIT licence, so other software can read and write
+these formats. See [open source](/open-source/).
+
+## What it does not do
+
+- **No live sync** with budgeting apps. Balance sync with Lunch Money, YNAB, Monarch and Actual is on the
+  [roadmap](/roadmap/); today it is a script, CSV or a bank file.
+- **No bank aggregation,** by design.
+- **ProjectionLab is the only other planner format** read directly. There are no importers for other planners.
+- **Imports are approximate where formats differ.** The report says where; check those items.
+- **Table export covers four tables,** not any chart you can draw.
+- **No server-side PDF.** Print the report from the browser.
+- **The JSON export is not a full backup:** it leaves out users, API keys and version history.
+
+## Go further
+
+- [Plan modelling](/features/plan-modelling/): where imported items end up.
+- [Progress and check-ins](/features/progress-and-check-ins/): snapshots created from imports.
+- [REST API](/features/rest-api/): `POST /api/v1/households/{id}/import/csv` and `/import/bank-file`, both dry-run by default.

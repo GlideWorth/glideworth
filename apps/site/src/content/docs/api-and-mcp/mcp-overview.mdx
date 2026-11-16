@@ -1,0 +1,91 @@
+---
+title: MCP server overview and safety model
+description: What the Glideworth MCP server is, how read-only access and change sets keep AI assistants safe, how writes are enabled, and the prompts and resources it offers.
+section: API and MCP
+order: 20
+lastChecked: 2026-11-16
+---
+
+import { facts } from '../../../lib/facts';
+
+import Callout from '../../../components/Callout.astro';
+
+The Model Context Protocol (MCP) lets an AI assistant such as Claude Desktop, Claude
+Code or Cursor call tools. Glideworth's MCP server lets an assistant read your plans, run simulations and solvers, and
+propose edits that you approve. It is a thin adapter over the same services as the [REST API](/docs/api-and-mcp/api-overview/), so
+every tool has a REST twin.
+
+The server has {facts.mcpTools} tools: {facts.mcpReadTools} that read and compute (all marked read-only) and {facts.mcpWriteTools} that write, which exist only when writes
+are enabled. See [the tool list](/docs/api-and-mcp/mcp-tools/).
+
+## The safety model
+
+- **Read-only by default.** Write tools register only when the server enables writes
+  (`GLIDEWORTH_MCP_ALLOW_WRITES=true`) **and** the connecting key has `write` scope. A client that cannot see a tool
+  cannot call it. A `viewer` never has write tools.
+- **Plan edits are change sets or branches, never overwrites.** The assistant proposes JSON Patch operations, gets a
+  readable diff and a before and after outcome, shows you, and only then applies. A stale proposal is a conflict, not a
+  silent merge. Every apply is recorded in plan history with the assistant's identity.
+- **Household data is different by design.** `update_account_balances`, `record_progress_snapshot` and `apply_csv_import`
+  write directly, because they record actuals, not assumptions, and are atomic. `create_branch` and
+  `create_branch_from_template` add a what-if without touching the parent.
+- **No delete tools.** Even "revert to version N" is a proposal. The only undo-style tools are `revoke_share_link` and
+  `unset_fx_rate`; neither deletes plans or household data.
+- **Compact outputs.** Tools return compact JSON with ids included, money rounded to whole units in today's money, and a
+  `detail` of `summary` or `full` where output can be large.
+- **Errors say how to recover.** A failure is an error result with `code`, `message`, `details` and a `hint` saying what
+  to call next. A missing plan or household lists the valid ids. Unexpected failures say only `internal error`.
+- **Read means read.** Read and compute tools never change household or plan data. Compute tools do write cache and job
+  rows, which is why results are reproducible.
+- **Units are spelled out** in the instructions the server sends: money in major units, rates as fractions, `real` is
+  today's money.
+
+## Enabling write tools
+
+Write tools need both:
+
+1. The server flag. On Docker or the server, set `GLIDEWORTH_MCP_ALLOW_WRITES=true` in `.env`. For a stdio server, set it
+   in the process environment.
+2. A key with `write` scope: `pnpm keys:create -- --name claude-editor --scopes read,write`. Over OAuth, the user must grant
+   `write`, and their role must allow it.
+
+Tool registration is decided per connection, so reconnect after changing either.
+
+## Prompts
+
+Eight prompts guide common tasks. Each asks the assistant to use specific tools.
+
+| Prompt | Arguments | What it asks |
+| --- | --- | --- |
+| `review_my_plan` | `planId?` | Outcome, Monte Carlo, audit and sensitivity, then the three most valuable changes. Changes nothing. |
+| `why_might_my_plan_fail` | `planId?` | Chance of success, then the failure analysis and `explain_year` on the earliest failure year. |
+| `how_much_can_i_spend` | `planId?`, `targetSuccessRate?` | `solve_max_spending`, quote the money per year, offer the edits. |
+| `can_i_retire_earlier` | `planId?`, `targetSuccessRate?` | `solve_retirement_date`, explain the trade-off, offer a branch. |
+| `retire_earlier_as_branch` | `planId?`, `years` | Preview, create a branch, run Monte Carlo on both, compare. |
+| `check_my_assumptions` | `planId?` | `audit_plan`, preview then propose the top fix, apply only after approval. |
+| `what_if_spending` | `planId?`, `change` | Turn "+500 a month on dining" into operations, preview, report before and after. |
+| `monthly_checkin` | `householdId?` | Collect balances, update them, compare with earlier snapshots and the plan. |
+
+## Resources
+
+| URI | Content |
+| --- | --- |
+| `glideworth://schema/document` | JSON Schema of the whole household document (about 100 KB). |
+| `glideworth://schema/plan` | JSON Schema of a plan (about 100 KB). |
+| `glideworth://docs/edit-paths` | The dozen most common plan edits as ready-to-adapt operations. Read this before the big schemas. |
+| `glideworth://docs/glossary` | Terms: household, plan, branch, milestone, flow, real versus nominal, change set. |
+| `glideworth://docs/units` | Money, rates, bases, frequencies and patch addressing. |
+| `glideworth://docs/change-sets` | The propose, review and apply workflow. |
+| `glideworth://plans/{planId}` | The full plan document. |
+| `glideworth://plans/{planId}/summary` | The compact plan. |
+| `glideworth://households/{householdId}/document` | The whole workspace (large). |
+
+<Callout type="warning" title="What the model sees">
+  An assistant sees what its tools return, within the scopes of its key. The model provider you connect sees that data too.
+  If that matters to you, use a local model. Glideworth itself sends nothing to any provider.
+</Callout>
+
+## What this does not do
+
+It cannot delete plans or household data, overwrite a plan, or write when the flag is off. The assistant cannot see
+anything outside its key's scope. The assistant's explanations are only as good as the plan and the model.

@@ -1,0 +1,55 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  // Same categories as the owner's other repository (propertypixel): warnings, denied in CI by
+  // `--deny-warnings`. react and jsx-a11y are added because Biome's recommended set covered them here.
+  "categories": {
+    "correctness": "warn",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "plugins": ["typescript", "unicorn", "oxc", "react", "jsx-a11y"],
+  "rules": {
+    // What Biome enforced here (noExplicitAny and noBannedTypes were set to "error").
+    "typescript/no-explicit-any": "warn",
+    "typescript/no-empty-object-type": "warn",
+    "typescript/no-wrapper-object-types": "warn",
+    "typescript/no-unsafe-function-type": "warn",
+
+    // Wrong for this codebase. Reasons:
+    // Automatic JSX runtime (tsconfig "jsx": "react-jsx"): React need not be in scope.
+    "react/react-in-jsx-scope": "off",
+    // React Compiler-style rules (new in the react plugin): they ask for refactors of component
+    // state and refs, and overlap react-hooks/exhaustive-deps, which stays on.
+    "react/set-state-in-effect": "off",
+    "react/exhaustive-effect-dependencies": "off",
+    "react/refs": "off",
+    "react/preserve-manual-memoization": "off",
+    "react/memo-dependencies": "off",
+    "react/immutability": "off",
+    "react/purity": "off",
+    "react/capitalized-calls": "off",
+    // Sequential awaits are deliberate (ordered writes, polling, deterministic tests).
+    "eslint/no-await-in-loop": "off",
+    // Style or micro-performance only; the fixes (toSorted, new Set, hoisting) are not behaviour-
+    // identical everywhere (in-place sorts are relied on) and would touch calculation code in core.
+    "unicorn/no-array-sort": "off",
+    "unicorn/no-array-reverse": "off",
+    "unicorn/consistent-function-scoping": "off",
+    "unicorn/prefer-set-has": "off",
+    "unicorn/no-new-array": "off",
+    "oxc/no-map-spread": "off",
+    "eslint/no-shadow": "off",
+    "eslint/no-underscore-dangle": "off",
+    // `?? {}` before a spread and `[...set]` snapshots are harmless and sometimes deliberate;
+    // rewriting them would edit engine and money code for no gain.
+    "unicorn/no-useless-fallback-in-spread": "off",
+    "unicorn/no-useless-spread": "off",
+    // Web Worker `postMessage` and `onmessage` have no target origin / listener API to use.
+    "unicorn/require-post-message-target-origin": "off",
+    "unicorn/prefer-add-event-listener": "off",
+    // Flags role="img" on SVG and ARIA radio/checkbox widgets that have no equivalent native element.
+    "jsx-a11y/prefer-tag-over-role": "off",
+    // False positives: the input is nested inside the label, under wrapper elements.
+    "jsx-a11y/label-has-associated-control": "off"
+  }
+}

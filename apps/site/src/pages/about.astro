@@ -1,0 +1,72 @@
+---
+import CTABand from '../components/CTABand.astro';
+import Prose from '../components/Prose.astro';
+import { page } from '../config/pages';
+import { site } from '../config/site';
+import PageLayout from '../layouts/PageLayout.astro';
+
+const hosted = site.cloudLaunched
+  ? 'The hosted service is open and paid for by subscriptions; accounts, billing, two-factor sign-in, automatic backups and email are still being built.'
+  : 'The hosted service is about to open and will be paid for by subscriptions. Its accounts, billing, two-factor sign-in, automatic backups and email are planned, not running.';
+---
+
+<PageLayout
+  {...page('/about/')}
+  heading="A planner you can see inside"
+  eyebrow="About"
+  lede="Glideworth is an independent, open-source financial and retirement planner. It exists for people who want to understand their plan, not just receive a number, and who want to keep control of their financial data."
+  crumbs={[{ label: 'About', href: '/about/' }]}
+>
+  <div class="container-narrow body">
+    <Prose>
+      <h2>Why it exists</h2>
+      <p>
+        Planning for retirement comes down to one question: will my money last, and what can I change? Most tools answer
+        the first half with a number and leave you to trust it. Glideworth tries to answer both halves and show the
+        working. Every year of a projection has a ledger, every tax estimate lists what it leaves out, and every result
+        can be traced to what produced it.
+      </p>
+      <p>
+        It is also built so that software can help. A complete REST API and an MCP server let scripts and AI assistants
+        read your plan, run simulations and propose changes that you approve, without being able to overwrite anything.
+      </p>
+
+      <h2>What we believe</h2>
+      <ul>
+        <li><strong>Show the working.</strong> The <a href="/features/projections-and-ledger/">ledger</a> and the <a href="/features/explanations-and-audit/">explanations</a> are the product, not an extra.</li>
+        <li><strong>Your data, your choice of computer.</strong> The full planner is open source and runs on your own machine if you prefer. See <a href="/self-hosting/">self-hosting</a> and <a href="/security/">security</a>.</li>
+        <li><strong>Estimates, honestly labelled.</strong> Glideworth models your assumptions. Tax figures are estimates for stated tax years, and each country lists <a href="/blog/what-a-tax-estimate-leaves-out/">what it leaves out</a>.</li>
+        <li><strong>Nothing held back.</strong> The self-hosted build has every feature. The hosted service sells convenience. See <a href="/open-source/">open source</a>.</li>
+      </ul>
+
+      <h2>Who is behind it</h2>
+      <p>
+        Glideworth is an independent project, not part of a bigger company, and it is maintained by very few people. We
+        have not put a team page here because there is no more to say than that, and we would rather say nothing than
+        invent something. Glideworth is the product and trading name of {site.entity.name}, {site.entity.description}. The
+        contributor and licensing rules are public, and anyone can read the code once the repository opens.
+      </p>
+
+      <h2>What it is not</h2>
+      <p>
+        Glideworth is planning software. It is not a financial adviser, a tax return or a regulated service, and it does
+        not tell you what to buy. It does not connect to your bank, sell your data or run advertising. Talk to a
+        qualified adviser before you act on a projection.
+      </p>
+
+      <h2>Where things stand</h2>
+      <p>
+        The planner works today and you can self-host it. {hosted}
+        The <a href="/roadmap/">roadmap</a> says what comes next, with no dates, and the <a href="/changelog/">changelog</a>
+        records what has actually changed. To reach us, see <a href="/contact/">contact</a>.
+      </p>
+    </Prose>
+  </div>
+  <CTABand />
+</PageLayout>
+
+<style>
+  .body {
+    padding-bottom: var(--section-y);
+  }
+</style>

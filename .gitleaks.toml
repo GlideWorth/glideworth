@@ -1,0 +1,26 @@
+# Secret-scan configuration for the CI "secrets" job.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Synthetic API keys used by the test suite and documented as public examples"
+regexTarget = "match"
+regexes = ['''(cairn|glideworth)_[a-z0-9]{8}_[0-9a-f]{32}''']
+
+# localStorage key name (a namespaced string, not a credential) in the cloud hand-off helper.
+[[allowlists]]
+description = "localStorage key name 'glideworth.handoff.v1' (not a secret)"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^apps/web/src/features/cloud/handoff\.ts$''']
+regexTarget = "match"
+regexes = ['''"glideworth\.handoff\.v[0-9]+"''']
+
+# Documentation placeholder: "glideworth_<8 chars>_..." (the secret part is a literal ellipsis).
+[[allowlists]]
+description = "Truncated placeholder API key in the REST API documentation example"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^apps/site/src/content/features/rest-api\.mdx$''']
+regexTarget = "match"
+regexes = ['''KEY=glideworth_[a-z0-9]{8}_\.\.\.''']

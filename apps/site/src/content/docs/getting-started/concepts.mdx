@@ -1,0 +1,76 @@
+---
+title: Core concepts
+description: The ideas behind Glideworth in plain words - household, current finances, plans, milestones, today's money versus future money, and amounts with a basis and a frequency.
+section: Getting started
+order: 3
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+
+Every screen in the app is built from a few ideas. Learn these and the rest follows.
+
+## Household
+
+The people you plan for: one person, or two for a couple. Each has a birth month. The household also
+holds where you live and the currency. Dependents (children, people you support) are separate from the
+people.
+
+## Current finances
+
+Where you are today: accounts (cash, ISAs, pensions, investments), real assets (a home, a car, a rental)
+and debts, each with an owner. These are balances, not a forecast. You update them by hand, by CSV
+or bank-file import, or from a script, and every plan that starts "now" reads them. An update can record
+a **progress snapshot**, with at most one automatic snapshot per day.
+
+## Plans
+
+A plan is a scenario built on your finances: milestones, income, expenses, savings flows, assumptions,
+tax settings and withdrawal rules. You can have many plans (retire at 60, retire at 57, downsize at 70).
+A plan keeps a **version history**: every change is a new version you can go back to. A **branch** is a
+plan that stores only its differences from a parent and follows the parent when it changes.
+
+## Milestones
+
+Named moments the plan hangs things on, such as "Retirement", "Mortgage paid off", "Life expectancy" or
+"Financial independence". A milestone is a date, an age, or a condition ("net worth at least ..."), or
+several joined by AND and OR. Income, expenses and flows can start or end at a milestone, so moving
+retirement moves everything tied to it. If a milestone is never reached, the plan says so.
+
+## Flows and drawdown
+
+**Flows** say what happens to money left over each year, in priority order: top up the emergency fund,
+contribute to the workplace pension, fill the ISA, then invest the rest. The order is the priority.
+
+**Drawdown** says where money comes from when spending exceeds income. The default order is cash, then
+taxable investments, then pensions, then tax-free accounts. You can reorder it, and set when each account
+can be touched (UK pensions cannot be drawn before the minimum pension age, for example).
+
+## Today's money versus future money
+
+Every amount you enter says which it is.
+
+- **Today's money** (real) is what the amount would buy at today's prices.
+- **Future money** (nominal) is the actual number of pounds, dollars or euros in that year.
+
+The engine calculates in future money and shows either. The toggle in the app's top bar, labelled
+"Today's money" and "Future money", only changes the view, not the plan. Use today's money when you ask
+whether you can afford a lifestyle, because a pound in 2060 is not a pound today.
+
+## Amounts have a basis and a frequency
+
+Every amount you enter has three parts: a value, a basis (`real` or `nominal`) and a frequency (such as
+monthly or yearly). So "2,000 a month" can never be read as "2,000 a year". Money is entered in major
+currency units (1234.56, not cents) and rates are percentages in the app (7%), stored as fractions (0.07).
+
+<Callout type="warning" title="Check the frequency">
+  A typo in the frequency changes a figure twelvefold. The assumption audit flags some mix-ups
+  (such as mixing today's and future money), but not every one.
+</Callout>
+
+## Chance of success
+
+One projection uses one fixed set of assumptions. Reality varies, so Glideworth also replays your plan many
+times with different market histories and counts how often every year's spending was fully funded.
+"85% chance of success" means 85 of 100 replays never ran short. It measures how fragile a plan is. It is
+not a forecast. How it is computed is on [Monte Carlo and historical replay](/docs/methodology/monte-carlo/).

@@ -1,0 +1,121 @@
+---
+title: "How long will my money last? Three ways to answer"
+description: "A closed-form depletion formula with a worked example, why one average return misleads, and how historical replay and Monte Carlo answer the same question."
+pubDate: 2026-11-16
+author: [glideworth-team]
+tags: [Retirement, Monte Carlo, Withdrawal rates, Methodology]
+draft: false
+---
+
+import Callout from '../../components/Callout.astro';
+
+If you take a fixed amount out of a portfolio every year and it earns a constant real return, the number of years it lasts has an exact answer:
+
+> years = −ln(1 − r × B ÷ W) ÷ ln(1 + r)
+
+Here `B` is the starting balance, `W` the yearly withdrawal (taken at the end of each year, in today's money), and `r` the real return. A balance of 500,000, withdrawals of 30,000 and a 4% return give **28.0 years**. That formula is a useful first answer and a poor last one, because real returns do not arrive as a constant. This article gives the formula, shows with a small example how it can mislead, and then describes the two methods that replace it: replaying history and running a Monte Carlo simulation.
+
+<Callout type="note" title="Education, not advice">
+  These are calculations on stated assumptions, not forecasts and not advice. See the
+  [not-advice notice](/legal/disclaimer/).
+</Callout>
+
+## Way 1: the closed-form formula
+
+### Where it comes from
+
+Each year the balance grows by the factor `1 + r` and then `W` is taken out. After `n` years the balance is `B(1 + r)^n − W × ((1 + r)^n − 1) ÷ r`. Setting that to zero and solving for `n` gives the formula above. It only has an answer when `r × B` is less than `W`. If `r × B` is equal to or more than `W`, the yearly growth covers the withdrawal and the balance never runs out.
+
+### A worked example
+
+Inputs: `B` = 500,000, `W` = 30,000, `r` = 4% real, withdrawals at the end of each year.
+
+1. `r × B` = 0.04 × 500,000 = 20,000.
+2. `1 − 20,000 ÷ 30,000` = 0.33333.
+3. `−ln(0.33333)` = 1.09861, and `ln(1.04)` = 0.03922.
+4. `1.09861 ÷ 0.03922` = **28.01 years**.
+
+Check by running it year by year. After 27 withdrawals the balance is 29,158. After 28 it is 324. The 29th withdrawal cannot be paid in full. So 28 full withdrawals are paid, matching 28.01. The [how long will my money last calculator](/tools/how-long-will-my-money-last/) runs this with your numbers and replays it through US market history.
+
+### How much the return assumption matters
+
+Same balance and withdrawal, different constant real returns:
+
+| Real return | Years the money lasts |
+| ---: | ---: |
+| 2% | 20.5 |
+| 3% | 23.4 |
+| 4% | 28.0 |
+| 5% | 36.7 |
+| 6% | never (growth of 30,000 equals the withdrawal) |
+
+A two-point change in return moves the answer from 20.5 years to 36.7. If withdrawals are taken at the start of each year instead, the formula becomes `−ln(1 − r × B ÷ (W × (1 + r))) ÷ ln(1 + r)`, which gives 26.1 years at 4%: 26 full withdrawals. Timing alone moves the result by about two years.
+
+Three limits come with the formula: the return is constant, the withdrawal is fixed in real terms, and there is no tax. It also uses a real return, so inflation is already taken out. Using a nominal return with a fixed real withdrawal will overstate the answer.
+
+## Why a single average return misleads
+
+The formula treats every year as the same. Real years are not. The problem is not only that averages hide variation; it is that when money is being withdrawn, the order of the returns changes the outcome even if the returns themselves are identical.
+
+Here is a deliberately small example. Over six years, the portfolio's real returns are −20%, −10%, 0%, +10%, +20% and +30%. Call that sequence A. Sequence B is the same six returns in reverse: +30%, +20%, +10%, 0%, −10%, −20%. Both have an arithmetic average of 5% a year, and both have the same compound growth of 3.59% a year, since they contain exactly the same six numbers. The starting balance is 1,000,000.
+
+With no withdrawals, order makes no difference: both end at **1,235,520**, because multiplication does not care about order.
+
+Now take 150,000 out at the end of each year, after that year's return.
+
+| Year | Return A | Balance A | Return B | Balance B |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | −20% | 650,000 | +30% | 1,150,000 |
+| 2 | −10% | 435,000 | +20% | 1,230,000 |
+| 3 | 0% | 285,000 | +10% | 1,203,000 |
+| 4 | +10% | 163,500 | 0% | 1,053,000 |
+| 5 | +20% | 46,200 | −10% | 797,700 |
+| 6 | +30% | cannot pay | −20% | 488,160 |
+
+In sequence A the portfolio is exhausted during year six. In sequence B the same returns leave 488,160. A projection that assumed a constant 5% (the average) would show 319,809 left after six years and call the plan fine. It would be wrong for A and conservative for B. Even with a smaller withdrawal of 100,000, A ends at 351,880 and B at 737,280.
+
+Why does this happen? In A, the early losses hit a full-sized portfolio and withdrawals then remove money that would have recovered; the later gains arrive on a much smaller balance. In B the gains build a cushion first. This is **sequence-of-returns risk**, and it is the reason retirement projections use more than one path. The effect is not confined to retirement: for a saver adding money each year, the same arithmetic runs the other way, and bad returns early are the better case.
+
+## Way 2: replay history
+
+A historical backtest uses real past returns in their real order. Take a start year, apply that year's return, then the next year's, withdraw each year, and record whether the money lasted. Repeat for every start year the data allows. The share of start years in which the money lasts is the historical success rate, and the worst start years show what a real bad sequence looks like.
+
+William Bengen's 1994 article ["Determining Withdrawal Rates Using Historical Data"](https://www.financialplanningassociation.org/sites/default/files/2021-04/MAR04%20Determining%20Withdrawal%20Rates%20Using%20Historical%20Data.pdf) is the classic example. It argued against planning on averages and for looking at "what actually has happened, year-by-year" to returns and inflation. His starting point is the reason this approach exists: a plan built on average returns and average inflation can fail when a severe downturn and high inflation arrive together.
+
+Replay has strengths and limits.
+
+- **Realistic structure.** Real returns carry features that simple random draws miss: runs of bad years, inflation spikes, bonds and stocks moving together.
+- **Few independent samples.** Consecutive start years share almost all their data. A dataset running from 1926 to 1992 holds 67 years, which gives 38 start years for 30-year windows, but only two windows that do not overlap at all.
+- **One country, one history.** The result describes what happened there. Wade Pfau's [international study](https://financialplanningassociation.org/article/journal/DEC10-international-perspective-safe-withdrawal-rates-demise-4-percent-rule) of 17 countries and 109 years found a 4% real withdrawal rate would have been "safe" in only 4 of them, in the paper's terms.
+- **Past is not future.** It tests what happened, not what could.
+
+## Way 3: Monte Carlo
+
+A Monte Carlo simulation builds thousands of possible return sequences from a model and counts how many leave the money intact. A model might draw each year's return from a distribution with a chosen mean and volatility, or it might resample years from history. The [article on Monte Carlo simulations](/blog/monte-carlo-retirement-simulations/) describes the methods and the assumptions that drive them.
+
+The output is a frequency: "in 8,667 of 10,000 simulated futures, every year's spending was paid." It is not a measurement of the future. Three details help in reading it.
+
+**Sampling noise.** A simulation with a finite number of trials estimates the model's true answer with some error. For a result near 90% with 1,000 trials, the 95% margin is about ±1.9 percentage points (1.96 × √(0.9 × 0.1 ÷ 1,000)). With 10,000 trials it is about ±0.6. Differences of a point or two between two runs may be noise, which is why a fixed random seed makes comparisons fair.
+
+**What "success" means.** The usual definition is that every year's spending was fully paid. A trial that is short by a small amount in its last year fails just as one that runs out at 70 does. A looser definition, such as the balance never reaching zero, gives a different percentage.
+
+**The model's inputs.** The percentage is conditional on the assumed return, volatility, inflation, spending and horizon. Change them and it moves. In a test the next article reports, changing the assumed return by one point moved a result from 87% to 93% or to 76%.
+
+## Reading the answer together
+
+The three methods answer different questions.
+
+| Method | What it tells you | What it cannot tell you |
+| --- | --- | --- |
+| Closed-form formula | Years of money under one steady return; quick sensitivity to return and withdrawal | Anything about volatility or order |
+| Historical replay | How the plan would have fared in each real start year, including the worst | What a range of new sequences would do |
+| Monte Carlo | A distribution of outcomes under stated assumptions | Anything the model leaves out, including how you would respond |
+
+A sensible check is to look at all three. If the formula says the money lasts 28 years and a Monte Carlo run says there is a one in six chance it ends by year 25, the gap between the two numbers is the volatility the formula ignored.
+
+Glideworth runs the first as a deterministic year-by-year projection with tax, the second as a historical backtest through every start year, and the third as Monte Carlo with a choice of sampling methods and a fixed or fresh seed. Its [Monte Carlo page](/features/monte-carlo/) and the [methodology documentation](/docs/methodology/monte-carlo/) describe the details, and the hosted service is about to open. The free [how long will my money last calculator](/tools/how-long-will-my-money-last/) runs the formula version next to a historical replay. A related question, whether a given portfolio is large enough, is covered in the [article on your FIRE number](/blog/what-is-your-fire-number/).
+
+<FAQ items={[
+  { q: 'Should the return in the formula be real or nominal?', a: '<p>If the withdrawal is fixed in today\'s money, use a real return, meaning the return after inflation. If the withdrawal is a fixed nominal amount that never rises, use a nominal return, but then its buying power shrinks each year.</p>' },
+  { q: 'Can the formula include a pension or other income?', a: '<p>Only in a rough way, by reducing the withdrawal W by the income. If the income starts or stops part-way through, the year-by-year method is needed, because the formula assumes one constant W throughout.</p>' },
+]} />

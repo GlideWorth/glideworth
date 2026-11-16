@@ -1,0 +1,61 @@
+---
+title: Branches, compare, history and what-ifs
+description: Try an idea without touching your main plan with branches, compare plans side by side, go back through version history, and use what-if templates and survivor scenarios.
+section: Planning
+order: 6
+lastChecked: 2026-11-16
+---
+
+import Callout from '../../../components/Callout.astro';
+
+**Before you start:** a main plan you are happy with.
+
+## Versions and undo
+
+Every change to a plan is a new version, with who made it (you, an API key or an MCP client). History is
+append-only. To undo, restore an older version: that writes the old content as a **new** version, so nothing is
+lost. In the Plan editor, undo is one step back through the history.
+
+## Branches
+
+A branch is a plan that stores only its differences from a parent. It follows the parent when the parent changes,
+and can be merged back or promoted.
+
+<Steps>
+1. Open **Plans**, or the Plan editor's **What-if** section.
+2. Create a branch and give it a name ("Name for the new branch"), for example "Retire three years earlier".
+3. Edit the branch freely. The main plan is untouched.
+4. Open **Compare** to see both side by side. Merge it back if you like the result.
+</Steps>
+
+New plans can also start from a template or a copy: on the **Plans** page, "New plan" asks for a "Starting point",
+a "Template" or a "Plan to copy". Plans can be archived and unarchived, and one is marked as the main plan.
+
+## Compare
+
+**Compare** shows plans on net worth at end, peak net worth, retirement, financial independence, first shortfall,
+unfunded spending, lifetime spending, lifetime taxes, average savings rate and first withdrawal rate. "Where the
+difference comes from" replays each individual edit alone to say how much of the outcome change it explains, plus
+the interaction left over.
+
+## What-if templates
+
+Templates turn a few parameters into a plan change you can preview before saving. In the app they appear as
+"Life-event templates". The templates are: market crash, job loss, career break, early retirement, downsizing,
+child, inheritance, long-term care, survivor and relocation. A preview shows what would change and the before and
+after outcome, and stores nothing. Saving one as a branch leaves the parent untouched.
+
+## Survivor scenarios
+
+For a couple, "If one of you dies first" shows what happens if each partner dies at 70, 80 and 90, or ages you
+choose, with before and after outcomes. A one-person household gets a note, not an empty list.
+
+<Callout type="warning" title="Survivor benefits are not added automatically">
+  Assets pass to the survivor and filing status changes, but survivor pensions beyond what you enter are not
+  added. The scenario says so.
+</Callout>
+
+## What this does not do
+
+- A branch does not copy household balances: plans that start now read your current finances.
+- Merging does not silently overwrite. If something changed underneath, you are told.

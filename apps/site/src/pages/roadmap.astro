@@ -1,0 +1,155 @@
+---
+import Callout from '../components/Callout.astro';
+import CTABand from '../components/CTABand.astro';
+import Section from '../components/Section.astro';
+import { page } from '../config/pages';
+import PageLayout from '../layouts/PageLayout.astro';
+
+interface Item {
+  title: string;
+  body: string;
+}
+
+/** From "What remains, in priority order" in docs/STATUS.md and the hosted-service design. No dates. */
+const now: Item[] = [
+  {
+    title: 'The hosted service',
+    body: 'Sign-up and accounts, billing, two-factor sign-in, automatic encrypted backups and email delivery. They are designed, and parts exist as separate packages, but none is wired into the app or running. This is what opening the hosted service depends on.',
+  },
+  {
+    title: 'A new UK market history',
+    body: 'The bundled UK history ends in 2020 and is being replaced with an openly licensed set. The replacement is built; it is not yet switched on.',
+  },
+];
+
+const next: Item[] = [
+  {
+    title: 'Deeper tax rules, checked against official calculators',
+    body: "The US SALT cap and itemised-deduction phase-outs, alternative minimum tax items and the earned income credit; the Canadian Guaranteed Income Supplement income test; the Australian seniors offset and HELP repayments; and the items on each country's list of what it leaves out. Plus yearly tax-table updates, which are routine work.",
+  },
+  {
+    title: 'More market history',
+    body: 'Canada, Australia and the euro area have no history of their own today and are tested against US history. The UK history is covered above.',
+  },
+  {
+    title: 'A "results changed because" note',
+    body: "After a tax-table or engine update, a plain statement of why a plan's numbers moved.",
+  },
+  {
+    title: 'Balance sync with budgeting tools',
+    body: 'Direct integrations with Lunch Money, YNAB, Monarch and Actual, using your own tokens. Today you push balances from a script or import files.',
+  },
+];
+
+const later: Item[] = [
+  {
+    title: 'A deeper optimiser',
+    body: 'Search depth for tax and withdrawal strategies, and a Flex versus No-Flex comparison.',
+  },
+  {
+    title: 'Randomised lifespan and care costs in Monte Carlo',
+    body: 'Today you set life expectancy, and care costs are a what-if.',
+  },
+  {
+    title: 'Monthly resolution',
+    body: 'The engine steps by year and prorates by month. Monthly steps are reserved and rejected today.',
+  },
+  {
+    title: 'Server-side PDF reports',
+    body: 'Reports are a printable view that your browser turns into a PDF.',
+  },
+  {
+    title: 'A completeness score and onboarding nudges',
+    body: 'Guided data-quality checks while you enter your finances, beyond the assumption audit.',
+  },
+  {
+    title: 'Free calculators on this website',
+    body: "FIRE, Coast FIRE, withdrawal and longevity tools that run the planner's engine in your browser, with no sign-up.",
+  },
+];
+
+const groups = [
+  { id: 'now', title: 'Now', intro: 'In progress.', items: now },
+  { id: 'next', title: 'Next', intro: 'The queue, in priority order.', items: next },
+  { id: 'later', title: 'Later', intro: 'Wanted, and not scheduled.', items: later },
+];
+---
+
+<PageLayout
+  {...page('/roadmap/')}
+  heading="What we are building next"
+  eyebrow="Roadmap"
+  lede="Priorities, grouped as now, next and later. No dates: things ship when they are right."
+  crumbs={[{ label: 'Roadmap', href: '/roadmap/' }]}
+>
+  <div class="container-narrow intro">
+    <Callout type="note" title="How to read this">
+      <p>
+        This is an honest list, not a promise. Within each group the order is our current priority, and the grouping can
+        change. What has actually shipped is in the <a href="/changelog/">changelog</a>. The planner already does a lot: see
+        <a href="/features/">features</a>.
+      </p>
+    </Callout>
+  </div>
+
+  {
+    groups.map((g) => (
+      <Section id={g.id} eyebrow={g.title} title={g.intro} width="narrow" tone={g.id === 'next' ? 'raised' : 'plain'} tight>
+        <ol class="items" role="list">
+          {g.items.map((i) => (
+            <li>
+              <h3>{i.title}</h3>
+              <p>{i.body}</p>
+            </li>
+          ))}
+        </ol>
+      </Section>
+    ))
+  }
+
+  <Section id="not-planned" eyebrow="Not planned" title="Things we have chosen not to build." width="narrow" tone="raised" tight>
+    <ul class="items" role="list">
+      <li>
+        <h3>Bank account aggregation</h3>
+        <p>By design: no bank credentials and no account linking. If it were ever considered, it would have to be opt-in and separate from the planner.</p>
+      </li>
+      <li>
+        <h3>A hosted AI chat run by Glideworth</h3>
+        <p>Not at launch. You can bring your own assistant through the <a href="/api/">MCP server</a>.</p>
+      </li>
+      <li>
+        <h3>An adviser workspace</h3>
+        <p>Many client households, branding and client management are out of scope for now.</p>
+      </li>
+      <li>
+        <h3>End-to-end encrypted sync</h3>
+        <p>Not modelled. Self-hosting keeps your data on a machine you control. See <a href="/security/">security</a>.</p>
+      </li>
+    </ul>
+  </Section>
+  <CTABand />
+</PageLayout>
+
+<style>
+  .intro {
+    padding-bottom: var(--space-l);
+  }
+  .items {
+    display: grid;
+    gap: var(--space-l);
+    list-style: none;
+    padding: 0;
+  }
+  .items li {
+    display: grid;
+    gap: var(--space-2xs);
+    padding-top: var(--space-s);
+    border-top: 1px solid var(--line-strong);
+  }
+  h3 {
+    font-size: var(--text-lg);
+  }
+  p {
+    color: var(--ink-2);
+  }
+</style>

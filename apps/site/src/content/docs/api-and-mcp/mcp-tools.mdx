@@ -1,0 +1,171 @@
+---
+title: MCP tools reference
+description: "All {{mcpTools}} Glideworth MCP tools by purpose, with one line each: {{mcpReadTools}} that read and compute, and {{mcpWriteTools}} write tools that exist only when writes are enabled."
+section: API and MCP
+order: 22
+lastChecked: 2026-11-16
+---
+
+import { facts } from '../../../lib/facts';
+
+import Callout from '../../../components/Callout.astro';
+
+There are {facts.mcpTools} tools: {facts.mcpReadTools} read and compute tools (all marked read-only) and {facts.mcpWriteTools} write tools. Money in outputs is in today's
+money unless a `basis` argument says otherwise. Ids are always the ones returned by the list tools; pass them back
+verbatim. `planId` defaults to the main plan and `householdId` to the only household; when that is ambiguous the error
+names the candidates.
+
+## Read tools (key scope `read`)
+
+### Households and plans
+
+| Tool | What it does |
+| --- | --- |
+| `list_households` | Households: id, people, currency, location. |
+| `get_household` | Accounts, real assets, debts and totals (`detail: full` gives the raw documents). |
+| `list_accounts` | Account id, name, type, owner and balance. |
+| `list_plans` | Plans: id, name, version, whether main, status, parent if a branch, in your display order. |
+| `get_plan` | Compact plan (milestones, income, expenses, flows with ids) or `detail: full`. |
+| `list_plan_versions` | Edit history: version, time, actor, message. |
+| `diff_plans` | Readable differences between two plans. |
+| `list_progress_snapshots` | Recorded actuals over time. |
+| `list_change_sets`, `get_change_set` | Proposals and their previews. |
+| `list_fx_rates` | Exchange-rate pairs the household uses. |
+
+### Exports
+
+| Tool | What it does |
+| --- | --- |
+| `export_table` | A projection table (`year-by-year`, `cash-flow`, `taxes`, `account-balances`) as thinned rows or CSV text. |
+| `export_report` | The printable report as data. |
+
+### Moving country
+
+| Tool | What it does |
+| --- | --- |
+| `get_residency_timeline` | Who lives where, when, with warnings. |
+| `cross_border_rules` | The rule tables: countries, non-resident rules, treaties, wrapper recognition, simplifications. |
+
+### Check-ins
+
+| Tool | What it does |
+| --- | --- |
+| `get_plan_health_history` | The check-in time series: success rate, FI year, net worth against plan, open findings. |
+| `list_notifications` | Notifications raised by check-ins (unread by default). |
+| `get_checkin_schedule` | Cadence, thresholds, last and next run. |
+| `what_changed_since_checkin` | What changed since the last check-in. `refresh=true` takes a new one first and needs write. |
+
+### Import previews
+
+| Tool | What it does |
+| --- | --- |
+| `preview_csv_import` | Dry run of a CSV import. Writes nothing. |
+| `preview_bank_file_import` | Dry run of an OFX, QFX or QIF import. Writes nothing. |
+
+## Compute tools (scope `simulate` or `read`)
+
+### Start here and project
+
+| Tool | What it does |
+| --- | --- |
+| `get_plan_summary` | The best first call: compact plan, current finances, deterministic outcome and a 5-yearly net worth table. |
+| `simulate_plan` | Deterministic projection; choose `fromYear`, `toYear`, `everyNYears`, `series`, `accountIds`, `basis`. |
+| `run_monte_carlo` | Chance of success (`trials` 100 to 10,000, `seed`, `method`): a headline, success rate, outcome counts, a p10, p50, p90 fan and failure analysis. |
+| `run_historical_backtest` | Replay through every historical start year. |
+| `get_job` | Status, progress and result of a long job (`wait` seconds optional). |
+
+### Explain
+
+| Tool | What it does |
+| --- | --- |
+| `explain_projection` | Why the plan ended up here (optional `question`). |
+| `explain_year`, `explain_years` | Where the money went in one year or a range. |
+| `explain_difference` | Why two plans end differently; with `attribute`, how much each edit explains. |
+| `audit_plan` | Assumption audit, most severe first; a finding with a fix carries ready-made operations. |
+| `sensitivity` | Which assumptions move the outcome most. |
+| `compare_plans` | 2 to 6 plans side by side, what differs, optional explanation. |
+
+### Solve
+
+| Tool | What it does |
+| --- | --- |
+| `solve_max_spending` | The most you can spend at a target success rate. |
+| `solve_retirement_date` | The earliest retirement month. |
+| `solve_required_savings` | The savings a contribution flow needs. |
+| `solve_required_portfolio` | The portfolio needed to meet the target. |
+| `solve_safe_withdrawal_rate` | The highest constant withdrawal rate over `years`. |
+| `goal_seek` | Any variable against any objective. |
+
+Each solver returns an `answer` sentence in money or dates, the `details`, the same answer at nearby targets and the `ops`
+that apply it. `trials` and `maxEvaluations` trade accuracy for speed.
+
+### Spending and tax
+
+| Tool | What it does |
+| --- | --- |
+| `evaluate_guardrails` | What to spend this year under the plan's risk-based guardrails. |
+| `guyton_klinger` | Guyton-Klinger guardrails in money terms: when to cut or raise, and the action now. |
+| `optimise_tax_strategy` | Compare tax strategies or your own candidates; the highest-scoring comes back as operations. |
+| `tax_breakdown` | Taxes by year, jurisdiction and kind. |
+| `tax_by_country` | Tax by country and basis, with the simplifications that apply. |
+| `explain_item_taxation` | How one account, property, debt or income is taxed in a year, and why. |
+| `strategy_matrix` | Strategies against metrics (lifetime tax, net legacy, chance of success, final net worth). A job. |
+| `income_by_tax_rate` | Income taxed at each marginal rate per year. |
+| `compare_sepp_methods` | 72(t): RMD against fixed amortisation against fixed annuitisation. |
+| `compare_debt_payoff` | Minimum payments against avalanche against snowball. |
+
+### What-ifs
+
+| Tool | What it does |
+| --- | --- |
+| `list_whatif_templates` | Scenario templates and their parameters. |
+| `preview_whatif` | Apply a template in memory: operations, readable changes, before and after. Stores nothing. |
+| `survivor_scenarios` | For couples: what if each partner dies at 70, 80 and 90 (or your ages). |
+| `preview_changes` | Apply operations in memory and return the diff and before and after. Stores nothing. |
+| `compare_stay_or_move` | Stay against a move (or an existing branch): deltas, tax by country, attribution. Stores nothing. |
+
+Long-running tools (`run_monte_carlo`, solvers, guardrails, tax strategy, and success-rate attribution and sensitivity)
+wait up to `wait` seconds (default 30). If the job is not ready they return `{ jobId, status, progress, hint }` and the
+assistant calls `get_job`. Clients that send a `progressToken` receive progress notifications.
+
+## Write tools (needs the server flag and scope `write`)
+
+### Plan edits
+
+| Tool | What it does |
+| --- | --- |
+| `propose_change_set` | Propose JSON Patch operations: returns the diff and before and after. **Applies nothing.** |
+| `apply_change_set` | Apply a proposed set atomically; `CHANGESET_CONFLICT` if the plan moved. |
+| `discard_change_set` | Drop a proposal. |
+| `propose_revert` | Propose a change set that turns the plan back into version N. |
+| `create_branch` | Create a what-if branch, optionally with initial operations. The parent is untouched. |
+| `create_branch_from_template` | Store a what-if template as a branch. The parent is untouched. |
+| `propose_move` | Propose, as a change set, that one person or everyone moves to a country from a month. |
+| `cancel_job` | Cancel a running job. |
+
+### Household data
+
+| Tool | What it does |
+| --- | --- |
+| `update_account_balances` | Set many balances at once, all or nothing, including mortgage and loan balances. Updates today's automatic snapshot. |
+| `record_progress_snapshot` | Snapshot today's net worth from current balances. |
+| `apply_csv_import` | Apply a CSV import atomically (preview first). |
+| `apply_bank_file_import` | Apply an OFX, QFX or QIF import atomically (preview first). |
+| `set_person_cross_border` | Update a person's citizenships, green card, residence history and state-pension records. |
+| `set_fx_rate`, `unset_fx_rate` | Add, update or remove an exchange-rate pair. |
+
+### Check-ins and sharing
+
+| Tool | What it does |
+| --- | --- |
+| `run_checkin` | Check in now (projection, Monte Carlo, audit) and store it in the health history. |
+| `mark_notifications_read` | Mark notifications read (`ids` or `all`). |
+| `set_checkin_schedule` | Enable or disable, set the cadence and thresholds. |
+| `create_share_link` | An expiring, revocable read-only link to a plan's results; the token is returned once. |
+| `list_share_links`, `revoke_share_link` | List links and their status; stop one. |
+
+<Callout type="note" title="Patch addressing">
+  Operations are JSON Patch with id-addressed array items, as in `/expenses/[id=exp-travel]/amount/value`. Never use
+  indexes. An operation whose target does not exist, or a failed `test`, is `PATCH_CONFLICT` and nothing is applied. Read
+  `glideworth://docs/edit-paths` first.
+</Callout>

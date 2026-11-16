@@ -1,0 +1,125 @@
+---
+import ToolPage from '../../components/tools/ToolPage.astro';
+import { baristaNumbers } from '../../tools/engine/barista';
+import { money, pct } from '../../tools/format';
+
+const m = (x: number) => money(x, 'USD');
+// The article's worked example, computed by the calculator's own engine code at build time.
+const base = { age: 45, spend: 40_000, ptUntil: 60, planTo: 90, ret: 3, tax: 0, timing: 'start', cur: 'USD' } as const;
+const ex = await baristaNumbers({ ...base, pt: 15_000 });
+const table = await Promise.all(
+  [0, 10_000, 15_000, 20_000, 30_000].map(async (pt) => {
+    const r = await baristaNumbers({ ...base, pt });
+    return [m(pt), m(r.formulaBarista), m(r.barista), pct(1 - r.barista / r.full, 1)];
+  }),
+);
+const gap = ex.formulaBarista - ex.barista;
+
+const faq = [
+  {
+    q: 'What is Barista FIRE?',
+    a: '<p>Early retirement with a bridge: you leave full-time work but keep some paid work, so the portfolio only has to cover the gap between your spending and that pay. The name is a label for part-time work chosen for flexibility or benefits rather than for pay.</p>',
+  },
+  {
+    q: 'Why is the answer higher than (spending − part-time pay) × 25?',
+    a: '<p>That shortcut assumes the part-time pay lasts for the whole retirement, because the 25× rule assumes a gap that lasts about 30 years. Most people do not plan to work part-time at 80. Once the pay has an end date, the later years need the full spending from the portfolio, and the saving is smaller.</p>',
+  },
+  {
+    q: 'Should I enter part-time pay before or after tax?',
+    a: '<p>After tax. The calculator’s flat tax option applies only to withdrawals from the portfolio.</p>',
+  },
+  {
+    q: 'Does part-time income remove sequence risk?',
+    a: '<p>No. It reduces the withdrawals in the early years, which softens a bad start, but the income can stop and the full spending still has to be funded afterwards. This calculator uses one steady return; the Monte Carlo calculator tests a plan against many sequences.</p>',
+  },
+];
+---
+
+<ToolPage
+  id="barista-fire"
+  heading="Barista FIRE calculator"
+  lede="The portfolio you need when you leave full-time work, if part-time pay covers some of your spending for a number of years, compared with full retirement. It runs the Glideworth planning engine in your browser; nothing you type is sent anywhere."
+  faq={faq}
+  adds="This calculator has one income that stops at one age and a steady return."
+  related={[
+    { href: '/blog/what-is-your-fire-number/', label: 'What is your FIRE number? The 25x rule and its limits' },
+    { href: '/features/branches-and-change-sets/', label: 'Branches: keep a part-time version of your plan next to the full one' },
+    { href: '/features/plan-modelling/', label: 'What the planner can model' },
+  ]}
+>
+  <h2>How the calculator works</h2>
+  <p>
+    The calculator describes your plan to the engine: spending every year from the age you leave full-time work to the
+    age you plan to, part-time pay (after tax) until the age it stops, and your return after inflation. It then asks the
+    engine’s solver for the <strong>smallest starting portfolio that pays every year in full</strong>. The solver scales
+    the starting balance up and down, running the projection each time, until it finds the point where the last year is
+    just paid. It does the same for full retirement (no part-time pay) so you can see what the pay is worth.
+  </p>
+  <p>
+    Everything is in today’s money. If the part-time pay is more than your spending, the surplus is saved into the
+    portfolio.
+  </p>
+
+  <h2>The formula</h2>
+  <p>
+    The portfolio that exactly funds a plan is the present value of its yearly withdrawals, each discounted at the
+    return after inflation:
+  </p>
+  <p class="formula">portfolio = Σ w<sub>t</sub> ÷ (1 + r)<sup>t + 1 − k</sup></p>
+  <p>
+    where <code>w<sub>t</sub></code> is year <code>t</code>’s spending minus part-time pay (grossed up for the flat tax,
+    if any), counting from <code>t</code> = 0, and <code>k</code> is the share of the year a withdrawal is invested for:
+    1 when withdrawals are at the start of each year, ½ in the middle, 0 at the end. With start-of-year withdrawals this
+    is the familiar Σ w<sub>t</sub> ÷ (1 + r)<sup>t</sup>.
+  </p>
+
+  <h2>Worked example</h2>
+  <p>
+    Computed by the calculator’s own code when this page was built, with the inputs of the
+    <a href="/blog/barista-fire-part-time-income/">Barista FIRE article</a>: spending of {m(40_000)} from 45 to 90 (45
+    years), part-time pay of {m(15_000)} after tax until 60, a steady 3% after inflation and withdrawals at the start of
+    each year.
+  </p>
+  <ul>
+    <li>Full retirement at 45: formula {m(ex.formulaFull)}, engine {m(ex.full)}.</li>
+    <li>
+      Barista, pay stopping at 60: formula {m(ex.formulaBarista)}, engine {m(ex.barista)}, {pct(1 - ex.barista / ex.full, 1)}{' '}
+      less than full retirement.
+    </li>
+    <li>The 25× shortcut: ({m(40_000)} − {m(15_000)}) × 25 = {m(ex.shortcut)}, which assumes the pay never stops.</li>
+  </ul>
+  <table>
+    <caption>Part-time pay for 15 years, same plan (engine, with the formula for comparison)</caption>
+    <thead>
+      <tr><th>Part-time pay</th><th>Formula</th><th>Engine</th><th>Saving against full retirement</th></tr>
+    </thead>
+    <tbody>{table.map((r) => <tr>{r.map((c) => <td>{c}</td>)}</tr>)}</tbody>
+  </table>
+
+  <h2>Why the engine and the formula agree</h2>
+  <p>
+    For every timing option the engine and the formula agree to within the solver’s precision (a difference of {m(Math.abs(gap))} in the
+    example above). Each withdrawal can only take what the portfolio holds at the moment the timing option says the
+    money leaves, which is exactly what the formula assumes, including in the final year.
+  </p>
+
+  <h2>What this assumes and leaves out</h2>
+  <ul>
+    <li>
+      <strong>A steady return.</strong> The answer is a present value, not a safe-withdrawal calculation: it has no margin
+      for bad markets. Use the <a href="/tools/monte-carlo-retirement-calculator/">Monte Carlo calculator</a> to test a
+      portfolio against many sequences.
+    </li>
+    <li>
+      <strong>Pay that stops on schedule.</strong> Part-time work can end early through redundancy, illness or a
+      recession, which tend to arrive together with falling markets.
+    </li>
+    <li>
+      <strong>What the full-time job provided.</strong> Health cover, employer pension contributions and a state pension
+      record are not modelled; neither is any state pension later in life, which would lower the number.
+    </li>
+    <li>
+      <strong>Tax.</strong> None unless you set the flat rate on withdrawals; part-time pay is entered after its own tax.
+    </li>
+  </ul>
+</ToolPage>

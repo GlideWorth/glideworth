@@ -1,0 +1,42 @@
+# Contributor licence agreement check. See CLA.md for the text and the manual fallback.
+#
+# Runs on pull_request_target so it can comment and write the signature record, which means it runs
+# with write permissions from the base repository. It therefore NEVER checks out or runs code from the
+# pull request. Do not add a checkout step or any step that executes pull-request content.
+#
+# Signatures are stored in signatures/version1/cla.json on the "cla-signatures" branch. That branch
+# must exist (create it once from the default branch) and must NOT be protected.
+name: CLA
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_target:
+    types: [opened, closed, synchronize]
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+  statuses: write
+
+jobs:
+  cla:
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'pull_request_target' ||
+      github.event.comment.body == 'recheck' ||
+      github.event.comment.body == 'I have read the CLA Document and I hereby sign the CLA'
+    steps:
+      - name: CLA assistant
+        uses: contributor-assistant/github-action@ca4a40a7d1004f18d9960b404b97e5f30a505a08 # v2.6.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          path-to-document: ${{ github.server_url }}/${{ github.repository }}/blob/main/CLA.md
+          path-to-signatures: signatures/version1/cla.json
+          branch: cla-signatures
+          # Comma-separated GitHub logins that need not sign: the owner and bots.
+          # Maintainers who have signed outside this workflow are added here by login.
+          allowlist: dependabot[bot],github-actions[bot]
+          lock-pullrequest-aftermerge: true

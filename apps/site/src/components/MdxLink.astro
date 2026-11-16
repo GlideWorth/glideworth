@@ -1,0 +1,12 @@
+---
+/**
+ * Stands in for every <a> that Markdown and MDX produce (registered as `a` in src/components/mdx.ts), so a
+ * link to another origin gets rel="noopener noreferrer" in one place instead of page by page.
+ */
+import { isExternalHref, mergeRel } from '../lib/links';
+
+const { href, rel, ...rest } = Astro.props;
+const attrs = isExternalHref(href) ? { rel: mergeRel(rel) } : rel ? { rel } : {};
+---
+
+<a href={href} {...rest} {...attrs}><slot /></a>

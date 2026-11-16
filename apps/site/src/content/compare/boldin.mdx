@@ -47,8 +47,8 @@ PlannerPlus plan lists connected accounts, so balances can come from your instit
 in ([pricing](https://boldin.com/pricing/), 16 Nov 2026); Glideworth has no account aggregation, by design, and
 takes CSV, OFX, QFX and QIF files instead. Boldin also says it holds SOC 2 Type 1 and Type 2 reports and offers
 optional two-factor sign-in
-([security](https://www.boldin.com/security), 16 Nov 2026); Glideworth holds no certifications, and two-factor
-sign-in for its hosted service is planned, not built. And Boldin has a longer history: it renamed itself from
+([security](https://www.boldin.com/security), 16 Nov 2026); Glideworth holds no certifications, and its hosted service
+offers two-factor sign-in with an authenticator app. And Boldin has a longer history: it renamed itself from
 NewRetirement in September 2024
 ([press release](https://www.boldin.com/retirement/press/newretirement-rebrands-boldin/), 16 Nov 2026), and says
 more than 450,000 people have complete plans with it ([about](https://www.boldin.com/about), 16 Nov 2026).
@@ -67,7 +67,7 @@ repository today.
 
 | | Glideworth | Boldin |
 |---|---|---|
-| Price | Self-hosted: free, every feature. Hosted: {formatPrice(pricing.monthly)} a month or {formatPrice(pricing.yearly)} a year, **not live yet** | Basic: free. PlannerPlus: $14 a month or $168 a year, after a 14-day free trial. Boldin Advisors: $3,200 flat fee ([pricing](https://boldin.com/pricing/), 16 Nov 2026) |
+| Price | Self-hosted: free, every feature. Hosted: {formatPrice(pricing.monthly)} a month or {formatPrice(pricing.yearly)} a year | Basic: free. PlannerPlus: $14 a month or $168 a year, after a 14-day free trial. Boldin Advisors: $3,200 flat fee ([pricing](https://boldin.com/pricing/), 16 Nov 2026) |
 | What the free option includes | Self-hosting: everything | Basic lists 100+ inputs, two interactive explorers, 10+ charts and limited AI Q&A, and states no Monte Carlo, tax insights, withdrawal strategy or Roth conversion explorer ([pricing](https://boldin.com/pricing/), 16 Nov 2026) |
 | Source and hosting | Open source (AGPL-3.0); run it yourself | Hosted; the pages we read do not mention self-hosting or source availability ([security](https://www.boldin.com/security), 16 Nov 2026) |
 | Countries | {facts.taxCountryCount} countries with tax estimates, each with a written list of what it leaves out; flat or custom rates elsewhere | US tax law only: its help says other countries' tax rules cannot be applied ([help](https://help.boldin.com/en/articles/6509299-is-plannerplus-suitable-for-canadians-or-other-non-us-citizens-planning-for-retirement), 16 Nov 2026) |
@@ -86,11 +86,11 @@ your 14 day free trial", "cancel anytime"), and Boldin Advisors at a $3,200 flat
 ([pricing](https://boldin.com/pricing/), read 16 Nov 2026). It does not state how monthly billing works after the
 trial.
 
-Glideworth is free to self-host with every feature. The hosted service, Glideworth Cloud, is planned at
+Glideworth is free to self-host with every feature. The hosted service, Glideworth Cloud, costs
 {formatPrice(pricing.monthly)} a month or {formatPrice(pricing.yearly)} a year, after a {pricing.trialDays}-day
-trial without a card. **The hosted service is not live yet**; see [pricing](/pricing/).
+trial without a card; see [pricing](/pricing/).
 
-A year of the planned hosted plan is {formatPrice(pricing.yearly)}, against $168 for PlannerPlus. They are not
+A year of the hosted plan is {formatPrice(pricing.yearly)}, against $168 for PlannerPlus. They are not
 like-for-like: PlannerPlus includes connected accounts and sits beside a human-advice service, and Glideworth's
 hosted plan does not. If you self-host, you pay nothing for the software but look after backups and updates
 yourself.

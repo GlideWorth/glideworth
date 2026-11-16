@@ -37,7 +37,7 @@ import { useFormat, useProjection } from "../../lib/workspace";
 import { successTone } from "../../stores/prefs";
 import { useUi } from "../../stores/ui";
 import { useMcStore } from "../chance/mc-store";
-import { ChangesSinceCheckInCard } from "../checkins/checkins";
+import { ChangesSinceCheckInCard, useChangesSinceCheckin } from "../checkins/checkins";
 import { attempt, bridge } from "../results/core-bridge";
 import {
   buildEntityIndex,
@@ -212,6 +212,16 @@ function Quick({ to, icon, children }: { to: string; icon: ReactNode; children: 
   );
 }
 
+/** The last check-in's chance of success, when it was taken on the plan as it is now. */
+export function checkInChance(
+  last: { planVersion: number; successRate: number | null } | null | undefined,
+  planVersion: number | undefined,
+): number | null {
+  return last && planVersion !== undefined && last.planVersion === planVersion
+    ? last.successRate
+    : null;
+}
+
 export function DashboardView() {
   const { plan, doc, input, result, isLoading, error, basis, f } = useAnalysis();
   const theme = useResolvedTheme();
@@ -222,6 +232,10 @@ export function DashboardView() {
   const now = currentNetWorth(doc);
   const mcEntry = useMcStore((s) => (plan ? s.byPlan[plan.id] : undefined));
   const mc = mcEntry && mcEntry.planVersion === plan?.version ? mcEntry : undefined;
+  // Without a run in this browser, the last check-in's chance of success (same plan version) stands in,
+  // so the headline agrees with the check-in card below it.
+  const lastCheckIn = useChangesSinceCheckin(plan?.id).data?.lastCheckIn;
+  const checkedRate = mc ? null : checkInChance(lastCheckIn, plan?.version);
   const primary = doc?.household.people.find((p) => p.role === "primary");
   const fi = result ? fiMetrics(result, plan) : null;
   const history = useMemo(
@@ -336,17 +350,25 @@ export function DashboardView() {
             />
             <Stat
               label="Chance of success"
-              value={mc ? f.percent(mc.result.successRate, 0) : "—"}
-              tone={
+              value={
                 mc
+                  ? f.percent(mc.result.successRate, 0)
+                  : checkedRate !== null
+                    ? f.percent(checkedRate, 0)
+                    : "—"
+              }
+              tone={
+                mc || checkedRate !== null
                   ? // (i) success bands from Settings → Planning defaults
                     ({ positive: "positive", warning: undefined, negative: "negative" } as const)[
-                      successTone(mc.result.successRate)
+                      successTone(mc ? mc.result.successRate : checkedRate!)
                     ]
                   : undefined
               }
               sub={
-                mc ? (
+                !mc && checkedRate !== null ? (
+                  "At the last check-in"
+                ) : mc ? (
                   mc.example ? (
                     "Example data"
                   ) : (

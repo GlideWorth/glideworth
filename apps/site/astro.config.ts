@@ -48,6 +48,9 @@ export default defineConfig({
   output: "static",
   trailingSlash: "always",
   build: { format: "directory" },
+  // Off: compression drops the space between text and an inline element that a line break separates
+  // ("under the<a>licence</a>"), which many pages rely on.
+  compressHTML: false,
   // Pages that were merged into another: the old address forwards to the new one.
   redirects: {
     "/docs/api-and-mcp/connect-an-ai-assistant/": "/docs/api-and-mcp/mcp-setup/",

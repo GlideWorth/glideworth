@@ -15,8 +15,8 @@ export function passwordProblem(password: string, email: string): string | null 
   const addr = email.normalize("NFKC").toLowerCase().trim();
   const local = addr.split("@")[0] ?? "";
   if (addr && (pw === addr || (local && pw === local) || (local.length >= 4 && pw.includes(local))))
-    return "Do not use your email address in your password.";
+    return "Do not use your email address, or the part before the @, in your password.";
   return null;
 }
 
-export const PASSWORD_RULES = `At least ${MIN_PASSWORD} characters, and not your email address. A few unrelated words is easy to remember and hard to guess.`;
+export const PASSWORD_RULES = `At least ${MIN_PASSWORD} characters, without your email address or the part before the @. A few unrelated words is easy to remember and hard to guess.`;

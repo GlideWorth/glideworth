@@ -125,4 +125,13 @@ describe("replace and checklist", () => {
     expect(ids.filter((i) => i.startsWith("plan:"))).toHaveLength(r.document.plans.length);
     expect(c.items.every((i) => !i.done)).toBe(true);
   });
+
+  it("names the country in words, not as a code (the synthetic export's 'OTHER' becomes XX)", () => {
+    const r = pl();
+    expect(r.document.household.location.country).toBe("XX");
+    const c = buildImportChecklist(r.document, { source: "ProjectionLab" });
+    const detail = c.items.find((i) => i.id === "household")!.detail;
+    expect(detail).toContain("Somewhere else");
+    expect(detail).not.toMatch(/· XX ·/);
+  });
 });

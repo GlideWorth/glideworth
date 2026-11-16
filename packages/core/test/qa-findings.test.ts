@@ -360,3 +360,43 @@ describe("periodAge: the age reached during the year", () => {
     expect(periodAge({ ages: {}, months: 12 }, "s")).toBeNull();
   });
 });
+
+describe("plan diff wording (Compare's 'What differs')", () => {
+  const base = createUkSampleDocument().plans[0]!;
+  const titles = (other: typeof base) => diffPlans(base, other).changes.map((c) => c.description);
+
+  it("an hourly wage reads per hour with its hours, not 'a week'", () => {
+    const hourly = IncomeEvent.parse({
+      id: "inc-hourly",
+      name: "Weekend job",
+      type: "hourly",
+      owner: base.income[0]!.owner,
+      amount: { value: 20, basis: "real" },
+      frequency: "weekly",
+      hoursPerWeek: 37.5,
+      range: { start: { kind: "planStart" }, end: { kind: "planEnd" } },
+    });
+    const added = titles({ ...base, income: [...base.income, hourly] }).find((t) =>
+      t.includes("Weekend job"),
+    )!;
+    expect(added).toMatch(/20 an hour for 37\.5 hours a week/);
+    expect(added).not.toMatch(/20 a week/);
+  });
+
+  it("flat tax rates read as percentages", () => {
+    const other = {
+      ...base,
+      tax: { ...base.tax, mode: "flat" as const, flat: { ...base.tax.flat, ordinary: 0.18 } },
+    };
+    const before = {
+      ...base,
+      tax: { ...base.tax, mode: "flat" as const, flat: { ...base.tax.flat, ordinary: 0.2 } },
+    };
+    const t = diffPlans(before, other)
+      .changes.map((c) => c.description)
+      .find((x) => /ordinary/i.test(x))!;
+    expect(t).toMatch(/20%/);
+    expect(t).toMatch(/18%/);
+    expect(t).not.toMatch(/0\.2\b/);
+  });
+});

@@ -126,6 +126,12 @@ export const ACCOUNT_LIMITS = {
   forgotIp: [20, HOUR],
   forgotAddress: [3, HOUR],
   mailPerAddress: [5, HOUR],
+  /**
+   * Security notices (a setting changed, a new sign-in) have their own budget: only a signed-in person can
+   * trigger them, and anonymous mail (verification, password reset) must never use it up, or a change made
+   * right after someone requested resets for the address would go unannounced.
+   */
+  securityMailPerAddress: [20, HOUR],
   reauthPerUser: [10, 15 * MINUTE],
   emailChangePerUser: [5, HOUR],
   signinFailedAudit: [5, HOUR],
@@ -1617,6 +1623,7 @@ export class AccountsService {
             ip: m.ip,
             sessionsUrl: `${this.publicUrl}/settings/security`,
           },
+          "security",
         );
     }
     this.d.audit.record({
@@ -1768,12 +1775,14 @@ export class AccountsService {
         at: this.clock().toISOString(),
         securityUrl: `${this.publicUrl}/settings/security`,
       },
+      "security",
     );
   }
 
   /**
    * Send in the background (response time must not depend on the provider, or on whether a mail is sent at
-   * all), within the per-address budget of 5 account emails an hour (mail-bombing guard, spec 3.7).
+   * all), within the per-address budget of 5 account emails an hour (mail-bombing guard, spec 3.7). Security
+   * notices count against their own, larger budget (`securityMailPerAddress`).
    */
   private sendMail<T extends TemplateId>(
     to: Address,
@@ -1781,11 +1790,14 @@ export class AccountsService {
     id: T,
     userId: string | null,
     data: TemplateData[T],
+    budget: "account" | "security" = "account",
   ): void {
-    if (
-      !this.d.limiter.hit(`mail:${this.emailKey(normalized)}`, ...ACCOUNT_LIMITS.mailPerAddress)
-        .allowed
-    ) {
+    const security = budget === "security";
+    const [max, windowMs]: Limit = security
+      ? ACCOUNT_LIMITS.securityMailPerAddress
+      : ACCOUNT_LIMITS.mailPerAddress;
+    const key = `${security ? "mail-security" : "mail"}:${this.emailKey(normalized)}`;
+    if (!this.d.limiter.hit(key, max, windowMs).allowed) {
       this.log.warn("accounts.mail_throttled", { template: id, userId });
       return;
     }

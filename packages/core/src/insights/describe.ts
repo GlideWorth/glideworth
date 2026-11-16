@@ -16,6 +16,7 @@ import {
   fmtAmount,
   fmtDateRef,
   fmtMonth,
+  fmtNumber,
   fmtRange,
   fmtRateSpec,
   fmtValue,
@@ -115,6 +116,8 @@ function describeEntity(
   if (kind === "income" || kind === "expense") {
     const e = v as unknown as IncomeEvent | ExpenseEvent;
     if (!e.amount || !e.range) return name;
+    if (e.type === "hourly")
+      return `${name} ${hourlyAmount(e.amount, e.hoursPerWeek, f)} ${fmtRange(e.range, false, f)}`;
     const once = e.frequency === "once";
     return `${name} ${fmtAmount(e.amount, e.frequency, f)} ${fmtRange(e.range, once, f)}`;
   }
@@ -162,6 +165,12 @@ function fieldKey(segs: Segment[]): string {
     if (s.kind === "key" && !/^\d+$/.test(s.key) && s.key !== "-") return s.key;
   }
   return "";
+}
+
+/** An hourly wage: the engine pays rate × hours every week, whatever `frequency` holds. */
+function hourlyAmount(amount: IncomeEvent["amount"], hours: number, f: FormatContext): string {
+  const basis = amount.basis === "nominal" ? " (future money)" : "";
+  return `${fmtAmount({ ...amount, basis: "real" }, undefined, f)} an hour for ${fmtNumber(hours, f)} hours a week${basis}`;
 }
 
 function frequencyPhrase(entity: unknown): Parameters<typeof fmtAmount>[1] {
@@ -254,7 +263,10 @@ export function describeChange(op: PatchOp, input: DescribeInput): PlanChange | 
     typeof before === "number"
   ) {
     const per = frequencyPhrase(entityRoot);
-    const nowAmount = fmtAmount({ value: after, basis: "real" }, per, f);
+    const nowAmount =
+      isPlainObject(entityRoot) && entityRoot.type === "hourly"
+        ? `${fmtAmount({ value: after, basis: "real" }, undefined, f)} an hour`
+        : fmtAmount({ value: after, basis: "real" }, per, f);
     return mk(
       "changed",
       `${who} changed from ${fmtAmount({ value: before, basis: "real" }, undefined, f)} to ${nowAmount}`,
@@ -371,6 +383,9 @@ export function describeChange(op: PatchOp, input: DescribeInput): PlanChange | 
   }
 
   // --- generic fallback
+  // Flat tax rates (tax.flat.ordinary, .capitalGains, ...) are rates even where the key does not say so.
+  const valueKey =
+    top === "tax" && segs.some((s) => s.kind === "key" && s.key === "flat") ? `${key}Rate` : key;
   const where = segs
     .slice(ENTITY_ARRAYS[top] || SETTINGS_MAPS[top] ? 2 : 0)
     .filter((s) => s.kind === "key" && !/^\d+$/.test(s.key))
@@ -380,10 +395,11 @@ export function describeChange(op: PatchOp, input: DescribeInput): PlanChange | 
     ENTITY_ARRAYS[top] || SETTINGS_MAPS[top]
       ? `${who}${where ? ` ${where}` : ""}`
       : capitalise(where || noun);
-  if (kind === "added") return mk(kind, `${subject} set to ${fmtValue(after, key, f)}`);
-  if (kind === "removed") return mk(kind, `${subject} removed (was ${fmtValue(before, key, f)})`);
+  if (kind === "added") return mk(kind, `${subject} set to ${fmtValue(after, valueKey, f)}`);
+  if (kind === "removed")
+    return mk(kind, `${subject} removed (was ${fmtValue(before, valueKey, f)})`);
   return mk(
     kind,
-    `${subject} changed from ${fmtValue(before, key, f)} to ${fmtValue(after, key, f)}`,
+    `${subject} changed from ${fmtValue(before, valueKey, f)} to ${fmtValue(after, valueKey, f)}`,
   );
 }

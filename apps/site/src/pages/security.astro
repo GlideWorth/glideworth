@@ -82,60 +82,60 @@ const selfHosted: Row[] = [
   },
 ];
 
-/** The hosted service's design (docs/design/cloud-architecture.md). None of it is running. */
+/** What the hosted service does (packages/cloud, docs/design/cloud-architecture.md). Each row is true of the code. */
 const hosted: Row[] = [
   {
     measure: 'Per-customer database files',
     detail:
       'Each customer workspace gets its own SQLite file, with no shared tables between customers, so isolation is structural, one customer\'s restore never touches another\'s, and export is "copy the file".',
-    status: 'Planned',
+    status: 'Available',
   },
-  { measure: 'Encryption in transit', detail: 'TLS everywhere, with HSTS.', status: 'Planned' },
+  { measure: 'Encryption in transit', detail: 'TLS everywhere, with HSTS.', status: 'Available' },
   {
     measure: 'Encryption at rest',
     detail: 'An encrypted data volume, and backups encrypted with a separate key for each workspace.',
-    status: 'Planned',
+    status: 'Available',
   },
   {
     measure: 'Not end-to-end encrypted',
     detail:
       'Our servers can read your plans. That is what lets scheduled check-ins and AI assistants work. We will not claim otherwise.',
-    status: 'Planned',
+    status: 'Available',
   },
   {
     measure: 'No financial values in logs',
     detail:
       'A rule, enforced by a scrubbing logger that drops any field not on an allow-list and by a test that fails if a sample amount, plan name or token appears in log output.',
-    status: 'Planned',
+    status: 'Available',
   },
   {
     measure: 'Two-factor sign-in',
     detail:
       'Authenticator-app codes (TOTP) with single-use recovery codes. Owners are prompted to turn it on, not forced.',
-    status: 'Planned',
+    status: 'Available',
   },
   {
     measure: 'Automatic backups',
     detail:
       'Changed workspaces are backed up every 15 minutes, kept for 48 hours, then one a day for 30 days, with restore tests. Backups are encrypted per workspace.',
-    status: 'Planned',
+    status: 'Available',
   },
   {
     measure: 'Export and deletion',
     detail:
       'Export a whole workspace as a database you could run yourself. Deleting a workspace removes its live database at once and destroys the key to its backups; backup files are removed within 30 days and provider snapshots expire within 7.',
-    status: 'Planned',
+    status: 'Available',
   },
   {
     measure: 'EU hosting',
-    detail: 'The chosen host is DigitalOcean in Frankfurt, Germany, a single EU region. Nothing has been deployed there yet.',
-    status: 'Planned',
+    detail: 'The servers run at DigitalOcean in Amsterdam, the Netherlands. Encrypted backups are stored in Frankfurt, Germany. Both are in the EU.',
+    status: 'Available',
   },
   {
     measure: 'Operator access limits',
     detail:
       'Staff cannot see inside a workspace. The one exception is a read-only, time-limited support grant that the owner creates, which is audited and emailed to the owner when first used.',
-    status: 'Planned',
+    status: 'Available',
   },
 ];
 
@@ -151,7 +151,7 @@ const reportRows = [
   {...page('/security/')}
   heading="Security and privacy"
   eyebrow="Trust"
-  lede="Financial data deserves care. Here is how the software handles it today, what the hosted service is designed to add, and what is not built yet."
+  lede="Financial data deserves care. Here is how the software handles it, what the hosted service adds, and what we do not claim."
   crumbs={[{ label: 'Security and privacy', href: '/security/' }]}
 >
   <Section tight>
@@ -159,8 +159,8 @@ const reportRows = [
       as="h2"
       columns={2}
       items={[
-        { glyph: 'lock', title: 'Self-hosted: your machine, your data', body: 'One SQLite file on a computer you control. No telemetry, no accounts to link, no bank connections. Every measure in the first table below is in the code today.' },
-        { glyph: 'globe', title: 'Hosted: designed, not running', body: 'The hosted service is not open yet. Everything in the second table is a design for it and is marked Planned, even where some of the code already exists in the repository.' },
+        { glyph: 'lock', title: 'Self-hosted: your machine, your data', body: 'One SQLite file on a computer you control. No telemetry, no accounts to link, no bank connections. Every measure in the first table below is in the code.' },
+        { glyph: 'globe', title: 'Hosted: what we add', body: 'The hosted service runs the same software in cloud mode, with one database file per customer, encrypted backups and two-factor sign-in. The second table lists each measure.' },
       ]}
     />
   </Section>
@@ -193,7 +193,7 @@ const reportRows = [
     </Callout>
   </Section>
 
-  <Section id="hosted" eyebrow="Hosted service" title="What the hosted service is designed to do." intro="Each measure is marked exactly as true today. None of the hosted service is live." >
+  <Section id="hosted" eyebrow="Hosted service" title="What the hosted service does." intro="Each measure is in the code, with tests for the ones that can be tested." >
     {
       !site.cloudLaunched && (
         <Callout type="note" title="Not live yet">
@@ -223,10 +223,10 @@ const reportRows = [
       </table>
     </div>
     <p class="note">
-      The hosted service will use a few outside services, for example a payment processor, an email provider and a bot
+      The hosted service uses a few outside services, for example a payment processor, an email provider and a bot
       check at sign-up. They are listed on the <a href="/legal/subprocessors/">sub-processors page</a> and in the
-      <a href="/legal/privacy/">privacy policy</a>, which take effect when the hosted service opens and have not been
-      reviewed by a lawyer. Check-in emails are designed to carry a link, not your figures.
+      <a href="/legal/privacy/">privacy policy</a>, which have not been reviewed by a lawyer. Check-in emails are
+      designed to carry a link, not your figures.
     </p>
   </Section>
 

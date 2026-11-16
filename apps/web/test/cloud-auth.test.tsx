@@ -228,6 +228,17 @@ describe("sign-in", () => {
     expect((await screen.findByRole("alert")).textContent).toBe("The email or password is wrong.");
   });
 
+  it("after Delete account, the sign-in page says the account was deleted", () => {
+    window.history.replaceState(null, "", "/signin?deleted=1");
+    mockFetch({});
+    renderWithClient(<SignInPage />, signedOut());
+    expect(screen.getByRole("status").textContent).toMatch(/Your account has been deleted/);
+    cleanup();
+    window.history.replaceState(null, "", "/signin");
+    renderWithClient(<SignInPage />, signedOut());
+    expect(screen.queryByText(/Your account has been deleted/)).toBeNull();
+  });
+
   it("signs in, refreshes the session and goes to the page the person was going to", async () => {
     window.history.replaceState(null, "", "/signin?next=%2Fplans%3Ftab%3Dx");
     const api = mockFetch({
@@ -384,6 +395,15 @@ describe("password reset", () => {
     expect(api.last("POST /api/v1/auth/password/forgot")!.body).toEqual({
       email: "someone@example.com",
     });
+  });
+
+  it("forgot password while signed in points to Security settings instead of a form that cannot pass the security check", () => {
+    const api = mockFetch({});
+    renderWithClient(<ForgotPasswordPage />, signedIn("owner"));
+    expect(screen.getByText(/You are signed in as ada@example.com/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Send reset link/ })).toBeNull();
+    expect(screen.getByRole("link", { name: /Go to Security settings/ })).toBeTruthy();
+    expect(api.last("POST /api/v1/auth/password/forgot")).toBeUndefined();
   });
 
   it("reads the token from the fragment, removes it from the address bar, and never sends it in a query string", async () => {

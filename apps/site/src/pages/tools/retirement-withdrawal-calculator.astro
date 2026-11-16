@@ -119,6 +119,7 @@ const faq = [
     random real returns averaging 5% with 12% volatility, 2,000 simulations with seed 2026, withdrawals at the start of
     each year, no tax.
   </p>
+  <div class="table-scroll" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
   <table>
     <caption>Four rules on the same 2,000 simulated retirements (today’s money)</caption>
     <thead>
@@ -130,6 +131,7 @@ const faq = [
     </thead>
     <tbody>{rows.map((r) => <tr>{r.map((c) => <td>{c}</td>)}</tr>)}</tbody>
   </table>
+  </div>
   <p>
     The pattern is the one the <a href="/blog/withdrawal-strategies-compared/">withdrawal strategies article</a> found
     with its own script: constant real income never moves until it fails (in {pct(constant.shortAny, 1)} of these

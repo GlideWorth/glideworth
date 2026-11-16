@@ -13,7 +13,7 @@ import { useFormat } from "../../../lib/workspace";
 import { countryColor, hasMoves, residenceSegments } from "../../crossborder/model";
 import { useEditorStore } from "../state/doc-store";
 import { monthIndex } from "../state/finance-math";
-import { FREQUENCY_SHORT } from "../state/labels";
+import { amountUnit } from "../state/labels";
 import { formatMonthIndex, resolveRef, type TimeContext } from "../state/resolve";
 
 export type TimelineTarget = { kind: "income" | "expense" | "milestone" | "flow"; id: string };
@@ -74,8 +74,8 @@ export function Timeline({
   const width = Math.ceil(years * px);
   const x = (m: number) => ((Math.min(Math.max(m, start), end) - start) / 12) * px;
 
-  const amountLabel = (v: number, freq: Frequency) =>
-    `${f.money(v, true)}${freq === "once" ? "" : FREQUENCY_SHORT[freq]}`;
+  const amountLabel = (e: { amount: { value: number }; type: string; frequency: Frequency }) =>
+    `${f.money(e.amount.value, true)}${amountUnit(e)}`;
 
   const toBars = (
     items: (Plan["income"][number] | Plan["expenses"][number])[],
@@ -96,7 +96,7 @@ export function Timeline({
           once,
           enabled: e.enabled,
           color: appearanceColor(e.appearance?.color, base + i),
-          label: amountLabel(e.amount.value, e.frequency),
+          label: amountLabel(e),
         },
       ];
     });

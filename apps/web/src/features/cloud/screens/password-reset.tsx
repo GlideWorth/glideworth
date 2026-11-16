@@ -38,6 +38,34 @@ export function ForgotPasswordPage() {
   const [busy, setBusy] = useState(false);
   const { ref, failed } = useErrorFocus();
 
+  // Signed in: the server gives no security-check key to a session, so this form could never be sent.
+  const signedInAs =
+    session?.kind === "authenticated" && session.cloud ? session.cloud.user.email : null;
+  if (signedInAs)
+    return (
+      <AuthLayout
+        title="Reset your password"
+        subtitle={`You are signed in as ${signedInAs}.`}
+        footer={
+          <Link to="/" className="text-accent underline underline-offset-2">
+            Back to Glideworth
+          </Link>
+        }
+      >
+        <div className={authCard}>
+          <Notice tone="neutral">
+            To choose a new password, use Security settings; you will need your current one. If you
+            have forgotten it, sign out first, then ask for a reset link on this page.
+          </Notice>
+          <Button variant="primary" size="lg" className="w-full" asChild>
+            <Link to="/settings/$section" params={{ section: "security" }}>
+              <KeyRound /> Go to Security settings
+            </Link>
+          </Button>
+        </div>
+      </AuthLayout>
+    );
+
   const submit = async (ev: FormEvent) => {
     ev.preventDefault();
     if (busy) return;
@@ -165,7 +193,7 @@ export function ResetPasswordPage() {
   return (
     <AuthLayout
       title="Choose a new password"
-      subtitle="You will be signed out everywhere else. If two-step sign-in is on, you will still need your code."
+      subtitle="You will be signed out everywhere else, and apps you connected by signing in (such as AI assistants) are disconnected; API keys keep working. If two-step sign-in is on, you will still need your code."
     >
       <form ref={ref} onSubmit={submit} className={authCard} noValidate>
         <PassField

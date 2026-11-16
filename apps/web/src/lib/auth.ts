@@ -225,6 +225,17 @@ function parseUser(u: unknown): SessionUser | undefined {
   return { id: o.id, name: typeof o.name === "string" ? o.name : o.id, role };
 }
 
+/**
+ * The session state to show after an API call answered 401 (signed out elsewhere, expired). The hosted
+ * service has its own sign-in screens: sending a hosted user to the self-hosted passphrase screen leaves
+ * them with a form that cannot sign them in.
+ */
+export function sessionAfterUnauthorized(current: SessionState): SessionState {
+  if (current.kind === "cloud-signed-out") return current;
+  if (current.kind === "authenticated" && current.cloud) return { kind: "cloud-signed-out" };
+  return { kind: "login" };
+}
+
 export async function checkSession(f: typeof fetch = fetch): Promise<SessionState> {
   try {
     const res = await f(AUTH_PATHS.session, {

@@ -38,6 +38,7 @@ export function FileDrop({
   busy,
   className,
   maxBytes = 25 * 1024 * 1024,
+  maxChars,
 }: {
   accept: string;
   onFile: (f: PickedFile) => void;
@@ -46,6 +47,8 @@ export function FileDrop({
   busy?: boolean;
   className?: string;
   maxBytes?: number;
+  /** A limit on the file's text, checked once it is read, with the message shown when it is over. */
+  maxChars?: { chars: number; message: (size: string) => string };
 }) {
   const id = useId();
   const input = useRef<HTMLInputElement>(null);
@@ -60,7 +63,12 @@ export function FileDrop({
       return;
     }
     try {
-      onFile({ name: file.name, size: file.size, text: await readFileText(file) });
+      const text = await readFileText(file);
+      if (maxChars && text.length > maxChars.chars) {
+        setError(maxChars.message(formatBytes(file.size)));
+        return;
+      }
+      onFile({ name: file.name, size: file.size, text });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }

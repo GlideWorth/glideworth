@@ -9,6 +9,7 @@ import type {
   ImportIssue,
   ImportIssueCategory,
 } from "@glideworth/importers";
+import { countryLabel } from "../../lib/countries";
 import { formatMonth, plural } from "../../lib/format";
 import type { ImportChecklist } from "../../stores/prefs";
 
@@ -297,7 +298,7 @@ export function buildImportChecklist(
     {
       id: "household",
       label: "Check people, location and currency",
-      detail: `${doc.household.people.map((p) => p.name).join(" & ")} · ${doc.household.location.country} · ${doc.household.currency}`,
+      detail: `${doc.household.people.map((p) => p.name).join(" & ")} · ${countryLabel(doc.household.location.country)} · ${doc.household.currency}`,
       to: "/finances",
       done: false,
     },

@@ -12,13 +12,13 @@ const docs = (await getCollection('legal')).sort((a, b) => (a.data.order ?? 99) 
   {...page('/legal/')}
   heading="Legal"
   eyebrow="Legal"
-  lede="The terms and policies for Glideworth's website and hosted service. Documents marked as taking effect at launch apply once the hosted service opens."
+  lede="The terms and policies for Glideworth's website and hosted service. Documents marked as drafts are still being confirmed."
   crumbs={[{ label: 'Legal', href: '/legal/' }]}
 >
   <div class="container grid">
     {
       docs.map((d) => (
-        <Card title={d.data.title} href={`/legal/${d.id}/`} as="h2" eyebrow={d.data.draft ? 'Takes effect when the hosted service opens' : 'In force'}>
+        <Card title={d.data.title} href={`/legal/${d.id}/`} as="h2" eyebrow={d.data.draft ? 'Draft, still being confirmed' : 'In force'}>
           <p>{d.data.description}</p>
           <p class="muted">Last updated {formatDate(d.data.lastUpdated)}</p>
         </Card>

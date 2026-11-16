@@ -127,8 +127,10 @@ export function billingView(b: BillingInfo, now: Date = new Date(), locale?: str
     body: [
       `${why} You can still look at everything, run simulations and export your data, but nobody can make changes.`,
       portalFirst
-        ? "The owner can fix the payment in the billing portal; editing returns as soon as a payment succeeds."
-        : "The owner can subscribe below to edit again; editing returns as soon as the payment goes through.",
+        ? `${b.role === "owner" ? "Fix" : "The owner can fix"} the payment in the billing portal; editing returns as soon as a payment succeeds.`
+        : b.role === "owner"
+          ? "Subscribe below to edit again; editing returns as soon as the payment goes through."
+          : "The owner can subscribe to edit again; editing returns as soon as the payment goes through.",
       DELETION,
     ],
     action: portalFirst ? "portal" : "subscribe",

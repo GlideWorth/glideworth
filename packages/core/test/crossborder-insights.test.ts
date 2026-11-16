@@ -251,6 +251,25 @@ describe("insights", () => {
     expect(crossBorderFindings(full).some((f) => f.code === "XB_STATE_PENSION_GAP")).toBe(false);
   });
 
+  it("the unknown-treaty finding names countries in words, never the 'XX' placeholder", () => {
+    // A ProjectionLab import with location 'OTHER' lands as XX ("somewhere else") with UK accounts.
+    const base = ukHousehold();
+    const elsewhere = SimulationInput.parse({
+      ...base,
+      household: { ...base.household, location: { country: "XX" } },
+    });
+    const f = crossBorderFindings(elsewhere).filter((x) => x.code === "XB_UNKNOWN_TREATY");
+    expect(f.length).toBeGreaterThan(0);
+    for (const x of f) {
+      expect(x.title).not.toMatch(/\bXX\b/);
+      expect(x.message).not.toMatch(/\bXX\b/);
+      expect(x.title).toContain("United Kingdom");
+    }
+    const moved = ukHousehold({ residency: [move("NZ", "2032-04")] } as never);
+    const nz = crossBorderFindings(moved).find((x) => x.code === "XB_UNKNOWN_TREATY");
+    if (nz) expect(nz.title).not.toMatch(/\b[A-Z]{2}-[A-Z]{2}\b/);
+  });
+
   it("audit adds nothing for a single-country plan", () => {
     expect(crossBorderFindings(ukHousehold())).toEqual([]);
   });

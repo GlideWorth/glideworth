@@ -125,17 +125,21 @@ const faq = [
     simulations and seed 2026 the engine finds every year paid in {pct(article, 1)} of them. The article’s independent
     script, with its own random numbers, found 86.7%; the difference is within the sampling noise.
   </p>
+  <div class="table-scroll" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
   <table>
     <caption>Chance of success at other averages and volatilities (1,000 simulations each, seed 2026)</caption>
     <thead><tr><th>Average real return</th><th>Volatility 8%</th><th>Volatility 12%</th><th>Volatility 16%</th></tr></thead>
     <tbody>{grid.map((r) => <tr>{r.map((c) => <td>{c}</td>)}</tr>)}</tbody>
   </table>
+  </div>
   <p>The same plan under each market model, with the calculator’s defaults (60% stocks, money moving mid-year):</p>
+  <div class="table-scroll" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
   <table>
     <caption>Chance of success by market model (1,000 simulations, seed 2026)</caption>
     <thead><tr><th>Market model</th><th>Chance of success</th></tr></thead>
     <tbody>{methods.map((r) => <tr>{r.map((c) => <td>{c}</td>)}</tr>)}</tbody>
   </table>
+  </div>
 
   <h2>What this assumes and leaves out</h2>
   <ul>

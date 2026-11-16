@@ -149,6 +149,7 @@ export function WorkspaceSection() {
         }
         onConfirm={async () => {
           await withReauth(() => cloudApi.deleteWorkspace(w.name));
+          toast({ title: `“${w.name}” was deleted`, tone: "positive" });
           qc.clear();
           nav.go("/");
         }}

@@ -815,6 +815,21 @@ describe("two-factor authentication", () => {
     expect(await code(() => env.accounts.beginTotp(ctx))).toBe("CONFLICT");
   });
 
+  it("security notices still go out after anonymous requests used up the address's mail budget", async () => {
+    const { ctx, email } = await signedInWithPassword();
+    // Anyone can make the service mail an address: password resets, and sign-ups with a taken address.
+    for (let i = 0; i < 3; i++)
+      await env.accounts.requestPasswordReset(email, "captcha-ok", env.meta());
+    for (let i = 0; i < 3; i++)
+      await env.accounts.signUp(signUpInput(email, newPassword(), null), env.meta());
+    await env.accounts.settled();
+    // The account budget is spent: the last of these were not sent.
+    expect(env.mailer.to(email, "signup-existing-account").length).toBeLessThan(3);
+    await enableTotp(ctx);
+    await env.accounts.settled();
+    expect(env.mailer.last(email, "security-change")?.data.change).toBe("totp-enabled");
+  });
+
   it("a wrong confirmation code does not enable 2FA", async () => {
     const { ctx, email } = await signedInWithPassword();
     const { secret } = env.accounts.beginTotp(ctx);

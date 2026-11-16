@@ -70,7 +70,7 @@ webhook can post to a chat tool or a home server. See [the API](/features/rest-a
 ## What it does not do
 
 - **No email in the self-hosted app.** Check-ins notify in the app and by webhook; you can point a webhook at
-  anything that sends email. Email delivery is planned for the hosted service and not built yet.
+  anything that sends email. The hosted service also emails a check-in summary.
 - **It runs only while the server runs.** The scheduler is an in-process timer, not an external job service.
 - **"Behind plan" is approximate:** the previous check-in's projection is interpolated across the year, in
   today's money.

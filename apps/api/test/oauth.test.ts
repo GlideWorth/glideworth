@@ -207,6 +207,21 @@ describe("discovery", () => {
     });
   });
 
+  it("the consent pages let the browser send its origin back (the form post would otherwise arrive with `Origin: null`)", async () => {
+    // Under "no-referrer" Chrome sends `Origin: null` on the consent form's POST, and the same-origin check
+    // refuses it: nobody could approve a client.
+    const page = await h.app.request("/oauth/authorize?client_id=x&response_type=code");
+    expect(page.headers.get("referrer-policy")).toBe("same-origin");
+    const api = await h.app.request("/health");
+    expect(api.headers.get("referrer-policy")).toBe("no-referrer");
+    const nullOrigin = await h.app.request("/oauth/authorize", {
+      method: "POST",
+      headers: { origin: "null", "content-type": "application/x-www-form-urlencoded" },
+      body: "decision=approve",
+    });
+    expect(nullOrigin.status).toBe(403);
+  });
+
   it("GLIDEWORTH_PUBLIC_URL pins the issuer regardless of the Host header", async () => {
     await boot({ appOptions: { publicUrl: "https://glideworth.example.com/" } });
     const m = (

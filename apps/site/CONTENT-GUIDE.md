@@ -20,12 +20,12 @@ anything else here.
    `formatPrice(pricing.monthly)`, `pricing.trialDays`, `priceSentence()`.
 4. **Tax figures are "estimates".** Say what each country's model leaves out (the list is
    `TAX_SIMPLIFICATIONS` in `packages/core/src/tax/data/`). Never imply a figure is a tax return or advice.
-5. **The hosted service does not exist yet.** Nothing about it is running: no sign-up, billing, hosted
-   servers or hosted endpoint, and no two-factor sign-in, automatic backups or email delivery. Things that are
-   true of the software itself (you can self-host them today) are "available"; hosted-only things are
-   "planned" (`status` in `src/config/pricing.ts`). While `site.cloudLaunched` is `false`, say the software
-   exists and can be self-hosted today and the hosted service opens later; use `trialCta` from `site.ts` for
-   the "try it" button, which then points at self-hosting.
+5. **The hosted service is open** (`site.cloudLaunched` is `true`, since 2026-11-16). Say what exists, in the
+   present tense: sign-up, billing, two-factor sign-in, automatic backups, email check-ins and the hosted
+   endpoint are all in the code. Things that are in the software itself (you can self-host them) have no
+   `hostedOnly` flag in `src/config/pricing.ts`; hosted-only things have `hostedOnly: true`. Mark a feature
+   `planned` only if it is not built, and never mark something available that is not in the code. Use
+   `trialCta` from `site.ts` for the "try it" button.
 6. **Cross-border:** the engine models residency changes, non-resident source taxation and treaty relief, and
    the web app has screens for them (`apps/web/src/features/crossborder`): the residency timeline,
    citizenship and past residence, a country on each item, tax by country and a stay-or-move comparison. Say
@@ -124,10 +124,9 @@ notModelled: ["SALT cap and itemised phase-outs …", "…"]
 
 - **Docs sections** order is set by `DOC_SECTIONS` in `src/lib/docs.ts`; a new section name works but sorts
   last until added there.
-- **Legal:** `draft: true` means the document describes the hosted service and takes effect when it opens. It
-  shows "These terms take effect when the hosted service opens. Last updated <date>." and is `noindex` (out of
-  the sitemap) until you set `draft: false` at launch. Documents that apply today (disclaimer, notices) are
-  `draft: false`. The decisions behind the wording are in `docs/launch/legal-decisions.md`.
+- **Legal:** `draft: true` means the document is still being confirmed. It shows a "Draft: still being
+  confirmed" note and is `noindex` (out of the sitemap) until you set `draft: false`. Documents in force
+  are `draft: false`. The decisions behind the wording are in `docs/launch/legal-decisions.md`.
 - **Compare:** every entry needs sources and `checkedOn`; a `noindex` sample is shown in development only.
 - **Related links** are not written into pages. Add a page to a cluster in `src/config/related.ts` and every
   page in the cluster links to the others under "Related" (the build fails on a path that is not a page).

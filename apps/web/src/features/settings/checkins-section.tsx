@@ -80,7 +80,7 @@ export function CheckinsSection() {
           <>
             <SettingRow
               label="Automatic check-ins"
-              hint="Off: only check-ins you run yourself are recorded."
+              hint="When this is off, only check-ins you run yourself are recorded."
             >
               <Switch
                 checked={s.enabled}

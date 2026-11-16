@@ -146,7 +146,7 @@ export function bankSpendingRows(
       severity: "info",
       category: "approximated",
       sourcePath: `${parsed.format}:categories`,
-      message: `${inferred} transaction(s) had no category; one was inferred from the payee name`,
+      message: `${inferred} ${inferred === 1 ? "transaction had" : "transactions had"} no category; each was given one from the payee name`,
       code: "bank.inferred-category",
     });
   return { rows, excluded, issues };

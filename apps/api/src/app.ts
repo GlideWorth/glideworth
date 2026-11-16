@@ -148,7 +148,9 @@ export function createApp(opts: AppOptions) {
   app.use("*", async (c, next) => {
     await next();
     c.header("X-Content-Type-Options", "nosniff");
-    c.header("Referrer-Policy", "no-referrer");
+    // The OAuth consent page posts back to this origin. Under "no-referrer" Chrome sends `Origin: null` on that
+    // form post, which the same-origin check must refuse, so consent could never be given.
+    c.header("Referrer-Policy", c.req.path.startsWith("/oauth/") ? "same-origin" : "no-referrer");
     if (c.req.path.startsWith("/api/") || c.req.path === "/mcp")
       c.header("Cache-Control", "no-store");
   });

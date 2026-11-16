@@ -264,6 +264,7 @@
     color-scheme: light;
   }
   .no-print,
+  .skip-link,
   [data-app-chrome] {
     /* print must hide chrome regardless of utilities */
     display: none !important;

@@ -18,7 +18,7 @@ import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/table";
 import { toast } from "../../components/ui/toaster";
 import { useAccess } from "../../lib/access";
 import { ApiRequestError, api, type BankFileRequest } from "../../lib/api";
-import { formatMoney } from "../../lib/format";
+import { formatDay, formatMoney, plural } from "../../lib/format";
 import { useActivePlan, useFormat, useWorkspace } from "../../lib/workspace";
 import { FileDrop, formatBytes, type PickedFile } from "./file-drop";
 
@@ -46,6 +46,22 @@ export function bankApplyRequest(c: {
   };
 }
 
+/** The server refuses a bank file over 2,000,000 characters (`MAX_BANK_FILE_CHARS` in the API). */
+export const BANK_FILE_LIMIT = {
+  chars: 2_000_000,
+  message: (size: string) =>
+    `That file is ${size}. Bank files can be up to 2 MB; export a shorter date range from your bank and try again.`,
+};
+
+/** An importer note in this screen's words (the API's wording names request fields). */
+export function bankIssueText(i: { code?: string; message: string }): string {
+  if (i.code === "csv.unmatched")
+    return "No account in Glideworth matches this one, so its balance is skipped. Turn on “Add accounts that are not in Glideworth yet” to add it.";
+  if (i.code === "qif.date-order")
+    return "Dates were read month first (US style). If your bank writes the day first, set Date order to “Day / month / year”.";
+  return i.message;
+}
+
 export function BankFileImport() {
   const [file, setFile] = useState<PickedFile | null>(null);
   return file ? (
@@ -61,7 +77,8 @@ export function BankFileImport() {
       <FileDrop
         accept=".ofx,.qfx,.qif,application/x-ofx,application/vnd.intu.qfx"
         title="Choose an OFX, QFX or QIF file"
-        hint="Read in this browser; nothing is saved until you apply it."
+        hint="Up to 2 MB. Read in this browser; nothing is saved until you apply it."
+        maxChars={BANK_FILE_LIMIT}
         onFile={setFile}
       />
     </div>
@@ -312,8 +329,8 @@ function BankWorkbench({ file, onReset }: { file: PickedFile; onReset: () => voi
               <CardHeader
                 eyebrow={
                   o.summary.range
-                    ? `${o.summary.transactions} transactions · ${o.summary.range.from} to ${o.summary.range.to}`
-                    : `${o.summary.transactions} transactions`
+                    ? `${plural(o.summary.transactions, "transaction")} · ${formatDay(o.summary.range.from, f.locale)} to ${formatDay(o.summary.range.to, f.locale)}`
+                    : plural(o.summary.transactions, "transaction")
                 }
                 title={`Spending: ${money(o.summary.totalAnnual)} a year`}
               />
@@ -404,7 +421,7 @@ function BankWorkbench({ file, onReset }: { file: PickedFile; onReset: () => voi
                     >
                       {i.severity}
                     </Badge>
-                    <span>{i.message}</span>
+                    <span>{bankIssueText(i)}</span>
                   </div>
                 ))}
               </CardBody>

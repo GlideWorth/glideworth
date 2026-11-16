@@ -40,6 +40,10 @@ export function SignInPage() {
   const [googleError] = useState(() =>
     googleProblem(new URLSearchParams(window.location.search).get("google")),
   );
+  // Set by Account settings after "Delete account", so the person sees that it happened.
+  const [accountDeleted] = useState(
+    () => new URLSearchParams(window.location.search).get("deleted") === "1",
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -136,6 +140,12 @@ export function SignInPage() {
     >
       <form ref={ref} onSubmit={submit} className={authCard} noValidate>
         {googleError ? <FormAlert>{googleError}</FormAlert> : null}
+        {accountDeleted ? (
+          <Notice>
+            Your account has been deleted and you are signed out. You can create a new account with
+            the same email address at any time.
+          </Notice>
+        ) : null}
         <TextField
           label="Email"
           type="email"

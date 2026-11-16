@@ -75,11 +75,13 @@ const faq = [
     inflation and <code>C′</code> the yearly saving moved to the year end under the timing you chose (C × (1 + r) for
     the start of the year, C × (1 + r)<sup>½</sup> for the middle, C for the end).
   </p>
+  <div class="table-scroll" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
   <table>
     <caption>FIRE number for spending of {m(40_000)}</caption>
     <thead><tr><th>Withdrawal rate</th><th>Multiple of spending</th><th>FIRE number</th></tr></thead>
     <tbody>{rows.map((r) => <tr>{r.map((c) => <td>{c}</td>)}</tr>)}</tbody>
   </table>
+  </div>
 
   <h2>Worked example</h2>
   <p>

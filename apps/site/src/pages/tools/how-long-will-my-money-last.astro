@@ -87,11 +87,13 @@ const faq = [
     {' '}{m(end.path[28] ?? 0)}, so its answer is {end.years.toFixed(2)} years. With withdrawals at the start of each
     year instead, it is {start.years.toFixed(1)} years.
   </p>
+  <div class="table-scroll" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
   <table>
     <caption>Same balance and withdrawal at other steady returns (end-of-year withdrawals)</caption>
     <thead><tr><th>Return after inflation</th><th>Formula (years)</th><th>Engine (years)</th></tr></thead>
     <tbody>{byReturn.map((r) => <tr>{r.map((c) => <td>{c}</td>)}</tr>)}</tbody>
   </table>
+  </div>
   <p>
     Through history, the same {m(500_000)} paying {m(30_000)} a year with 60% in stocks lasted the whole
     {' '}{HISTORY_WINDOW}-year window in {lasted} of {hist.length} start years from {hist[0]?.startYear} to

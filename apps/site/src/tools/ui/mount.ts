@@ -84,9 +84,11 @@ export function mountCalculator(spec: ToolSpec): void {
     }
   }
 
+  /** The planner box sits beside the calculator, not inside it, so look in the whole page. */
   function updateLinks() {
     const href = plannerUrl(spec, values);
-    for (const a of root!.querySelectorAll<HTMLAnchorElement>("[data-planner-link]")) a.href = href;
+    for (const a of document.querySelectorAll<HTMLAnchorElement>("[data-planner-link]"))
+      a.href = href;
   }
 
   /** Reads every input; returns the values and the field errors. */

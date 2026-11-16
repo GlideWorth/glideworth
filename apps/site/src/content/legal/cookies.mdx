@@ -2,7 +2,7 @@
 title: Cookie policy
 description: Exactly which cookies and browser storage the Glideworth website and app use. There are no advertising or analytics cookies, so there is no consent banner.
 lastUpdated: 2026-11-16
-draft: true
+draft: false
 order: 3
 ---
 
@@ -26,10 +26,10 @@ This list was made by reading the code. If we add anything, we will update this 
 That is all. The site has no analytics, no advertising, no embedded third-party content, no social media
 buttons, and no fonts or scripts loaded from other companies. The pages themselves make no third-party requests.
 
-## 2. The app (self-hosted today, and the hosted service when it opens)
+## 2. The app (self-hosted, and the hosted service)
 
-The hosted service is not open yet. This section describes what the open-source app does today; the hosted
-service is planned to run the same code, and anything it would add is listed separately below.
+This section describes what the open-source app does. The hosted service runs the same code, and anything it
+adds is listed separately below.
 
 ### Cookies
 
@@ -71,14 +71,13 @@ finish.
 - **API reference page.** The interactive API reference that every server serves at `/docs` loads its viewer
   script from the jsDelivr content delivery network, so jsDelivr sees your IP address when you open that page.
   Signed-in app screens do not do this. The static [API reference](/docs/api-and-mcp/api-reference/) on this website
-  loads nothing from other companies. We plan to remove this request before the hosted service opens, and will
-  update this page when we do.
+  loads nothing from other companies, and neither does the hosted service's own API reference page.
 
-### Planned for the hosted service (not built yet)
+### Only in the hosted service
 
-These are not in the code today. They are listed so that the policy is ready when the hosted service opens.
+The self-hosted app does not set these. The hosted service does.
 
-- **A device cookie** (`__Host-gw_device`, planned name) that recognises a device you have signed in from before, so
+- **A device cookie** (`__Host-gw_device`) that recognises a device you have signed in from before, so
   we can email you when a new device signs in. It lasts up to 90 days and is used only for that security alert. You
   could turn sign-in alerts off in settings, and the cookie would then not be needed.
 - **Two short-lived cookies for "Continue with Google"**, set only if you use that button.

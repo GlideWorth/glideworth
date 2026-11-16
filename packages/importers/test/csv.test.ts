@@ -503,6 +503,21 @@ describe("transactions -> annual expense events", () => {
     expect(s.months).toBe(2);
   });
 
+  it("a statement without a category column counts money in as income, not as negative spending", () => {
+    // A plain bank statement: before the fix the salary netted the spending to £0 a year.
+    const statement = [
+      "Date,Description,Amount,Balance",
+      "2026-10-01,Salary,3200.00,5200.00",
+      "2026-10-03,Groceries,-84.20,5115.80",
+      "2026-10-15,Rent,-1200.00,3915.80",
+      "2026-10-31,Interest,1.25,3917.05",
+    ].join("\n");
+    const s = summariseTransactions(statement, { annualise: "all" });
+    expect(s.categories.map((c) => [c.category, c.total])).toEqual([["Uncategorised", 1284.2]]);
+    expect(s.totalAnnual).toBeCloseTo(1284.2 * 12);
+    expect(s.excluded).toEqual([{ category: "Income", count: 2, total: 3201.25 }]);
+  });
+
   it("annualises by the span of the data, or the last 12 months, or the latest full year", () => {
     const all = summariseTransactions(generic, { annualise: "all" });
     expect(all.categories.find((c) => c.category === "Rent")!.annual).toBe(12000);
@@ -577,8 +592,11 @@ describe("transactions -> annual expense events", () => {
     const s = summariseTransactions(csv, { annualise: "all" });
     expect(s.analysis.preset?.id).toBe("uk-bank-debit-credit");
     expect(s.analysis.dateFormat).toBe("DD/MM/YYYY");
-    expect(s.range).toEqual({ from: "2026-01-31", to: "2026-02-02" });
-    expect(s.transactions).toBe(2 + 1);
+    // The salary credit is income, not negative spending (it used to net the spending to nothing).
+    expect(s.range).toEqual({ from: "2026-01-31", to: "2026-02-01" });
+    expect(s.transactions).toBe(2);
+    expect(s.categories.map((c) => [c.category, c.total])).toEqual([["Uncategorised", 105.5]]);
+    expect(s.excluded).toEqual([{ category: "Income", count: 1, total: 2000 }]);
   });
 
   it("YNAB register export (outflow/inflow columns)", () => {

@@ -67,8 +67,8 @@ tokens, scopes capped by your role) instead of a pasted key. Bearer keys keep wo
   choose, and **its provider sees what the tools return.** If that matters, use a local model.
 - **An assistant is not a source of tax or investment advice.** Tools return the model's results; what the
   assistant tells you about them is its own.
-- **No hosted endpoint yet.** A stable HTTPS address with OAuth is planned for the hosted service, which is not
-  open yet. Today the server runs on your machine.
+- **A self-hosted server needs its own HTTPS address** for clients that connect by URL. The hosted service has a
+  stable HTTPS address with OAuth.
 - **Some tools need the writes switch,** and a tool that touches an engine feature that is not built returns
   `NOT_IMPLEMENTED` with the owner named.
 - **It does not replace the app.** Charts, the plan editor and some screens have no MCP equivalent.

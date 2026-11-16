@@ -53,7 +53,10 @@ export function MembersSection() {
     mutationFn: (v: { m: Member; role: InviteRole }) => cloudApi.changeRole(v.m.userId, v.role),
     onSuccess: (_r, v) => {
       refresh();
-      toast({ title: `${v.m.name} is now ${ROLE_LABEL[v.role].toLowerCase()}`, tone: "positive" });
+      toast({
+        title: `${v.m.name} is now ${v.role === "editor" ? "an editor" : "a viewer"}`,
+        tone: "positive",
+      });
     },
     onError: (e) => failToast("Role not changed", e),
   });

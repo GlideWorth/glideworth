@@ -899,8 +899,7 @@ on your own network set `GLIDEWORTH_WEBHOOK_ALLOW_PRIVATE=true` on the server.
 
 ## Cloud mode (the hosted service)
 
-The same server runs the hosted service when started with `GLIDEWORTH_MODE=cloud` (design:
-`docs/design/cloud-architecture.md`). Everything in this document applies, per **workspace**: each workspace
+The same server runs the hosted service when started with `GLIDEWORTH_MODE=cloud`. Everything in this document applies, per **workspace**: each workspace
 is its own SQLite database, and a credential only ever opens the workspace it belongs to. What differs:
 
 | Topic               | Self-host                                                | Cloud                                                                                                                                                                                                     |

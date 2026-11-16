@@ -11,6 +11,7 @@ import { useMemo } from "react";
 import { useUi } from "../stores/ui";
 import { runSimulation } from "../workers/sim-client";
 import { ApiRequestError, loadApi } from "./api-lazy";
+import { type SessionState, sessionAfterUnauthorized } from "./auth";
 import {
   type FormatOptions,
   formatMoney,
@@ -70,8 +71,13 @@ export function useWorkspace() {
           throw new ServerUnreachableError(e instanceof Error ? e.message : String(e));
         // The browser session ended (signed out elsewhere, expired): show the sign-in screen
         // rather than swapping in the sample household.
-        if (e instanceof ApiRequestError && e.status === 401 && qc.getQueryData(["session"])) {
-          qc.setQueryData(["session"], { kind: "login" });
+        const session = qc.getQueryData<SessionState>(["session"]);
+        if (e instanceof ApiRequestError && e.status === 401 && session) {
+          const next = sessionAfterUnauthorized(session);
+          qc.setQueryData(["session"], next);
+          // Hosted: fetch the rest of the signed-out state (bot-check key, Google sign-in) for the sign-in page.
+          if (next.kind === "cloud-signed-out" && next !== session)
+            void qc.invalidateQueries({ queryKey: ["session"] });
           if (prev?.source === "api") throw e;
         }
         return {

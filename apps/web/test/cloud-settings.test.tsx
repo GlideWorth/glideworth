@@ -310,7 +310,7 @@ describe("account", () => {
     expect(within(dlg).getByText(/removed from storage within 30 days/)).toBeTruthy();
     fireEvent.click(confirm);
     await waitFor(() => expect(api.last("DELETE /api/v1/account")).toBeTruthy());
-    await waitFor(() => expect(nav.go).toHaveBeenCalledWith("/signin"));
+    await waitFor(() => expect(nav.go).toHaveBeenCalledWith("/signin?deleted=1"));
   });
 });
 
@@ -909,6 +909,30 @@ describe("shell: banners, switcher, suspended page", () => {
     fireEvent.click(await screen.findByRole("option", { name: /Shared/ }));
     await waitFor(() => expect(api.last("POST /api/v1/workspaces/acc_2/activate")).toBeTruthy());
     await waitFor(() => expect(nav.go).toHaveBeenCalledWith("/"));
+  });
+
+  it("signed in with no workspace: says nothing is saved and offers to create one", async () => {
+    const api = mockFetch({ "POST /api/v1/workspaces": { id: "acc_new" } });
+    const state = signedIn("owner");
+    if (state.kind !== "authenticated" || !state.cloud) throw new Error("fixture");
+    state.cloud.workspace = null;
+    state.cloud.workspaces = [];
+    renderWithClient(<CloudBanners />, state);
+    expect(screen.getByRole("alert").textContent).toMatch(/not in a workspace yet/);
+    fireEvent.click(screen.getByRole("button", { name: "Create my own workspace" }));
+    await waitFor(() => expect(api.last("POST /api/v1/workspaces")).toBeTruthy());
+    await waitFor(() => expect(nav.go).toHaveBeenCalledWith("/"));
+  });
+
+  it("the workspace switcher keeps its trigger a flex row whatever display classes the shell passes", () => {
+    renderWithClient(
+      <WorkspaceSwitcher className="hidden w-[180px] min-w-0 md:block" />,
+      signedIn("owner", undefined, { workspaces: 2 }),
+    );
+    const trigger = screen.getByRole("combobox", { name: "Workspace" });
+    expect(trigger.className).toMatch(/\bflex\b/);
+    expect(trigger.className).not.toMatch(/\b(md:block|hidden)\b/);
+    expect(trigger.parentElement?.className).toBe("hidden w-[180px] min-w-0 md:block");
   });
 
   it("the suspended page explains, points to support, and lets only the owner reach export and delete", () => {

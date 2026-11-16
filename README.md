@@ -8,7 +8,8 @@ It is also built to be driven by software: a complete REST API (OpenAPI 3.1) and
 and AI assistants read your plans, run simulations and propose edits safely, against your own machine.
 
 Glideworth is an original application. How complete it is, feature by feature, is in
-[docs/PARITY.md](docs/PARITY.md).
+[docs/PARITY.md](docs/PARITY.md). The same software also runs as a hosted service, Glideworth Cloud, at
+<https://glideworth.com> (free 30-day trial, then $9 a month or $90 a year); everything in this repository is free to run yourself.
 
 ## What it does
 
@@ -19,7 +20,7 @@ Glideworth is an original application. How complete it is, feature by feature, i
   historical backtests, sequence-of-returns analysis, milestone timing. A short first or last plan year is
   labelled as such and can be shown annualised.
 - **Tax-aware**: estimates for the UK, US (federal, payroll, every state and some cities), Canada, Australia,
-  Germany, the Netherlands, France, Spain, Israel, Ireland and New Zealand, or flat / custom rates. Each
+  Germany, the Netherlands, France, Spain, Israel, Ireland, New Zealand and the United Arab Emirates, or flat / custom rates. Each
   country lists what its estimate leaves out. Tables are for stated tax years and must be kept up to date
   ([status and limits](docs/STATUS.md)).
 - **Several currencies**: accounts, property, debts and events in their own currency, with exchange rates and
@@ -126,7 +127,7 @@ the importer reads.
 
 ## Connecting an AI assistant (MCP)
 
-Glideworth's MCP server has 39 read and compute tools and, only if you enable them, 10 write tools. Plan edits
+Glideworth's MCP server has 54 read and compute tools and, only if you enable them, 21 write tools. Plan edits
 are always proposals you approve; nothing can be deleted.
 
 ```bash

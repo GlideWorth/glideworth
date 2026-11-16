@@ -1,6 +1,6 @@
 ---
 title: The hosted service
-description: What the Glideworth hosted service will add to the software you can self-host today, what is planned but not built, and why self-hosting stays free. It is not open yet.
+description: What the Glideworth hosted service adds to the software you can self-host, what it costs, and why self-hosting stays free. The hosted service opened on 16 November 2026.
 section: Getting started
 order: 4
 lastChecked: 2026-11-16
@@ -10,34 +10,33 @@ import Callout from '../../../components/Callout.astro';
 import { formatPrice, pricing } from '../../../config/pricing';
 import { site } from '../../../config/site';
 
-The hosted service is the same software, run for you. {site.cloudLaunched ? '' : 'It is not open yet, and no date is promised.'}
+The hosted service is the same software, run for you. {site.cloudLaunched ? 'It opened for sign-ups on 16 November 2026.' : 'It is not open yet, and no date is promised.'}
 
-<Callout type="note" title="Not open yet">
-  Sign-up and billing are not built. Nothing on this page is available to buy today. To use Glideworth now,
-  [self-host it](/docs/self-hosting/docker/).
+<Callout type="note" title="Open for sign-ups">
+  You can <a href={site.signupUrl} rel="noopener noreferrer">start a free trial</a> now. Or [self-host it](/docs/self-hosting/docker/) for free.
 </Callout>
 
 ## Already in the software
 
-These are true of the open-source software today, so you can self-host them now. The hosted service will include all of them.
+These are in the open-source software, so you can self-host them. The hosted service includes all of them.
 
 <ul>
-  {pricing.features.filter((f) => f.status === 'available').map((f) => (
+  {pricing.features.filter((f) => f.status === 'available' && !f.hostedOnly).map((f) => (
     <li><strong>{f.label}.</strong>{f.detail ? ` ${f.detail}` : ''}</li>
   ))}
 </ul>
 
-## Only the hosted service, planned and not built
+## What the hosted service adds
 
 <ul>
-  {pricing.features.filter((f) => f.status === 'planned').map((f) => (
+  {pricing.features.filter((f) => f.status === 'available' && f.hostedOnly).map((f) => (
     <li><strong>{f.label}.</strong>{f.detail ? ` ${f.detail}` : ''}</li>
   ))}
 </ul>
 
 ## Price
 
-The planned price is {formatPrice(pricing.monthly)} a month or {formatPrice(pricing.yearly)} a year ({pricing.currency}),
+The price is {formatPrice(pricing.monthly)} a month or {formatPrice(pricing.yearly)} a year ({pricing.currency}),
 after a {pricing.trialDays}-day free trial with no card. See the [pricing page](/pricing/) for the current terms.
 
 ## What stays the same
@@ -50,4 +49,4 @@ after a {pricing.trialDays}-day free trial with no card. See the [pricing page](
 
 ## What this page does not say
 
-It does not promise an opening date, uptime, or certifications. Those will be stated where they are true.
+It does not promise uptime or certifications. Those are stated where they are true.

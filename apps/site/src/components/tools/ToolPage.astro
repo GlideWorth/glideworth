@@ -116,6 +116,7 @@ const others = TOOLS.filter((t) => t.id !== id);
 <style>
   .tool-page {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: clamp(2.5rem, 2rem + 2vw, 4rem);
     padding-bottom: var(--section-y);
   }

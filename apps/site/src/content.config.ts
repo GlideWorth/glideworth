@@ -69,7 +69,7 @@ const legal = defineCollection({
     title: text(),
     ...seo,
     lastUpdated: z.coerce.date(),
-    /** True until the hosted service opens: keeps the page out of the sitemap (noindex) and shows its "takes effect when the hosted service opens" note. No lawyer will review the pages (docs/launch/legal-decisions.md). */
+    /** True while the document is still being confirmed: keeps the page out of the sitemap (noindex) and shows a "draft" note. No lawyer will review the pages (docs/launch/legal-decisions.md). */
     draft: z.boolean().default(true),
     /** Position in the footer and on /legal/. */
     order: z.number().optional(),

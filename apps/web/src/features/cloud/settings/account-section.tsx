@@ -214,7 +214,7 @@ export function AccountSection() {
         onConfirm={async () => {
           await withReauth(() => cloudApi.deleteAccount());
           qc.clear();
-          nav.go("/signin");
+          nav.go("/signin?deleted=1");
         }}
       />
     </>

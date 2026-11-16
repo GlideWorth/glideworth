@@ -216,8 +216,16 @@ export function describeError(e: unknown): string {
     case "INTERNAL":
       return "Something went wrong on our side. Try again in a moment.";
     default:
-      return e.message;
+      return asSentence(e.message);
   }
+}
+
+/** The server writes its messages as lowercase fragments ("the code is wrong"); show them as sentences. */
+export function asSentence(message: string): string {
+  const m = message.trim();
+  if (!m) return "Something went wrong. Please try again.";
+  const capped = m.charAt(0).toUpperCase() + m.slice(1);
+  return /[.!?]$/.test(capped) ? capped : `${capped}.`;
 }
 
 export const isCode = (e: unknown, code: string): boolean =>

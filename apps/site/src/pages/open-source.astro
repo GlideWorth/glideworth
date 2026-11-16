@@ -37,21 +37,21 @@ const split: { what: string; self: string; hosted: string }[] = [
   {
     what: 'REST API and MCP server',
     self: 'Yes, on your own server',
-    hosted: 'Yes, at a stable HTTPS address with OAuth (planned)',
+    hosted: 'Yes, at a stable HTTPS address with OAuth',
   },
   {
     what: 'Scheduled check-ins and alerts',
     self: 'Yes, through webhooks',
-    hosted: 'Also by email (planned)',
+    hosted: 'Also by email',
   },
   {
     what: 'Tax-table updates and fixes',
     self: 'In the open repository when released; you upgrade',
     hosted: 'Applied for you',
   },
-  { what: 'Backups', self: 'You run them; one command', hosted: 'Automatic and encrypted (planned)' },
-  { what: 'Two-factor sign-in', self: 'No; passphrase sign-in', hosted: 'Planned' },
-  { what: 'Support', self: 'Community', hosted: 'Email support (planned)' },
+  { what: 'Backups', self: 'You run them; one command', hosted: 'Automatic and encrypted' },
+  { what: 'Two-factor sign-in', self: 'No; passphrase sign-in', hosted: 'Yes, with an authenticator app' },
+  { what: 'Support', self: 'Community', hosted: 'Email support' },
 ];
 
 const faq: FaqItem[] = [
@@ -161,10 +161,10 @@ const faq: FaqItem[] = [
   </Section>
 
   <Section id="contribute" eyebrow="Contribute" title="How to help, and what a good contribution looks like." tone="raised">
-    <Callout type="draft" title="The repository is being prepared for public release">
+    <Callout type="note" title="The repository is public">
       <p>
-        These are the project's contribution rules.
-        Until then, please read, but do not expect a pull request to be merged.
+        These are the project's contribution rules. Read <a href={`${site.repoUrl}/blob/main/CONTRIBUTING.md`} rel="noopener noreferrer">CONTRIBUTING.md</a>
+        before you open a pull request.
       </p>
     </Callout>
     <p class="intro">
@@ -209,8 +209,8 @@ const faq: FaqItem[] = [
     <Callout type="warning" title="Not reviewed by a lawyer">
       <p>
         The agreement is based on the Apache Software Foundation's individual agreement, rewritten in original wording. It has
-        not been reviewed by a lawyer, so if you want advice before you sign, get your own. It applies once the repository is
-        public and outside contributions open.
+        not been reviewed by a lawyer, so if you want advice before you sign, get your own. It applies to contributions
+        to the public repository.
       </p>
     </Callout>
   </Section>

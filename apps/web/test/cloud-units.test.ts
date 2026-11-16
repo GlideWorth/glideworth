@@ -8,7 +8,20 @@ import { safeNext } from "../src/features/cloud/next";
 import { passwordProblem } from "../src/features/cloud/password-rules";
 import { encodeQr } from "../src/features/cloud/qr";
 import { daysLeft, fmtPrice } from "../src/features/cloud/format";
+import { ApiRequestError } from "../src/lib/api-error";
 import type { BillingInfo } from "../src/features/cloud/client";
+import { describeError } from "../src/features/cloud/ui";
+
+describe("server error messages", () => {
+  it("are shown as sentences, not raw lowercase fragments", () => {
+    const err = (message: string) => new ApiRequestError(401, "UNAUTHORIZED", message);
+    expect(describeError(err("the password is wrong"))).toBe("The password is wrong.");
+    expect(describeError(err("the code is wrong; check the time on your device"))).toBe(
+      "The code is wrong; check the time on your device.",
+    );
+    expect(describeError(err("Already a sentence."))).toBe("Already a sentence.");
+  });
+});
 
 describe("the `next` redirect validator", () => {
   const origin = "https://app.glideworth.com";
@@ -131,6 +144,10 @@ describe("password rules (mirror of the server policy)", () => {
     expect(passwordProblem("my-ada.lovelace-password", "ada.lovelace@example.com")).toMatch(
       /email/,
     );
+    // A password that only contains the name part says so, not just "your email address".
+    expect(passwordProblem("carol long passphrase", "carol@example.com")).toMatch(
+      /part before the @/,
+    );
     expect(passwordProblem("x".repeat(1025), "a@b.co")).toMatch(/at most/);
   });
 });
@@ -249,6 +266,17 @@ describe("billing wording for every state", () => {
     expect(v).toMatchObject({ state: "read-only", action });
     expect(v.body[0]).toMatch(why);
     expect(v.body.join(" ")).toMatch(/12 months/);
+  });
+  it("read-only: speaks to the owner directly, and points anyone else to the owner", () => {
+    const ro: BillingInfo = {
+      ...base,
+      access: { level: "read_only", reason: "trial_expired", changesAt: null },
+    };
+    expect(billingView(ro, now, "en-GB").body.join(" ")).toMatch(/Subscribe below to edit again/);
+    expect(billingView(ro, now, "en-GB").body.join(" ")).not.toMatch(/The owner can/);
+    expect(billingView({ ...ro, role: "editor" }, now, "en-GB").body.join(" ")).toMatch(
+      /The owner can subscribe/,
+    );
   });
   it("suspended: no action, support address", () => {
     const v = billingView(

@@ -31,9 +31,10 @@ const d = entry.data;
   <Fragment slot="before">
     {
       d.draft && (
-        <Callout type="note" title="Takes effect when the hosted service opens">
+        <Callout type="note" title="Draft: still being confirmed">
           <p>
-            These terms take effect when the hosted service opens. Last updated{' '}
+            The hosted service is open, but this document is still a draft and is not yet confirmed as in force. The note
+            below says what is still to be confirmed. Last updated{' '}
             <time datetime={isoDate(d.lastUpdated)}>{formatDate(d.lastUpdated)}</time>.
           </p>
         </Callout>

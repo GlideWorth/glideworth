@@ -51,27 +51,52 @@ export function Select<V extends string>({
           className="z-50 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-lg border border-border bg-surface p-1 shadow-pop"
         >
           <S.Viewport className="max-h-[min(360px,var(--radix-select-content-available-height))]">
-            {options.map((o, i) => [
-              o.group && o.group !== options[i - 1]?.group ? (
-                <S.Label key={`group:${o.group}`} className="eyebrow px-2 pt-2.5 pb-1 first:pt-1">
-                  {o.group}
-                </S.Label>
-              ) : null,
-              <S.Item
-                key={o.value}
-                value={o.value}
-                className="relative flex cursor-default select-none flex-col rounded-md py-1.5 pr-2 pl-7 text-[13px] outline-none data-[highlighted]:bg-surface-2"
-              >
-                <S.ItemIndicator className="absolute left-2 top-2">
-                  <Check className="size-3.5 text-accent" />
-                </S.ItemIndicator>
-                <S.ItemText>{o.label}</S.ItemText>
-                {o.hint ? <span className="text-[11.5px] text-ink-3">{o.hint}</span> : null}
-              </S.Item>,
-            ])}
+            {groupRuns(options).map((run) =>
+              run.group ? (
+                <S.Group key={`group:${run.group}:${run.options[0]!.value}`}>
+                  <S.Label className="eyebrow px-2 pt-2.5 pb-1 first:pt-1">{run.group}</S.Label>
+                  {run.options.map((o) => (
+                    <Option key={o.value} o={o} />
+                  ))}
+                </S.Group>
+              ) : (
+                run.options.map((o) => <Option key={o.value} o={o} />)
+              ),
+            )}
           </S.Viewport>
         </S.Content>
       </S.Portal>
     </S.Root>
+  );
+}
+
+/**
+ * Contiguous options that share a group, in order. A heading must sit inside its `S.Group` (Radix
+ * throws "SelectLabel must be used within SelectGroup" otherwise, and the page crashes).
+ */
+export function groupRuns<V extends string>(
+  options: SelectOption<V>[],
+): { group: string | undefined; options: SelectOption<V>[] }[] {
+  const runs: { group: string | undefined; options: SelectOption<V>[] }[] = [];
+  for (const o of options) {
+    const last = runs[runs.length - 1];
+    if (last && last.group === o.group) last.options.push(o);
+    else runs.push({ group: o.group, options: [o] });
+  }
+  return runs;
+}
+
+function Option<V extends string>({ o }: { o: SelectOption<V> }) {
+  return (
+    <S.Item
+      value={o.value}
+      className="relative flex cursor-default select-none flex-col rounded-md py-1.5 pr-2 pl-7 text-[13px] outline-none data-[highlighted]:bg-surface-2"
+    >
+      <S.ItemIndicator className="absolute left-2 top-2">
+        <Check className="size-3.5 text-accent" />
+      </S.ItemIndicator>
+      <S.ItemText>{o.label}</S.ItemText>
+      {o.hint ? <span className="text-[11.5px] text-ink-3">{o.hint}</span> : null}
+    </S.Item>
   );
 }

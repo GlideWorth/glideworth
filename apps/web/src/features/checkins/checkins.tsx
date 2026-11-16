@@ -95,17 +95,23 @@ export function useCheckInNow(planId: string | undefined) {
 
 // ------------------------------------------------------------------------- what changed card
 
-export function ChangesSinceCheckInCard({ planId }: { planId: string | undefined }) {
+/** "What changed since the last check-in" for a plan (shared by the dashboard card and headline). */
+export function useChangesSinceCheckin(planId: string | undefined) {
   const { data: ws } = useWorkspace();
-  const f = useFormat();
-  const access = useAccess();
-  const q = useQuery({
+  return useQuery({
     queryKey: ["changes-since", planId],
     enabled: online(ws) && !!planId,
     queryFn: () => api.changesSinceCheckin(planId!),
     retry: false,
     staleTime: 60_000,
   });
+}
+
+export function ChangesSinceCheckInCard({ planId }: { planId: string | undefined }) {
+  const { data: ws } = useWorkspace();
+  const f = useFormat();
+  const access = useAccess();
+  const q = useChangesSinceCheckin(planId);
   const run = useCheckInNow(planId);
   if (!online(ws) || !planId) return null;
   if (q.isError && missingRoute(q.error)) return null;

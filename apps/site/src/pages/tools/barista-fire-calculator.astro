@@ -88,6 +88,7 @@ const faq = [
     </li>
     <li>The 25× shortcut: ({m(40_000)} − {m(15_000)}) × 25 = {m(ex.shortcut)}, which assumes the pay never stops.</li>
   </ul>
+  <div class="table-scroll" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
   <table>
     <caption>Part-time pay for 15 years, same plan (engine, with the formula for comparison)</caption>
     <thead>
@@ -95,6 +96,7 @@ const faq = [
     </thead>
     <tbody>{table.map((r) => <tr>{r.map((c) => <td>{c}</td>)}</tr>)}</tbody>
   </table>
+  </div>
 
   <h2>Why the engine and the formula agree</h2>
   <p>

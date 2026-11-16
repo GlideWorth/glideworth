@@ -180,7 +180,7 @@ export const pages = {
   "/legal/": {
     title: "Legal",
     description:
-      "Glideworth legal documents: privacy, terms of service, cookies, acceptable use, data processing and sub-processors. Most take effect when the hosted service opens.",
+      "Glideworth legal documents: privacy, terms of service, cookies, acceptable use, data processing and sub-processors.",
     ogEyebrow: "Legal",
   },
   "/404/": {

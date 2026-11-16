@@ -11,11 +11,12 @@ export interface PlanFeature {
   /** One short line of detail, shown under the label on the pricing page. */
   detail?: string;
   /**
-   * 'available': true of the software today (you can self-host it now). 'planned': part of the hosted
-   * service, which is not running yet; the site shows a "Planned" marker. Never mark something available
-   * that is not in the code, and never mark a hosted-only item available.
+   * 'available': built and in use. 'planned': not built yet; the site shows a "Planned" marker. Never mark
+   * something available that is not in the code. Nothing is planned at the moment.
    */
   status: FeatureStatus;
+  /** True when only the hosted service has it; false or missing means the software has it, so you can self-host it too. */
+  hostedOnly?: boolean;
 }
 
 export const pricing = {
@@ -29,9 +30,8 @@ export const pricing = {
   planName: "Glideworth Cloud",
   selfHostName: "Self-hosted",
   /**
-   * What the hosted plan will include. `available` means true of the software itself today: you can
-   * self-host it now. `planned` means it belongs to the hosted service, which does not exist yet (no
-   * sign-up, billing or hosted servers are built). List the available items first.
+   * What the hosted plan includes. Items without `hostedOnly` are in the software itself, so you can
+   * self-host them; `hostedOnly` items belong to the hosted service. List the software's own items first.
    */
   features: [
     {
@@ -54,7 +54,7 @@ export const pricing = {
     {
       label: "REST API and MCP server",
       detail:
-        "In the software today, on your own server: scoped keys, and OAuth for clients that connect by URL once you give it a public HTTPS address.",
+        "Scoped keys, and OAuth for clients that connect by URL once the server has a public HTTPS address (the hosted service has one already).",
       status: "available",
     },
     {
@@ -71,22 +71,25 @@ export const pricing = {
     {
       label: "Hosted REST API and MCP endpoint",
       detail: "A stable HTTPS address with OAuth, so AI assistants connect without tunnels.",
-      status: "planned",
+      status: "available",
+      hostedOnly: true,
     },
     {
       label: "Tax-table and engine updates applied for you",
       detail: "The same releases self-hosters get, with nothing to redeploy.",
-      status: "planned",
+      status: "available",
+      hostedOnly: true,
     },
-    { label: "Sign-up, trial and billing", status: "planned" },
-    { label: "Automatic backups", status: "planned" },
-    { label: "Two-factor sign-in", status: "planned" },
+    { label: "Sign-up, trial and billing", status: "available", hostedOnly: true },
+    { label: "Automatic backups", status: "available", hostedOnly: true },
+    { label: "Two-factor sign-in", status: "available", hostedOnly: true },
     {
       label: "Email check-in summaries",
-      detail: "Check-ins work today through webhooks.",
-      status: "planned",
+      detail: "Self-hosted check-ins work through webhooks.",
+      status: "available",
+      hostedOnly: true,
     },
-  ] satisfies PlanFeature[],
+  ] as PlanFeature[],
 } as const;
 
 /** "$9", "$90". Whole numbers print without decimals. */

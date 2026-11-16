@@ -6,7 +6,7 @@
  */
 
 import type { Plan, ProjectionResult, ValueBasis } from "@glideworth/core";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChartKind, ProjectionMode } from "../../components/charts/chart-prefs";
 import { Chart, type ChartInstance } from "../../components/charts/echarts";
 import {
@@ -79,6 +79,23 @@ export function ProjectionChart({
 }) {
   const chartRef = useRef<ChartInstance | null>(null);
   const zoom = useRef<ZoomRange | null>(range ?? null);
+  // A compact chart with its legend (the report) wraps the legend to the chart's width; measure it
+  // so the plot starts below the legend instead of under it.
+  const box = useRef<HTMLDivElement>(null);
+  const [boxWidth, setBoxWidth] = useState(0);
+  useEffect(() => {
+    const el = box.current;
+    if (!el || !(compact && legend)) return;
+    const measure = () => setBoxWidth(Math.round(el.clientWidth));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    window.addEventListener("beforeprint", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("beforeprint", measure);
+    };
+  }, [compact, legend]);
 
   const build = useCallback(
     (t: ChartTokens) => {
@@ -101,9 +118,10 @@ export function ProjectionChart({
       const ax = axisStyle(t);
       const events = compact ? [] : timelineEvents(result, plan);
       const laneTop = 30;
+      const legendNames = [...ms.series.map((s) => s.name), ...(ms.line ? [ms.line.name] : [])];
       const mainTop = compact
         ? legend
-          ? 30 + 18 * Math.floor(ms.series.length / 7)
+          ? legendTop(legendNames, boxWidth)
           : 10
         : events.length
           ? 66
@@ -224,7 +242,7 @@ export function ProjectionChart({
           ...baseOption(t).legend,
           show: !compact || !!legend,
           ...(legend && compact ? { type: "plain" as const } : {}),
-          data: [...ms.series.map((s) => s.name), ...(ms.line ? [ms.line.name] : [])],
+          data: legendNames,
         },
         grid: [
           {
@@ -444,6 +462,7 @@ export function ProjectionChart({
       selected,
       onSelectYear,
       annualise,
+      boxWidth,
     ],
   );
 
@@ -485,13 +504,44 @@ export function ProjectionChart({
     },
   }).current;
 
+  // The legend's names do not depend on colours, so neutral ones are enough to size it.
+  const legendExtra = useMemo(() => {
+    if (!(compact && legend && boxWidth)) return 0;
+    const neutral = { theme: "light" as const, surface: "#fff", ink: "#000", negative: "#000" };
+    const ms = modeSeries(result, mode, basis, index, neutral, { annualise });
+    const names = [...ms.series.map((x) => x.name), ...(ms.line ? [ms.line.name] : [])];
+    return Math.max(0, legendTop(names, boxWidth) - 30);
+  }, [compact, legend, boxWidth, result, mode, basis, index, annualise]);
   return (
-    <Chart
-      build={build}
-      height={height}
-      onReady={onReady}
-      onEvents={onEvents}
-      ariaLabel={`${MODE_LABEL[mode]} projection by year, ${basis === "real" ? "in today's money" : "in future money"}. A table of the same data follows the chart.`}
-    />
+    <div ref={box}>
+      <Chart
+        build={build}
+        height={height + legendExtra}
+        onReady={onReady}
+        onEvents={onEvents}
+        ariaLabel={`${MODE_LABEL[mode]} projection by year, ${basis === "real" ? "in today's money" : "in future money"}. A table of the same data follows the chart.`}
+      />
+    </div>
   );
+}
+
+/**
+ * Where the plot starts under a wrapped, plain legend: the legend's rows at `width` (an estimate from
+ * the label lengths: 10px swatch, 5px gap, ~6.6px a character at 11.5px, 14px between items).
+ * Without a measured width it falls back to one row per seven items.
+ */
+export function legendTop(names: string[], width: number): number {
+  const ROW = 26;
+  if (!(width > 0)) return 30 + 18 * Math.floor(names.length / 7);
+  let rows = 1;
+  let x = 0;
+  for (const n of names) {
+    const w = 10 + 5 + Math.ceil(n.length * 6.6) + 14;
+    if (x > 0 && x + w > width) {
+      rows += 1;
+      x = 0;
+    }
+    x += w;
+  }
+  return 8 + rows * ROW;
 }

@@ -257,6 +257,8 @@ export const cloudApi = {
   updateWorkspace: (b: { name?: string; mcpWrites?: boolean }) =>
     call("PATCH", "/api/v1/workspace/settings", Ok, b),
   activateWorkspace: (id: string) => callVoid("POST", `/api/v1/workspaces/${enc(id)}/activate`),
+  /** One per person; the server switches to it. */
+  createWorkspace: (name: string) => callVoid("POST", "/api/v1/workspaces", { name }),
   members: () => call("GET", "/api/v1/workspace/members", Items(Member)),
   changeRole: (userId: string, role: InviteRole) =>
     callVoid("PATCH", `/api/v1/workspace/members/${enc(userId)}`, { role }),

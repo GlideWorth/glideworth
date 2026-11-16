@@ -705,7 +705,14 @@ export function summariseTransactions(
       }
       spend = outflow === "negative" ? -amount : amount;
     }
-    const category = p.cell(r, "category") || options.uncategorised || "Uncategorised";
+    const given = p.cell(r, "category");
+    // Money in with no category is income (a salary, interest), not a refund to net against spending;
+    // the OFX/QIF importer treats it the same way. A categorised credit still nets (a refund).
+    if (!given && spend < 0) {
+      skip("Income", -spend);
+      return;
+    }
+    const category = given || options.uncategorised || "Uncategorised";
     const type = p.cell(r, "type").toLowerCase();
     if (
       nonExpenseTypes.has(type) ||
@@ -771,7 +778,7 @@ export function summariseTransactionRows(
         severity: "info",
         category: "approximated",
         sourcePath: "csv:range",
-        message: `data spans ${months} month(s); annual figures are scaled up from that`,
+        message: `data spans ${months} ${months === 1 ? "month" : "months"}; annual figures are scaled up from that`,
         code: "csv.short-range",
       });
   } else if (mode === "latest-full-year") {

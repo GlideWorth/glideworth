@@ -70,7 +70,7 @@ import {
 import { replaceById, usePlan, useUpdatePlan } from "../components/plan-context";
 import { newExpense, newId, newIncome } from "../state/defaults";
 import { useEditorStore } from "../state/doc-store";
-import { EXPENSE_TYPES, FREQUENCY_SHORT, HELP, INCOME_TYPES, type TypeMeta } from "../state/labels";
+import { amountUnit, EXPENSE_TYPES, HELP, INCOME_TYPES, type TypeMeta } from "../state/labels";
 import { describeMonth, formatMonthIndex, resolveRef } from "../state/resolve";
 import { type Issues, useIssues } from "../state/validation";
 import { InflationCategorySelect } from "./assumption-extras";
@@ -179,11 +179,12 @@ export function typeLabel(kind: Kind, type: string) {
   );
 }
 
-function annual(e: AnyEvent): number | null {
+/** A year's worth of an event, as the engine counts it (an hourly wage is paid weekly). */
+export function annual(e: AnyEvent): number | null {
+  if (e.type === "hourly" && "hoursPerWeek" in e)
+    return e.amount.value * e.hoursPerWeek * FREQUENCY_PER_YEAR.weekly;
   if (e.frequency === "once") return null;
-  const per = FREQUENCY_PER_YEAR[e.frequency];
-  const hours = e.type === "hourly" && "hoursPerWeek" in e ? e.hoursPerWeek : 1;
-  return e.amount.value * per * (e.type === "hourly" ? hours : 1);
+  return e.amount.value * FREQUENCY_PER_YEAR[e.frequency];
 }
 
 // ------------------------------------------------------------------------------- list
@@ -302,10 +303,10 @@ export function EventsSection({ kind, onOpen }: { kind: Kind; onOpen: (id: strin
                 <div className="text-right">
                   <div className="num text-[13px]">
                     {f.money(e.amount.value)}
-                    <span className="text-ink-3"> {FREQUENCY_SHORT[e.frequency]}</span>
+                    <span className="text-ink-3"> {amountUnit(e) || "once"}</span>
                   </div>
                   <div className="num text-[11px] text-ink-3">
-                    {yr !== null && e.frequency !== "yearly"
+                    {yr !== null && (e.frequency !== "yearly" || e.type === "hourly")
                       ? `${f.money(yr, true)}/yr`
                       : e.amount.basis === "nominal"
                         ? "future money"
@@ -640,7 +641,9 @@ function EventSheetBody({ kind, id, onClose }: { kind: Kind; id: string; onClose
                 : undefined)
             }
             hint={
-              yr !== null && event.frequency !== "yearly" ? `≈ ${f.money(yr)} a year` : undefined
+              yr !== null && (event.frequency !== "yearly" || event.type === "hourly")
+                ? `≈ ${f.money(yr)} a year`
+                : undefined
             }
           >
             {(fid) => (
@@ -652,30 +655,32 @@ function EventSheetBody({ kind, id, onClose }: { kind: Kind; id: string; onClose
               />
             )}
           </FormField>
-          <FormField label="How often" help={HELP.frequency}>
-            {(fid) => (
-              <FrequencySelect
-                id={fid}
-                value={event.frequency}
-                onChange={(frequency) =>
-                  set(
-                    (e) =>
-                      ({
-                        ...e,
-                        frequency,
-                        range:
-                          frequency === "once"
-                            ? { ...e.range, end: { kind: "never" } }
-                            : e.range.end.kind === "never"
-                              ? { ...e.range, end: { kind: "planEnd", offsetMonths: 0 } }
-                              : e.range,
-                      }) as AnyEvent,
-                    "Change frequency",
-                  )
-                }
-              />
-            )}
-          </FormField>
+          {event.type === "hourly" ? null : (
+            <FormField label="How often" help={HELP.frequency}>
+              {(fid) => (
+                <FrequencySelect
+                  id={fid}
+                  value={event.frequency}
+                  onChange={(frequency) =>
+                    set(
+                      (e) =>
+                        ({
+                          ...e,
+                          frequency,
+                          range:
+                            frequency === "once"
+                              ? { ...e.range, end: { kind: "never" } }
+                              : e.range.end.kind === "never"
+                                ? { ...e.range, end: { kind: "planEnd", offsetMonths: 0 } }
+                                : e.range,
+                        }) as AnyEvent,
+                      "Change frequency",
+                    )
+                  }
+                />
+              )}
+            </FormField>
+          )}
           {event.type === "hourly" ? (
             <FormField label="Hours per week" error={issues.get("hoursPerWeek")}>
               {(fid) => (

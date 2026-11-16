@@ -86,8 +86,8 @@ API's own tests include one that does.
 
 ## What it does not do
 
-- **No GraphQL, no streaming sync protocol and no hosted API yet.** The API runs on your own server. A hosted
-  endpoint is planned for the hosted service, which is not open yet.
+- **No GraphQL and no streaming sync protocol.** The API runs on your own server, and the hosted service has the
+  same API at its own address.
 - **No published client libraries.** Generate one from the OpenAPI document.
 - **Cookies are for the web app.** Programs authenticate with keys; a browser session needs a CSRF token on writes.
 - **The public development key is refused in production.** Create your own.

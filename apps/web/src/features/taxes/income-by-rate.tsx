@@ -3,7 +3,7 @@
  * `incomeByTaxRate` on a full-trace projection, run in the analysis worker). A heatmap table: rows are
  * rates, columns are years.
  */
-import type { SimulationInput, ValueBasis } from "@glideworth/core";
+import type { IncomeByTaxRateMatrix, SimulationInput, ValueBasis } from "@glideworth/core";
 import { Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { HeatTable } from "../../components/charts/heat-table";
@@ -13,6 +13,23 @@ import { Segmented } from "../../components/ui/segmented";
 import { useFormat } from "../../lib/workspace";
 import { useAnalysisQuery } from "../analysis/analysis-client";
 import { jurisdictionLabel } from "./tax-notes";
+
+/**
+ * The rows and years the table shows, or null when there is nothing banded: a plan on flat rates has
+ * no bands at all, and its whole income would otherwise land in the 0% "allowances" row.
+ */
+export function bandView(m: IncomeByTaxRateMatrix, span: "10" | "all") {
+  if (!m.jurisdictionId) return null;
+  // Rates that hold any income at all, top rate first.
+  const keep = m.columns
+    .map((c, j) => ({ c, j, total: m.cells.reduce((s, row) => s + (row[j] ?? 0), 0) }))
+    .filter((x) => x.total > 0.5)
+    .reverse();
+  if (!keep.length) return null;
+  const years = m.years.map((y, i) => ({ y, i })).slice(0, span === "10" ? 10 : undefined);
+  const max = Math.max(1, ...years.flatMap(({ i }) => keep.map(({ j }) => m.cells[i]?.[j] ?? 0)));
+  return { keep, years, max };
+}
 
 export function IncomeByRateCard({
   input,
@@ -33,17 +50,7 @@ export function IncomeByRateCard({
     opts: { basis },
   });
   const m = q.data;
-  const view = useMemo(() => {
-    if (!m) return null;
-    // Rates that hold any income at all, top rate first.
-    const keep = m.columns
-      .map((c, j) => ({ c, j, total: m.cells.reduce((s, row) => s + (row[j] ?? 0), 0) }))
-      .filter((x) => x.total > 0.5)
-      .reverse();
-    const years = m.years.map((y, i) => ({ y, i })).slice(0, span === "10" ? 10 : undefined);
-    const max = Math.max(1, ...years.flatMap(({ i }) => keep.map(({ j }) => m.cells[i]?.[j] ?? 0)));
-    return { keep, years, max };
-  }, [m, span]);
+  const view = useMemo(() => (m ? bandView(m, span) : null), [m, span]);
   return (
     <Card>
       <CardHeader

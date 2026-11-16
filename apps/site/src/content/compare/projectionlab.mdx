@@ -65,7 +65,7 @@ repository today.
 
 | | Glideworth | ProjectionLab |
 |---|---|---|
-| Price | Self-hosted: free, every feature. Hosted: {formatPrice(pricing.monthly)} a month or {formatPrice(pricing.yearly)} a year, **not live yet** | Basic $0 a year; Premium $129 a year; Pro $549 a year ([pricing](https://projectionlab.com/pricing), 16 Nov 2026) |
+| Price | Self-hosted: free, every feature. Hosted: {formatPrice(pricing.monthly)} a month or {formatPrice(pricing.yearly)} a year | Basic $0 a year; Premium $129 a year; Pro $549 a year ([pricing](https://projectionlab.com/pricing), 16 Nov 2026) |
 | Free tier | Self-hosting has no feature limits | Basic: forecasting, planning, Monte Carlo and historical backtesting ([pricing](https://projectionlab.com/pricing), 16 Nov 2026) |
 | Source and hosting | Open source (AGPL-3.0); run it yourself, with data in a SQLite file | Hosted on Google Cloud Firestore with daily backups; self-hosting and local-only storage are not mentioned on the page ([security](https://projectionlab.com/security), 16 Nov 2026) |
 | Tax estimates | {facts.taxCountryCount} countries with a written list of simplifications for each, plus flat or custom rates | Presets named on its home page include Canada, the UK, Australia, Germany and the Netherlands, "and more" ([home page](https://projectionlab.com/), 16 Nov 2026) |
@@ -90,12 +90,11 @@ ProjectionLab's pricing page lists Basic at $0 a year, Premium at $129 a year an
 trial for Premium and Pro; it does not give the trial's length, and the currency is not named
 ([pricing](https://projectionlab.com/pricing), read 16 Nov 2026).
 
-Glideworth is free to self-host with every feature. The hosted service, Glideworth Cloud, is planned at
+Glideworth is free to self-host with every feature. The hosted service, Glideworth Cloud, costs
 {formatPrice(pricing.monthly)} a month or {formatPrice(pricing.yearly)} a year in US dollars, after a
-{pricing.trialDays}-day trial without a card. **The hosted service is not live yet**, so you cannot sign up
-today; see [pricing](/pricing/).
+{pricing.trialDays}-day trial without a card; see [pricing](/pricing/).
 
-In plain numbers, a year of the hosted plan is planned at {formatPrice(pricing.yearly)}, against $129 for
+In plain numbers, a year of the hosted plan is {formatPrice(pricing.yearly)}, against $129 for
 ProjectionLab Premium. These are not like-for-like: ProjectionLab's Basic tier is free and includes Monte Carlo,
 and the two products differ in features and maturity. Self-hosting Glideworth costs the hardware and your time
 to look after it, and you are responsible for backups and updates.
@@ -132,7 +131,7 @@ confirmed where its app's menus offer the export, so check its help pages.
 <FAQ items={[
   {
     q: 'Can I try Glideworth before paying?',
-    a: '<p>Yes, by self-hosting: every feature is available and there is no payment. The hosted service is not live yet; when it opens it is planned with a ' + pricing.trialDays + '-day trial that does not ask for a card.</p>'
+    a: '<p>Yes. Self-host it: every feature is available and there is no payment. Or start a ' + pricing.trialDays + '-day trial of the hosted service, which does not ask for a card.</p>'
   },
   {
     q: 'Does Glideworth have everything ProjectionLab has?',

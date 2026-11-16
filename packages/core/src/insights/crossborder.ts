@@ -12,6 +12,7 @@ import type { Location } from "../schema/household.js";
 import type { Plan } from "../schema/plan.js";
 import type { DateRef } from "../schema/time.js";
 import { COUNTRY_TAX_CURRENCY } from "../tax/crossborder/currency.js";
+import { countryName } from "../tax/crossborder/explain.js";
 import { NON_RESIDENT_RULES } from "../tax/crossborder/nonresident.js";
 import { treatyBetween } from "../tax/crossborder/treaties.js";
 import { UK_VOLUNTARY_NI, ukIhtWorldwideScope } from "../tax/crossborder/uk.js";
@@ -333,8 +334,10 @@ export function crossBorderFindings(input: SimulationInput, result?: ProjectionR
           finding(
             "XB_UNKNOWN_TREATY",
             "warning",
-            `No ${r}-${s} treaty in Glideworth's tables`,
-            `While living in ${r} with income or assets in ${s}, Glideworth taxes under both countries' own rules and credits the ${s} tax in ${r}. A real treaty may allocate taxing rights differently.`,
+            r === "XX"
+              ? `No treaty data for ${countryName(s)} while living somewhere else`
+              : `No ${countryName(r)}-${countryName(s)} treaty in Glideworth's tables`,
+            `While living ${r === "XX" ? "somewhere else (no country set)" : `in ${countryName(r)}`} with income or assets in ${countryName(s)}, Glideworth taxes under both countries' own rules and credits the ${countryName(s)} tax where you live. A real treaty may allocate taxing rights differently.`,
             [],
           ),
         );

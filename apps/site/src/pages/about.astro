@@ -6,7 +6,7 @@ import { site } from '../config/site';
 import PageLayout from '../layouts/PageLayout.astro';
 
 const hosted = site.cloudLaunched
-  ? 'The hosted service is open and paid for by subscriptions; accounts, billing, two-factor sign-in, automatic backups and email are still being built.'
+  ? 'The hosted service is open for sign-ups and is paid for by subscriptions, with accounts, billing, two-factor sign-in, automatic backups and email check-ins.'
   : 'The hosted service is about to open and will be paid for by subscriptions. Its accounts, billing, two-factor sign-in, automatic backups and email are planned, not running.';
 ---
 
@@ -44,7 +44,7 @@ const hosted = site.cloudLaunched
         Glideworth is an independent project, not part of a bigger company, and it is maintained by very few people. We
         have not put a team page here because there is no more to say than that, and we would rather say nothing than
         invent something. Glideworth is the product and trading name of {site.entity.name}, {site.entity.description}. The
-        contributor and licensing rules are public, and anyone can read the code once the repository opens.
+        contributor and licensing rules are public, and anyone can read the code in the <a href={site.repoUrl} rel="noopener noreferrer">source repository</a>.
       </p>
 
       <h2>What it is not</h2>

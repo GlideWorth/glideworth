@@ -60,7 +60,7 @@ In scope:
 - **The self-hosted application**: `apps/api`, `apps/web`, `packages/*`, the Docker image and the
   default configuration (authentication, sessions, CSRF, throttling, API keys, share links, webhooks
   including SSRF protection, file import parsing, the backup and restore commands).
-- **The hosted service** at glideworth.com and its subdomains, once it exists: sign-up and sign-in,
+- **The hosted service** at glideworth.com and its subdomains: sign-up and sign-in,
   tenant isolation, billing integration, account export and deletion.
 - **The REST API** (`/api/v1`) and its OpenAPI document.
 - **The MCP server** (`/mcp` and the stdio server), including scope and write-switch enforcement and

@@ -13,12 +13,8 @@ interface Item {
 /** From "What remains, in priority order" in docs/STATUS.md and the hosted-service design. No dates. */
 const now: Item[] = [
   {
-    title: 'The hosted service',
-    body: 'Sign-up and accounts, billing, two-factor sign-in, automatic encrypted backups and email delivery. They are designed, and parts exist as separate packages, but none is wired into the app or running. This is what opening the hosted service depends on.',
-  },
-  {
-    title: 'A new UK market history',
-    body: 'The bundled UK history ends in 2020 and is being replaced with an openly licensed set. The replacement is built; it is not yet switched on.',
+    title: 'Fixes to the hosted service as people use it',
+    body: 'The hosted service opened for sign-ups on 16 November 2026. Fixes to sign-up, billing, backups and email are listed in the changelog as they ship.',
   },
 ];
 
@@ -29,7 +25,7 @@ const next: Item[] = [
   },
   {
     title: 'More market history',
-    body: 'Canada, Australia and the euro area have no history of their own today and are tested against US history. The UK history is covered above.',
+    body: 'Canada, Australia and the euro area have no history of their own today and are tested against US history. The UK has history from 1983 to 2025; a longer openly licensed UK series would be better.',
   },
   {
     title: 'A "results changed because" note',
@@ -61,10 +57,6 @@ const later: Item[] = [
   {
     title: 'A completeness score and onboarding nudges',
     body: 'Guided data-quality checks while you enter your finances, beyond the assumption audit.',
-  },
-  {
-    title: 'Free calculators on this website',
-    body: "FIRE, Coast FIRE, withdrawal and longevity tools that run the planner's engine in your browser, with no sign-up.",
   },
 ];
 
@@ -115,7 +107,7 @@ const groups = [
       </li>
       <li>
         <h3>A hosted AI chat run by Glideworth</h3>
-        <p>Not at launch. You can bring your own assistant through the <a href="/api/">MCP server</a>.</p>
+        <p>Not offered. You can bring your own assistant through the <a href="/api/">MCP server</a>.</p>
       </li>
       <li>
         <h3>An adviser workspace</h3>

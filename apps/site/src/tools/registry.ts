@@ -1,6 +1,6 @@
 /**
  * The calculators, for the /tools/ index and the "related" links on each page. Country-specific tools
- * (UK pension drawdown, UK take-home pay, UAE gratuity) are planned for a later wave: add them here
+ * (UK pension drawdown, UK take-home pay, UAE gratuity) are not built yet: add them here
  * with `group: 'country'`, a spec in specs/, a compute module in engine/ and a page in pages/tools/.
  */
 import type { ToolId } from "./types";

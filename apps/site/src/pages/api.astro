@@ -37,7 +37,7 @@ const faq: FaqItem[] = [
   },
   {
     q: 'Is the hosted endpoint available?',
-    a: '<p>Not yet. The hosted service is about to open, and a stable HTTPS address with OAuth sign-in is part of its plan. Today the MCP server runs on your own machine or server.</p>',
+    a: '<p>Yes. The hosted service has an MCP server at a stable HTTPS address with OAuth sign-in, so Claude and other MCP clients connect without a tunnel. If you self-host, the MCP server runs on your own machine or server.</p>',
   },
 ];
 
@@ -297,23 +297,23 @@ curl -s -X POST $GLIDEWORTH/api/v1/change-sets/<id>/apply -H "Authorization: Bea
     </ul>
   </Section>
 
-  <Section eyebrow="Hosted endpoint" title="A stable address, planned." tone="raised" width="narrow">
+  <Section eyebrow="Hosted endpoint" title="A stable address, with OAuth." tone="raised" width="narrow">
     {
       !site.cloudLaunched && (
         <Callout type="note" title="Not live yet">
-          <p>The hosted service is about to open. This section describes what its design adds; none of it is running today.</p>
+          <p>The hosted service is about to open. This section describes what its design adds.</p>
         </Callout>
       )
     }
     <p>
       Self-hosting an MCP server for a chat app that connects by URL means putting it behind HTTPS on an address that
-      app can reach, or running a tunnel. For the hosted service, the plan is a stable HTTPS address with OAuth sign-in, so
-      that Claude and other MCP clients can connect without either. It would also bring fair-use limits on
-      server-side simulation jobs, and the MCP write tools would stay off for a new workspace until the owner turns them on.
+      app can reach, or running a tunnel. The hosted service gives you a stable HTTPS address with OAuth sign-in, so
+      that Claude and other MCP clients can connect without either. It also has fair-use limits on
+      server-side simulation jobs, and the MCP write tools stay off for a new workspace until the owner turns them on.
     </p>
     <p>
       The API and the MCP tools themselves are the same code in both places. See <a href="/pricing/">pricing</a> for the plan,
-      and <a href="/security/">security</a> for what is built and what is planned.
+      and <a href="/security/">security</a> for how each is protected.
     </p>
   </Section>
 

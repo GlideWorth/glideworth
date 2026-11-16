@@ -36,6 +36,14 @@ export const FREQUENCY_SHORT: Record<Frequency, string> = {
   yearly: "/yr",
 };
 
+/**
+ * The unit after an event's amount ("/mo", "/yr"). An hourly wage's amount is per hour: the engine
+ * pays rate × hours per week every week whatever `frequency` says.
+ */
+export function amountUnit(e: { type: string; frequency: Frequency }): string {
+  return e.type === "hourly" ? "/hr" : e.frequency === "once" ? "" : FREQUENCY_SHORT[e.frequency];
+}
+
 export interface TypeMeta<T extends string> {
   value: T;
   label: string;

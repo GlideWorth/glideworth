@@ -769,7 +769,8 @@ export const ChangesSinceCheckin = z
     current: z.unknown().optional(),
     planVersionNow: z.number().nullable().optional(),
     planVersionAtCheckIn: z.number().nullable().optional(),
-    householdChanged: z.boolean().optional(),
+    // null until the plan has a check-in to compare with (the server cannot say yet).
+    householdChanged: z.boolean().nullable().optional(),
     netWorth: z
       .object({
         atCheckIn: z.number().nullable(),

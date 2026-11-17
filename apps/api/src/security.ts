@@ -101,8 +101,16 @@ const bareHost = (u: URL): string => u.hostname.replace(/^\[|\]$/g, "");
 /**
  * Registration-time check: throws a message if the URL is not http(s) or names an obviously
  * non-public host. DNS names are checked again, per address, at connection time.
+ *
+ * `httpsOnly` (cloud mode): deliveries must be encrypted, and only port 443 or an unprivileged port
+ * (1024 and above) may be named, so a subscription cannot be used to learn which well-known service
+ * ports answer on some host. Subscriptions made before this rule keep their URL.
  */
-export function webhookUrlProblem(raw: string, allowPrivate: boolean): string | null {
+export function webhookUrlProblem(
+  raw: string,
+  allowPrivate: boolean,
+  o: { httpsOnly?: boolean } = {},
+): string | null {
   let u: URL;
   try {
     u = new URL(raw);
@@ -111,6 +119,11 @@ export function webhookUrlProblem(raw: string, allowPrivate: boolean): string | 
   }
   if (u.protocol !== "http:" && u.protocol !== "https:") return "url must be http or https";
   if (u.username || u.password) return "url must not contain credentials";
+  if (o.httpsOnly) {
+    if (u.protocol !== "https:") return "url must use https";
+    if (u.port !== "" && Number(u.port) < 1024)
+      return "url port must be 443 (the default) or 1024 and above";
+  }
   if (allowPrivate) return null;
   const host = bareHost(u);
   if (isIP(host) ? isPrivateAddress(host) : PRIVATE_NAME.test(host))

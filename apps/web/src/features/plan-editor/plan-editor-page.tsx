@@ -46,7 +46,13 @@ import {
 } from "./sections/settings";
 import { WithdrawalsSection } from "./sections/withdrawals";
 import { addPlanToWorkspace, planKey, useEditorStore } from "./state/doc-store";
-import { type Intent, SECTIONS, type SectionId, useConsumeIntent } from "./state/intent";
+import {
+  type Intent,
+  SECTION_OF_ITEM,
+  SECTIONS,
+  type SectionId,
+  useConsumeIntent,
+} from "./state/intent";
 import { timeContext } from "./state/resolve";
 import { collectIssues } from "./state/validation";
 import { WhatIfPanel } from "./whatif/what-if-panel";
@@ -164,6 +170,9 @@ function PlanEditorBody({ plan }: { plan: PlanT }) {
         setSection(kind === "income" ? "income" : "expenses");
         setOpen({ kind, id });
       }
+    } else if (i.kind === "open-item") {
+      setSection(SECTION_OF_ITEM[i.item]);
+      setOpen({ kind: i.item, id: i.id });
     } else if (i.kind === "add-milestone") {
       const id = addMilestone();
       if (id) {

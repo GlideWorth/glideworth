@@ -1,5 +1,6 @@
 import { createHmac } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
+import { returnsSecret } from "../src/middleware.js";
 import { type Harness, READ_KEY, setup, WRITE_KEY } from "./helpers.js";
 
 let h: Harness;
@@ -66,6 +67,75 @@ describe("API keys", () => {
     expect(a.json.key).not.toBe(b.json.key); // not replayed
     const stored = h.ctx.sqlite.prepare("select response from idempotency_keys").all();
     expect(JSON.stringify(stored)).not.toContain(a.json.key.split("_")[2]);
+  });
+
+  it("a personal key and a share token are not stored for replay either (security review finding 7)", async () => {
+    h = setup();
+    const headers = { "idempotency-key": "same-again" };
+    const me = () =>
+      h.call<Key>("/api/v1/me/keys", {
+        method: "POST",
+        headers,
+        body: { name: "mine", scopes: ["read"] },
+      });
+    const a = await me();
+    const b = await me();
+    expect(a.status, a.text).toBe(201);
+    expect(b.json.key).not.toBe(a.json.key);
+    expect(b.headers.get("idempotent-replay")).toBeNull();
+    const share = () =>
+      h.call<{ token: string }>("/api/v1/plans/plan-main/share-links", {
+        method: "POST",
+        headers: { "idempotency-key": "share-once" },
+        body: { includeSuccessRate: false },
+      });
+    const s1 = await share();
+    const s2 = await share();
+    expect(s1.status, s1.text).toBe(201);
+    expect(s2.json.token).not.toBe(s1.json.token);
+    const stored = JSON.stringify(
+      h.ctx.sqlite.prepare("select response from idempotency_keys").all(),
+    );
+    expect(stored).not.toContain(a.json.key.split("_")[2]);
+    expect(stored).not.toContain(s1.json.token);
+  });
+
+  it("every POST route whose answer carries a key, token or secret is on the no-replay list", async () => {
+    h = setup();
+    type Schema = { $ref?: string; properties?: Record<string, Schema>; allOf?: Schema[] };
+    const doc = (
+      await h.call<{
+        paths: Record<string, Record<string, { responses?: Record<string, unknown> }>>;
+        components: { schemas: Record<string, Schema> };
+      }>("/openapi.json", { key: null })
+    ).json;
+    const resolve = (s: Schema | undefined): Schema | undefined =>
+      s?.$ref ? doc.components.schemas[s.$ref.split("/").at(-1) as string] : s;
+    const carriesSecret = (s: Schema | undefined, depth = 0): boolean => {
+      const r = resolve(s);
+      if (!r || depth > 3) return false;
+      if ((r.allOf ?? []).some((x) => carriesSecret(x, depth + 1))) return true;
+      return Object.entries(r.properties ?? {}).some(
+        ([k, v]) => ["key", "token", "secret"].includes(k) || carriesSecret(v, depth + 1),
+      );
+    };
+    const found: string[] = [];
+    for (const [path, item] of Object.entries(doc.paths)) {
+      const op = item.post;
+      if (!op || !path.startsWith("/api/") || path.startsWith("/api/v1/auth/")) continue;
+      for (const [status, res] of Object.entries(op.responses ?? {})) {
+        if (!status.startsWith("2")) continue;
+        const schema = (res as { content?: Record<string, { schema?: Schema }> }).content?.[
+          "application/json"
+        ]?.schema;
+        if (carriesSecret(schema)) found.push(path);
+      }
+    }
+    expect(found.length).toBeGreaterThanOrEqual(4);
+    for (const path of found)
+      expect(returnsSecret("POST", path.replace(/\{[^}]+\}/g, "x")), path).toBe(true);
+    expect(returnsSecret("POST", "/api/v1/plans/x/duplicate")).toBe(false);
+    expect(returnsSecret("PATCH", "/api/v1/keys")).toBe(false);
   });
 
   it("refuses to revoke the last active write key", async () => {

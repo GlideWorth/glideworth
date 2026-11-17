@@ -176,6 +176,11 @@ export function authRoutes(k: RouteKit): void {
         termsVersion: z.string().max(64),
         /** Terms: adults only. The sign-up form's required "I am 18 or over" checkbox. */
         adultConfirmed: z.literal(true),
+        /**
+         * The token of the invitation this sign-up started from. Confirming the address then leads back to it
+         * (`/auth/verify` answers `redirectTo` `/invite#token=…`). Ignored unless the invitation is live.
+         */
+        invitation: Token.optional(),
       }),
     },
     async (c, { body }) => {
@@ -187,6 +192,7 @@ export function authRoutes(k: RouteKit): void {
         captchaToken?: string;
         termsVersion: string;
         adultConfirmed: true;
+        invitation?: string;
       };
       // One value per browser, kept across sign-ups so an earlier link still opens here; set on every
       // accepted answer, whether or not the address had an account.
@@ -212,7 +218,7 @@ export function authRoutes(k: RouteKit): void {
       summary:
         "Confirm the email address (signs in; creates the workspace and trial for a new sign-up)",
       description:
-        "The link alone is enough in the browser that signed up. Any other browser gets 403 PASSWORD_REQUIRED and sends the request again with the password chosen at sign-up; a wrong password answers like a wrong sign-in (401, then 403 CAPTCHA_REQUIRED after too many) and leaves the link usable.",
+        "The link alone is enough in the browser that signed up. Any other browser gets 403 PASSWORD_REQUIRED and sends the request again with the password chosen at sign-up; a wrong password answers like a wrong sign-in (401, then 403 CAPTCHA_REQUIRED after too many) and leaves the link usable. When the sign-up started from an invitation that is still open and was sent to this address, `redirectTo` is that invitation's page (`/invite#token=…`) instead of `next`.",
       auth: "none",
       ok: 200,
       okSchema: SignedIn,
@@ -231,7 +237,9 @@ export function authRoutes(k: RouteKit): void {
         ...(b.password !== undefined ? { password: b.password } : {}),
         ...(b.captchaToken !== undefined ? { captchaToken: b.captchaToken } : {}),
       });
-      return signedIn(c, r.session, b.next);
+      // Back to the invitation the person signed up from; the token travels in the fragment as in its email.
+      const next = r.invitation ? `/invite#token=${encodeURIComponent(r.invitation)}` : b.next;
+      return signedIn(c, r.session, next);
     },
   );
 

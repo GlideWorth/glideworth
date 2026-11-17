@@ -31,6 +31,7 @@ const FREE_TEXT_FIELDS: Record<string, string[]> = {
   "export-ready": ["name", "expiresAt"],
   "deletion-warning": ["name", "workspaceName", "deletesOn"],
   "account-deleted": ["name", "workspaceName", "deletedAt", "backupsPurgedBy"],
+  "user-account-deleted": ["name", "deletedAt"],
 };
 
 describe("HTML escaping of every interpolated string", () => {

@@ -509,6 +509,93 @@ describe("sign-up and verification", () => {
   });
 });
 
+// ===================================================================================== sign-up from an invitation
+describe("sign-up from an invitation (QA 13)", () => {
+  async function invited(role: "editor" | "viewer" = "viewer") {
+    const owner = await signUpVerified(env, { name: "Olive Owner" });
+    const email = newEmail("invitee");
+    const view = await env.workspaces.invite(owner.ctx, email, role);
+    await env.accounts.settled();
+    return { owner, email, view, invitation: env.mailer.token(email, "invitation") };
+  }
+
+  it("confirming the address hands back the invitation the sign-up came from, sealed while it waits", async () => {
+    const { email, invitation } = await invited();
+    await env.accounts.signUp({ ...signUpInput(email, newPassword()), invitation }, env.meta());
+    await env.accounts.settled();
+    // Never stored in the clear.
+    expect(JSON.stringify(env.db.select().from(userTokens).all())).not.toContain(invitation);
+    const v = await env.accounts.verifyEmail(
+      env.mailer.token(email, "verify-email"),
+      env.meta(),
+      sameBrowser,
+    );
+    expect(v.invitation).toBe(invitation);
+    expect(v.accountId).toBeNull(); // an invitee gets no workspace of their own
+    // The token still accepts.
+    const m = await env.workspaces.acceptInvitation(ctxOf(env, v.session.token), invitation);
+    expect(m.role).toBe("viewer");
+  });
+
+  it("survives a resend and a verification in another browser (with the password)", async () => {
+    const { email, invitation } = await invited("editor");
+    const password = newPassword();
+    await env.accounts.signUp({ ...signUpInput(email, password), invitation }, env.meta());
+    await env.accounts.resendVerification(email, env.meta());
+    await env.accounts.settled();
+    const v = await env.accounts.verifyEmail(env.mailer.token(email, "verify-email"), env.meta(), {
+      ...otherBrowser(),
+      password,
+    });
+    expect(v.invitation).toBe(invitation);
+  });
+
+  it("hands back nothing for an invitation to another address, a withdrawn one, a made-up token or none", async () => {
+    const a = await invited();
+    // Someone else's invitation: signing up with a different address.
+    const stranger = newEmail("stranger");
+    await env.accounts.signUp(
+      { ...signUpInput(stranger, newPassword()), invitation: a.invitation },
+      env.meta(),
+    );
+    await env.accounts.settled();
+    const s = await env.accounts.verifyEmail(
+      env.mailer.token(stranger, "verify-email"),
+      env.meta(),
+      sameBrowser,
+    );
+    expect(s.invitation).toBeNull();
+
+    // Withdrawn between sign-up and confirmation.
+    const b = await invited();
+    await env.accounts.signUp(
+      { ...signUpInput(b.email, newPassword()), invitation: b.invitation },
+      env.meta(),
+    );
+    await env.accounts.settled();
+    env.workspaces.revokeInvitation(b.owner.ctx, b.view.id);
+    const w = await env.accounts.verifyEmail(
+      env.mailer.token(b.email, "verify-email"),
+      env.meta(),
+      sameBrowser,
+    );
+    expect(w.invitation).toBeNull();
+
+    // A made-up token is ignored (the sign-up answers as usual), and so is no token.
+    for (const invitation of ["x".repeat(43), "not a token", undefined]) {
+      const e = newEmail();
+      await env.accounts.signUp({ ...signUpInput(e, newPassword()), invitation }, env.meta());
+      await env.accounts.settled();
+      const r = await env.accounts.verifyEmail(
+        env.mailer.token(e, "verify-email"),
+        env.meta(),
+        sameBrowser,
+      );
+      expect(r.invitation).toBeNull();
+    }
+  });
+});
+
 // =================================================================================================== sign-in
 describe("sign-in", () => {
   it("unknown address and wrong password give the same error; timing is in the same class (dummy hash)", async () => {
@@ -1295,6 +1382,62 @@ describe("profile, personal data, deletion", () => {
     expect(
       await code(env.accounts.signIn({ email: v.email, password: v.password }, env.meta())),
     ).toBe("UNAUTHORIZED");
+  });
+
+  it("a new name is copied into the member list of every workspace, keeping each role (QA 12)", async () => {
+    const owner = await signUpVerified(env, { name: "Olive Owner" });
+    // The member has a workspace of their own and joins the owner's as a viewer.
+    const member = await signUpVerified(env, { name: "Ada Tester" });
+    await env.workspaces.invite(owner.ctx, member.email, "viewer");
+    await env.accounts.settled();
+    await env.workspaces.acceptInvitation(member.ctx, env.mailer.token(member.email, "invitation"));
+    env.reg.names.length = 0;
+
+    await env.accounts.updateProfile(member.ctx, { name: "Ada Lovelace" });
+    expect(
+      env.reg.names.map((n) => [n.accountId, n.role, n.name]).sort((a, b) => (a < b ? -1 : 1)),
+    ).toEqual(
+      [
+        [member.accountId, "owner", "Ada Lovelace"],
+        [owner.accountId, "viewer", "Ada Lovelace"],
+      ].sort((a, b) => (a < b ? -1 : 1)),
+    );
+    // Settings that are not the name touch no workspace; a workspace that cannot be opened does not fail it.
+    env.reg.names.length = 0;
+    await env.accounts.updateProfile(member.ctx, { checkinEmails: false });
+    expect(env.reg.names).toEqual([]);
+    env.reg.failNext.v = true;
+    await env.accounts.updateProfile(member.ctx, { name: "Ada King" });
+    expect(env.reg.names.map((n) => n.name)).toEqual(["Ada King"]);
+    expect(userRow(env.db, member.email)?.name).toBe("Ada King");
+  });
+
+  it("deleting an account emails a confirmation to its address, even after anonymous mail used up the budget (QA 14)", async () => {
+    const v = await signUpVerified(env, { name: "Dee Leted" });
+    // Anyone can make five "you already have an account" emails go to the address.
+    for (let i = 0; i < ACCOUNT_LIMITS.mailPerAddress[0] + 1; i++)
+      await env.accounts.signUp(signUpInput(v.email, newPassword()), env.meta());
+    await env.accounts.settled();
+    // The verification email was the first of the five; the last sign-ups were dropped.
+    expect(env.mailer.to(v.email, "signup-existing-account")).toHaveLength(
+      ACCOUNT_LIMITS.mailPerAddress[0] - 1,
+    );
+    await env.accounts.reauthenticate(v.ctx, { password: v.password }, env.meta());
+    await env.accounts.deleteUser(v.ctx, env.meta());
+    await env.accounts.settled();
+    const mail = env.mailer.last(v.email, "user-account-deleted");
+    expect(mail?.data).toEqual({ name: "Dee Leted", deletedAt: "2026-11-16" });
+    expect(env.mailer.to(v.email, "user-account-deleted")).toHaveLength(1);
+    // A refused deletion (an owner whose workspace has another member) sends nothing.
+    const owner = await signUpVerified(env);
+    const member = await signUpVerified(env);
+    await env.workspaces.invite(owner.ctx, member.email, "viewer");
+    await env.accounts.settled();
+    await env.workspaces.acceptInvitation(member.ctx, env.mailer.token(member.email, "invitation"));
+    await env.accounts.reauthenticate(owner.ctx, { password: owner.password }, env.meta());
+    expect(await code(env.accounts.deleteUser(owner.ctx, env.meta()))).toBe("CONFLICT");
+    await env.accounts.settled();
+    expect(env.mailer.to(owner.email, "user-account-deleted")).toEqual([]);
   });
 
   it("refuses to delete an owner whose workspace has other members; members leave their workspaces", async () => {

@@ -68,8 +68,8 @@ export function SharedPlanPage() {
           <SharedBody s={s} money={money} />
         )}
         <footer className="mt-4 border-t border-border pt-4 text-center text-[11.5px] text-ink-3">
-          Shared from a private Glideworth install. This page shows a snapshot of one plan&rsquo;s
-          results; it contains no accounts or personal details and does not update by itself.
+          Shared with a Glideworth link. This page shows a snapshot of one plan&rsquo;s results; it
+          contains no accounts or personal details and does not update by itself.
         </footer>
       </main>
     </div>

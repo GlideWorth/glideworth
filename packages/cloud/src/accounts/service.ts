@@ -209,6 +209,12 @@ export class AccountsService {
        * is stored with the verification link, which then works without the password in that browser only.
        */
       browser?: string | null;
+      /**
+       * The token of the invitation the person signed up from (the invitation page held it). Carried, sealed,
+       * with the verification link, so confirming the address leads back to that invitation (`verifyEmail`).
+       * Ignored unless the invitation is live; the answer is the same either way.
+       */
+      invitation?: string | null;
     },
     m: RequestMeta,
   ): Promise<void> {
@@ -232,7 +238,7 @@ export class AccountsService {
     const passwordHash = await hashPassword(i.password);
     const display = i.email.trim();
     const now = this.clock();
-    const payload = { email, ...browserBinding(i.browser) };
+    const payload = { email, ...browserBinding(i.browser), ...this.carryInvitation(i.invitation) };
 
     const existing = this.userByEmail(email);
     if (existing?.emailVerifiedAt) {
@@ -348,13 +354,19 @@ export class AccountsService {
         .orderBy(desc(userTokens.createdAt))
         .get();
       const browser = previous?.payload?.browser;
+      // The invitation the sign-up came from, if any, still waits at the end of the new link.
+      const invitation = previous?.payload?.invitation;
       dropUnused(tx, user.id, "verify_email");
       return issueToken(tx, {
         userId: user.id,
         purpose: "verify_email",
         ttlMs: ACCOUNT_TTL.verifyEmail,
         now,
-        payload: { email: norm, ...(typeof browser === "string" ? { browser } : {}) },
+        payload: {
+          email: norm,
+          ...(typeof browser === "string" ? { browser } : {}),
+          ...(typeof invitation === "string" ? { invitation } : {}),
+        },
       });
     });
     this.sendMail({ email: user.email, name: user.name }, norm, "verify-email", user.id, {
@@ -375,7 +387,16 @@ export class AccountsService {
     token: string,
     m: RequestMeta,
     proof: { browser?: string | null; password?: string; captchaToken?: string } = {},
-  ): Promise<{ userId: UserId; session: IssuedSession; accountId: AccountId | null }> {
+  ): Promise<{
+    userId: UserId;
+    session: IssuedSession;
+    accountId: AccountId | null;
+    /**
+     * The token of the invitation the sign-up came from, when it is still live and was sent to this address,
+     * so the caller can open it next. Only ever handed to someone who has just proven the address.
+     */
+    invitation: string | null;
+  }> {
     const now = this.clock();
     const peek = peekToken(this.db, token, "verify_email", now);
     const before = peek ? this.userById(peek.userId) : undefined;
@@ -429,7 +450,32 @@ export class AccountsService {
       ip: m.ip,
       userAgent: m.userAgent,
     });
-    return this.startVerifiedAccount(user, m);
+    const started = await this.startVerifiedAccount(user, m);
+    return { ...started, invitation: this.carriedInvitation(peek.payload?.invitation, user) };
+  }
+
+  /** The verification payload's part for an invitation (`signUp`): the live invitation's token, sealed. */
+  private carryInvitation(token: unknown): { invitation?: string } {
+    if (!this.d.workspaces().liveInvitation(token)) return {};
+    return {
+      invitation: this.d.keys.seal(
+        "signup-invitation",
+        new Uint8Array(Buffer.from(token as string, "utf8")),
+      ),
+    };
+  }
+
+  /** The carried invitation's token, if it is still live and addressed to this person; otherwise null. */
+  private carriedInvitation(sealed: unknown, user: UserRow): string | null {
+    if (typeof sealed !== "string") return null;
+    let token: string;
+    try {
+      token = Buffer.from(this.d.keys.open("signup-invitation", sealed)).toString("utf8");
+    } catch {
+      return null;
+    }
+    const inv = this.d.workspaces().liveInvitation(token);
+    return inv && safeEqual(inv.emailNormalized, user.emailNormalized) ? token : null;
   }
 
   /**
@@ -947,7 +993,9 @@ export class AccountsService {
     const user = this.requireUser(s.userId);
     if (hasPassword(user))
       throw new CloudError(409, "CONFLICT", "you already have a password; change it instead");
-    this.limit(`forgot:a:${this.emailKey(user.emailNormalized)}`, ACCOUNT_LIMITS.forgotAddress);
+    // Only the signed-in person can ask for this link, so neither its limit nor its mail budget is shared
+    // with forgot-password and sign-up, which anyone can spend (security review finding 9).
+    this.limit(`setup:u:${user.id}`, ACCOUNT_LIMITS.forgotAddress);
     const now = this.clock();
     const { token } = this.db.transaction((tx) => {
       dropUnused(tx, user.id, "reset_password");
@@ -968,6 +1016,7 @@ export class AccountsService {
         url: this.link("/reset-password", token),
         expiresInMinutes: ACCOUNT_TTL.resetPassword / MINUTE,
       },
+      "security",
     );
   }
 
@@ -1266,10 +1315,16 @@ export class AccountsService {
   }
 
   // ============================================================================================= profile
+  /**
+   * Validation and the control-plane write happen before this returns (a bad value throws at once). A new
+   * name is then copied into the member mirror of each of the person's workspaces; the returned promise
+   * settles when that is done (it never rejects; a workspace it could not reach is corrected when it next
+   * opens, `TenantRegistry` reconciliation).
+   */
   updateProfile(
     s: SessionContext,
     p: { name?: string; signinAlerts?: boolean; checkinEmails?: boolean },
-  ): void {
+  ): Promise<void> {
     const set: Partial<typeof users.$inferInsert> = {};
     if (p.name !== undefined) set.name = cleanName(p.name);
     if (p.signinAlerts !== undefined) {
@@ -1280,10 +1335,20 @@ export class AccountsService {
       if (typeof p.checkinEmails !== "boolean") throw validation("checkinEmails must be a boolean");
       set.checkinEmails = p.checkinEmails;
     }
-    if (Object.keys(set).length === 0) return;
+    if (Object.keys(set).length === 0) return Promise.resolve();
     set.updatedAt = this.clock().toISOString();
     this.db.update(users).set(set).where(eq(users.id, s.userId)).run();
-    if (set.name) s.name = set.name;
+    if (!set.name) return Promise.resolve();
+    s.name = set.name;
+    const sync: Promise<void> = this.d
+      .workspaces()
+      .syncMemberName(s.userId)
+      .catch((err: unknown) => this.log.error("accounts.member_name_sync_error", { err }))
+      .finally(() => {
+        this.pending.delete(sync);
+      });
+    this.pending.add(sync);
+    return sync;
   }
 
   /** The person's control-plane data (spec 3.8). No password hash, TOTP secret, token or code. */
@@ -1367,7 +1432,8 @@ export class AccountsService {
   }
 
   /**
-   * Delete the person (spec 3.9). Refused while they own a workspace with other members. Everything else is a
+   * Delete the person (spec 3.9) and email them a confirmation (`user-account-deleted`, a security notice:
+   * its own mail budget, like `securityMail`). Refused while they own a workspace with other members. Everything else is a
    * resumable task in `WorkspacesService.deleteUserAccount` (review finding 5): the user is disabled and signed
    * out at once; their sole-owner workspace is deleted through the same internal path as an owner's deletion
    * (no made-up session); memberships elsewhere are left (tenant mirror first); then the user row goes and with
@@ -1400,6 +1466,16 @@ export class AccountsService {
         );
     }
     await this.d.workspaces().deleteUserAccount(user.id, { ip: m.ip, userAgent: m.userAgent });
+    // A security notice to the address the account had (read above: the row is gone now). Access ended in
+    // deleteUserAccount's first step, so this is true even if a later step is still to be resumed.
+    this.sendMail(
+      { email: user.email, name: user.name },
+      user.emailNormalized,
+      "user-account-deleted",
+      user.id,
+      { name: user.name, deletedAt: this.clock().toISOString().slice(0, 10) },
+      "security",
+    );
   }
 
   // ========================================================================================= maintenance
@@ -1782,7 +1858,8 @@ export class AccountsService {
   /**
    * Send in the background (response time must not depend on the provider, or on whether a mail is sent at
    * all), within the per-address budget of 5 account emails an hour (mail-bombing guard, spec 3.7). Security
-   * notices count against their own, larger budget (`securityMailPerAddress`).
+   * notices, and mail only the signed-in person can ask for (the first-password link, the deletion notice),
+   * count against their own, larger budget (`securityMailPerAddress`), which anonymous requests cannot spend.
    */
   private sendMail<T extends TemplateId>(
     to: Address,

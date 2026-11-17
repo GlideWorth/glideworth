@@ -68,6 +68,54 @@ const reauth = async (v: {
 }) => env.accounts.reauthenticate(v.ctx, { password: v.password }, env.meta());
 
 describe("invitations", () => {
+  it("a live invitation's preview names the workspace and role only; any other token learns nothing (QA 13)", async () => {
+    const owner = await signUpVerified(env, { name: "Olive Owner" });
+    env.workspaces.rename(owner.ctx, "The Example Household");
+    const email = newEmail("invitee");
+    const view = await env.workspaces.invite(owner.ctx, email, "viewer");
+    await new Promise((r) => setTimeout(r, 0));
+    const token = inviteToken(email);
+
+    const preview = env.workspaces.previewInvitation(token);
+    expect(preview).toEqual({ workspaceName: "The Example Household", role: "viewer" });
+    expect(JSON.stringify(preview)).not.toContain(email.toLowerCase());
+    expect(JSON.stringify(preview)).not.toContain("Olive");
+
+    // Unknown, malformed and guessed tokens: the same INVALID_TOKEN as accepting.
+    for (const bad of [undefined, "", "short", "x".repeat(43), `${token.slice(0, -1)}A`, 42])
+      expect(await code(() => env.workspaces.previewInvitation(bad))).toBe("INVALID_TOKEN");
+    // Withdrawn: nothing more than an unknown token.
+    env.workspaces.revokeInvitation(owner.ctx, view.id);
+    expect(await code(() => env.workspaces.previewInvitation(token))).toBe("INVALID_TOKEN");
+
+    // Expired.
+    const again = await env.workspaces.invite(owner.ctx, email, "editor");
+    await new Promise((r) => setTimeout(r, 0));
+    const fresh = inviteToken(email);
+    expect(env.workspaces.previewInvitation(fresh).role).toBe("editor");
+    env.advance(7 * DAY + 1);
+    expect(await code(() => env.workspaces.previewInvitation(fresh))).toBe("INVALID_TOKEN");
+    expect(again.id).toBeTruthy();
+  });
+
+  it("an accepted invitation, or one whose workspace is not active, has no preview", async () => {
+    const { owner, invitee, token } = await ownerAndInvitee("editor");
+    expect(env.workspaces.previewInvitation(token).role).toBe("editor");
+    await env.workspaces.acceptInvitation(invitee.ctx, token);
+    expect(await code(() => env.workspaces.previewInvitation(token))).toBe("INVALID_TOKEN");
+
+    const email = newEmail("second");
+    await env.workspaces.invite(owner.ctx, email, "viewer");
+    await new Promise((r) => setTimeout(r, 0));
+    const second = inviteToken(email);
+    env.db
+      .update(accounts)
+      .set({ status: "suspended" })
+      .where(eq(accounts.id, owner.accountId as string))
+      .run();
+    expect(await code(() => env.workspaces.previewInvitation(second))).toBe("INVALID_TOKEN");
+  });
+
   it("owner invites, invitee accepts with the matching address, membership and tenant mirror are created", async () => {
     const { owner, invitee, token, view, email } = await ownerAndInvitee("editor");
     expect(view).toMatchObject({

@@ -100,6 +100,38 @@ describe("SSRF guard", () => {
     expect(webhookUrlProblem("http://127.0.0.1/x", true)).toBeNull();
   });
 
+  it("hosted mode takes https only, on port 443 or 1024 and above (security review finding 14)", async () => {
+    h = setup({ webhooks: { httpsOnly: true } });
+    const make = (url: string) =>
+      h.call("/api/v1/webhooks", { method: "POST", body: { url, events: ["plan.updated"] } });
+    for (const url of [
+      "http://hooks.example.com/glideworth",
+      "https://hooks.example.com:22/x",
+      "https://hooks.example.com:80/x",
+      "https://hooks.example.com:1023/x",
+    ]) {
+      const r = await make(url);
+      expect(r.status, url).toBe(400);
+      expect(r.json.error.code).toBe("VALIDATION");
+    }
+    for (const url of [
+      "https://hooks.example.com/glideworth",
+      "https://hooks.example.com:443/x",
+      "https://hooks.example.com:8443/x",
+    ])
+      expect((await make(url)).status, url).toBe(201);
+    // Changing an existing subscription to plain http is refused too.
+    const list = await h.call<{ items: Array<{ id: string }> }>("/api/v1/webhooks");
+    const id = list.json.items[0]?.id as string;
+    const patch = await h.call(`/api/v1/webhooks/${id}`, {
+      method: "PATCH",
+      body: { url: "http://hooks.example.com/x" },
+    });
+    expect(patch.status).toBe(400);
+    // Self-host keeps accepting http (a receiver on the same network).
+    expect(webhookUrlProblem("http://hooks.example.com:80/x", false)).toBeNull();
+  });
+
   it("blocks a private destination at connection time, by literal IP and by DNS name, unless allowed", async () => {
     let hits = 0;
     const srv = createServer((_req, res) => {
@@ -410,6 +442,25 @@ describe("prototype pollution", () => {
       },
     });
     expect(ok.status).toBe(200);
+  });
+
+  it("a key spelled with JSON escapes is refused at the door too (security review finding 12)", async () => {
+    h = setup();
+    for (const key of ["\\u005f_proto__", "__pro\\u0074o__", "\\u0063onstructor"]) {
+      const r = await h.call("/api/v1/plans/plan-main/expenses/exp-living", {
+        method: "PATCH",
+        body: `{"${key}":{"polluted":"yes"},"name":"X"}`,
+      });
+      expect(r.status, key).toBe(400);
+      expect(r.json.error.message).toMatch(/forbidden key/);
+    }
+    // An escape in an ordinary value is fine.
+    const ok = await h.call("/api/v1/plans/plan-main/expenses/exp-living", {
+      method: "PATCH",
+      body: '{"name":"Living \\u00e9"}',
+    });
+    expect(ok.status, ok.text).toBe(200);
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
   });
 
   it("mergePatch never follows a __proto__ key", async () => {

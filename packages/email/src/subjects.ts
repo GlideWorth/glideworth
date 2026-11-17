@@ -22,4 +22,5 @@ export const SUBJECTS: Readonly<Record<TemplateId, string>> = Object.freeze({
   "export-ready": "Your Glideworth export is ready",
   "deletion-warning": "Your Glideworth workspace will be deleted",
   "account-deleted": "Your Glideworth workspace has been deleted",
+  "user-account-deleted": "Your Glideworth account has been deleted",
 });

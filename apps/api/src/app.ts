@@ -168,13 +168,18 @@ export function createApp(opts: AppOptions) {
         413,
       ),
   });
-  /** JSON bodies that address Object.prototype are refused before any handler (or core's patch engine) sees them. */
+  /**
+   * JSON bodies that address Object.prototype are refused before any handler (or core's patch engine) sees
+   * them. The raw text is only a pre-filter (most bodies skip the second parse): a key can also be spelled with
+   * JSON escapes (`\u005f` for the first underscore of `__proto__`), so any `\u` escape sends the body
+   * through the parsed check too.
+   */
   const rejectUnsafePatch: MiddlewareHandler = async (c, next) => {
     if (c.req.method === "GET" || c.req.method === "HEAD" || c.req.method === "OPTIONS")
       return next();
     if (!/json/i.test(c.req.header("content-type") ?? "")) return next();
     const text = await c.req.raw.clone().text();
-    if (/__proto__|constructor|prototype/.test(text)) {
+    if (/__proto__|constructor|prototype|\\u/.test(text)) {
       let parsed: unknown;
       try {
         parsed = JSON.parse(text);

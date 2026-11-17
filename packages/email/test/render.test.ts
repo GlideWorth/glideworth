@@ -12,8 +12,8 @@ const ctxFor = (id: (typeof TEMPLATE_IDS)[number]) =>
   TEMPLATE_CATEGORY[id] === "checkin" ? CHECKIN_CTX : CTX;
 
 describe("templates", () => {
-  it("covers every template in the spec (17)", () => {
-    expect(TEMPLATE_IDS).toHaveLength(17);
+  it("covers every template in the spec (17) and the account deletion notice", () => {
+    expect(TEMPLATE_IDS).toHaveLength(18);
     expect(Object.keys(FIXTURES).sort()).toEqual([...TEMPLATE_IDS].sort());
   });
 
@@ -101,6 +101,15 @@ describe("templates", () => {
       (change) => render("security-change", { ...FIXTURES["security-change"], change }, CTX).text,
     );
     expect(new Set(bodies).size).toBe(11);
+  });
+
+  it("user-account-deleted is about the person's account, not a workspace (QA 14)", () => {
+    const r = render("user-account-deleted", FIXTURES["user-account-deleted"], CTX);
+    expect(r.subject).toBe("Your Glideworth account has been deleted");
+    expect(r.text).toContain("Your Glideworth account was deleted on 16 November 2026.");
+    expect(r.text).toContain("signed out everywhere");
+    expect(r.text).toContain("If you did not ask for this, write to support@example.test");
+    expect(r.text).not.toMatch(/workspace "|backup/i);
   });
 
   it("rejects an unknown security change, role and change kind", () => {

@@ -8,6 +8,7 @@ import { Link } from "@tanstack/react-router";
 import { CircleAlert, Clock, Lock } from "lucide-react";
 import { Select } from "../../components/ui/select";
 import { toast } from "../../components/ui/toaster";
+import { isExplainedProblem } from "../../lib/api-problems";
 import { useCloudSession } from "../../lib/auth";
 import { cn } from "../../lib/cn";
 import { bannerFor } from "./billing-state";
@@ -80,6 +81,7 @@ function NoWorkspaceBanner() {
       nav.go("/");
     },
     onError: (e) =>
+      isExplainedProblem(e) ||
       toast({
         title: other ? "Could not open the workspace" : "Could not create the workspace",
         description: describeError(e),
@@ -126,6 +128,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
       nav.go("/");
     },
     onError: (e) =>
+      isExplainedProblem(e) ||
       toast({
         title: "Could not switch workspace",
         description: describeError(e),

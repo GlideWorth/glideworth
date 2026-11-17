@@ -10,6 +10,7 @@ import { Dialog, DialogContent } from "../../components/ui/dialog";
 import { EmptyState } from "../../components/ui/empty-state";
 import { toast } from "../../components/ui/toaster";
 import { ApiRequestError } from "../../lib/api-error";
+import { isExplainedProblem } from "../../lib/api-problems";
 import { ReauthCancelled } from "../../lib/reauth";
 import { describeError, FormAlert, TextField, useErrorFocus } from "./ui";
 
@@ -53,9 +54,12 @@ export function LoadError({
   );
 }
 
-/** A failed action: say what could not be done and why. Silent when a re-authentication was cancelled. */
+/**
+ * A failed action: say what could not be done and why. Silent when a re-authentication was cancelled, and
+ * when the shell already explains the failure (read-only workspace, daily limit).
+ */
 export function failToast(title: string, e: unknown): void {
-  if (e instanceof ReauthCancelled) return;
+  if (e instanceof ReauthCancelled || isExplainedProblem(e)) return;
   toast({ title, description: describeError(e), tone: "negative" });
 }
 

@@ -364,7 +364,7 @@ function SettingsPanel({
   );
 }
 
-function TrialExplorer({
+export function TrialExplorer({
   mc,
   det,
   input,
@@ -465,11 +465,11 @@ function TrialExplorer({
           }
           onChange={pick}
           options={[
-            { value: "worst", label: "Worst" },
+            { value: "worst", label: "Lowest" },
             { value: "p10", label: "10th" },
             { value: "median", label: "Median" },
             { value: "p90", label: "90th" },
-            { value: "best", label: "Best" },
+            { value: "best", label: "Highest" },
           ]}
         />
         <input
@@ -477,7 +477,7 @@ function TrialExplorer({
           min={0}
           max={Math.max(0, ranked.length - 1)}
           value={Math.max(0, rank)}
-          aria-label="Scrub through trials ranked by ending net worth"
+          aria-label="Scrub through trials ranked by ending net worth, lowest first"
           onChange={(e) => onTrial(ranked[Number(e.target.value)]!.trial)}
           className="min-w-[140px] flex-1 accent-[var(--ochre)]"
         />
@@ -485,9 +485,16 @@ function TrialExplorer({
           {rank >= 0 ? `rank ${rank + 1} of ${ranked.length}` : "pick a trial"}
         </span>
       </div>
+      <p className="text-[12px] text-ink-3">
+        Trials are ranked by what they end with, in today's money, lowest first. A trial can run
+        short in one year and still end with a high net worth, for example from property, so the
+        lowest one is not always the one that failed earliest. The table below lists failed trials
+        first, earliest failure first.
+      </p>
       {trial === null ? (
         <EmptyState title="Pick a trial to inspect">
-          Choose best, median or worst, scrub through all trials, or click a row in the trial table.
+          Choose the lowest, median or highest ending, scrub through all trials, or click a row in
+          the trial table.
         </EmptyState>
       ) : null}
       {loading ? <ChartLoading label="Re-running this trial in full…" height={200} /> : null}

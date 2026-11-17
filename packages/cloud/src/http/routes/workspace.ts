@@ -275,6 +275,25 @@ export function workspaceRoutes(k: RouteKit): void {
   k.op(
     {
       method: "post",
+      path: "/api/v1/workspace/invitations/preview",
+      tag,
+      summary: "What an invitation offers: the workspace's name and the role (no sign-in needed)",
+      description:
+        "For the page an invitation link opens. Answers only while the invitation can still be accepted; any other token (unknown, used, withdrawn, expired) gets the same 400 INVALID_TOKEN as accepting it. The invited address and the inviter are not included. The token goes in the body, never in the URL.",
+      auth: "none",
+      ok: 200,
+      okSchema: z.object({ workspaceName: z.string(), role: Role }),
+      body: z.object({ token: z.string().max(256) }),
+    },
+    (c, { body }) => {
+      k.floodLimit(c, "invitation-preview", 30);
+      return c.json(d.workspaces.previewInvitation((body as { token: string }).token), 200);
+    },
+  );
+
+  k.op(
+    {
+      method: "post",
       path: "/api/v1/workspace/invitations/accept",
       tag,
       summary: "Accept an invitation sent to your (verified) address and switch to that workspace",

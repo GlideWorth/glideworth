@@ -95,6 +95,7 @@ export const FIXTURES: { [K in TemplateId]: TemplateData[K] } = {
     deletedAt: "16 November 2026",
     backupsPurgedBy: "16 December 2026",
   },
+  "user-account-deleted": { name: "Sam Example", deletedAt: "16 November 2026" },
 };
 
 /** Same shape, every free-text and numeric field changed to something loaded with figures. */
@@ -179,4 +180,5 @@ export const FIXTURES_ALT: { [K in TemplateId]: TemplateData[K] } = {
     deletedAt: "£1 yesterday",
     backupsPurgedBy: "£2 next week",
   },
+  "user-account-deleted": { name: "Alex £48,000 (7.5%)", deletedAt: "£1 yesterday" },
 };

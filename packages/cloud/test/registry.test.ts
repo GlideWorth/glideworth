@@ -287,13 +287,30 @@ describe("migrations", () => {
     await cloud.registry.close(id);
     lease = cloud.registry.acquire(id);
     expect((lease.runtime as FakeRuntime).members.list()).toEqual([
-      { tenantUserId: "owner", role: "owner" },
+      { tenantUserId: "owner", role: "owner", name: expect.any(String) },
     ]);
     lease.release();
     expect(
       cloud.db.select().from(memberships).where(eq(memberships.userId, userId)).all(),
     ).toHaveLength(1);
     expect(cloud.db.select().from(users).all().length).toBeGreaterThan(0);
+  });
+
+  it("opening corrects a member's name that differs from the account name (a rename that could not reach it)", async () => {
+    const { accountId, userId } = await signedUpBrowser(cloud);
+    const id = accountId as string;
+    const account = cloud.db.select().from(users).where(eq(users.id, userId)).get();
+    let lease = cloud.registry.acquire(id);
+    (lease.runtime as FakeRuntime).db
+      .prepare("UPDATE users SET name = 'Old Name' WHERE id = 'owner'")
+      .run();
+    lease.release();
+    await cloud.registry.close(id);
+    lease = cloud.registry.acquire(id);
+    expect((lease.runtime as FakeRuntime).members.list()).toEqual([
+      { tenantUserId: "owner", role: "owner", name: account?.name },
+    ]);
+    lease.release();
   });
 
   it("a membership marked by a password reset has its OAuth grants revoked before the next lease; a failure is 503 and stays owed", async () => {

@@ -2,6 +2,10 @@
  * Sign-up and "check your email". Sign-up always answers "check your email" whether or not the address
  * already has an account (packages/cloud: 202 `check-email`), so what the person sees is worded the same
  * way for both.
+ *
+ * Coming from an invitation (held-invitation.ts), the sign-up sends its token along: the server keeps it with
+ * the verification link, and confirming the address opens the invitation. Such a person joins a workspace
+ * and does not start a trial, so the copy says so.
  */
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Loader2, MailCheck, UserPlus } from "lucide-react";
@@ -13,6 +17,7 @@ import { cloudApi } from "../client";
 import { ContinueWithGoogle, OrDivider } from "../google-button";
 import { FALLBACK_TERMS_VERSION, LEGAL_URL } from "../legal";
 import { HANDOFF_TOOLS, parseHandoff, stashHandoff } from "../handoff";
+import { heldInvitation } from "../held-invitation";
 import { PASSWORD_RULES, passwordProblem } from "../password-rules";
 import {
   AuthLayout,
@@ -51,6 +56,8 @@ export function SignUpPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const { ref, failed } = useErrorFocus();
+  const [invitation] = useState(heldInvitation);
+  const invitedTo = invitation?.offer?.workspaceName || null;
   // A calculator on glideworth.com links here with its inputs: keep them for the first plan.
   const [handoff] = useState(() => parseHandoff(window.location.search));
   useEffect(() => {
@@ -88,6 +95,7 @@ export function SignUpPage() {
         termsVersion,
         adultConfirmed: true,
         ...(token ? { captchaToken: token } : {}),
+        ...(invitation ? { invitation: invitation.token } : {}),
       });
       pendingEmail = email.trim();
       await navigate({ to: "/check-email" });
@@ -111,7 +119,11 @@ export function SignUpPage() {
   return (
     <AuthLayout
       title="Create your account"
-      subtitle="Start a 30-day free trial. No card is needed."
+      subtitle={
+        invitation
+          ? `Use the email address the invitation was sent to. After you confirm it, we take you back to the invitation to join ${invitedTo ?? "the workspace"}.`
+          : "Start a 30-day free trial. No card is needed."
+      }
       footer={
         <>
           Already have an account?{" "}
@@ -232,6 +244,7 @@ export function SignUpPage() {
 const RESEND_WAIT = 30;
 
 export function CheckEmailPage() {
+  const [invited] = useState(() => !!heldInvitation());
   const [email, setEmail] = useState(pendingEmail);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [wait, setWait] = useState(0);
@@ -270,9 +283,11 @@ export function CheckEmailPage() {
     <AuthLayout
       title="Check your email"
       subtitle={
-        first
-          ? `We have sent a message to ${first}. Open the link in it to confirm your address and start your trial.`
-          : "Open the link in the message we sent to confirm your address and start your trial."
+        invited
+          ? `We have sent a message to ${first || "your address"}. Open the link in it to confirm your address, and it will take you to your invitation.`
+          : first
+            ? `We have sent a message to ${first}. Open the link in it to confirm your address and start your trial.`
+            : "Open the link in the message we sent to confirm your address and start your trial."
       }
       footer={
         <Link to="/signin" className="text-accent underline underline-offset-2">

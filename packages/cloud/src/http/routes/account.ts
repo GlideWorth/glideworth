@@ -60,9 +60,10 @@ export function accountRoutes(k: RouteKit): void {
         checkinEmails: z.boolean().optional(),
       }),
     },
-    (c, { body }) => {
+    async (c, { body }) => {
       const s = k.session(c);
-      d.accounts.updateProfile(
+      // A new name is in every workspace's member list before the answer (API keys, credentials).
+      await d.accounts.updateProfile(
         s,
         body as { name?: string; signinAlerts?: boolean; checkinEmails?: boolean },
       );

@@ -182,6 +182,7 @@ function NavDrawer() {
   const setOpen = useUi((s) => s.setNavOpen);
   const close = () => setOpen(false);
   const restoreFocus = useRestoreFocus();
+  const mode = useMode();
   return (
     <D.Root open={open} onOpenChange={setOpen}>
       <D.Portal>
@@ -201,6 +202,12 @@ function NavDrawer() {
             </D.Close>
           </div>
           <D.Title className="sr-only">Navigation</D.Title>
+          {/* The top bar has no room for the workspace switcher on phones, so it lives here. */}
+          {mode === "cloud" ? (
+            <Suspense fallback={null}>
+              <WorkspaceSwitcher className="px-2.5 pb-2" />
+            </Suspense>
+          ) : null}
           <nav className="flex flex-1 flex-col gap-4 overflow-y-auto px-2.5 py-2" aria-label="Main">
             <NavGroups collapsed={false} onNavigate={close} />
           </nav>
@@ -283,11 +290,27 @@ function BottomNav() {
 function SyncStatus() {
   const { data: ws } = useWorkspace();
   const unreachable = useServerUnreachable();
+  const cloud = useMode() === "cloud";
+  const noWorkspace = useCloudSession()?.workspace === null;
   // Edits that could not reach the server (the editor retries them in the background).
   const unsavedError = useEditorStore((s) =>
     dirtyKeys(s).some((k) => s.save[k]?.status === "error"),
   );
   if (!ws) return null;
+  // The server answered; there is just nothing in the workspace yet. Not offline.
+  if (ws.source === "sample" && ws.firstRun) return null;
+  // Signed in but in no workspace (the server refuses with 403): reachable, but nothing is saved.
+  // The banner under the top bar explains and offers the way in.
+  if (ws.source === "sample" && (noWorkspace || (cloud && ws.status === 403)))
+    return (
+      <Tooltip content="You are not in a workspace, so this is sample data and nothing you change is saved.">
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-ochre-soft px-2 py-0.5 text-[11px] font-medium text-ochre">
+          <span className="size-1.5 rounded-full bg-ochre" aria-hidden />
+          <span className="hidden sm:inline">Sample data · not saved</span>
+          <span className="sm:hidden">Not saved</span>
+        </span>
+      </Tooltip>
+    );
   if (unreachable || (ws.source === "api" && unsavedError))
     return (
       <Tooltip content="Glideworth cannot reach your server right now. You are seeing the data loaded last; edits are kept in this browser and saved as soon as the server is back.">

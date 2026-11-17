@@ -226,6 +226,40 @@ describe("finding 1: per-account single writer across processes", () => {
     expect(await run(true)).toBe("past_due");
   });
 
+  it("an unsigned request naming a workspace is refused at once, without waiting for its billing lock (security review finding 10)", async () => {
+    const { accountId } = await signedUpBrowser(cloud);
+    const id = accountId as string;
+    let release: () => void = () => {};
+    const held = withWriterLock(
+      cloud.db,
+      `billing:${id}`,
+      () => new Promise<void>((r) => (release = r)),
+    );
+    try {
+      await new Promise((r) => setTimeout(r, 20));
+      const junk = JSON.stringify({
+        id: "evt_junk",
+        type: "customer.subscription.updated",
+        data: { object: { metadata: { account_id: id }, client_reference_id: id } },
+      });
+      const t0 = Date.now();
+      const r = await Promise.race([
+        cloud.app.request("/stripe/webhook", {
+          method: "POST",
+          headers: { "stripe-signature": "t=1,v1=00", "content-type": "application/json" },
+          body: junk,
+        }),
+        new Promise<"waited">((r) => setTimeout(() => r("waited"), 2_000)),
+      ]);
+      expect(r).not.toBe("waited");
+      expect((r as Response).status).toBe(400);
+      expect(Date.now() - t0).toBeLessThan(2_000);
+    } finally {
+      release();
+      await held;
+    }
+  });
+
   it("a writer whose lease was taken over cannot write (fencing token + version check)", async () => {
     const s = await subscribed();
     const initial = sub(s.id)?.status;

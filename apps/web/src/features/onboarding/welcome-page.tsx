@@ -15,6 +15,7 @@ import { Wordmark } from "../../components/layout/logo";
 import { Button } from "../../components/ui/button";
 import { confirmAction } from "../../components/ui/confirm-dialog";
 import { toast } from "../../components/ui/toaster";
+import { isExplainedProblem } from "../../lib/api-problems";
 import { useMode } from "../../lib/auth";
 import { useWorkspace } from "../../lib/workspace";
 import { usePrefs } from "../../stores/prefs";
@@ -79,11 +80,13 @@ export function WelcomePage() {
       });
       await navigate({ to: "/" });
     } catch (e) {
-      toast({
-        title: "Could not load the sample",
-        description: e instanceof Error ? e.message : String(e),
-        tone: "negative",
-      });
+      // A read-only workspace or a used-up limit is already explained by the shell.
+      if (!isExplainedProblem(e))
+        toast({
+          title: "Could not load the sample",
+          description: e instanceof Error ? e.message : String(e),
+          tone: "negative",
+        });
     } finally {
       setBusy(null);
     }
@@ -199,12 +202,21 @@ export function WelcomePage() {
 
         <footer className="mt-10 flex items-start gap-3 rounded-xl border border-border bg-surface/70 px-4 py-3.5 text-[12.5px] leading-relaxed text-ink-2">
           <ShieldCheck className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
-          <p>
-            <span className="font-semibold text-ink">Your data stays yours.</span> Glideworth runs
-            on your own machine or server. Files you import are read in this browser, and
-            simulations run here too; nothing is sent to a third party, and there is no account to
-            create.
-          </p>
+          {cloud ? (
+            <p>
+              <span className="font-semibold text-ink">Your data stays yours.</span> Your plans are
+              saved in your workspace, which only its members can open. Files you import are read in
+              this browser, and simulations run here too. You can export or delete the workspace at
+              any time in Settings.
+            </p>
+          ) : (
+            <p>
+              <span className="font-semibold text-ink">Your data stays yours.</span> Glideworth runs
+              on your own machine or server. Files you import are read in this browser, and
+              simulations run here too; nothing is sent to a third party, and there is no account to
+              create.
+            </p>
+          )}
         </footer>
       </div>
     </div>

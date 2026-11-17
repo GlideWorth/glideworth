@@ -190,6 +190,8 @@ export const cloudApi = {
     termsVersion: string;
     adultConfirmed: boolean;
     captchaToken?: string;
+    /** The invitation this sign-up started from: confirming the address then leads back to it. */
+    invitation?: string;
   }) => call("POST", "/api/v1/auth/signup", CheckEmail, b),
   /** `password` (and a CAPTCHA once asked) only after the server answered `PASSWORD_REQUIRED`. */
   verifyEmail: (token: string, proof: { password?: string; captchaToken?: string } = {}) =>
@@ -277,6 +279,14 @@ export const cloudApi = {
       {},
     ),
   revokeInvitation: (id: string) => callVoid("DELETE", `/api/v1/workspace/invitations/${enc(id)}`),
+  /** What an invitation offers (no sign-in needed). `INVALID_TOKEN` for any token that cannot be accepted. */
+  previewInvitation: (token: string) =>
+    call(
+      "POST",
+      "/api/v1/workspace/invitations/preview",
+      z.object({ workspaceName: z.string(), role: z.enum(["editor", "viewer"]) }),
+      { token },
+    ),
   acceptInvitation: (token: string) =>
     call(
       "POST",

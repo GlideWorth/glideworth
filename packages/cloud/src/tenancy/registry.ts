@@ -32,7 +32,7 @@ import { isAccountId } from "../crypto/random.js";
 import { CloudError } from "../errors.js";
 import type { PlanLimits } from "../external-types.js";
 import type { Logger } from "../log/index.js";
-import type { AccountId, Lease, Role, TenantOpener, TenantRuntimeBase } from "../types.js";
+import type { AccountId, Lease, TenantOpener, TenantRuntimeBase } from "../types.js";
 import { tenantLogin } from "../workspaces/login.js";
 import { fileStamp, tenantPath } from "./paths.js";
 import { dbBytes, schemaVersionOf } from "./sqlite-tools.js";
@@ -346,7 +346,10 @@ export class TenantRegistry<R extends TenantRuntimeBase> {
     this.options.log.info("tenant.pre_migrate_copy", { accountId, schemaVersion: target });
   }
 
-  /** Control-plane memberships are the truth; the tenant `users` mirror is brought in line with them. */
+  /**
+   * Control-plane memberships are the truth; the tenant `users` mirror (role and the person's name) is brought
+   * in line with them.
+   */
   private reconcile(accountId: AccountId, runtime: R, o: { all?: boolean } = {}): void {
     const want = this.options.control
       .select({
@@ -359,12 +362,18 @@ export class TenantRegistry<R extends TenantRuntimeBase> {
       .innerJoin(users, eq(users.id, memberships.userId))
       .where(eq(memberships.accountId, accountId))
       .all();
-    const have = new Map<string, Role>(runtime.members.list().map((m) => [m.tenantUserId, m.role]));
+    const have = new Map(runtime.members.list().map((m) => [m.tenantUserId, m]));
     const wanted = new Set<string>();
     for (const m of want) {
       wanted.add(m.tenantUserId);
-      // On provisioning every row is written (the owner's name); afterwards only missing or wrong roles.
-      if (o.all || have.get(m.tenantUserId) !== m.role)
+      const cur = have.get(m.tenantUserId);
+      // On provisioning every row is written (the owner's name); afterwards only missing rows, wrong roles and
+      // names that differ from the account's (a rename that could not reach this workspace at the time).
+      if (
+        o.all ||
+        cur?.role !== m.role ||
+        (cur.name !== undefined && cur.name !== m.name.slice(0, 120))
+      )
         runtime.members.upsert({
           tenantUserId: m.tenantUserId,
           login: tenantLogin(m.email),

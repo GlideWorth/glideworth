@@ -15,6 +15,8 @@ import { renderApiReference } from "../src/docs-page.js";
 import { renewalReminderSweep } from "../src/renewals.js";
 import { retentionSweep, twelveMonthsAfter } from "../src/retention.js";
 import {
+  addMember,
+  apiKey,
   bootCloud,
   CAPTCHA,
   Client,
@@ -22,6 +24,7 @@ import {
   lastMail,
   PASSWORD,
   PUBLIC_URL,
+  reauth,
   signUp,
   tokenIn,
   uniqueEmail,
@@ -541,5 +544,45 @@ describe("the cloud surface", () => {
     });
     // The test client connects from 127.0.0.1 (allowed); the session does not exist in the fake.
     expect(r.status).toBe(400);
+  });
+});
+
+describe("the account name inside workspaces (QA 12)", () => {
+  it("a rename shows at once in the workspace's API key list, the members list and on the person's keys", async () => {
+    const owner = await signUp(cloud, { name: "Olive Owner" });
+    const accountId = owner.accountId as string;
+    const member = await addMember(cloud, owner.browser, accountId, "viewer", "Ada Tester");
+    const key = await apiKey(member.browser, ["read"]);
+    const keyNames = async () =>
+      (await owner.browser.get("/api/v1/keys")).json.items.map(
+        (k: { userName: string | null }) => k.userName,
+      );
+    expect(await keyNames()).toContain("Ada Tester");
+
+    const r = await member.browser.patch("/api/v1/account/profile", { name: "Ada Lovelace" });
+    expect(r.status, r.text).toBe(200);
+
+    expect(await keyNames()).toContain("Ada Lovelace");
+    expect(await keyNames()).not.toContain("Ada Tester");
+    const me = await member.browser.withBearer(key).get("/api/v1/me");
+    expect(me.json.userName).toBe("Ada Lovelace");
+    const members = await owner.browser.get("/api/v1/workspace/members");
+    expect(members.json.items.map((m: { name: string }) => m.name)).toContain("Ada Lovelace");
+    // The role is untouched.
+    expect(me.json.role).toBe("viewer");
+  });
+});
+
+describe("account deletion (QA 14)", () => {
+  it("sends a confirmation to the account's address", async () => {
+    const p = await signUp(cloud, { name: "Dee Leted" });
+    expect((await reauth(p.browser)).status).toBe(200);
+    const del = await p.browser.del("/api/v1/account");
+    expect(del.status, del.text).toBe(204);
+    await cloud.rt.accounts.settled();
+    const mail = lastMail(cloud, p.email, "user-account-deleted");
+    expect(mail?.subject).toBe("Your Glideworth account has been deleted");
+    expect(mail?.text).toContain("Hello Dee Leted,");
+    expect(mail?.text).toContain("Your Glideworth account was deleted on");
   });
 });

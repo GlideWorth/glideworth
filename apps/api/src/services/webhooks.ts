@@ -37,6 +37,8 @@ export interface WebhookOptions {
   fetch?: typeof fetch;
   /** Allow webhook URLs that resolve to loopback/private/link-local addresses. Default false (SSRF guard). */
   allowPrivate?: boolean;
+  /** Cloud: new and changed subscriptions must use https, on port 443 or 1024 and above. */
+  httpsOnly?: boolean;
   /** Delay before attempt 2, 3, ... (ms). Default 1s, 5s, 30s. */
   retryDelaysMs?: number[];
   timeoutMs?: number;
@@ -105,7 +107,10 @@ export class WebhooksService {
   }
 
   private validate(url: string | undefined, events: string[] | undefined): void {
-    const problem = url === undefined ? null : webhookUrlProblem(url, this.allowPrivate);
+    const problem =
+      url === undefined
+        ? null
+        : webhookUrlProblem(url, this.allowPrivate, { httpsOnly: this.opts.httpsOnly ?? false });
     if (problem) throw new ApiError(400, "VALIDATION", problem);
     const bad = (events ?? []).filter((e) => !WEBHOOK_EVENTS.includes(e as WebhookEventName));
     if (bad.length)

@@ -125,9 +125,12 @@ export interface MemberCall {
 export function fakeRegistry(): {
   registry: TenantRegistry<TenantRuntimeBase>;
   calls: MemberCall[];
+  /** Every member row written, with the name copied into it. */
+  names: Array<{ accountId: AccountId; tenantUserId: string; role: Role; name: string }>;
   failNext: { v: boolean };
 } {
   const calls: MemberCall[] = [];
+  const names: Array<{ accountId: AccountId; tenantUserId: string; role: Role; name: string }> = [];
   const failNext = { v: false };
   const registry = {
     pathFor: (accountId: AccountId) => `/nonexistent/${accountId}/tenant.db`,
@@ -147,8 +150,10 @@ export function fakeRegistry(): {
         busy: () => false,
         close: async () => {},
         members: {
-          upsert: (m) =>
-            calls.push({ op: "upsert", accountId, tenantUserId: m.tenantUserId, role: m.role }),
+          upsert: (m) => {
+            calls.push({ op: "upsert", accountId, tenantUserId: m.tenantUserId, role: m.role });
+            names.push({ accountId, tenantUserId: m.tenantUserId, role: m.role, name: m.name });
+          },
           remove: (id) => calls.push({ op: "remove", accountId, tenantUserId: id }),
           revokeCredentials: (id) =>
             calls.push({ op: "revokeCredentials", accountId, tenantUserId: id }),
@@ -162,7 +167,12 @@ export function fakeRegistry(): {
       return fn(runtime);
     },
   };
-  return { registry: registry as unknown as TenantRegistry<TenantRuntimeBase>, calls, failNext };
+  return {
+    registry: registry as unknown as TenantRegistry<TenantRuntimeBase>,
+    calls,
+    names,
+    failNext,
+  };
 }
 
 /** The real WorkspacesService, recording which workspaces were created and deleted. */

@@ -17,6 +17,7 @@ import { Segmented } from "../../components/ui/segmented";
 import { Select } from "../../components/ui/select";
 import { SwitchField } from "../../components/ui/switch";
 import { toast } from "../../components/ui/toaster";
+import { isExplainedProblem } from "../../lib/api-problems";
 import { useMode } from "../../lib/auth";
 import { cn } from "../../lib/cn";
 import { COUNTRY_OPTIONS, countryDefaultsFor } from "../../lib/countries";
@@ -154,11 +155,13 @@ export function SetupPage() {
       });
       await navigate({ to: "/" });
     } catch (e) {
-      toast({
-        title: "Could not create your plan",
-        description: e instanceof Error ? e.message : String(e),
-        tone: "negative",
-      });
+      // A read-only workspace or a used-up limit is already explained by the shell.
+      if (!isExplainedProblem(e))
+        toast({
+          title: "Could not create your plan",
+          description: e instanceof Error ? e.message : String(e),
+          tone: "negative",
+        });
       setBusy(false);
     }
   };

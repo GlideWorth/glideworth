@@ -247,9 +247,12 @@ export class UsersService {
       .run();
   }
 
-  /** Cloud: every mirrored member and role. */
-  listMembers(): Array<{ tenantUserId: string; role: UserRole }> {
-    return this.db.select({ tenantUserId: users.id, role: users.role }).from(users).all();
+  /** Cloud: every mirrored member, role and name (the registry corrects both on open). */
+  listMembers(): Array<{ tenantUserId: string; role: UserRole; name: string }> {
+    return this.db
+      .select({ tenantUserId: users.id, role: users.role, name: users.name })
+      .from(users)
+      .all();
   }
 
   /** Cloud: API keys and OAuth tokens of a person (ownership transfer swaps who `owner` is). */

@@ -20,7 +20,8 @@ export type TemplateId =
   | "checkin-summary"
   | "export-ready"
   | "deletion-warning"
-  | "account-deleted";
+  | "account-deleted"
+  | "user-account-deleted";
 export type SecurityChange =
   | "password-changed"
   | "password-reset"
@@ -81,6 +82,8 @@ export interface TemplateData {
     deletedAt: string;
     backupsPurgedBy: string;
   };
+  /** The person deleted their own account (sign-in, sessions, security settings). Sent to its address. */
+  "user-account-deleted": { name: string; deletedAt: string };
 }
 export const TEMPLATE_CATEGORY: Readonly<Record<TemplateId, EmailCategory>> = Object.freeze({
   "verify-email": "essential",
@@ -100,6 +103,7 @@ export const TEMPLATE_CATEGORY: Readonly<Record<TemplateId, EmailCategory>> = Ob
   "export-ready": "essential",
   "deletion-warning": "essential",
   "account-deleted": "essential",
+  "user-account-deleted": "essential",
 });
 export const TEMPLATE_IDS = Object.freeze(Object.keys(TEMPLATE_CATEGORY) as TemplateId[]);
 

@@ -26,6 +26,7 @@ import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/table";
 import { toast } from "../../components/ui/toaster";
 import { ROLE_HINT, ROLE_LABEL, useAccess } from "../../lib/access";
 import { ApiRequestError, api, type Role, type UserInfo } from "../../lib/api";
+import { useMode } from "../../lib/auth";
 import { useFormat } from "../../lib/workspace";
 import { CopyButton, relativeTime } from "./keys-section";
 import { SectionIntro, SettingsGroup } from "./settings-ui";
@@ -421,6 +422,9 @@ function InviteDialog({
 
 export function ConnectedAppsSection() {
   const access = useAccess();
+  // Hosted: apps register with the service as a whole, before anyone signs in. A workspace holds only the
+  // apps someone in it allowed (copied at consent), so that is what this list shows and what Delete removes.
+  const cloud = useMode() === "cloud";
   const f = useFormat();
   const qc = useQueryClient();
   const grants = useQuery({
@@ -502,13 +506,24 @@ export function ConnectedAppsSection() {
       </SettingsGroup>
       {access.isOwner ? (
         <SettingsGroup
-          title="Registered apps (everyone)"
-          description="Apps that registered with this server. Deleting one revokes it for every person."
+          title={cloud ? "Apps in this workspace (everyone)" : "Registered apps (everyone)"}
+          description={
+            cloud
+              ? "Apps that someone in this workspace allowed. Deleting one disconnects it for every member."
+              : "Apps that registered with this server. Deleting one revokes it for every person."
+          }
         >
           {clients.isError ? (
-            <Unavailable error={clients.error} what="Registered apps" />
+            <Unavailable
+              error={clients.error}
+              what={cloud ? "Apps in this workspace" : "Registered apps"}
+            />
           ) : (clients.data?.items.length ?? 0) === 0 ? (
-            <div className="px-5 py-4 text-[12.5px] text-ink-3">No apps have registered.</div>
+            <div className="px-5 py-4 text-[12.5px] text-ink-3">
+              {cloud
+                ? "No app has been allowed in this workspace yet. An app appears here once someone approves it on the consent screen."
+                : "No apps have registered."}
+            </div>
           ) : (
             <ul>
               {clients.data?.items.map((c) => (

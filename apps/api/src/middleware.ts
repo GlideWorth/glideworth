@@ -8,8 +8,23 @@ import { sha256 } from "./util.js";
 
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const IDEMPOTENCY_TTL_MS = 24 * 3600 * 1000;
-/** Routes whose response contains a one-time secret: never stored for replay (the secret must not be persisted). */
-const SECRET_RESPONSE_ROUTES = /^\/api\/v1\/(keys|webhooks)\/?$/;
+/**
+ * POST routes whose response contains a one-time secret: never stored for replay (the secret must not be
+ * persisted; everywhere else only its hash is). A new route that returns a secret must be added here.
+ *   /keys, /me/keys                      a new API key
+ *   /webhooks                            the new subscription's signing secret
+ *   /plans/{id}/share-links              the share token
+ *   /users, /users/{id}/invite, /users/{id}/reset-passphrase   self-host invite and reset tokens
+ */
+const SECRET_RESPONSE_ROUTES = [
+  /^\/api\/v1\/(me\/)?keys\/?$/,
+  /^\/api\/v1\/webhooks\/?$/,
+  /^\/api\/v1\/plans\/[^/]+\/share-links\/?$/,
+  /^\/api\/v1\/users\/?$/,
+  /^\/api\/v1\/users\/[^/]+\/(invite|reset-passphrase)\/?$/,
+];
+export const returnsSecret = (method: string, path: string): boolean =>
+  method === "POST" && SECRET_RESPONSE_ROUTES.some((re) => re.test(path));
 
 /**
  * `Idempotency-Key` on writes: the first successful response is stored per (api key, idempotency
@@ -23,7 +38,7 @@ export function idempotency(dbOf: Db | ((c: Context) => Db)): MiddlewareHandler<
     if (key.length > 255)
       throw new ApiError(400, "VALIDATION", "Idempotency-Key must be at most 255 characters");
     const url = new URL(c.req.url);
-    if (c.req.method === "POST" && SECRET_RESPONSE_ROUTES.test(url.pathname)) return next();
+    if (returnsSecret(c.req.method, url.pathname)) return next();
     const id = sha256(`${c.get("principal").keyId}:${key}`);
     const body = await c.req.raw.clone().text();
     const requestHash = sha256(`${c.req.method} ${url.pathname}${url.search}\n${body}`);

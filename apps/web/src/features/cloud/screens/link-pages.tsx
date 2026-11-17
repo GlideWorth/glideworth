@@ -1,13 +1,13 @@
 /**
  * Pages opened from a link in an email: verify the address, confirm a changed address, accept an
- * invitation. Each link carries a one-time token in the URL fragment (`#token=…`), which is read once and
+ * invitation (which names the workspace and the role offered). Each link carries a one-time token in the URL fragment (`#token=…`), which is read once and
  * cleared from the address bar (fragment.ts); it is never sent in a query string.
  *
  * A verification link signs in on its own only in the browser that signed up. Anywhere else the server
  * answers `PASSWORD_REQUIRED` and the page asks for the password chosen at sign-up, so a sign-up somebody
  * else made with the person's address cannot hand them an account with that somebody's password.
  */
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { CheckCircle2, Loader2, LockKeyhole, MailCheck, UsersRound } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
@@ -17,6 +17,7 @@ import type { ApiRequestError } from "../../../lib/api-error";
 import { useCloudSession, useSession } from "../../../lib/auth";
 import { cloudApi } from "../client";
 import { useFragmentToken } from "../fragment";
+import { heldInvitation, holdInvitation, ROLE_TEXT } from "../held-invitation";
 import { refreshSession, useFinishSignIn, useGoTo } from "../session-flow";
 import {
   AuthLayout,
@@ -317,16 +318,16 @@ export function ConfirmEmailPage() {
 
 // ------------------------------------------------------------------------------------- invitation
 /**
- * The invitation token, held in memory while the person signs in or creates an account in this tab. It is
- * not in the address bar and not in storage; if the page is reloaded the email link is opened again.
+ * The page an invitation link opens. It names the workspace and the role (the server answers only for an
+ * invitation that can still be accepted, and says nothing more than "will not work" for any other token), then
+ * offers sign-in or sign-up, or "Join" to someone signed in. The token is held in memory (held-invitation.ts)
+ * while the person signs in or creates an account, and sign-up carries it through email confirmation.
  */
-let heldInvite: string | null = null;
-
 export function InvitePage() {
   const fromLink = useFragmentToken();
-  const [token] = useState(() => fromLink ?? heldInvite);
+  const [token] = useState(() => fromLink ?? heldInvitation()?.token ?? null);
   useEffect(() => {
-    if (fromLink) heldInvite = fromLink;
+    if (fromLink && heldInvitation()?.token !== fromLink) holdInvitation({ token: fromLink });
   }, [fromLink]);
   const session = useSession().data;
   const cloud = useCloudSession();
@@ -335,6 +336,19 @@ export function InvitePage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [joined, setJoined] = useState(false);
+  const preview = useQuery({
+    queryKey: ["cloud", "invitation-preview", token],
+    queryFn: () => cloudApi.previewInvitation(token as string),
+    enabled: !!token && !joined,
+    retry: false,
+    staleTime: Infinity,
+  });
+  const offer = preview.data;
+  const dead = isCode(preview.error, "INVALID_TOKEN");
+  useEffect(() => {
+    if (token && offer && heldInvitation()?.token === token) holdInvitation({ token, offer });
+    if (dead && heldInvitation()?.token === token) holdInvitation(null);
+  }, [token, offer, dead]);
 
   if (!token)
     return (
@@ -348,10 +362,12 @@ export function InvitePage() {
       </AuthLayout>
     );
 
+  const workspace = offer?.workspaceName ? offer.workspaceName : null;
+
   if (joined)
     return (
       <AuthLayout
-        title="You have joined the workspace"
+        title={workspace ? `You have joined ${workspace}` : "You have joined the workspace"}
         subtitle="Everything shared with you is ready."
       >
         <Button variant="primary" size="lg" className="w-full" onClick={() => void go("/")}>
@@ -360,11 +376,31 @@ export function InvitePage() {
       </AuthLayout>
     );
 
+  if (dead)
+    return (
+      <AuthLayout
+        title="This invitation will not work"
+        subtitle="It has expired, was already used, or was withdrawn. Ask the person who invited you to send a new one."
+      >
+        <Button variant="primary" size="lg" className="w-full" asChild>
+          <Link to="/">Go to Glideworth</Link>
+        </Button>
+      </AuthLayout>
+    );
+
+  const role = offer
+    ? `You would join as ${ROLE_TEXT[offer.role].name}. ${ROLE_TEXT[offer.role].can}`
+    : null;
+
   if (session?.kind === "cloud-signed-out")
     return (
       <AuthLayout
-        title="You have been invited to a workspace"
-        subtitle="Sign in with the email address the invitation was sent to, or create an account with it. Then come back to this page to accept."
+        title={
+          workspace
+            ? `You have been invited to ${workspace}`
+            : "You have been invited to a workspace"
+        }
+        subtitle={`${role ? `${role} ` : ""}Sign in with the email address the invitation was sent to, or create an account with it.`}
       >
         <div className={authCard}>
           <Button variant="primary" size="lg" asChild>
@@ -376,8 +412,8 @@ export function InvitePage() {
             <Link to="/signup">Create an account</Link>
           </Button>
           <p className="text-[11.5px] text-ink-3">
-            A new account must confirm its email address first. After that, open the link in the
-            invitation email again to accept.
+            A new account must confirm its email address first. The link in that email brings you
+            back to this invitation.
           </p>
         </div>
       </AuthLayout>
@@ -389,7 +425,7 @@ export function InvitePage() {
     setError(null);
     try {
       await cloudApi.acceptInvitation(token);
-      heldInvite = null;
+      holdInvitation(null);
       setJoined(true);
       await refreshSession(qc);
     } catch (e) {
@@ -408,10 +444,10 @@ export function InvitePage() {
 
   return (
     <AuthLayout
-      title="Accept your invitation"
+      title={workspace ? `Join ${workspace}` : "Accept your invitation"}
       subtitle={
         cloud
-          ? `You are signed in as ${cloud.user.email}. The invitation must have been sent to this address.`
+          ? `${role ? `${role} ` : ""}You are signed in as ${cloud.user.email}. The invitation must have been sent to this address.`
           : "Checking who you are."
       }
     >

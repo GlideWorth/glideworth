@@ -384,6 +384,28 @@ This is a service email about your account, so you cannot unsubscribe from it.
 "
 `;
 
+exports[`templates > user-account-deleted > text snapshot 1`] = `
+"Subject: Your Glideworth account has been deleted
+
+Glideworth
+
+Your account has been deleted
+
+Hello Sam Example,
+
+Your Glideworth account was deleted on 16 November 2026. You have been signed out everywhere, and your password, sessions and two-factor settings have been removed.
+
+If you were a member of someone else's workspace, you have been removed from it. Their plans are not affected.
+
+If you did not ask for this, write to support@example.test straight away.
+
+--
+Glideworth
+Questions? Write to support@example.test.
+This is a service email about your account, so you cannot unsubscribe from it.
+"
+`;
+
 exports[`templates > verify-email > text snapshot 1`] = `
 "Subject: Confirm your email address for Glideworth
 

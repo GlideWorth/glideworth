@@ -54,6 +54,41 @@ interface Command {
   run: () => void;
 }
 
+/** The named things in a plan (income, expenses, milestones, flows) that the palette can open. */
+export function planItems(plan: {
+  income: { id: string; name: string }[];
+  expenses: { id: string; name: string }[];
+  milestones: { id: string; name: string }[];
+  flows: { id: string; name: string }[];
+}): {
+  item: "income" | "expense" | "milestone" | "flow";
+  id: string;
+  name: string;
+  hint: string;
+}[] {
+  return [
+    ...plan.income.map((x) => ({
+      item: "income" as const,
+      hint: "Income",
+      id: x.id,
+      name: x.name,
+    })),
+    ...plan.expenses.map((x) => ({
+      item: "expense" as const,
+      hint: "Expense",
+      id: x.id,
+      name: x.name,
+    })),
+    ...plan.milestones.map((x) => ({
+      item: "milestone" as const,
+      hint: "Milestone",
+      id: x.id,
+      name: x.name,
+    })),
+    ...plan.flows.map((x) => ({ item: "flow" as const, hint: "Flow", id: x.id, name: x.name })),
+  ].filter((x) => x.name.trim());
+}
+
 export function scoreCommand(
   c: Pick<Command, "label" | "group" | "keywords" | "hint">,
   q: string,
@@ -116,6 +151,18 @@ export function CommandPalette() {
         },
       });
     out.push(...globalCommands);
+    const current = plans?.find((p) => p.id === currentPlanId);
+    if (current)
+      for (const it of planItems(current))
+        out.push({
+          id: `item:${it.item}:${it.id}`,
+          group: "In this plan",
+          label: it.name,
+          hint: it.hint,
+          icon: ArrowRight,
+          keywords: "open edit find",
+          run: () => toPlan({ kind: "open-item", item: it.item, id: it.id }),
+        });
     for (const s of SECTIONS)
       out.push({
         id: `sec:${s.id}`,

@@ -68,7 +68,7 @@ repository or its history (`docs/design/uk-dataset-replacement.md`). The record 
 removal.
 
 - **Source:** <https://www.macrohistory.net/database/>, file `JSTdatasetR6.xlsx` (build:
-  `scripts/build_datasets.py`, output `jst.generated.ts`).
+  `packages/core/src/stochastic/data/scripts/build_datasets.py`, output `jst.generated.ts`).
 - **Licence (page read 2026-11-16):** CC BY-NC-SA 4.0. The page says: "We grant every user at no cost a
   license … to use and/or share the licensed material … provided that it is for non-commercial (e.g.,
   academic) purposes … Commercial data providers are thus strictly forbidden to integrate all or parts of
@@ -140,7 +140,7 @@ following: Contains public sector information licensed under the Open Government
 - **Inflation:** BLS CPI-U, all items, NSA (series CUUR0000SA0). **Until 2026-11-16 the build downloaded
   this series through FRED**, whose terms (read 2026-11-16, <https://fred.stlouisfed.org/legal/>) forbid
   storing or caching FRED content and commercial use of FRED services without consent. The build now
-  fetches it from BLS only (`scripts/fetch_bls_cpi.py`: the BLS Public Data API, or the BLS series page
+  fetches it from BLS only (`packages/core/src/stochastic/data/scripts/fetch_bls_cpi.py`: the BLS Public Data API, or the BLS series page
   <https://data.bls.gov/timeseries/CUUR0000SA0> when the API's daily limit is reached), and FRED has been
   removed from the scripts and data docs.
   - The numbers are BLS data. BLS: "everything that we publish … is in the public domain, except for
@@ -162,7 +162,7 @@ sequences (`HISTORICAL_SERIES`) now read `us-1928`; a sequence that starts befor
 a warning. The FIRECalc validation test now runs on `us-1928` (explained in the test and in
 `docs/ARCHITECTURE.md` §4.4). Saved plans naming `us-1871` are read as `us-1928` with a `DATASET_REPLACED`
 notice. Self-hosters may fetch the data from the original source for personal use with
-`scripts/fetch_shiller_local.py` (dataset `us-1871-local`, loaded from `GLIDEWORTH_LOCAL_DATA_DIR`, Node
+`packages/core/src/stochastic/data/scripts/fetch_shiller_local.py` (dataset `us-1871-local`, loaded from `GLIDEWORTH_LOCAL_DATA_DIR`, Node
 only); it is never committed and never part of the hosted service or the browser bundle. Option 1 below
 (written permission) would allow bundling it again.
 

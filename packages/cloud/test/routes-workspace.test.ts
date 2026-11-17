@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { auditEvents, invitations } from "../src/control/schema.js";
 import { sha256Hex } from "../src/crypto/random.js";
 import {
+  Browser,
   type Cloud,
   makeCloud,
   removeTempDirs,
@@ -208,5 +209,91 @@ describe("GET /api/v1/workspace/members", () => {
     ).toEqual(["Ed Editor", "Olive Owner", "Vi Viewer"]);
     for (const i of bodyOf<{ items: object[] }>(v).items) expect(i).not.toHaveProperty("email");
     expect(v.text).not.toContain("@");
+  });
+});
+
+describe("invitation page: preview and sign-up from it (QA 13)", () => {
+  async function invite(role: "editor" | "viewer") {
+    const owner = await signedUpBrowser(cloud, { name: "Olive Owner" });
+    expect(
+      (await owner.browser.patch("/api/v1/workspace/settings", { name: "Example Household" }))
+        .status,
+    ).toBe(200);
+    const email = uniqueEmail("guest");
+    const created = await owner.browser.post("/api/v1/workspace/invitations", { email, role });
+    expect(created.status).toBe(201);
+    await new Promise((r) => setTimeout(r, 0));
+    return { owner, email, id: idOf(created), token: tokenOf(email) };
+  }
+
+  it("POST /invitations/preview names the workspace and role to anyone holding a live token, and nothing else", async () => {
+    const { owner, email, id, token } = await invite("editor");
+    const anon = new Browser(cloud.app);
+    const ok = await anon.post("/api/v1/workspace/invitations/preview", { token });
+    expect(ok.status, ok.text).toBe(200);
+    expect(bodyOf(ok)).toEqual({ workspaceName: "Example Household", role: "editor" });
+    expect(ok.text).not.toContain(email.split("@")[0] as string);
+    expect(ok.text).not.toContain("Olive");
+
+    // Guessed and withdrawn tokens get one identical answer, the same as accepting.
+    const guessed = await anon.post("/api/v1/workspace/invitations/preview", {
+      token: "A".repeat(43),
+    });
+    expect(guessed.status).toBe(400);
+    expect(bodyOf(guessed)).toMatchObject({ error: { code: "INVALID_TOKEN" } });
+    expect((await owner.browser.del(`/api/v1/workspace/invitations/${id}`)).status).toBe(204);
+    const withdrawn = await anon.post("/api/v1/workspace/invitations/preview", { token });
+    expect(withdrawn.status).toBe(400);
+    expect(withdrawn.text).toBe(guessed.text);
+
+    // Another site cannot ask.
+    const fresh = await invite("viewer");
+    const cross = await anon.post(
+      "/api/v1/workspace/invitations/preview",
+      { token: fresh.token },
+      { origin: "https://evil.example" },
+    );
+    expect(cross.status).toBe(403);
+  });
+
+  it("a sign-up that started from an invitation verifies straight into its page", async () => {
+    const { token, email } = await invite("viewer");
+    const b = new Browser(cloud.app);
+    const signup = await b.post("/api/v1/auth/signup", {
+      email,
+      password: "a long and careful passphrase 9",
+      name: "Gus Guest",
+      captchaToken: "captcha-ok",
+      termsVersion: "2026-11",
+      adultConfirmed: true,
+      invitation: token,
+    });
+    expect(signup.status).toBe(202);
+    await cloud.accounts.settled();
+    const v = await b.post("/api/v1/auth/verify", {
+      token: cloud.mailer.token(email, "verify-email"),
+    });
+    expect(v.status, v.text).toBe(200);
+    expect(bodyOf(v).redirectTo).toBe(`/invite#token=${encodeURIComponent(token)}`);
+    const accepted = await b.post("/api/v1/workspace/invitations/accept", { token });
+    expect(accepted.status, accepted.text).toBe(200);
+    expect(bodyOf(accepted)).toMatchObject({ role: "viewer", name: "Gus Guest" });
+
+    // Without an invitation the answer is unchanged.
+    const other = new Browser(cloud.app);
+    const plain = uniqueEmail("plain");
+    await other.post("/api/v1/auth/signup", {
+      email: plain,
+      password: "a long and careful passphrase 9",
+      name: "Pat Plain",
+      captchaToken: "captcha-ok",
+      termsVersion: "2026-11",
+      adultConfirmed: true,
+    });
+    await cloud.accounts.settled();
+    const pv = await other.post("/api/v1/auth/verify", {
+      token: cloud.mailer.token(plain, "verify-email"),
+    });
+    expect(bodyOf(pv).redirectTo).toBe("/");
   });
 });

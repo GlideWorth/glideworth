@@ -15,6 +15,7 @@ import { signupExistingAccount } from "./signup-existing-account.js";
 import { subscriptionCanceled } from "./subscription-canceled.js";
 import { trialEnding } from "./trial-ending.js";
 import { trialExpired } from "./trial-expired.js";
+import { userAccountDeleted } from "./user-account-deleted.js";
 import { verifyEmail } from "./verify-email.js";
 
 export type TemplateFn<T extends TemplateId> = (
@@ -40,4 +41,5 @@ export const TEMPLATES: { readonly [K in TemplateId]: TemplateFn<K> } = {
   "export-ready": exportReady,
   "deletion-warning": deletionWarning,
   "account-deleted": accountDeleted,
+  "user-account-deleted": userAccountDeleted,
 };

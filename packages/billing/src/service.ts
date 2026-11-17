@@ -357,6 +357,26 @@ export class BillingService {
 
   // --- webhook
 
+  /**
+   * The signature check of `handleWebhook` on its own: no state is read or changed and nothing is logged. The
+   * host runs it before taking a per-account lock, so an unsigned request cannot hold up a workspace's real
+   * billing writes. `handleWebhook` checks again (and logs the refusal).
+   */
+  isSignedWebhook(rawBody: string, signatureHeader: string | undefined): boolean {
+    if (Buffer.byteLength(rawBody, "utf8") > WEBHOOK_MAX_BODY_BYTES) return false;
+    try {
+      this.d.gateway.constructEvent(
+        rawBody,
+        signatureHeader ?? "",
+        this.d.webhookSecret,
+        WEBHOOK_TOLERANCE_SECONDS,
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async handleWebhook(
     rawBody: string,
     signatureHeader: string | undefined,

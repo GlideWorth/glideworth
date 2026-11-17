@@ -36,12 +36,21 @@ export type Intent =
   | { kind: "add-income"; type: IncomeType }
   | { kind: "add-expense"; type: ExpenseType }
   | { kind: "add-milestone" }
+  | { kind: "open-item"; item: "income" | "expense" | "milestone" | "flow"; id: string }
   | { kind: "add-flow"; flowKind: Flow["kind"] }
   | { kind: "add-account"; type: AccountType }
   | { kind: "add-asset"; type: RealAssetType; financed?: boolean }
   | { kind: "add-debt"; type: Debt["type"] }
   | { kind: "edit-household" }
   | { kind: "new-plan" };
+
+/** The editor section that lists each kind of plan item. */
+export const SECTION_OF_ITEM = {
+  income: "income",
+  expense: "expenses",
+  milestone: "milestones",
+  flow: "flows",
+} as const satisfies Record<string, SectionId>;
 
 export const useIntentStore = create<{ intent: Intent | null }>(() => ({ intent: null }));
 

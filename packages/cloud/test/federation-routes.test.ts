@@ -461,6 +461,33 @@ describe("accounts without a password", () => {
     expect(ch.status).toBe(409);
   });
 
+  it("the first-password link still arrives after strangers used up the address's forgot-password and mail limits (security review finding 9)", async () => {
+    const g = googleUser();
+    const b = new Browser(cloud.app);
+    await signUpWithGoogle(b, g);
+    // Anyone can ask for password resets and sign up again with the address.
+    for (let i = 0; i < 4; i++)
+      await new Browser(cloud.app).post("/api/v1/auth/password/forgot", {
+        email: g.email,
+        captchaToken: "captcha-ok",
+      });
+    for (let i = 0; i < 6; i++)
+      await new Browser(cloud.app).post("/api/v1/auth/signup", {
+        email: g.email,
+        password: strongPassword(),
+        name: "Someone Else",
+        captchaToken: "captcha-ok",
+        termsVersion: "2026-11",
+        adultConfirmed: true,
+      });
+    await cloud.accounts.settled();
+    const before = cloud.mailer.to(g.email, "password-reset").length;
+    const setup = await b.post("/api/v1/account/password/setup");
+    expect(setup.status, setup.text).toBe(202);
+    await cloud.accounts.settled();
+    expect(cloud.mailer.to(g.email, "password-reset")).toHaveLength(before + 1);
+  });
+
   it("sets a first password through the emailed link; then can unlink Google; unlinking without a password is refused", async () => {
     const g = googleUser();
     const b = new Browser(cloud.app);

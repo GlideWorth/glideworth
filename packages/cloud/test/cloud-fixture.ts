@@ -114,9 +114,10 @@ export class FakeRuntime implements TenantRuntimeBase {
         db.prepare("DELETE FROM users WHERE id = ?").run(id);
       },
       list: () =>
-        db.prepare("SELECT id AS tenantUserId, role FROM users").all() as Array<{
+        db.prepare("SELECT id AS tenantUserId, role, name FROM users").all() as Array<{
           tenantUserId: string;
           role: Role;
+          name: string;
         }>,
       revokeCredentials: (id) => {
         db.prepare("DELETE FROM api_keys WHERE user_id = ?").run(id);

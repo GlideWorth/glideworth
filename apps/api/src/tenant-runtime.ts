@@ -100,7 +100,7 @@ export class TenantRuntime implements TenantRuntimeBase {
     this.members = {
       upsert: (m) => users.upsertMember(m),
       remove: (id) => users.removeMember(id),
-      list: () => users.listMembers() as Array<{ tenantUserId: string; role: Role }>,
+      list: () => users.listMembers() as Array<{ tenantUserId: string; role: Role; name: string }>,
       revokeCredentials: (id) => users.revokeCredentials(id),
       revokeOAuthGrants: (id) => services.oauth.revokeAllOf(id),
     };
@@ -186,6 +186,8 @@ export function createTenantOpener(
           },
           webhooks: {
             allowPrivate: false,
+            // Security review finding 14: encrypted deliveries only, no well-known service ports.
+            httpsOnly: true,
             maxSubscriptions: () => policy.maxWebhooks(),
             suppressed: () => policy.webhooksSuppressed(),
             admitDelivery: () => policy.admitWebhookDelivery(),

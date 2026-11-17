@@ -371,7 +371,11 @@ export function CashFlowView() {
                 value={f.money(graph.totals.debt, true)}
                 sub="Repayments and purchases"
               />
-              <Stat label="Saved" value={f.money(graph.totals.saved, true)} />
+              <Stat
+                label="Saved"
+                value={f.money(graph.totals.saved, true)}
+                sub="Paid into accounts, before withdrawals"
+              />
               <Stat
                 label="Savings rate"
                 value={
@@ -383,7 +387,7 @@ export function CashFlowView() {
                 }
                 sub={
                   savingParts
-                    ? `${f.money(savingParts.saved, true)} of ${f.money(savingParts.afterTax, true)} after-tax income`
+                    ? `Net of withdrawals: ${f.money(savingParts.saved, true)} of ${f.money(savingParts.afterTax, true)} after-tax income`
                     : "Saved ÷ after-tax income"
                 }
               />

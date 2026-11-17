@@ -1114,6 +1114,51 @@ export class WorkspacesService {
   }
 
   /**
+   * Not in spec 8.3: the invitation a token names, only while it can still be accepted (unused, not withdrawn,
+   * not expired, its workspace active). Null for anything else, without saying which. Internal: callers decide
+   * what to show (`previewInvitation`) or carry (`AccountsService.signUp`).
+   */
+  liveInvitation(token: unknown): {
+    id: string;
+    accountId: AccountId;
+    role: "editor" | "viewer";
+    emailNormalized: string;
+    workspaceName: string;
+  } | null {
+    if (typeof token !== "string" || !TOKEN_RE.test(token)) return null;
+    const hash = hashToken(token);
+    const row = this.db
+      .select({ inv: invitations, status: accounts.status, name: accounts.name })
+      .from(invitations)
+      .innerJoin(accounts, eq(accounts.id, invitations.accountId))
+      .where(eq(invitations.tokenHash, hash))
+      .get();
+    if (!row || !safeEqual(row.inv.tokenHash, hash)) return null;
+    const { inv } = row;
+    if (inv.acceptedAt || inv.revokedAt || inv.expiresAt <= this.clock().toISOString()) return null;
+    if (row.status !== "active") return null;
+    return {
+      id: inv.id,
+      accountId: inv.accountId,
+      role: inv.role,
+      emailNormalized: inv.emailNormalized,
+      workspaceName: row.name ?? "",
+    };
+  }
+
+  /**
+   * Not in spec 8.3: what the page an invitation link opens may show before anyone signs in: the workspace's
+   * name and the role offered, both already in the invitation email. A token that is not live (unknown,
+   * guessed, used, withdrawn, expired, workspace gone) gets the same `INVALID_TOKEN` as accepting it would,
+   * so it learns nothing. The invited address and the inviter are never shown.
+   */
+  previewInvitation(token: unknown): { workspaceName: string; role: "editor" | "viewer" } {
+    const inv = this.liveInvitation(token);
+    if (!inv) throw invalidInvitation();
+    return { workspaceName: inv.workspaceName, role: inv.role };
+  }
+
+  /**
    * Accept with a signed-in, verified user whose address is the invited one. A mismatch does not consume the
    * invitation and does not reveal the invited address. Seats are checked again here (another invitation may
    * have been accepted meanwhile).
@@ -1448,6 +1493,53 @@ export class WorkspacesService {
       } catch (err) {
         this.log.warn("workspaces.oauth_revoke_deferred", {
           accountId,
+          userId,
+          errCode: err instanceof CloudError ? err.code : "ERROR",
+        });
+      }
+    }
+  }
+
+  /**
+   * Not in spec 8.3: the person renamed themselves. The account's name (control-plane `users.name`) is the one
+   * source; every workspace keeps a copy in its member mirror because its file stands alone (API key lists,
+   * the names on credentials, a downloaded copy). Here each copy is brought in step now. Only the name moves:
+   * the role written back is the one the workspace already has, so this cannot undo a role change made at the
+   * same moment. Never throws: a workspace that cannot be opened now is corrected by the registry's
+   * reconciliation the next time it opens.
+   */
+  async syncMemberName(userId: UserId): Promise<void> {
+    const rows = this.db
+      .select({
+        accountId: memberships.accountId,
+        tenantUserId: memberships.tenantUserId,
+        role: memberships.role,
+        name: users.name,
+        email: users.emailNormalized,
+      })
+      .from(memberships)
+      .innerJoin(users, eq(users.id, memberships.userId))
+      .innerJoin(accounts, eq(accounts.id, memberships.accountId))
+      .where(and(eq(memberships.userId, userId), inArray(accounts.status, ["active", "suspended"])))
+      .all();
+    for (const m of rows) {
+      try {
+        await this.d.registry.with(
+          m.accountId,
+          (r) => {
+            const current = r.members.list().find((x) => x.tenantUserId === m.tenantUserId);
+            r.members.upsert({
+              tenantUserId: m.tenantUserId,
+              login: tenantLogin(m.email),
+              name: m.name,
+              role: current?.role ?? m.role,
+            });
+          },
+          { allowSuspended: true },
+        );
+      } catch (err) {
+        this.log.warn("workspaces.member_name_deferred", {
+          accountId: m.accountId,
           userId,
           errCode: err instanceof CloudError ? err.code : "ERROR",
         });

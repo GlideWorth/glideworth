@@ -7,6 +7,7 @@ import type { UserSettings, UserSettingsInput } from "@glideworth/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "../components/ui/toaster";
 import { loadApi } from "./api-lazy";
+import { isExplainedProblem } from "./api-problems";
 import { useWorkspace, type Workspace } from "./workspace";
 
 /** The settings schema (Zod), loaded on first use so it is not part of the app shell. */
@@ -125,11 +126,12 @@ export function useUpdateSettings() {
           w ? { ...w, doc: { ...w.doc, settings: ctx.prev!.settings } } : w,
         );
       }
-      toast({
-        title: "Setting not saved",
-        description: e instanceof Error ? e.message : String(e),
-        tone: "negative",
-      });
+      if (!isExplainedProblem(e))
+        toast({
+          title: "Setting not saved",
+          description: e instanceof Error ? e.message : String(e),
+          tone: "negative",
+        });
     },
     onSuccess: (saved) => {
       qc.setQueryData(key, { settings: saved, persisted: online ? "api" : "local" });

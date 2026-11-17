@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useResolvedTheme } from "../../lib/theme";
 import { usePrefs } from "../../stores/prefs";
 import { prefersReducedMotion, useChartPrefs } from "./chart-prefs";
+import { onPrintLayout } from "./print";
 import { type ChartTokens, readChartTokens } from "./tokens";
 
 let runtime: Promise<typeof import("./echarts-runtime")> | null = null;
@@ -76,10 +77,12 @@ export function Chart({
       chart.current = c;
       const ro = new ResizeObserver(() => c.resize());
       ro.observe(ref.current);
+      const offPrint = onPrintLayout(() => c.resize());
       onReady?.(c);
       setReady((n) => n + 1);
       cleanup = () => {
         ro.disconnect();
+        offPrint();
         c.dispose();
         chart.current = null;
       };

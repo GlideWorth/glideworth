@@ -77,7 +77,11 @@ export interface TenantMemberPort {
   upsert(m: { tenantUserId: string; login: string; name: string; role: Role }): void;
   /** apps/api: UsersService.delete (sessions, API keys and OAuth tokens go with the person). */
   remove(tenantUserId: string): void;
-  list(): Array<{ tenantUserId: string; role: Role }>;
+  /**
+   * Every mirrored member. `name` is the copy of the person's account name (control-plane `users.name` is the
+   * source); a runtime that leaves it out is never corrected for names, only for roles.
+   */
+  list(): Array<{ tenantUserId: string; role: Role; name?: string }>;
   /** API keys + OAuth tokens (ownership transfer). */
   revokeCredentials(tenantUserId: string): void;
   /**

@@ -37,6 +37,19 @@ export function reportApiProblem(status: number, code: string, details: unknown)
   if (problem) for (const fn of listeners) fn(problem);
 }
 
+/**
+ * True for an error the shell already explains on its own (read-only workspace, daily limit). A screen
+ * that toasts its failures skips these, so one failed action shows one message, not two.
+ */
+export function isExplainedProblem(e: unknown): boolean {
+  if (!e || typeof e !== "object") return false;
+  const { status, code } = e as { status?: unknown; code?: unknown };
+  return (
+    (status === 402 && code === "ACCOUNT_READ_ONLY") ||
+    (status === 429 && code === "QUOTA_EXCEEDED")
+  );
+}
+
 const METRIC_LABEL: Record<string, string> = {
   api_request: "API requests",
   job: "background jobs",

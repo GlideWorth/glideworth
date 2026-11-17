@@ -205,7 +205,12 @@ export function billingRoutes(k: RouteKit): void {
       if (Buffer.byteLength(raw, "utf8") > WEBHOOK_MAX_BYTES)
         throw new CloudError(413, "PAYLOAD_TOO_LARGE", "request body too large");
       const signature = c.req.header("stripe-signature");
-      const key = webhookLockKey(raw, accountForCustomer);
+      // Signature first (security review finding 10): the lock key comes from the body, so an unsigned body
+      // must not get to queue behind, or ahead of, a workspace's real billing writes. Unsigned requests go
+      // straight to `handleWebhook`, which refuses them (400) and logs why.
+      const key = d.billing.isSignedWebhook(raw, signature)
+        ? webhookLockKey(raw, accountForCustomer)
+        : null;
       const run = () => d.billing.handleWebhook(raw, signature);
       const out = key ? await withWriterLock(d.db, key, run, { waitMs: 20_000 }) : await run();
       if (out.status === 200) {

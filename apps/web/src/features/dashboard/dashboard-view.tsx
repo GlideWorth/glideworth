@@ -29,6 +29,7 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardBody, CardHeader } from "../../components/ui/card";
 import { Stat } from "../../components/ui/stat";
+import { useCloudSession } from "../../lib/auth";
 import { formatMonth } from "../../lib/format";
 import { financesInBase } from "../../lib/fx-math";
 import { firstFullYear, total } from "../../lib/money";
@@ -222,6 +223,16 @@ export function checkInChance(
     : null;
 }
 
+/**
+ * Who the dashboard greets. Hosted: the signed-in person (the household's first person may be a sample or
+ * someone else in the workspace), or a plain "there" when the account has no name. Self-host keeps
+ * greeting the household's first person.
+ */
+export function greetingName(accountName: string | undefined, personName: string | undefined) {
+  if (accountName !== undefined) return accountName.trim() || "there";
+  return personName ?? "there";
+}
+
 export function DashboardView() {
   const { plan, doc, input, result, isLoading, error, basis, f } = useAnalysis();
   const theme = useResolvedTheme();
@@ -237,6 +248,7 @@ export function DashboardView() {
   const lastCheckIn = useChangesSinceCheckin(plan?.id).data?.lastCheckIn;
   const checkedRate = mc ? null : checkInChance(lastCheckIn, plan?.version);
   const primary = doc?.household.people.find((p) => p.role === "primary");
+  const accountName = useCloudSession()?.user.name;
   const fi = result ? fiMetrics(result, plan) : null;
   const history = useMemo(
     () =>
@@ -281,7 +293,7 @@ export function DashboardView() {
 
   return (
     <Page
-      title={doc ? `Good to see you, ${primary?.name ?? "there"}` : "Dashboard"}
+      title={doc ? `Good to see you, ${greetingName(accountName, primary?.name)}` : "Dashboard"}
       description="Where you stand today and where your main plan is heading."
       actions={<Customise on={on} set={setWidget} />}
     >

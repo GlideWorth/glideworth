@@ -170,6 +170,11 @@ export function buildSankey(
         case "leftover":
           totals.saved += v;
           break;
+        case "income":
+          // Pay or income sent straight into an account never enters the cash pool. The diagram
+          // draws it as "Saved", so the total counts it too.
+          if (t.role === "savings") totals.saved += v;
+          break;
         case "debt-payment":
         case "purchase":
           // Loan repayments and asset purchases share the "Debt & loan payments" node.

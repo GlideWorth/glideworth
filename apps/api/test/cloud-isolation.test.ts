@@ -449,6 +449,8 @@ describe("T-ISO targeted cases", () => {
     const aClients = (await new Client(cloud).withBearer(A.ownerKey).get("/api/v1/oauth/clients"))
       .json.items as Array<{ id: string }>;
     expect(aClients.map((x) => x.id)).not.toContain(B.ids.oauthClient);
+    // The client A's owner consented to is copied into A at consent, so A's list shows it (QA item H).
+    expect(aClients.map((x) => x.id)).toContain(t.clientId);
   });
 
   it("API keys: a key with another account id, or a colliding prefix in another workspace, is a 401", async () => {

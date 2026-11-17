@@ -13,7 +13,7 @@ const ctxFor = (id: (typeof TEMPLATE_IDS)[number]) =>
   TEMPLATE_CATEGORY[id] === "checkin" ? CHECKIN_CTX : CTX;
 
 describe("templates", () => {
-  it("covers every template in the spec (17), the account deletion, email change request and removal notices", () => {
+  it("covers every template in the spec (17, less the retired trial-expired), the account deletion, email change request and removal notices, and the two-step guessing alert", () => {
     expect(TEMPLATE_IDS).toHaveLength(20);
     expect(Object.keys(FIXTURES).sort()).toEqual([...TEMPLATE_IDS].sort());
   });
@@ -102,6 +102,18 @@ describe("templates", () => {
       (change) => render("security-change", { ...FIXTURES["security-change"], change }, CTX).text,
     );
     expect(new Set(bodies).size).toBe(11);
+  });
+
+  it("second-factor-failures says what happened and links to the password reset and security settings (finding 8)", () => {
+    const r = render("second-factor-failures", FIXTURES["second-factor-failures"], CTX);
+    expect(r.subject).toBe("Someone is guessing your Glideworth two-step code");
+    expect(r.category).toBe("essential");
+    expect(r.text).toContain(
+      "Someone entered the wrong two-step code 10 times. They have your password. Change it now.",
+    );
+    expect(r.text).toContain("https://app.example.test/forgot-password?t=sample-token");
+    expect(r.text).toContain("https://app.example.test/settings/security?t=sample-token");
+    expect(r.text).not.toContain("\u2014");
   });
 
   it("user-account-deleted is about the person's account, not a workspace (QA 14)", () => {
@@ -210,6 +222,7 @@ describe("dates and times", () => {
     const data: Record<string, Record<string, unknown>> = {
       "security-change": { ...FIXTURES["security-change"], at: iso },
       "signin-alert": { ...FIXTURES["signin-alert"], at: iso },
+      "second-factor-failures": { ...FIXTURES["second-factor-failures"], at: iso },
       "export-ready": { ...FIXTURES["export-ready"], expiresAt: iso },
       "email-change-requested": { ...FIXTURES["email-change-requested"], at: iso },
       "account-deleted": { ...FIXTURES["account-deleted"], deletedAt: iso, backupsPurgedBy: iso },

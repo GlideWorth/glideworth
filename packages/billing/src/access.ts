@@ -24,7 +24,8 @@ const readOnly = (reason: AccessReason): Access => ({
  * The access decision for one account (design 4.4). Pure: depends only on its arguments.
  *
  * Boundaries are half-open: access that ends "at" an instant is full strictly before it and read-only from it.
- * Lapse never deletes anything; the worst outcome is `read_only`.
+ * Lapse never deletes anything. A workspace that never subscribed is `read_only` with reason `no_subscription`,
+ * which the host treats as no access at all (`capScopes` in `@glideworth/cloud`).
  */
 export function accessFor(
   sub: SubscriptionRecord | null,
@@ -44,19 +45,21 @@ function statusAccess(
   t: number,
   cfg: Pick<PricingConfig, "pastDueGraceDays">,
 ): Access {
-  const trialEnd = ms(sub.trialEndsAt);
-  const localTrialRunning = trialEnd !== null && t < trialEnd;
   switch (sub.status) {
     case "trialing_local":
-      return localTrialRunning ? full("trial", trialEnd) : readOnly("trial_expired");
+      // Never subscribed: no access until the owner starts the trial (or subscribes) through Checkout.
+      return readOnly("no_subscription");
     case "active":
     case "trialing": {
-      // Cancel at period end keeps full access until the period ends, even if the final `deleted` event is late.
+      // A Stripe trial is full access; its end is not a change by itself (Stripe charges the card and the status
+      // becomes `active`). Cancel at period end keeps full access until the period (for a trial, the trial) ends,
+      // even if the final `deleted` event is late.
+      const reason = sub.status === "trialing" ? "trial" : "active";
       const periodEnd = ms(sub.currentPeriodEnd);
       if (sub.cancelAtPeriodEnd && periodEnd !== null) {
-        return t < periodEnd ? full("active", periodEnd) : readOnly("canceled");
+        return t < periodEnd ? full(reason, periodEnd) : readOnly("canceled");
       }
-      return full("active", null);
+      return full(reason, null);
     }
     case "past_due": {
       const since = ms(sub.pastDueSince) ?? ms(sub.updatedAt);
@@ -66,7 +69,7 @@ function statusAccess(
     }
     case "incomplete":
     case "incomplete_expired":
-      return localTrialRunning ? full("trial", trialEnd) : readOnly("incomplete");
+      return readOnly("incomplete");
     case "unpaid":
       return readOnly("unpaid");
     case "canceled":

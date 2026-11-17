@@ -57,7 +57,7 @@ const sub = (id: string) =>
   cloud.db.select().from(subscriptions).where(eq(subscriptions.accountId, id)).get();
 
 async function subscribed() {
-  const owner = await signedUpBrowser(cloud);
+  const owner = await signedUpBrowser(cloud, { trial: false });
   const r = await owner.browser.post("/api/v1/billing/checkout", { lookupKey: "cloud_monthly_v1" });
   expect(r.status).toBe(200);
   const events = cloud.fake.completeCheckout(sessionIdOf(String(r.body.url)));
@@ -227,7 +227,7 @@ describe("finding 1: per-account single writer across processes", () => {
   });
 
   it("an unsigned request naming a workspace is refused at once, without waiting for its billing lock (security review finding 10)", async () => {
-    const { accountId } = await signedUpBrowser(cloud);
+    const { accountId } = await signedUpBrowser(cloud, { trial: false });
     const id = accountId as string;
     let release: () => void = () => {};
     const held = withWriterLock(
@@ -329,7 +329,7 @@ describe("finding 1: per-account single writer across processes", () => {
 
 describe("finding 2: one open checkout per account, duplicate subscriptions alert", () => {
   it("the same price reuses the open session; another price expires it and opens a new one", async () => {
-    const owner = await signedUpBrowser(cloud);
+    const owner = await signedUpBrowser(cloud, { trial: false });
     const first = await owner.browser.post("/api/v1/billing/checkout", {
       lookupKey: "cloud_monthly_v1",
     });
@@ -376,7 +376,7 @@ describe("finding 2: one open checkout per account, duplicate subscriptions aler
   });
 
   it("a session already completed on Stripe (webhook not yet here) blocks a checkout for the other price", async () => {
-    const owner = await signedUpBrowser(cloud);
+    const owner = await signedUpBrowser(cloud, { trial: false });
     const first = await owner.browser.post("/api/v1/billing/checkout", {
       lookupKey: "cloud_monthly_v1",
     });
@@ -398,7 +398,7 @@ describe("finding 2: one open checkout per account, duplicate subscriptions aler
   });
 
   it("a session Stripe could not expire leaves the block in place and creates nothing", async () => {
-    const owner = await signedUpBrowser(cloud);
+    const owner = await signedUpBrowser(cloud, { trial: false });
     await owner.browser.post("/api/v1/billing/checkout", { lookupKey: "cloud_monthly_v1" });
     cloud.fake.failNext("expireCheckoutSession");
     const yearly = await owner.browser.post("/api/v1/billing/checkout", {
@@ -419,11 +419,12 @@ describe("finding 2: one open checkout per account, duplicate subscriptions aler
         customerId: customer,
         priceId: price,
         accountId: s.id,
-        trialEnd: null,
+        trialPeriodDays: null,
         successUrl: `${PUBLIC_URL}/x`,
         cancelUrl: `${PUBLIC_URL}/x`,
         allowPromotionCodes: false,
         collectTaxIds: false,
+        currency: "usd",
       },
       "dup-session",
     );
@@ -439,7 +440,7 @@ describe("finding 2: one open checkout per account, duplicate subscriptions aler
   });
 
   it("checkout refuses non-owners, unknown and non-offered prices; status is visible to members", async () => {
-    const owner = await signedUpBrowser(cloud);
+    const owner = await signedUpBrowser(cloud, { trial: false });
     const email = uniqueEmail("viewer");
     await owner.browser.post("/api/v1/workspace/invitations", { email, role: "viewer" });
     const token = remember(
@@ -461,7 +462,8 @@ describe("finding 2: one open checkout per account, duplicate subscriptions aler
     expect(st.body).toMatchObject({
       status: "trialing_local",
       role: "viewer",
-      access: { level: "full" },
+      access: { level: "read_only", reason: "no_subscription" },
+      trialDays: 7,
     });
     expect(st.text).not.toMatch(/card|last4/i);
     // The prices come from the pricing file: amount in minor units, currency, interval and tax behaviour.
@@ -495,15 +497,11 @@ describe("finding 2: one open checkout per account, duplicate subscriptions aler
 
 describe("finding 3: billing notices survive a mail failure", () => {
   it("the notice is queued in the same step as the claim and retried until sent", async () => {
-    const owner = await signedUpBrowser(cloud);
-    const id = owner.accountId as string;
+    const owner = await signedUpBrowser(cloud); // started the 7-day trial with a card
     cloud.mailer.fail = true;
-    // Trial ending: the billing sweep claims the notice and queues it.
-    cloud.db
-      .update(subscriptions)
-      .set({ trialEndsAt: new Date(cloud.now().getTime() + 86_400_000).toISOString() })
-      .where(eq(subscriptions.accountId, id))
-      .run();
+    // Trial ending in under 3 days: the billing sweep claims the notice and queues it.
+    expect((await cloud.billing.sweep()).noticesSent).toBe(0);
+    cloud.advance(5 * 86_400_000);
     expect((await cloud.billing.sweep()).noticesSent).toBe(1);
     await cloud.outbox.drain();
     let row = cloud.db
@@ -525,7 +523,14 @@ describe("finding 3: billing notices survive a mail failure", () => {
     row = cloud.db.select().from(mailOutbox).where(eq(mailOutbox.template, "trial-ending")).get();
     expect(row?.status).toBe("sent");
     // Two provider calls: the failed first attempt and the successful retry.
-    expect(cloud.mailer.to(owner.email, "trial-ending")).toHaveLength(2);
+    const sent = cloud.mailer.to(owner.email, "trial-ending");
+    expect(sent).toHaveLength(2);
+    // The date of the first charge, the amount, and the billing page to cancel on.
+    expect(sent[1]?.data).toMatchObject({
+      amountText: "$9.00 USD a month",
+      billingUrl: `${PUBLIC_URL}/settings/billing`,
+      trialEndsOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    });
   });
 
   it("dead after the attempt limit, logged for the operator; duplicates are enqueued once", async () => {
@@ -537,12 +542,16 @@ describe("finding 3: billing notices survive a mail failure", () => {
     });
     cloud.mailer.fail = true;
     const email = uniqueEmail("dead");
-    const data = { name: "N", billingUrl: `${PUBLIC_URL}/settings/billing` };
+    const data = {
+      name: "N",
+      accessUntil: "2026-12-01",
+      billingUrl: `${PUBLIC_URL}/settings/billing`,
+    };
     expect(
-      outbox.enqueue({ to: { email }, template: "trial-expired", data, dedupeKey: "k1" }),
+      outbox.enqueue({ to: { email }, template: "subscription-canceled", data, dedupeKey: "k1" }),
     ).toBe(true);
     expect(
-      outbox.enqueue({ to: { email }, template: "trial-expired", data, dedupeKey: "k1" }),
+      outbox.enqueue({ to: { email }, template: "subscription-canceled", data, dedupeKey: "k1" }),
     ).toBe(false);
     for (let i = 0; i < 12; i++) {
       await outbox.drain();

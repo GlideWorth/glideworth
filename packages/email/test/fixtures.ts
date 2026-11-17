@@ -44,6 +44,12 @@ export const FIXTURES: { [K in TemplateId]: TemplateData[K] } = {
     at: "16 November 2026, 09:14 UTC",
     securityUrl: U("settings/security"),
   },
+  "second-factor-failures": {
+    name: "Sam Example",
+    at: "16 November 2026, 09:14 UTC",
+    resetUrl: U("forgot-password"),
+    securityUrl: U("settings/security"),
+  },
   invitation: {
     inviterName: "Robin Sample",
     workspaceName: "Sample household",
@@ -55,9 +61,9 @@ export const FIXTURES: { [K in TemplateId]: TemplateData[K] } = {
   "trial-ending": {
     name: "Sam Example",
     trialEndsOn: "23 November 2026",
+    amountText: "$9.00 USD a month",
     billingUrl: U("billing"),
   },
-  "trial-expired": { name: "Sam Example", billingUrl: U("billing") },
   "renewal-reminder": {
     name: "Sam Example",
     renewsOn: "30 November 2026",
@@ -137,6 +143,12 @@ export const FIXTURES_ALT: { [K in TemplateId]: TemplateData[K] } = {
     at: "£1,234,567 at 99%",
     securityUrl: U("settings/security"),
   },
+  "second-factor-failures": {
+    name: "Alex £48,000 (7.5%)",
+    at: "£1,234,567 at 99%",
+    resetUrl: U("forgot-password"),
+    securityUrl: U("settings/security"),
+  },
   invitation: {
     inviterName: "Pat £500k",
     workspaceName: "Retire at 55 with £2m (92% chance)",
@@ -151,9 +163,9 @@ export const FIXTURES_ALT: { [K in TemplateId]: TemplateData[K] } = {
   "trial-ending": {
     name: "Alex £48,000 (7.5%)",
     trialEndsOn: "£99 on 1 January",
+    amountText: "£48,000 (7.5%)",
     billingUrl: U("billing"),
   },
-  "trial-expired": { name: "Alex £48,000 (7.5%)", billingUrl: U("billing") },
   "renewal-reminder": {
     name: "Alex £48,000 (7.5%)",
     renewsOn: "£99 on 1 January",

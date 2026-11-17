@@ -5,7 +5,7 @@
  * run inside `withWriterLock('billing:<account>')` (writer-lock.ts). Inside such a scope every
  * `getSubscription` remembers the row's `version`, and `saveSubscription` / `setCustomer` check, in the write's
  * own transaction, that the lease is still held with its fencing token and that the version is unchanged
- * (compare-and-swap), then increment it. Outside a scope (trial creation) writes still increment the version,
+ * (compare-and-swap), then increment it. Outside a scope (workspace creation) writes still increment the version,
  * so a locked reader notices them. The monotonic `stripeUpdated` rule is kept as well.
  */
 import { and, eq, lt, sql } from "drizzle-orm";
@@ -22,6 +22,7 @@ const toRecord = (r: Row): SubscriptionRecord => ({
   productId: r.productId,
   priceLookupKey: r.priceLookupKey,
   trialEndsAt: r.trialEndsAt,
+  trialAvailable: r.trialAvailable,
   stripeCustomerId: r.stripeCustomerId,
   stripeSubscriptionId: r.stripeSubscriptionId,
   currentPeriodEnd: r.currentPeriodEnd,
@@ -89,6 +90,7 @@ export function controlBillingStore(db: ControlDb, o: { now?: () => Date } = {})
           productId: rec.productId,
           priceLookupKey: rec.priceLookupKey,
           trialEndsAt: rec.trialEndsAt,
+          trialAvailable: rec.trialAvailable,
           stripeCustomerId: rec.stripeCustomerId,
           stripeSubscriptionId: rec.stripeSubscriptionId,
           currentPeriodEnd: rec.currentPeriodEnd,
@@ -219,7 +221,7 @@ export function controlBillingStore(db: ControlDb, o: { now?: () => Date } = {})
         .innerJoin(accounts, eq(accounts.id, subscriptions.accountId))
         .where(
           and(
-            eq(subscriptions.status, "trialing_local"),
+            eq(subscriptions.status, "trialing"),
             lt(subscriptions.trialEndsAt, iso),
             eq(accounts.status, "active"),
           ),

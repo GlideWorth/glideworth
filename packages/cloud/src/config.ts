@@ -97,8 +97,13 @@ export function loadCloudConfig(env: NodeJS.ProcessEnv): CloudConfig {
     if (truthy(env[`${prefix}WEBHOOK_ALLOW_PRIVATE`]))
       problems.push(`${prefix}WEBHOOK_ALLOW_PRIVATE=true is not allowed in cloud mode`);
   }
+  const emailTransport = env.GLIDEWORTH_EMAIL_TRANSPORT ?? "file";
+  if (!["file", "smtp", "mailgun", "resend"].includes(emailTransport))
+    problems.push("GLIDEWORTH_EMAIL_TRANSPORT must be one of file, smtp, mailgun, resend");
+  if (emailTransport === "resend" && !env.GLIDEWORTH_RESEND_API_KEY?.trim())
+    problems.push("GLIDEWORTH_RESEND_API_KEY is required with GLIDEWORTH_EMAIL_TRANSPORT=resend");
   if (production) {
-    if ((env.GLIDEWORTH_EMAIL_TRANSPORT ?? "file") === "file")
+    if (emailTransport === "file")
       problems.push("GLIDEWORTH_EMAIL_TRANSPORT=file is not allowed in production");
     if ((env.GLIDEWORTH_BILLING ?? "fake") === "fake")
       problems.push("GLIDEWORTH_BILLING=fake is not allowed in production");

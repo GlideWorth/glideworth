@@ -18,7 +18,7 @@
  * reconciled on every tenant open if the second step fails).
  */
 import { existsSync, mkdirSync, rmSync, statSync } from "node:fs";
-import { newTrialRecord, type PricingConfig } from "@glideworth/billing";
+import { newAccountRecord, type PricingConfig } from "@glideworth/billing";
 import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lte, ne, or, sql } from "drizzle-orm";
 import type { RateLimiter } from "../abuse/rate-limiter.js";
 import { normalizeEmail } from "../accounts/email.js";
@@ -155,8 +155,8 @@ export class WorkspacesService {
   // --------------------------------------------------------------------------------------- tenant lifecycle
   /**
    * Spec 2.3 Create: `accounts`, the owner's membership (`tenant_user_id='owner'`), the subscription
-   * (`trialing_local`, with a trial only when the address never had one), the tenant data key and the schedule
-   * in one transaction; then `registry.provision`. If provisioning fails, the rows (and a trial grant made here)
+   * (`trialing_local`: no access until the owner starts the trial or subscribes in Stripe Checkout; the trial is
+   * offered only when the address never had one), the tenant data key and the schedule in one transaction; then `registry.provision`. If provisioning fails, the rows (and a trial grant made here)
    * are removed again. A person owns at most one workspace.
    */
   async create(ownerUserId: UserId, name: string): Promise<AccountId> {
@@ -201,7 +201,7 @@ export class WorkspacesService {
           .values({ emailHmac: grantKey, grantedAt: now.toISOString() })
           .onConflictDoNothing()
           .run().changes === 1;
-      const rec = newTrialRecord(id, now, pricing, granted);
+      const rec = newAccountRecord(id, now, pricing, granted);
       tx.insert(subscriptions)
         .values({ ...rec, version: 0 })
         .run();

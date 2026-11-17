@@ -1,5 +1,10 @@
 import type { PriceConfig } from "./pricing.js";
 
+/**
+ * `trialing_local` is the state of a workspace that has never had a Stripe subscription: no access until the owner
+ * starts the trial (or subscribes) through Checkout. The name is kept from the retired no-card local trial so stored
+ * rows need no migration.
+ */
 export type SubscriptionStatus =
   | "trialing_local"
   | "incomplete"
@@ -19,7 +24,13 @@ export interface SubscriptionRecord {
   status: SubscriptionStatus;
   productId: string;
   priceLookupKey: string | null;
+  /** End of the Stripe trial (from the subscription's `trial_end`), else null. */
   trialEndsAt: string | null;
+  /**
+   * The next Checkout may start a free trial: set when the workspace is created by an address that never had a
+   * trial, cleared as soon as any Stripe subscription is stored. One trial per person and per workspace.
+   */
+  trialAvailable: boolean;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
   currentPeriodEnd: string | null;
@@ -37,7 +48,6 @@ export type AccessReason =
   | "active"
   | "past_due_grace"
   | "comped"
-  | "trial_expired"
   | "past_due"
   | "unpaid"
   | "canceled"
@@ -114,13 +124,20 @@ export interface StripeGateway {
       customerId: string;
       priceId: string;
       accountId: string;
-      trialEnd: number | null;
+      /** Free trial days (`subscription_data.trial_period_days`), or null to charge at once. */
+      trialPeriodDays: number | null;
       successUrl: string;
       cancelUrl: string;
       allowPromotionCodes: boolean;
       collectTaxIds: boolean;
       /** Unix seconds; Stripe accepts 30 minutes to 24 hours after creation (its default is 24 hours). */
       expiresAt?: number;
+      /**
+       * The currency Checkout charges in: the price's own currency, so every customer pays in it (the site says
+       * prices are in USD). Without it Stripe picks a `currency_options` entry or, with Adaptive Pricing, the
+       * customer's local currency.
+       */
+      currency: string;
     },
     idempotencyKey: string,
   ): Promise<{ id: string; url: string }>;
@@ -182,8 +199,13 @@ export interface WebhookEndpointAdmin {
 // --- Store and notices
 
 export type BillingNotice =
-  | { kind: "trial-ending"; accountId: string; trialEndsAt: string }
-  | { kind: "trial-expired"; accountId: string }
+  | {
+      kind: "trial-ending";
+      accountId: string;
+      trialEndsAt: string;
+      /** What the first charge will be (the subscription's price), or null when the price is not configured. */
+      charge: { unitAmount: number; currency: string; interval: "month" | "year" } | null;
+    }
   | { kind: "payment-problem"; accountId: string; readOnlyFrom: string }
   | { kind: "payment-succeeded"; accountId: string; invoiceUrl: string | null }
   | { kind: "subscription-activated"; accountId: string }
@@ -214,6 +236,7 @@ export interface BillingStore {
   failedEvents(limit: number): Array<{ id: string; attempts: number }>;
   /** True exactly once per (accountId, kind, dedupeKey). */
   claimNotice(accountId: string, kind: BillingNotice["kind"], dedupeKey: string): boolean;
+  /** Accounts whose Stripe subscription is `trialing` with `trialEndsAt` before `iso` (active accounts only). */
   accountsWithTrialEndingBefore(iso: string): string[];
   ownerContact(accountId: string): { email: string; name: string } | null;
 }

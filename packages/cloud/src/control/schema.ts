@@ -44,6 +44,14 @@ export const users = sqliteTable(
     totpEnabledAt: text("totp_enabled_at"),
     /** Highest TOTP step accepted; a code at or below it is a replay. */
     totpLastStep: integer("totp_last_step"),
+    /**
+     * Review finding 8: wrong second-factor codes in a row (sign-in challenge, re-authentication, turning
+     * two-step off). A correct code sets it back to 0; every 10th wrong code sets it back to 0 and may email the
+     * owner (`secondFactorAlertAt`). Kept here, not in the in-memory limiter, so a restart does not reset it.
+     */
+    secondFactorFailures: integer("second_factor_failures").notNull().default(0),
+    /** When the last "someone is guessing your two-step code" email went out (at most one per 24 hours). */
+    secondFactorAlertAt: text("second_factor_alert_at"),
     signinAlerts: integer("signin_alerts", { mode: "boolean" }).notNull().default(true),
     checkinEmails: integer("checkin_emails", { mode: "boolean" }).notNull().default(true),
     termsVersion: text("terms_version").notNull(),
@@ -284,6 +292,8 @@ export const subscriptions = sqliteTable(
     productId: text("product_id").notNull(),
     priceLookupKey: text("price_lookup_key"),
     trialEndsAt: text("trial_ends_at"),
+    /** The next Checkout starts a free trial (one per address and per workspace; cleared by any Stripe subscription). */
+    trialAvailable: integer("trial_available", { mode: "boolean" }).notNull().default(false),
     stripeCustomerId: text("stripe_customer_id"),
     stripeSubscriptionId: text("stripe_subscription_id"),
     currentPeriodEnd: text("current_period_end"),
@@ -306,7 +316,11 @@ export const subscriptions = sqliteTable(
   ],
 );
 
-/** One trial per address, ever (kept 24 months). Only the HMAC of the normalised address is stored. */
+/**
+ * One trial per address. Only the HMAC of the normalised address is stored. Kept 12 months after the end of the
+ * trial it relates to (privacy policy section 7; deleted by control/retention.ts), after which the address can
+ * start a trial again.
+ */
 export const trialGrants = sqliteTable("trial_grants", {
   emailHmac: text("email_hmac").primaryKey(),
   grantedAt: text("granted_at").notNull().default(now),

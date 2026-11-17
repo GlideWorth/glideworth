@@ -1,7 +1,7 @@
 ---
 title: Cookie policy
 description: Exactly which cookies and browser storage the Glideworth website and app use. There are no advertising or analytics cookies, so there is no consent banner.
-lastUpdated: 2026-11-16
+lastUpdated: 2026-11-17
 draft: false
 order: 3
 ---
@@ -9,13 +9,14 @@ order: 3
 import { site } from '../../config/site';
 
 <Callout type="note" title="The short version">
-  This website sets **no cookies**. The app sets **sign-in cookies** that it cannot work without, and keeps
-  some settings and unsaved drafts in your browser's local storage. There are **no advertising cookies and no
-  analytics cookies**, so we do not show a cookie consent banner. If that ever changes, we will ask for your
+  This website sets **no cookies**. The app sets **sign-in and security cookies** that it cannot work without,
+  and keeps some settings and unsaved drafts in your browser's local storage. There are **no advertising cookies
+  and no analytics cookies**, so we do not show a cookie consent banner. If that ever changes, we will ask for your
   consent first, before anything is set.
 </Callout>
 
-This list was made by reading the code. If we add anything, we will update this page first.
+This list was made by reading the code and checked in a browser on 17 November 2026. If we add anything, we will
+update this page first.
 
 ## 1. The marketing website (glideworth.com)
 
@@ -26,21 +27,30 @@ This list was made by reading the code. If we add anything, we will update this 
 That is all. The site has no analytics, no advertising, no embedded third-party content, no social media
 buttons, and no fonts or scripts loaded from other companies. The pages themselves make no third-party requests.
 
-## 2. The app (self-hosted, and the hosted service)
-
-This section describes what the open-source app does. The hosted service runs the same code, and anything it
-adds is listed separately below.
+## 2. The hosted app (app.glideworth.com)
 
 ### Cookies
 
+All of these are set by our own server, only for app.glideworth.com, and only over HTTPS (`__Host-` cookies,
+Secure). None of them is used for tracking or advertising.
+
 | Name | Purpose | Lifetime | Notes |
 |---|---|---|---|
-| `glideworth_session` | Keeps you signed in. Holds a random token; the server stores only a hash of it | The length of your session (7 days by default, set by the server's operator) | Strictly necessary. HttpOnly, SameSite=Strict, Path=/, and Secure when the page is served over HTTPS |
-| `glideworth_csrf` | A second token the app sends back with every change, to stop other websites making changes for you | Same as the session | Strictly necessary. SameSite=Strict. Readable by the app's own script, by design |
+| `__Host-gw_session` | Keeps you signed in. Holds a random token; the server stores only a hash of it | Up to 30 days. The server ends the session sooner after 7 days without use, or when you sign out | Strictly necessary. HttpOnly, SameSite=Strict |
+| `__Host-gw_csrf` | A second token the app sends back with every change, to stop other websites making changes for you | Same as the session | Strictly necessary. SameSite=Strict. Readable by the app's own script, by design |
+| `__Host-gw_device` | Recognises a browser you have signed in from before, so that a sign-in from a new device is recorded in your security log and, if you keep sign-in alerts on, emailed to you. Holds a random value; the server stores only a keyed hash of it | Up to 400 days | Security only. HttpOnly, SameSite=Strict |
+| `__Host-gw_signup` | Set when you sign up. Lets the verification link sign you in only in the browser where you chose your password; in any other browser you must enter the password too | Up to 48 hours, as long as the verification link | Security only. HttpOnly, SameSite=Lax, so it is sent when you arrive from your email |
 
-Before the product was renamed to Glideworth, the same cookies were called `cairn_session` and `cairn_csrf`. The app
-still accepts them, so a sign-in from before the rename stays valid. The next time the app loads and checks that you
-are signed in, it replaces them with the names above and deletes the old ones. Signing out deletes both sets.
+**Only if you use "Continue with Google":**
+
+| Name | Purpose | Lifetime | Notes |
+|---|---|---|---|
+| `__Host-gw_oidc` | Ties a Google sign-in you start to your browser, so that someone else's Google sign-in cannot be finished in your browser, and yours cannot be finished in theirs. Holds a random value; the server keeps the details of the sign-in, encrypted | 10 minutes at most. Deleted when Google sends you back | Strictly necessary for a sign-in you asked for. HttpOnly. SameSite=Lax, because it must be sent when Google returns you to us |
+| `__Host-gw_oidc_signup` | Set only if you are new. Lets your browser finish creating the account (name, age confirmation, terms) after Google | 15 minutes at most. Deleted when the account is created | Strictly necessary. HttpOnly, SameSite=Strict |
+| `__Host-gw_oidc_link` | Set only when you link Google to an existing account from your security settings. Holds the pending link until you confirm it | 10 minutes at most | Strictly necessary. HttpOnly, SameSite=Lax |
+
+Google sets its own cookies on its own pages, under its own policy. The app does not load anything from Google;
+the button is a plain link.
 
 ### Local storage
 
@@ -54,6 +64,7 @@ The app stores these on your device. None of them is sent to a third party. Some
 | `glideworth:drafts:v1:` followed by a household id | Unsaved edits to a plan, kept so you do not lose them if the page reloads or you go offline. This can contain figures you entered |
 | `glideworth:chart-views:v1:` followed by a plan id | Chart views you saved |
 | `glideworth:sample-doc:v1` | The sample household, if you used it |
+| `glideworth.handoff.v1` | Only if you came from one of the calculators on this website: the numbers you entered there, so the app can offer to start your plan with them. Removed once you use or decline them, and ignored after 7 days |
 
 Older versions used the same keys starting with `cairn` (`cairn-ui`, `cairn:drafts:v1:` and so on). When the app
 starts it copies each old key to its new name and removes the old one, so your settings and drafts carry over.
@@ -66,53 +77,47 @@ opens quickly and can load offline. It holds the program files, not your plans.
 On a shared computer, use the "erase local data" control in settings, or clear your browser data, when you
 finish.
 
-### Third-party code that runs on server pages
+### Third parties on app pages
 
-- **API reference page.** The interactive API reference that every server serves at `/docs` loads its viewer
-  script from the jsDelivr content delivery network, so jsDelivr sees your IP address when you open that page.
-  Signed-in app screens do not do this. The static [API reference](/docs/api-and-mcp/api-reference/) on this website
-  loads nothing from other companies, and neither does the hosted service's own API reference page.
+- **Bot check (Cloudflare Turnstile).** On sign-up, password reset, and sign-in after several failed attempts,
+  the app loads a bot-protection widget from Cloudflare (challenges.cloudflare.com) that checks you are a person.
+  Cloudflare receives your IP address and browser signals. See the [sub-processor list](/legal/subprocessors/).
+  In our check on 17 November 2026, loading the widget in a fresh browser set no cookies, for our site or for
+  Cloudflare. Cloudflare's own [cookie policy](https://www.cloudflare.com/cookie-policy/) applies to anything it
+  stores inside its widget; it lists its challenge cookies as strictly necessary. The widget is not loaded on other
+  pages.
+- **Payment pages.** When you subscribe or manage billing, you go to pages hosted by Stripe, our payment
+  provider. Stripe sets its own cookies there, under its own policy.
 
-### Only in the hosted service
+## 3. Analytics and advertising
 
-The self-hosted app does not set these. The hosted service does.
+We use none. There are no analytics, advertising, session-recording or social media tools on the website or in
+the app. If we add one, we will list it in this section first, say what it sets and why, and ask for your consent
+before it sets anything that needs consent.
 
-- **A device cookie** (`__Host-gw_device`) that recognises a device you have signed in from before, so
-  we can email you when a new device signs in. It lasts up to 90 days and is used only for that security alert. You
-  could turn sign-in alerts off in settings, and the cookie would then not be needed.
-- **Two short-lived cookies for "Continue with Google"**, set only if you use that button.
-  `__Host-gw_oidc` ties a sign-in you start to your browser, so that someone else's Google sign-in cannot be
-  finished in your browser (and yours cannot be finished in theirs). It holds a random value; the server keeps
-  the details of the sign-in, encrypted. It lasts 10 minutes at most and is deleted as soon as Google sends you
-  back. It is SameSite=Lax (not Strict) because it must be sent when Google returns you to our site; it is also
-  HttpOnly, Secure and limited to our host. `__Host-gw_oidc_signup` is set only if you are new: it holds a
-  random value that lets your browser finish creating the account (name, age confirmation, terms) after Google.
-  It lasts 15 minutes at most and is deleted when the account is created. Both are strictly necessary for a
-  sign-in you asked for. Google itself sets its own cookies on its own pages under its own policy; the app does
-  not load anything from Google.
-- **A bot check at sign-up.** On sign-up, password reset and, after several failed attempts, sign-in, a
-  bot-protection widget from Cloudflare (Turnstile) would check that you are a person. It would receive your IP
-  address and browser signals. See the [sub-processor list](/legal/subprocessors/). Anything it sets on your
-  device is used only for that security check. Before the hosted service opens we will test exactly what it
-  sets and list it here. If it set anything that needs your consent, we would ask first or stop using it.
-- **Payment pages.** When you subscribe or manage billing, you would be sent to pages hosted by our payment
-  provider. It sets its own cookies there, under its own policy.
+## 4. If you run Glideworth yourself
 
-## 3. Why there is no consent banner
+The self-hosted app uses the same local storage and cache as above. Its sign-in cookies are named
+`glideworth_session` and `glideworth_csrf` (formerly `cairn_session` and `cairn_csrf`, which it still accepts and
+replaces), and it does not set the device, sign-up or Google cookies. It has no bot check. Its interactive API
+reference at `/docs` loads its viewer from the jsDelivr content delivery network, so jsDelivr sees your IP address
+when you open that page. The hosted service's API reference does not.
+
+## 5. Why there is no consent banner
 
 The UK and EU rules on cookies and similar technologies (PECR and the ePrivacy Directive) require consent for
 storage on your device unless it is strictly necessary to give you something you asked for. The sign-in and
 anti-forgery cookies are strictly necessary, and so are the Google sign-in cookies, which exist only while a
-sign-in you started is in progress. The device cookie and the bot check exist only to keep your account
-secure. The remaining storage keeps your own settings and drafts for you, and the website's theme choice is set by
-you. We use no advertising or analytics technology. So we do not show a banner. If we ever add anything that
-needs consent, we will ask for it before it is set, and you will be able to refuse.
+sign-in you started is in progress. The device and sign-up cookies and the bot check exist only to keep your
+account secure. The remaining storage keeps your own settings and drafts for you, and the website's theme choice
+is set by you. We use no advertising or analytics technology. So we do not show a banner. If we ever add anything
+that needs consent, we will ask for it before it is set, and you will be able to refuse.
 
-## 4. Your choices
+## 6. Your choices
 
 You can block or delete cookies and local storage in your browser. If you block the sign-in cookies you cannot
 use the app. The website works without any storage.
 
-## 5. Questions
+## 7. Questions
 
 <a href={`mailto:${site.contact.privacy}`}>{site.contact.privacy}</a>. See also the [privacy policy](/legal/privacy/).

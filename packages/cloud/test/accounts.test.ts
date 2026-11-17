@@ -3,7 +3,9 @@ import { render } from "@glideworth/email";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { normalizeEmail } from "../src/accounts/email.js";
-import { ACCOUNT_LIMITS, ACCOUNT_TTL } from "../src/accounts/service.js";
+import { staticCaptcha } from "../src/abuse/captcha.js";
+import { memoryRateLimiter } from "../src/abuse/rate-limiter.js";
+import { ACCOUNT_LIMITS, ACCOUNT_TTL, AccountsService } from "../src/accounts/service.js";
 import {
   accounts,
   knownDevices,
@@ -1151,6 +1153,158 @@ describe("two-factor authentication", () => {
     expect(await code(env.accounts.reauthenticate(ctx, { totpCode: c }, env.meta()))).toBe(
       "UNAUTHORIZED",
     );
+  });
+
+  describe("ten wrong codes in a row (security review finding 8)", () => {
+    const alerts = (email: string) => env.mailer.to(email, "second-factor-failures");
+    const alertAudits = () =>
+      auditRows(env.db).filter((r) => r.event === "user.second_factor_failures");
+    const failures = (email: string) => userRow(env.db, email)?.secondFactorFailures;
+
+    /** `n` wrong codes on one fresh sign-in challenge (at most 5, the challenge's own limit). */
+    async function wrongOnChallenge(email: string, password: string, n: number) {
+      const r = await env.accounts.signIn({ email, password }, env.meta());
+      if (r.kind !== "totp-required") throw new Error();
+      remember(r.challenge);
+      for (let i = 0; i < n; i++)
+        expect(
+          await code(
+            env.accounts.completeSecondFactor(
+              { challenge: r.challenge, code: "000000" },
+              env.meta(),
+            ),
+          ),
+        ).toBe("UNAUTHORIZED");
+    }
+    const wrongReauth = async (ctx: SessionContext) =>
+      expect(await code(env.accounts.reauthenticate(ctx, { totpCode: "000000" }, env.meta()))).toBe(
+        "UNAUTHORIZED",
+      );
+
+    it("sign-in and re-authentication codes add up; the 10th emails the owner once, audited; no lock-out", async () => {
+      const { ctx, email, password } = await signedInWithPassword();
+      const { secret } = await enableTotp(ctx);
+      await wrongOnChallenge(email, password, 5);
+      for (let i = 0; i < 4; i++) await wrongReauth(ctx);
+      await env.accounts.settled();
+      expect(failures(email)).toBe(9);
+      expect(alerts(email)).toEqual([]);
+
+      await wrongReauth(ctx);
+      await env.accounts.settled();
+      expect(alerts(email)).toHaveLength(1);
+      const mail = env.mailer.last(email, "second-factor-failures");
+      expect(mail?.data).toEqual({
+        name: userRow(env.db, email)?.name,
+        at: new Date(env.clock.t).toISOString(),
+        resetUrl: "https://app.example.test/forgot-password",
+        securityUrl: "https://app.example.test/settings/security",
+      });
+      const rendered = render("second-factor-failures", mail?.data as never, {
+        productName: "Glideworth",
+        appUrl: "https://app.example.test",
+        supportEmail: "support@example.test",
+      });
+      expect(rendered.text).toContain(
+        "Someone entered the wrong two-step code 10 times. They have your password. Change it now.",
+      );
+      expect(alertAudits()).toHaveLength(1);
+      expect(alertAudits()[0]?.detail).toEqual({ count: 10, method: "totp", status: "mailed" });
+      expect(alertAudits()[0]?.subjectUserId).toBe(userRow(env.db, email)?.id);
+      // The run starts again, and nothing is locked: a correct code still signs in.
+      expect(failures(email)).toBe(0);
+      const r = await env.accounts.signIn({ email, password }, env.meta());
+      if (r.kind !== "totp-required") throw new Error();
+      remember(r.challenge);
+      const ok = await env.accounts.completeSecondFactor(
+        { challenge: r.challenge, code: totpNow(env, secret) },
+        env.meta(),
+      );
+      remember(ok.session.token);
+    });
+
+    it("a correct code resets the run; turning two-step off counts too", async () => {
+      const { ctx, email, secret } = await (async () => {
+        const s = await signedInWithPassword();
+        const t = await enableTotp(s.ctx);
+        return { ...s, secret: t.secret };
+      })();
+      for (let i = 0; i < 5; i++) await wrongReauth(ctx);
+      for (let i = 0; i < 4; i++)
+        expect(await code(env.accounts.disableTotp(ctx, "111111", env.meta()))).toBe(
+          "UNAUTHORIZED",
+        );
+      expect(failures(email)).toBe(9);
+      await env.accounts.reauthenticate(ctx, { totpCode: totpNow(env, secret) }, env.meta());
+      expect(failures(email)).toBe(0);
+      env.advance(15 * MIN);
+      await wrongReauth(ctx);
+      await env.accounts.settled();
+      expect(failures(email)).toBe(1);
+      expect(alerts(email)).toEqual([]);
+      expect(alertAudits()).toEqual([]);
+      // A password re-authentication is not a code: it neither counts nor resets the run.
+      await env.accounts
+        .reauthenticate(ctx, { password: "wrong password!!" }, env.meta())
+        .catch(() => {});
+      expect(failures(email)).toBe(1);
+    });
+
+    it("at most one email per account per 24 hours, but every run of 10 is audited; the counter survives a restart", async () => {
+      const { ctx, email, password } = await signedInWithPassword();
+      await enableTotp(ctx);
+      const run = async () => {
+        await wrongOnChallenge(email, password, 5);
+        for (let i = 0; i < 5; i++) await wrongReauth(ctx);
+        env.advance(15 * MIN);
+      };
+      await run();
+      await run();
+      await env.accounts.settled();
+      expect(alerts(email)).toHaveLength(1);
+      expect(alertAudits().map((r) => r.detail?.status)).toEqual(["mailed", "mailed_recently"]);
+
+      env.advance(DAY);
+      // The count is in the control database: after a restart (a new service with fresh in-memory limits)
+      // the run goes on where it was.
+      await wrongOnChallenge(email, password, 5);
+      for (let i = 0; i < 4; i++) await wrongReauth(ctx);
+      expect(failures(email)).toBe(9);
+      const restarted = new AccountsService({
+        db: env.db,
+        keys: env.keys,
+        mailer: env.mailer,
+        captcha: staticCaptcha("captcha-ok"),
+        limiter: memoryRateLimiter({ now: () => env.clock.t }),
+        audit: env.audit,
+        workspaces: () => env.workspaces,
+        publicUrl: "https://app.example.test",
+        now: env.now,
+      });
+      expect(await code(restarted.reauthenticate(ctx, { totpCode: "000000" }, env.meta()))).toBe(
+        "UNAUTHORIZED",
+      );
+      await restarted.settled();
+      expect(alerts(email)).toHaveLength(2);
+      expect(alertAudits().map((r) => r.detail?.status)).toEqual([
+        "mailed",
+        "mailed_recently",
+        "mailed",
+      ]);
+    });
+
+    it("the alert uses the security mail budget, so anonymous mail cannot silence it", async () => {
+      const { ctx, email, password } = await signedInWithPassword();
+      await enableTotp(ctx);
+      for (let i = 0; i < 3; i++)
+        await env.accounts.requestPasswordReset(email, "captcha-ok", env.meta());
+      for (let i = 0; i < 3; i++)
+        await env.accounts.signUp(signUpInput(email, newPassword(), null), env.meta());
+      await wrongOnChallenge(email, password, 5);
+      for (let i = 0; i < 5; i++) await wrongReauth(ctx);
+      await env.accounts.settled();
+      expect(alerts(email)).toHaveLength(1);
+    });
   });
 });
 

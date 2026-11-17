@@ -1,21 +1,26 @@
 /**
  * The hosted-mode parts of the app shell, in one lazy chunk (fetched only after the server announces
- * `cloud`): the trial and read-only banners, the workspace switcher, the suspended-workspace page and the
- * re-authentication prompt.
+ * `cloud`): the trial and read-only banners, the workspace switcher, the start-trial page, the
+ * suspended-workspace page and the re-authentication prompt.
  */
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { CircleAlert, Clock, Lock } from "lucide-react";
+import { CircleAlert, Clock, CreditCard, Loader2, Lock, LogOut } from "lucide-react";
+import { Button } from "../../components/ui/button";
 import { Select } from "../../components/ui/select";
 import { toast } from "../../components/ui/toaster";
 import { isExplainedProblem } from "../../lib/api-problems";
 import { useCloudSession } from "../../lib/auth";
 import { cn } from "../../lib/cn";
-import { bannerFor } from "./billing-state";
+import { useState } from "react";
+import { bannerFor, billingView } from "./billing-state";
 import { cloudApi } from "./client";
 import { SUPPORT_EMAIL } from "./legal";
 import { ReauthHost } from "./reauth-dialog";
-import { describeError } from "./ui";
+import { describeError, FormAlert, isCode } from "./ui";
+import { fmtPrice } from "./format";
+import { goToStripe } from "./settings/billing-section";
+import { Loading, LoadError } from "./settings-kit";
 import { nav } from "./next";
 
 const TONE = {
@@ -192,6 +197,117 @@ export function SuspendedPage() {
         >
           Account settings
         </Link>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A workspace that has not started yet (no subscription, so no access): the whole screen until the owner starts
+ * the free trial in Stripe Checkout with a card (or subscribes, when the trial was used). Settings stay reachable
+ * through the navigation (account, sign out, deletion), and invitations through their links.
+ */
+export function StartTrialPage() {
+  const ws = useCloudSession()?.workspace;
+  const qc = useQueryClient();
+  const billing = useQuery({
+    queryKey: ["cloud", "billing"],
+    queryFn: cloudApi.billing,
+    retry: false,
+  });
+  const [error, setError] = useState<string | null>(null);
+  const checkout = useMutation({
+    mutationFn: (lookupKey: string) => cloudApi.checkout(lookupKey),
+    onMutate: () => setError(null),
+    onSuccess: (r) => {
+      if (!goToStripe(r.url)) setError("Checkout sent an address we did not recognise.");
+    },
+    onError: (e) => {
+      if (isCode(e, "ALREADY_SUBSCRIBED") || isCode(e, "CHECKOUT_IN_PROGRESS")) {
+        setError(
+          "A subscription for this workspace is being set up. Refresh the page in a minute.",
+        );
+        void qc.invalidateQueries({ queryKey: ["session"] });
+      } else setError(describeError(e));
+    },
+  });
+  const signOut = useMutation({
+    mutationFn: () => cloudApi.signOut().catch(() => undefined),
+    onSettled: () => {
+      qc.clear();
+      window.location.replace("/");
+    },
+  });
+
+  if (billing.isLoading) return <Loading what="billing" />;
+  if (billing.isError || !billing.data)
+    return (
+      <LoadError error={billing.error} what="Billing" onRetry={() => void billing.refetch()} />
+    );
+  const b = billing.data;
+  const view = billingView(b, new Date(), navigator.language);
+  const owner = b.role === "owner";
+  const offered = [...(b.offered ?? [])].sort(
+    (x, y) => (x.interval === "month" ? -1 : 1) - (y.interval === "month" ? -1 : 1),
+  );
+  return (
+    <div className="mx-auto flex max-w-xl flex-col items-center gap-4 px-6 py-16 text-center">
+      <div className="flex size-11 items-center justify-center rounded-full bg-accent-soft text-accent">
+        <CreditCard className="size-5" aria-hidden />
+      </div>
+      <h1 className="display text-[26px] font-semibold" tabIndex={-1}>
+        {view.headline}
+      </h1>
+      {ws?.name && !owner ? <p className="text-[13px] text-ink-3">{ws.name}</p> : null}
+      {view.body.map((p) => (
+        <p key={p} className="text-[13.5px] leading-relaxed text-ink-2">
+          {p}
+        </p>
+      ))}
+      {error ? <FormAlert>{error}</FormAlert> : null}
+      {owner ? (
+        <div className="flex flex-wrap justify-center gap-2">
+          {offered.map((o) => {
+            const yearly = o.interval === "year";
+            const price = `${fmtPrice(o.unitAmount, o.currency, navigator.language)} a ${yearly ? "year" : "month"}`;
+            return (
+              <Button
+                key={o.lookupKey}
+                variant={yearly ? "secondary" : "primary"}
+                disabled={checkout.isPending}
+                onClick={() => checkout.mutate(o.lookupKey)}
+              >
+                {checkout.isPending && checkout.variables === o.lookupKey ? (
+                  <Loader2 className="animate-spin" />
+                ) : null}
+                {view.trialDays ? `Start trial, ${price}` : `Subscribe, ${price}`}
+              </Button>
+            );
+          })}
+        </div>
+      ) : null}
+      {owner ? (
+        <p className="text-[11.5px] text-ink-3">
+          You enter your card on Stripe&rsquo;s secure page; Glideworth never sees it. Any tax that
+          applies is shown there before you confirm.
+        </p>
+      ) : null}
+      <div className="flex flex-wrap justify-center gap-2 text-[13px]">
+        <Link
+          to="/settings/$section"
+          params={{ section: "account" }}
+          className="rounded-md border border-border bg-surface px-3 py-1.5 font-medium shadow-card hover:bg-surface-2"
+        >
+          Account settings
+        </Link>
+        <button
+          type="button"
+          disabled={signOut.isPending}
+          onClick={() => signOut.mutate()}
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-3 py-1.5 font-medium shadow-card hover:bg-surface-2 disabled:opacity-60"
+        >
+          <LogOut className="size-4" aria-hidden /> Sign out
+        </button>
       </div>
     </div>
   );

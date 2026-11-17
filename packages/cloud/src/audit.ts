@@ -42,6 +42,8 @@ export const CONTROL_AUDIT_EVENTS = [
   "user.totp_disabled",
   "user.recovery_codes_regenerated",
   "user.recovery_codes_used",
+  /** Review finding 8: 10 wrong second-factor codes in a row; `status` says whether the owner was emailed. */
+  "user.second_factor_failures",
   "user.reauthenticated",
   "user.deleted",
   /** Not in spec 6.2: a federated sign-in identity ("Sign in with Google") linked or unlinked. */

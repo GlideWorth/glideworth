@@ -148,7 +148,9 @@ export const BankFileImportBody = z
           createMissing: z
             .boolean()
             .optional()
-            .describe("Create accounts / debts that do not exist yet."),
+            .describe(
+              "Create accounts / debts that do not exist yet. One apply may create at most 1,000; more is a `400 VALIDATION`.",
+            ),
         }),
       ])
       .optional()

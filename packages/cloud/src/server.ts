@@ -16,6 +16,7 @@ import { serve } from "@hono/node-server";
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import type { MiddlewareHandler } from "hono";
 import { beat, CommandWorker, clearBeat, HEARTBEAT_MS } from "./commands.js";
+import { pruneControlData } from "./control/retention.js";
 import { cellHeartbeat } from "./control/schema.js";
 import { type DurableJob, DurableJobs } from "./durable-jobs.js";
 import { createPinger, LIVENESS_MS, type Ping } from "./heartbeat.js";
@@ -158,11 +159,13 @@ export function durableCellJobs<R extends TenantRuntimeBase>(
     {
       name: "maintenance",
       intervalMs: 60 * 60_000,
-      run: () => {
+      run: async () => {
         r.accounts.maintenance();
         r.audit.scrub();
         r.quotas.prune();
-        r.outbox.prune();
+        // The privacy policy's retention limits (control/retention.ts), in bounded batches.
+        const res = await pruneControlData(r.db, { trialDays: r.pricing.trialDays });
+        return { ok: true, count: res.total };
       },
     },
     ...(o.hostTimers ?? [])

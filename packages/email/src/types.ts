@@ -11,10 +11,10 @@ export type TemplateId =
   | "email-change-requested"
   | "signin-alert"
   | "security-change"
+  | "second-factor-failures"
   | "invitation"
   | "member-removed"
   | "trial-ending"
-  | "trial-expired"
   | "renewal-reminder"
   | "payment-receipt"
   | "payment-problem"
@@ -64,6 +64,8 @@ export interface TemplateData {
     /** For `email-changed`: the new address, named in the notice. */
     newEmail?: string;
   };
+  /** Review finding 8: 10 wrong two-step codes in a row. Sent at most once a day per account. */
+  "second-factor-failures": { name: string; at: string; resetUrl: string; securityUrl: string };
   invitation: {
     inviterName: string;
     workspaceName: string;
@@ -73,8 +75,8 @@ export interface TemplateData {
   };
   /** To a person the owner removed from a workspace. Names the workspace only; nothing from inside it. */
   "member-removed": { name: string; workspaceName: string };
-  "trial-ending": { name: string; trialEndsOn: string; billingUrl: string };
-  "trial-expired": { name: string; billingUrl: string };
+  /** A few days before a Stripe trial converts: the date, the first charge and how to cancel. */
+  "trial-ending": { name: string; trialEndsOn: string; amountText: string; billingUrl: string };
   /** Annual renewals only. No amount: the date and a link to the billing page. */
   "renewal-reminder": { name: string; renewsOn: string; billingUrl: string };
   "payment-receipt": { name: string; amountText: string; invoiceUrl: string };
@@ -113,10 +115,10 @@ export const TEMPLATE_CATEGORY: Readonly<Record<TemplateId, EmailCategory>> = Ob
   "email-change-requested": "essential",
   "signin-alert": "essential",
   "security-change": "essential",
+  "second-factor-failures": "essential",
   invitation: "essential",
   "member-removed": "essential",
   "trial-ending": "essential",
-  "trial-expired": "essential",
   "renewal-reminder": "essential",
   "payment-receipt": "essential",
   "payment-problem": "essential",
@@ -167,6 +169,8 @@ export class EmailTransportError extends Error {
     readonly code: string,
     readonly retryable: boolean,
     message: string,
+    /** The provider asked us to wait this long before trying again (rate limits). */
+    readonly retryAfterMs?: number,
   ) {
     super(message);
     this.name = "EmailTransportError";

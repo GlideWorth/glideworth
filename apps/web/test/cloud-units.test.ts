@@ -222,20 +222,88 @@ describe("billing wording for every state", () => {
     role: "owner",
   };
   const now = new Date("2026-11-16T12:00:00Z");
-  it("trialing: days left, no card", () => {
+  const offered: BillingInfo["offered"] = [
+    {
+      lookupKey: "cloud_yearly_v1",
+      interval: "year",
+      unitAmount: 9000,
+      currency: "usd",
+      taxBehavior: "exclusive",
+    },
+    {
+      lookupKey: "cloud_monthly_v1",
+      interval: "month",
+      unitAmount: 900,
+      currency: "usd",
+      taxBehavior: "exclusive",
+    },
+  ];
+  it("trialing (Stripe trial with a card): days left, the first charge and how to cancel", () => {
     const v = billingView(
       {
         ...base,
-        status: "trialing_local",
-        access: { level: "full", reason: "trial", changesAt: "2026-11-26T12:00:00Z" },
-        trialEndsAt: "2026-11-26T12:00:00Z",
+        status: "trialing",
+        lookupKey: "cloud_monthly_v1",
+        offered,
+        access: { level: "full", reason: "trial", changesAt: null },
+        trialEndsAt: "2026-11-23T12:00:00Z",
       },
       now,
       "en-GB",
     );
-    expect(v).toMatchObject({ state: "trialing", trialDaysLeft: 10, action: "subscribe" });
-    expect(v.headline).toBe("Free trial: 10 days left");
-    expect(v.body.join(" ")).toMatch(/No card is needed/);
+    expect(v).toMatchObject({ state: "trialing", trialDaysLeft: 7, action: "portal" });
+    expect(v.headline).toBe("Free trial: 7 days left");
+    expect(v.body.join(" ")).toMatch(
+      /charged US\$9 plus any tax on 23 Nov 2026, and then every month/,
+    );
+    expect(v.body.join(" ")).toMatch(/Manage billing/);
+  });
+  it("a trial cancelled before it ends: never charged, access until the trial end", () => {
+    const v = billingView(
+      {
+        ...base,
+        status: "trialing",
+        cancelAtPeriodEnd: true,
+        access: { level: "full", reason: "trial", changesAt: "2026-11-23T12:00:00Z" },
+        trialEndsAt: "2026-11-23T12:00:00Z",
+      },
+      now,
+      "en-GB",
+    );
+    expect(v).toMatchObject({ state: "cancelling", action: "portal" });
+    expect(v.body[0]).toMatch(/will not be charged/);
+  });
+  it("not started, trial available: the 7-day offer, the price in USD and the first charge date", () => {
+    const v = billingView(
+      {
+        ...base,
+        status: "trialing_local",
+        offered,
+        trialDays: 7,
+        access: { level: "read_only", reason: "no_subscription", changesAt: null },
+      },
+      now,
+      "en-GB",
+    );
+    expect(v).toMatchObject({ state: "not-started", action: "subscribe", trialDays: 7 });
+    expect(v.headline).toBe("Start your 7-day free trial");
+    expect(v.body[0]).toMatch(/US\$9 a month or US\$90 a year, charged in USD/);
+    expect(v.body[1]).toBe(
+      "You will not be charged until 23 Nov 2026. Cancel any time before then in Billing.",
+    );
+  });
+  it("not started, trial already used: charged when subscribing; members are told to ask the owner", () => {
+    const info: BillingInfo = {
+      ...base,
+      status: "trialing_local",
+      offered,
+      trialDays: null,
+      access: { level: "read_only", reason: "no_subscription", changesAt: null },
+    };
+    const v = billingView(info, now, "en-GB");
+    expect(v.headline).toBe("Choose a plan");
+    expect(v.body[0]).toMatch(/already had a free trial/);
+    expect(billingView({ ...info, role: "editor" }, now).body[0]).toMatch(/owner has not started/);
   });
   it("active: renews, manage in the portal", () => {
     const v = billingView(base, now, "en-GB");
@@ -260,8 +328,6 @@ describe("billing wording for every state", () => {
     expect(v).toMatchObject({ state: "past-due", action: "portal" });
   });
   it.each([
-    ["trial_expired", "subscribe", /free trial has ended/],
-    ["no_subscription", "subscribe", /no subscription/],
     ["canceled", "subscribe", /subscription has ended/],
     ["past_due", "portal", /grace period is over/],
     ["unpaid", "portal", /Payment failed/],
@@ -280,7 +346,7 @@ describe("billing wording for every state", () => {
   it("read-only: speaks to the owner directly, and points anyone else to the owner", () => {
     const ro: BillingInfo = {
       ...base,
-      access: { level: "read_only", reason: "trial_expired", changesAt: null },
+      access: { level: "read_only", reason: "canceled", changesAt: null },
     };
     expect(billingView(ro, now, "en-GB").body.join(" ")).toMatch(/Subscribe below to edit again/);
     expect(billingView(ro, now, "en-GB").body.join(" ")).not.toMatch(/The owner can/);
@@ -298,14 +364,21 @@ describe("billing wording for every state", () => {
   });
   it("banners: owner and member get different calls to action", () => {
     const trial = { level: "full", reason: "trial", changesAt: null };
-    expect(bannerFor(trial, "2026-11-19T12:00:00Z", true, now)).toMatchObject({
+    expect(bannerFor(trial, "2026-11-18T12:00:00Z", true, now)).toMatchObject({
       tone: "warning",
-      cta: "Choose a plan",
+      cta: "Billing",
     });
+    expect(bannerFor(trial, "2026-11-18T12:00:00Z", true, now)?.text).toMatch(
+      /card is charged on .* unless you cancel in Billing/,
+    );
     expect(bannerFor(trial, "2026-11-19T12:00:00Z", false, now)?.cta).toBeNull();
     expect(
-      bannerFor({ level: "read_only", reason: "trial_expired", changesAt: null }, null, true),
+      bannerFor({ level: "read_only", reason: "canceled", changesAt: null }, null, true),
     ).toMatchObject({ tone: "danger", cta: "Subscribe" });
+    // Not started: the start-trial page says it all, no banner.
+    expect(
+      bannerFor({ level: "read_only", reason: "no_subscription", changesAt: null }, null, true),
+    ).toBeNull();
     expect(
       bannerFor({ level: "read_only", reason: "past_due", changesAt: null }, null, true)?.cta,
     ).toBe("Fix payment");
@@ -324,7 +397,7 @@ describe("402 and 429 reporting", () => {
     const seen: unknown[] = [];
     const off = onApiProblem((p) => seen.push(p));
     reportApiProblem(402, "ACCOUNT_READ_ONLY", {
-      reason: "trial_expired",
+      reason: "canceled",
       billingUrl: "/settings/billing",
     });
     reportApiProblem(429, "QUOTA_EXCEEDED", {
@@ -337,7 +410,7 @@ describe("402 and 429 reporting", () => {
     reportApiProblem(402, "SOMETHING", null);
     off();
     expect(seen).toEqual([
-      { kind: "read-only", reason: "trial_expired" },
+      { kind: "read-only", reason: "canceled" },
       { kind: "quota", metric: "job", limit: 100, resetsAt: "2026-11-17T00:00:00Z" },
     ]);
   });

@@ -9,7 +9,7 @@ and AI assistants read your plans, run simulations and propose edits safely, aga
 
 Glideworth is an original application. How complete it is, feature by feature, is in
 [docs/PARITY.md](docs/PARITY.md). The same software also runs as a hosted service, Glideworth Cloud, at
-<https://glideworth.com> (free 30-day trial, then $9 a month or $90 a year); everything in this repository is free to run yourself.
+<https://glideworth.com> (7-day free trial with a card, then $9 a month or $90 a year); everything in this repository is free to run yourself.
 
 ## What it does
 

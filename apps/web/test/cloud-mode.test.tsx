@@ -9,6 +9,7 @@ import { cleanup, render, screen, waitFor, within } from "@testing-library/react
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isPublicPath } from "../src/components/layout/app-shell";
 import { CLOUD_SECTION_IDS, sectionsForMode } from "../src/features/settings/sections";
+import { nav } from "../src/features/cloud/next";
 import { createAppRouter } from "../src/router";
 import { apiError, json } from "./cloud-helpers";
 
@@ -182,14 +183,99 @@ describe("cloud", () => {
       ...CLOUD_SIGNED_IN,
       workspace: {
         ...CLOUD_SIGNED_IN.workspace,
-        access: { level: "read_only", reason: "trial_expired", changesAt: null },
+        access: { level: "read_only", reason: "canceled", changesAt: null },
       },
     });
     await open("/plans");
     await waitFor(() =>
-      expect(screen.getByRole("alert").textContent).toMatch(/free trial has ended/),
+      expect(screen.getByRole("alert").textContent).toMatch(/subscription has ended/),
     );
     expect(screen.getByRole("link", { name: "Subscribe" })).toBeTruthy();
+  });
+
+  const NOT_STARTED = {
+    ...CLOUD_SIGNED_IN,
+    workspace: {
+      ...CLOUD_SIGNED_IN.workspace,
+      access: { level: "read_only", reason: "no_subscription", changesAt: null },
+    },
+  };
+  const notStartedBilling =
+    (trialDays: number | null, role = "owner") =>
+    () =>
+      json({
+        status: "trialing_local",
+        trialDays,
+        trialEndsAt: null,
+        access: { level: "read_only", reason: "no_subscription", changesAt: null },
+        role,
+        offered: [
+          {
+            lookupKey: "cloud_monthly_v1",
+            interval: "month",
+            unitAmount: 900,
+            currency: "usd",
+            taxBehavior: "exclusive",
+          },
+          {
+            lookupKey: "cloud_yearly_v1",
+            interval: "year",
+            unitAmount: 9000,
+            currency: "usd",
+            taxBehavior: "exclusive",
+          },
+        ],
+      });
+
+  it("a new owner sees only the start-trial page: the price, the first charge date and the two plans", async () => {
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-11-17T10:00:00Z") });
+    try {
+      const checkout = vi.fn(() =>
+        json({ url: "https://checkout.stripe.com/c/pay/cs_1", reused: false }),
+      );
+      const go = vi.spyOn(nav, "go").mockImplementation(() => undefined);
+      stubFetch(NOT_STARTED, {
+        "GET /api/v1/billing": notStartedBilling(7),
+        "POST /api/v1/billing/checkout": checkout,
+      });
+      await open("/plans");
+      expect(
+        await screen.findByRole("heading", { name: "Start your 7-day free trial" }),
+      ).toBeTruthy();
+      const page = document.querySelector("main")?.textContent ?? "";
+      expect(page).toMatch(/\$9 a month or \$90 a year, charged in USD/);
+      expect(page).toMatch(
+        /You will not be charged until Nov 24, 2026\. Cancel any time before then in Billing\./,
+      );
+      expect(screen.queryByRole("alert")).toBeNull(); // no read-only banner on top
+      expect(screen.getByRole("link", { name: "Account settings" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: /Sign out/ })).toBeTruthy();
+      screen.getByRole("button", { name: "Start trial, $90 a year" }).click();
+      await waitFor(() => expect(checkout).toHaveBeenCalled());
+      await waitFor(() =>
+        expect(go).toHaveBeenCalledWith("https://checkout.stripe.com/c/pay/cs_1"),
+      );
+      go.mockRestore();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a person who already had a trial is told the card is charged at once; members wait for the owner", async () => {
+    stubFetch(NOT_STARTED, { "GET /api/v1/billing": notStartedBilling(null) });
+    await open("/");
+    expect(await screen.findByRole("heading", { name: "Choose a plan" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Subscribe, $9 a month" })).toBeTruthy();
+    cleanup();
+    stubFetch(
+      { ...NOT_STARTED, workspace: { ...NOT_STARTED.workspace, role: "editor" } },
+      { "GET /api/v1/billing": notStartedBilling(7, "editor") },
+    );
+    await open("/");
+    expect(
+      await screen.findByRole("heading", { name: "This workspace has not started yet" }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Start trial/ })).toBeNull();
   });
 
   it("a suspended workspace shows the suspended page instead of the app", async () => {

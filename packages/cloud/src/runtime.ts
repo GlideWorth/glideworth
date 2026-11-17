@@ -22,6 +22,7 @@ import {
   hmacUnsubscribeSigner,
   type Mailer,
   mailgunTransport,
+  resendTransport,
   smtpTransport,
 } from "@glideworth/email";
 import { type CaptchaVerifier, staticCaptcha, turnstileVerifier } from "./abuse/captcha.js";
@@ -183,15 +184,17 @@ export async function createCloudRuntime<R extends TenantRuntimeBase>(
   const mode = env.GLIDEWORTH_EMAIL_TRANSPORT ?? "file";
   const transport: EmailTransport =
     o.overrides?.transport ??
-    (mode === "smtp"
-      ? smtpTransport({ url: env.GLIDEWORTH_SMTP_URL ?? "" })
-      : mode === "mailgun"
-        ? mailgunTransport({
-            apiKey: env.GLIDEWORTH_MAILGUN_API_KEY ?? "",
-            domain: env.GLIDEWORTH_MAILGUN_DOMAIN ?? "",
-            region: env.GLIDEWORTH_MAILGUN_REGION === "us" ? "us" : "eu",
-          })
-        : fileTransport({ dir: resolve(config.dataDir, "mail-outbox") }));
+    (mode === "resend"
+      ? resendTransport({ apiKey: env.GLIDEWORTH_RESEND_API_KEY ?? "" })
+      : mode === "smtp"
+        ? smtpTransport({ url: env.GLIDEWORTH_SMTP_URL ?? "" })
+        : mode === "mailgun"
+          ? mailgunTransport({
+              apiKey: env.GLIDEWORTH_MAILGUN_API_KEY ?? "",
+              domain: env.GLIDEWORTH_MAILGUN_DOMAIN ?? "",
+              region: env.GLIDEWORTH_MAILGUN_REGION === "us" ? "us" : "eu",
+            })
+          : fileTransport({ dir: resolve(config.dataDir, "mail-outbox") }));
   const emailStores = controlEmailStores(db);
   const unsubscribe = hmacUnsubscribeSigner({
     key: deriveKey(config.secretsKey, "email:unsubscribe"),

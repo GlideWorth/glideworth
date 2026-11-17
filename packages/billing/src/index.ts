@@ -15,6 +15,7 @@ export {
 export { FakeStripeError, FakeStripeGateway } from "./gateway/fake.js";
 export { priceView, subscriptionView } from "./gateway/mapping.js";
 export {
+  checkoutSessionParams,
   createStripeClient,
   portalConfigurationParams,
   STRIPE_API_VERSION,
@@ -44,7 +45,6 @@ export {
   CHECKOUT_SESSION_TTL_MS,
   type CheckoutActor,
   MAX_EVENT_ATTEMPTS,
-  TRIAL_CARRY_OVER_MIN_MS,
   WEBHOOK_MAX_BODY_BYTES,
   WEBHOOK_TOLERANCE_SECONDS,
 } from "./service.js";
@@ -66,7 +66,7 @@ export {
   BLOCKS_NEW_CHECKOUT,
   isLive,
   LIVE_STRIPE_STATUSES,
-  newTrialRecord,
+  newAccountRecord,
 } from "./state.js";
 export { type SyncResult, syncPricing, syncWebhookEndpoint, WEBHOOK_DESCRIPTION } from "./sync.js";
 export type {

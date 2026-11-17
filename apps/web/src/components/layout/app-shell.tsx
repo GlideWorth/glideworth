@@ -633,6 +633,9 @@ const WorkspaceSwitcher = lazy(() =>
 const SuspendedPage = lazy(() =>
   import("../../features/cloud/shell-parts").then((m) => ({ default: m.SuspendedPage })),
 );
+const StartTrialPage = lazy(() =>
+  import("../../features/cloud/shell-parts").then((m) => ({ default: m.StartTrialPage })),
+);
 
 /** Cmd/Ctrl+K anywhere toggles the palette; its code is fetched on first use. */
 function CommandPaletteHost() {
@@ -677,11 +680,14 @@ function Frame() {
   useReadOnlySync();
   const focusMode = path.startsWith("/welcome");
   const mode = useMode();
-  const suspended = useCloudSession()?.workspace?.access?.level === "suspended";
-  // A suspended workspace has no data to show; only the account and workspace settings stay reachable.
-  const blocked = suspended && !path.startsWith("/settings");
+  const access = useCloudSession()?.workspace?.access;
+  const suspended = access?.level === "suspended";
+  // Never subscribed: no access until the owner starts the free trial in Checkout.
+  const notStarted = access?.level === "read_only" && access.reason === "no_subscription";
+  // A suspended or not-started workspace has no data to show; only the settings stay reachable.
+  const blocked = (suspended || notStarted) && !path.startsWith("/settings");
 
-  if (focusMode)
+  if (focusMode && !blocked)
     return (
       <div data-app-frame className="min-h-dvh bg-bg text-ink">
         <main id="main" ref={mainRef} tabIndex={-1} className="outline-none">
@@ -713,7 +719,7 @@ function Frame() {
           {path === "/" && !blocked ? <NextSteps /> : null}
           {blocked ? (
             <Suspense fallback={null}>
-              <SuspendedPage />
+              {notStarted ? <StartTrialPage /> : <SuspendedPage />}
             </Suspense>
           ) : (
             <Outlet />

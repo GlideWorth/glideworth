@@ -16,6 +16,7 @@ import {
   removeTempDirs,
   SENTINEL_HOUSEHOLD,
   signedUpBrowser,
+  startTrial,
 } from "./cloud-fixture.js";
 
 let cloud: Cloud;
@@ -42,14 +43,20 @@ const setSub = (id: string, patch: Partial<typeof subscriptions.$inferInsert>) =
 
 describe("entitlements (one function)", () => {
   it("follows the subscription state machine and the account status", async () => {
-    const { accountId } = await signedUpBrowser(cloud);
+    const { accountId, browser } = await signedUpBrowser(cloud, { trial: false });
     const id = accountId as string;
     const e = () => cloud.entitlements.get(id);
-    expect(e()).toMatchObject({ level: "full", reason: "trial", mcpWrites: false });
+    // No access before Checkout, however long the workspace has existed.
+    expect(e()).toMatchObject({ level: "read_only", reason: "no_subscription", mcpWrites: false });
     expect(e().limits.editors).toBe(2);
-    cloud.advance(31 * DAY);
-    expect(e()).toMatchObject({ level: "read_only", reason: "trial_expired" });
-    setSub(id, { status: "active", stripeSubscriptionId: "sub_x", stripeCustomerId: "cus_x" });
+    cloud.advance(3 * DAY);
+    expect(e()).toMatchObject({ level: "read_only", reason: "no_subscription" });
+    await startTrial(cloud, browser);
+    expect(e()).toMatchObject({ level: "full", reason: "trial", changesAt: null });
+    expect(Date.parse(e().trialEndsAt ?? "") - cloud.now().getTime()).toBeGreaterThan(
+      7 * DAY - 1000,
+    );
+    setSub(id, { status: "active" });
     expect(e()).toMatchObject({ level: "full", reason: "active" });
     setSub(id, { status: "past_due", pastDueSince: cloud.now().toISOString() });
     expect(e()).toMatchObject({ level: "full", reason: "past_due_grace" });
@@ -63,19 +70,58 @@ describe("entitlements (one function)", () => {
     expect(cloud.entitlements.get("../x").level).toBe("suspended");
   });
 
-  it("a second sign-up of the same address gets no new trial (read-only until subscribed)", async () => {
+  it("a second sign-up of the same address gets no second trial: Checkout charges at once", async () => {
     const first = await signedUpBrowser(cloud);
     // The first owner deletes the account; the address signs up again.
     await first.browser.post("/api/v1/auth/reauth", { password: first.password });
     expect((await first.browser.del("/api/v1/account")).status).toBe(204);
-    const again = await signedUpBrowser(cloud, { email: first.email });
+    const again = await signedUpBrowser(cloud, { email: first.email, trial: false });
     expect(cloud.entitlements.get(again.accountId as string)).toMatchObject({
       level: "read_only",
-      reason: "trial_expired",
+      reason: "no_subscription",
     });
+    const billing = await again.browser.get("/api/v1/billing");
+    expect(billing.body).toMatchObject({ trialDays: null, access: { reason: "no_subscription" } });
+    const r = await again.browser.post("/api/v1/billing/checkout", {
+      lookupKey: "cloud_monthly_v1",
+    });
+    expect(r.status).toBe(200);
+    const sessionId = String(r.body.url).split("/").at(-1) as string;
+    expect(cloud.fake.sessions.get(sessionId)?.params).toMatchObject({ trialPeriodDays: null });
   });
 
-  it("capScopes: full keeps everything, read-only keeps read+simulate, suspended keeps nothing", () => {
+  it("a new owner gets no access before Checkout: plan routes 402, keys capped to nothing, billing open", async () => {
+    const { accountId, browser } = await signedUpBrowser(cloud, { trial: false });
+    const id = accountId as string;
+    const rt = await cloud.registry.with(id, (r) => r as FakeRuntime);
+    const key = mintKeyIn(rt);
+    // The session keeps no scope at all (the real routes then answer 402 even for reads: apps/api tests).
+    const who = await browser.get("/api/v1/whoami");
+    expect(who.body.principal).toMatchObject({ scopes: [], limitedBy: "entitlement" });
+    const write = await browser.post("/api/v1/households", { id: "hh_1", name: "A", netWorth: 1 });
+    expect(write.status).toBe(402);
+    expect(write.body).toMatchObject({
+      error: { code: "ACCOUNT_READ_ONLY", details: { reason: "no_subscription" } },
+    });
+    const viaKey = await cloud.app.request("/mcp", {
+      method: "POST",
+      headers: { authorization: `Bearer ${key}` },
+    });
+    expect(((await viaKey.json()) as { scopes: string[] }).scopes).toEqual([]);
+    expect(code(() => cloud.policy(id).admitJob("montecarlo"))).toBe("ACCOUNT_READ_ONLY");
+    const billing = await browser.get("/api/v1/billing");
+    expect(billing.status).toBe(200);
+    expect(billing.body).toMatchObject({ trialDays: 7, status: "trialing_local" });
+    // The first Checkout asks Stripe for the 7-day trial; completing it gives full access.
+    await startTrial(cloud, browser);
+    const session = [...cloud.fake.sessions.values()].at(-1);
+    expect(session?.params).toMatchObject({ trialPeriodDays: 7 });
+    const after = await browser.post("/api/v1/households", { id: "hh_1", name: "A", netWorth: 1 });
+    expect(after.status).toBe(201);
+    expect(cloud.entitlements.get(id)).toMatchObject({ level: "full", reason: "trial" });
+  });
+
+  it("capScopes: full keeps everything, read-only keeps read+simulate, suspended and never-subscribed keep nothing", () => {
     const base = {
       accountId: "t",
       limits: {} as never,
@@ -93,6 +139,11 @@ describe("entitlements (one function)", () => {
       limited: true,
     });
     expect(capScopes(all, { ...base, level: "suspended", reason: "suspended" })).toEqual({
+      scopes: [],
+      limited: true,
+    });
+    // Never subscribed (no trial started yet): nothing either.
+    expect(capScopes(all, { ...base, level: "read_only", reason: "no_subscription" })).toEqual({
       scopes: [],
       limited: true,
     });
@@ -116,11 +167,11 @@ describe("read-only mode", () => {
     expect(policy.webhooksSuppressed()).toBe(false);
     expect(policy.admitWebhookDelivery()).toBe(true);
 
-    setSub(id, { trialEndsAt: new Date(cloud.now().getTime() - 1000).toISOString() }); // the trial lapses
+    setSub(id, { status: "canceled" }); // the trial was cancelled and has ended
     const write = await browser.post("/api/v1/households", { id: "hh_3", name: "C", netWorth: 3 });
     expect(write.status).toBe(402);
     expect(write.body).toMatchObject({
-      error: { code: "ACCOUNT_READ_ONLY", details: { reason: "trial_expired" } },
+      error: { code: "ACCOUNT_READ_ONLY", details: { reason: "canceled" } },
     });
     const viaKey = await cloud.app.request("/mcp", {
       method: "POST",

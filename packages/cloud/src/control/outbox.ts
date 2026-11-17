@@ -6,9 +6,10 @@
  *
  * Delivery is at-least-once with a per-message dedupe key; the Mailer's own idempotency key is the row id
  * (providers that honour it deduplicate a send repeated after a crash). Backoff: 1, 5, 15, 60 minutes, then
- * every 6 hours; after 12 attempts the row is `dead` and an error is logged for the operator.
+ * every 6 hours; after 12 attempts the row is `dead` and an error is logged for the operator. Finished rows are
+ * deleted 30 days after sending by the hourly maintenance job (retention.ts).
  */
-import { and, asc, eq, lte, ne } from "drizzle-orm";
+import { and, asc, eq, lte } from "drizzle-orm";
 import { newId } from "../crypto/random.js";
 import type { Mailer, TemplateData, TemplateId } from "../external-types.js";
 import type { Logger } from "../log/index.js";
@@ -74,15 +75,6 @@ export class MailOutbox {
     return this.d.db
       .delete(mailOutbox)
       .where(and(eq(mailOutbox.userId, userId), eq(mailOutbox.status, "pending")))
-      .run().changes;
-  }
-
-  /** Drop finished rows older than 30 days (the body is not needed once sent). */
-  prune(): number {
-    const cutoff = new Date(this.clock().getTime() - 30 * 86_400_000).toISOString();
-    return this.d.db
-      .delete(mailOutbox)
-      .where(and(lte(mailOutbox.createdAt, cutoff), ne(mailOutbox.status, "pending")))
       .run().changes;
   }
 

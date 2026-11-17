@@ -697,7 +697,10 @@ balance import (match by name or `balances.accountMap`; `balances.createMissing`
 accounts keep their `currency`, add an FX rate), and spending is summarised into annual expense events on `planId` (transfers,
 income and card payments are excluded). Account numbers are masked to their last four digits. `text` is limited to
 2 MB (2,000,000 characters), which holds years of statements; a larger file is refused with `400 VALIDATION` before it
-is parsed, so export a shorter date range. The response is
+is parsed, so export a shorter date range. One apply may create at most 1,000 new accounts and debts with
+`balances.createMissing`; a file that would create more is refused with `400 VALIDATION` (the message names the
+limit, `details` carries `limit` and `count`) and nothing is written. A dry run still reports how many it would
+create in `reconciliation.created`. The response is
 `{ format, dryRun, applied, accounts, reconciliation, summary, issues, issueCount, changes? }`; blocking errors are `422 IMPORT_FAILED`
 and change nothing. MCP: `preview_bank_file_import` / `apply_bank_file_import`.
 
@@ -929,7 +932,11 @@ is its own SQLite database, and a credential only ever opens the workspace it be
 | Limits              | `GLIDEWORTH_RATE_LIMIT_PER_MIN` per key                  | per key 600/min (key `<workspace>:<credential>`), per workspace 1,200/min and 100,000/day, jobs (1 running + 10 queued, 300/day, worker time, trials), webhooks, share reads, API keys, storage: the plan |
 | Not registered      |                                                          | `/api/v1/users*`, `/api/v1/auth/{setup,login,logout,logout-all,change-passphrase,accept}`, `/oauth/login`                                                                                                 |
 
-**Read-only workspaces.** When a trial ends unpaid, a payment lapses past its grace period or a subscription is
+**Before the trial starts.** A new workspace has no access until its owner starts the free trial (or subscribes)
+in Stripe Checkout: every tenant route, reads included, answers **`402 ACCOUNT_READ_ONLY`** with
+`details.reason: "no_subscription"`. The cloud routes (auth, account, billing, workspace, invitations) work.
+
+**Read-only workspaces.** When a payment lapses past its grace period or a subscription (or a free trial) is
 cancelled, the workspace becomes read-only and nothing is deleted at that point: every route declared with
 scope `write` answers **`402 ACCOUNT_READ_ONLY`** with `details.reason` and `details.billingUrl`, except the
 routes marked `x-allow-when-read-only` (revoking keys, share links and webhooks, marking notifications read).

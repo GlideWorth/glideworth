@@ -91,6 +91,28 @@ describe("loadCloudConfig", () => {
     expect(c.opsListen).toEqual({ host: "::1", port: 9000 });
   });
 
+  it("accepts the resend transport only with an API key, and refuses unknown transports", () => {
+    const prod = {
+      ...base,
+      NODE_ENV: "production",
+      GLIDEWORTH_BILLING: "stripe",
+      GLIDEWORTH_TURNSTILE_SECRET: "x",
+    };
+    expect(
+      loadCloudConfig({
+        ...prod,
+        GLIDEWORTH_EMAIL_TRANSPORT: "resend",
+        GLIDEWORTH_RESEND_API_KEY: "re_test",
+      }).production,
+    ).toBe(true);
+    expect(() => loadCloudConfig({ ...prod, GLIDEWORTH_EMAIL_TRANSPORT: "resend" })).toThrow(
+      /GLIDEWORTH_RESEND_API_KEY is required/,
+    );
+    expect(() => loadCloudConfig({ ...prod, GLIDEWORTH_EMAIL_TRANSPORT: "sendgrid" })).toThrow(
+      /must be one of file, smtp, mailgun, resend/,
+    );
+  });
+
   it("heartbeat URLs are optional, https only, and reported by name", () => {
     expect(loadCloudConfig({ ...base }).heartbeats).toEqual({
       backup: null,

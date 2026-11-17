@@ -963,6 +963,7 @@ export function householdRoutes({ app, svc }: RouteCtx) {
         "Bank and card statements: balances are reconciled against current finances like the CSV balance import (match by name or `balances.accountMap`, optionally create missing accounts; foreign-currency accounts keep their currency), and transactions are summarised into annual expense events on `planId` (transfers, income and card payments are excluded). Account numbers are masked to their last four digits. " +
         "Preview first (`dryRun: true`, the default); repeat with `dryRun: false` to apply atomically. Blocking errors are `422 IMPORT_FAILED` and nothing is written. " +
         "`text` is limited to 2 MB (2,000,000 characters); a larger file is refused with `400 VALIDATION` before it is parsed. " +
+        "One apply may create at most 1,000 new accounts and debts with `balances.createMissing`; more is a `400 VALIDATION` naming the limit, and nothing is written. A dry run still reports how many it would create (`reconciliation.created`). " +
         IMPORT_THREAD,
       request: {
         params: IdParam,

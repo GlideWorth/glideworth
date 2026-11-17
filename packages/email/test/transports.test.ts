@@ -13,6 +13,7 @@ import {
   memoryTransport,
   type OutgoingEmail,
   render,
+  resendTransport,
   smtpTransport,
 } from "../src/index.js";
 import { type FakeSmtp, startFakeSmtp } from "./fake-smtp.js";
@@ -60,6 +61,14 @@ describe("all transports refuse header injection (defence in depth)", () => {
       apiKey: "k",
       domain: "mg.example.test",
       region: "eu",
+      fetch: async (...a) => {
+        calls.push(a);
+        return new Response("{}", { status: 200 });
+      },
+    }),
+    resend: resendTransport({
+      apiKey: "re_k",
+      minIntervalMs: 0,
       fetch: async (...a) => {
         calls.push(a);
         return new Response("{}", { status: 200 });

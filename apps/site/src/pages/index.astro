@@ -9,7 +9,7 @@ import AgentFlow from '../components/visuals/AgentFlow.astro';
 import ProjectionFan from '../components/visuals/ProjectionFan.astro';
 import TaxYear from '../components/visuals/TaxYear.astro';
 import { page } from '../config/pages';
-import { formatPrice, priceSentence, pricing } from '../config/pricing';
+import { formatPrice, priceSentence, pricing, trialTerms } from '../config/pricing';
 import { site, trialCta } from '../config/site';
 import PageLayout from '../layouts/PageLayout.astro';
 import { facts } from '../lib/facts';
@@ -203,7 +203,7 @@ const proof = [
         <p class="way-price"><span class="num">{formatPrice(pricing.monthly)}</span> a month or <span class="num">{formatPrice(pricing.yearly)}</span> a year</p>
         <p>
           {site.cloudLaunched ? 'We run it' : 'Planned: we run it'}, apply engine and tax-table updates, and host the API and MCP server at a stable HTTPS
-          address with OAuth, so assistants connect without tunnels. {pricing.trialDays}-day free trial, no card needed.
+          address with OAuth, so assistants connect without tunnels. {trialTerms()}.
           {!site.cloudLaunched && ' The hosted service is not open yet; the software is, and you can self-host it today.'}
         </p>
         <Fragment slot="footer"><Button href="/pricing/" arrow>See pricing</Button></Fragment>

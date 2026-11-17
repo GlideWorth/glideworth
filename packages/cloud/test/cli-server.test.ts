@@ -12,7 +12,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { runCli } from "../src/cli/main.js";
 import { beat, CommandWorker } from "../src/commands.js";
 import { openControlDb } from "../src/control/db.js";
-import { accounts, operators, users } from "../src/control/schema.js";
+import { accounts, operatorSessions, operators, users } from "../src/control/schema.js";
 import { newUserId } from "../src/crypto/random.js";
 import { createCloudRuntime } from "../src/runtime.js";
 import { start } from "../src/server.js";
@@ -133,6 +133,64 @@ describe("glideworth-cloud CLI", () => {
     ).toBe(1);
     const dis = io(e);
     expect(await runCli(["operator", "disable", "--email", "ops@example.org"], dis.io)).toBe(0);
+  });
+
+  it("operator reset-totp prints a new secret as one JSON line, like create, and ends the sessions", async () => {
+    const e = env(tempDir());
+    const c = io(e, { stdin: `${strongPassword()}\n` });
+    await runCli(
+      ["operator", "create", "--email", "ops@example.org", "--name", "Ops", "--role", "admin"],
+      c.io,
+    );
+    const created = c.json();
+    remember(String(created.totpSecret));
+    remember(String(created.otpauthUri));
+    const path = controlDbPath(String(e.GLIDEWORTH_DATA_DIR));
+    const before = openControlDb(path);
+    const old = before.db.select().from(operators).get();
+    before.db
+      .insert(operatorSessions)
+      .values({
+        id: "a".repeat(64),
+        operatorId: String(created.operatorId),
+        csrf: "x",
+        expiresAt: new Date(Date.now() + 3600_000).toISOString(),
+      })
+      .run();
+    before.close();
+
+    const r = io(e);
+    expect(await runCli(["operator", "reset-totp", "--email", "OPS@example.org"], r.io)).toBe(0);
+    expect(r.out).toHaveLength(1);
+    expect(r.err).toEqual([]);
+    const out = r.json();
+    remember(String(out.totpSecret));
+    remember(String(out.otpauthUri));
+    expect(Object.keys(out)).toEqual(Object.keys(created));
+    expect(out.operatorId).toBe(created.operatorId);
+    expect(String(out.totpSecret)).toMatch(/^[A-Z2-7]{32}$/);
+    expect(out.totpSecret).not.toBe(created.totpSecret);
+    expect(String(out.otpauthUri)).toContain(`secret=${String(out.totpSecret)}`);
+
+    const { db, close } = openControlDb(path);
+    const op = db.select().from(operators).get();
+    expect(op?.totpSecretEnc).toMatch(/^v1\./);
+    expect(op?.totpSecretEnc).not.toBe(old?.totpSecretEnc);
+    expect(db.select().from(operatorSessions).all()).toEqual([]);
+    close();
+
+    const unknown = io(e);
+    expect(await runCli(["operator", "reset-totp", "--email", "x@example.org"], unknown.io)).toBe(
+      1,
+    );
+    expect(unknown.out).toEqual([]);
+    expect(await runCli(["operator", "reset-totp"], io(e).io)).toBe(1);
+    await runCli(["operator", "disable", "--email", "ops@example.org"], io(e).io);
+    const disabled = io(e);
+    expect(
+      await runCli(["operator", "reset-totp", "--email", "ops@example.org"], disabled.io),
+    ).toBe(1);
+    expect(disabled.out).toEqual([]);
   });
 
   it("backup-now, restore-test, restore-tenant and migrate-all run in-process when no server is running", async () => {

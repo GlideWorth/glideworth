@@ -3,7 +3,7 @@
  * Stripe Checkout for a monthly or yearly plan, the Stripe customer portal, and the cancellation and
  * refund terms (legal-decisions.md section 3). Only the workspace owner gets buttons.
  */
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, CreditCard, ExternalLink, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Badge } from "../../../components/ui/badge";
@@ -20,7 +20,7 @@ import { describeError, FormAlert, isCode, Notice } from "../ui";
 import { useLocale } from "../../../lib/workspace";
 
 /** Only ever send the browser to Stripe's https pages (the server decides the URL; we check it anyway). */
-function goToStripe(url: string): boolean {
+export function goToStripe(url: string): boolean {
   try {
     const u = new URL(url);
     if (u.protocol !== "https:") return false;
@@ -32,6 +32,7 @@ function goToStripe(url: string): boolean {
 }
 
 const STATE_TONE: Record<BillingView["state"], "neutral" | "accent" | "ochre" | "negative"> = {
+  "not-started": "neutral",
   trialing: "accent",
   active: "accent",
   cancelling: "ochre",
@@ -59,11 +60,18 @@ export function BillingSection() {
     refetchInterval: (q) =>
       returned &&
       q.state.data &&
-      q.state.data.access.reason !== "active" &&
+      q.state.data.access.level !== "full" &&
       Date.now() - started < 60_000
         ? 2000
         : false,
   });
+
+  // Once Stripe's confirmation arrives, the shell (banner, start-trial page) follows the new access level.
+  const qc = useQueryClient();
+  const level = billing.data?.access.level;
+  useEffect(() => {
+    if (returned && level === "full") void qc.invalidateQueries({ queryKey: ["session"] });
+  }, [returned, level, qc]);
 
   if (billing.isLoading) return <Loading what="billing" />;
   if (billing.isError || !billing.data)
@@ -114,17 +122,20 @@ function BillingBody({ b, returned }: { b: BillingInfo; returned: boolean }) {
   return (
     <>
       <SectionIntro title="Billing">
-        Your workspace&rsquo;s plan. Glideworth Cloud has a 30-day free trial with no card, then a
+        Your workspace&rsquo;s plan. Glideworth Cloud starts with a 7-day free trial: you add a card
+        at the start and are charged on day 8 unless you cancel before then. After that it is a
         monthly or yearly subscription. If it lapses, your workspace becomes read-only; it is never
         locked or deleted without warning.
       </SectionIntro>
 
       {returned ? (
         <div role="status" aria-live="polite">
-          <Notice tone={b.access.reason === "active" ? "positive" : "neutral"}>
-            {b.access.reason === "active"
-              ? "Thank you. Your subscription is active."
-              : "Thank you. We are waiting for the payment to be confirmed; this page updates by itself."}
+          <Notice tone={b.access.level === "full" ? "positive" : "neutral"}>
+            {b.access.reason === "trial"
+              ? "Thank you. Your free trial has started."
+              : b.access.level === "full"
+                ? "Thank you. Your subscription is active."
+                : "Thank you. We are waiting for Stripe to confirm; this page updates by itself."}
           </Notice>
         </div>
       ) : null}
@@ -166,8 +177,12 @@ function BillingBody({ b, returned }: { b: BillingInfo; returned: boolean }) {
 
       {showPlans ? (
         <SettingsGroup
-          title="Choose a plan"
-          description="Full access to every feature. Cancel any time; it ends at the end of the period you paid for."
+          title={view.trialDays ? `Start your ${view.trialDays}-day free trial` : "Choose a plan"}
+          description={
+            view.trialDays
+              ? "Full access to every feature. Pick how you want to pay after the trial; you are not charged until it ends."
+              : "Full access to every feature. Cancel any time; it ends at the end of the period you paid for."
+          }
         >
           <div className="grid gap-3 px-5 py-4 sm:grid-cols-2">
             {offered.length === 0 ? (
@@ -183,6 +198,7 @@ function BillingBody({ b, returned }: { b: BillingInfo; returned: boolean }) {
                   locale={locale}
                   busy={checkout.isPending && checkout.variables === o.lookupKey}
                   disabled={checkout.isPending}
+                  trial={Boolean(view.trialDays)}
                   onChoose={() => checkout.mutate(o.lookupKey)}
                 />
               ))
@@ -201,7 +217,7 @@ function BillingBody({ b, returned }: { b: BillingInfo; returned: boolean }) {
           <p>
             <span className="font-medium text-ink">Cancel any time</span> in the billing portal. It
             takes effect at the end of the period you have paid for, and you keep full access until
-            then.
+            then. Cancel during the free trial and you are never charged.
           </p>
           <p>
             <span className="font-medium text-ink">14-day refund.</span> Ask within 14 days of any
@@ -236,6 +252,7 @@ function PlanCard({
   locale,
   busy,
   disabled,
+  trial,
   onChoose,
 }: {
   offer: OfferedPrice;
@@ -243,6 +260,8 @@ function PlanCard({
   locale: string;
   busy: boolean;
   disabled: boolean;
+  /** The Checkout starts a free trial: the button says so. */
+  trial: boolean;
   onChoose: () => void;
 }) {
   const yearly = offer.interval === "year";
@@ -276,9 +295,12 @@ function PlanCard({
         variant="primary"
         disabled={disabled}
         onClick={onChoose}
-        aria-label={`Subscribe ${name.toLowerCase()}`}
+        aria-label={
+          trial ? `Start free trial, ${name.toLowerCase()}` : `Subscribe ${name.toLowerCase()}`
+        }
       >
-        {busy ? <Loader2 className="animate-spin" /> : null} Subscribe {name.toLowerCase()}
+        {busy ? <Loader2 className="animate-spin" /> : null}{" "}
+        {trial ? `Start trial, ${name.toLowerCase()}` : `Subscribe ${name.toLowerCase()}`}
       </Button>
     </div>
   );

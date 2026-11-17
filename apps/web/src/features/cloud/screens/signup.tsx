@@ -122,7 +122,7 @@ export function SignUpPage() {
       subtitle={
         invitation
           ? `Use the email address the invitation was sent to. After you confirm it, we take you back to the invitation to join ${invitedTo ?? "the workspace"}.`
-          : "Start a 30-day free trial. No card is needed."
+          : "Create your account, then start a 7-day free trial. You add a card to start it and are charged on day 8 unless you cancel."
       }
       footer={
         <>
@@ -286,8 +286,8 @@ export function CheckEmailPage() {
         invited
           ? `We have sent a message to ${first || "your address"}. Open the link in it to confirm your address, and it will take you to your invitation.`
           : first
-            ? `We have sent a message to ${first}. Open the link in it to confirm your address and start your trial.`
-            : "Open the link in the message we sent to confirm your address and start your trial."
+            ? `We have sent a message to ${first}. Open the link in it to confirm your address.`
+            : "Open the link in the message we sent to confirm your address."
       }
       footer={
         <Link to="/signin" className="text-accent underline underline-offset-2">

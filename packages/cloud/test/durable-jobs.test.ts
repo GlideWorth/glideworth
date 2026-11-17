@@ -200,7 +200,8 @@ describe("durableCellJobs", () => {
       accounts: { maintenance: () => calls.push("accounts") },
       audit: { scrub: () => calls.push("audit") },
       quotas: { prune: () => calls.push("quotas") },
-      outbox: { prune: () => calls.push("outbox") },
+      db: db.db,
+      pricing: { trialDays: 30 },
     };
     return { r: r as unknown as Parameters<typeof durableCellJobs>[0], calls };
   }
@@ -228,7 +229,7 @@ describe("durableCellJobs", () => {
     const jobs = new DurableJobs({ db: db.db, log: testLog, jobs: list, now });
     await jobs.tick();
     expect(calls.sort()).toEqual(
-      ["accounts", "audit", "outbox", "prune", "quotas", "sweep", "verify:5"].sort(),
+      ["accounts", "audit", "prune", "quotas", "sweep", "verify:5"].sort(),
     );
     expect(hostRun).toHaveBeenCalledOnce();
     expect(pings.sort()).toEqual(["backup:true", "restoreTest:true"]);

@@ -666,7 +666,33 @@ export const strongPassword = () =>
   remember(`correct horse ${Math.random().toString(36).slice(2)} battery`);
 
 /** Sign up and verify through the HTTP routes; returns a signed-in browser. */
-export async function signedUpBrowser(cloud: Cloud, o: { email?: string; name?: string } = {}) {
+/**
+ * The owner starts the free trial as in production: Checkout through the route, completed in the fake Stripe (card
+ * given), and Stripe's events delivered to the signed webhook. Afterwards the workspace is `trialing`.
+ */
+export async function startTrial(cloud: Cloud, owner: Browser, lookupKey = "cloud_monthly_v1") {
+  const r = await owner.post("/api/v1/billing/checkout", { lookupKey });
+  if (r.status !== 200) throw new Error(`checkout failed ${r.status} ${r.text}`);
+  const sessionId = String(r.body.url).split("/").at(-1) as string;
+  for (const ev of cloud.fake.completeCheckout(sessionId)) {
+    const { body, header } = cloud.fake.sign(ev, WEBHOOK_SECRET);
+    const w = await cloud.app.request("/stripe/webhook", {
+      method: "POST",
+      headers: { "stripe-signature": header, "content-type": "application/json" },
+      body,
+    });
+    if (w.status !== 200) throw new Error(`webhook failed ${w.status}`);
+  }
+}
+
+/**
+ * Sign up and verify; an owner then starts the free trial (`startTrial`), since a new workspace has no access
+ * before Checkout. `trial: false` stops before Checkout.
+ */
+export async function signedUpBrowser(
+  cloud: Cloud,
+  o: { email?: string; name?: string; trial?: boolean } = {},
+) {
   const b = new Browser(cloud.app);
   const email = o.email ?? uniqueEmail();
   const password = strongPassword();
@@ -688,5 +714,6 @@ export async function signedUpBrowser(cloud: Cloud, o: { email?: string; name?: 
   const status = await b.get("/api/v1/auth/status");
   const ws = status.body.workspace as { id: string } | null;
   const user = status.body.user as { id: string };
+  if (ws && o.trial !== false) await startTrial(cloud, b);
   return { browser: b, email, password, accountId: ws?.id ?? null, userId: user.id };
 }

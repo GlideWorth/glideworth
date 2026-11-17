@@ -1,0 +1,1 @@
+ALTER TABLE `subscriptions` ADD `trial_available` integer DEFAULT false NOT NULL;

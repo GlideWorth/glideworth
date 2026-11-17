@@ -10,13 +10,13 @@ import { memberRemoved } from "./member-removed.js";
 import { passwordReset } from "./password-reset.js";
 import { paymentProblem } from "./payment-problem.js";
 import { paymentReceipt } from "./payment-receipt.js";
+import { secondFactorFailures } from "./second-factor-failures.js";
 import { securityChange } from "./security-change.js";
 import { renewalReminder } from "./renewal-reminder.js";
 import { signinAlert } from "./signin-alert.js";
 import { signupExistingAccount } from "./signup-existing-account.js";
 import { subscriptionCanceled } from "./subscription-canceled.js";
 import { trialEnding } from "./trial-ending.js";
-import { trialExpired } from "./trial-expired.js";
 import { userAccountDeleted } from "./user-account-deleted.js";
 import { verifyEmail } from "./verify-email.js";
 
@@ -33,10 +33,10 @@ export const TEMPLATES: { readonly [K in TemplateId]: TemplateFn<K> } = {
   "email-change-requested": emailChangeRequested,
   "signin-alert": signinAlert,
   "security-change": securityChange,
+  "second-factor-failures": secondFactorFailures,
   invitation,
   "member-removed": memberRemoved,
   "trial-ending": trialEnding,
-  "trial-expired": trialExpired,
   "renewal-reminder": renewalReminder,
   "payment-receipt": paymentReceipt,
   "payment-problem": paymentProblem,

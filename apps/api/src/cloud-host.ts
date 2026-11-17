@@ -8,7 +8,8 @@
  *   runDue        the global scheduler's check-in for one workspace (+ the check-in email, no figures)
  *   createApp     the public app: cloud routes, `tenantAuth` on `/api/*` and `/mcp`, the routed share link
  *                 route, OAuth with the control-plane client registry and a fixed issuer, the local docs page
- *   timers        the retention sweep (terms: unpaid and cancelled workspaces deleted after 12 months)
+ *   timers        the retention sweep (terms: unpaid and cancelled workspaces deleted after 12 months), renewal
+ *                 reminders, and the daily trim of each workspace's audit log to 400 days
  */
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -35,7 +36,7 @@ import { DOCS_CSP, renderApiReference } from "./docs-page.js";
 import type { JobExecutor } from "./jobs/executor.js";
 import { type Logger, setLogger } from "./log.js";
 import { renewalReminderSweep } from "./renewals.js";
-import { retentionSweep } from "./retention.js";
+import { retentionSweep, workspaceAuditSweep } from "./retention.js";
 import { OAuthService } from "./services/oauth.js";
 import {
   type CheckinRunSummary,
@@ -233,6 +234,11 @@ export function createCloudHost(o: CloudHostOptions = {}): CloudHost<TenantRunti
           name: "renewal-reminders",
           ms: 60 * 60_000,
           run: () => renewalReminderSweep(runtime),
+        },
+        {
+          name: "workspace-audit-prune",
+          ms: 24 * 60 * 60_000,
+          run: () => workspaceAuditSweep(runtime),
         },
       ];
     },

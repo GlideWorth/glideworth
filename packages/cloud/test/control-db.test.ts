@@ -170,7 +170,8 @@ describe("controlBillingStore", () => {
     status: "trialing_local",
     productId: "gw_cloud",
     priceLookupKey: null,
-    trialEndsAt: "2026-12-16T00:00:00.000Z",
+    trialEndsAt: null,
+    trialAvailable: true,
     stripeCustomerId: null,
     stripeSubscriptionId: null,
     currentPeriodEnd: null,
@@ -227,6 +228,17 @@ describe("controlBillingStore", () => {
     expect(store.claimNotice("taaaaaaaaaaaaaaa", "trial-ending", "2026-12-16")).toBe(false);
     expect(store.claimNotice("taaaaaaaaaaaaaaa", "trial-ending", "2027-01-16")).toBe(true);
 
+    // Only a Stripe trial counts (a workspace that never started one has no trial end).
+    expect(store.accountsWithTrialEndingBefore("2026-12-17T00:00:00.000Z")).toEqual([]);
+    store.saveSubscription(
+      rec({
+        status: "trialing",
+        trialEndsAt: "2026-12-16T00:00:00.000Z",
+        stripeCustomerId: "cus_t",
+        stripeSubscriptionId: "sub_t",
+        stripeUpdated: 1,
+      }),
+    );
     expect(store.accountsWithTrialEndingBefore("2026-12-17T00:00:00.000Z")).toEqual([
       "taaaaaaaaaaaaaaa",
     ]);

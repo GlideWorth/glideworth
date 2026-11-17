@@ -288,6 +288,34 @@ This is a service email about your account, so you cannot unsubscribe from it.
 "
 `;
 
+exports[`templates > second-factor-failures > text snapshot 1`] = `
+"Subject: Someone is guessing your Glideworth two-step code
+
+Glideworth
+
+Change your password now
+
+Hello Sam Example,
+
+Someone entered the wrong two-step code 10 times. They have your password. Change it now.
+
+The last wrong code was entered at 16 November 2026, 09:14 UTC.
+
+Reset your password:
+https://app.example.test/forgot-password?t=sample-token
+
+A new password stops them trying again and signs out every other device. The wrong codes kept them out, so they have not signed in with them.
+
+Check your security settings and signed-in devices:
+https://app.example.test/settings/security?t=sample-token
+
+--
+Glideworth
+Questions? Write to support@example.test.
+This is a service email about your account, so you cannot unsubscribe from it.
+"
+`;
+
 exports[`templates > security-change > text snapshot 1`] = `
 "Subject: A security setting changed on your Glideworth account
 
@@ -392,36 +420,15 @@ exports[`templates > trial-ending > text snapshot 1`] = `
 
 Glideworth
 
-Your trial ends soon
+Your free trial ends soon
 
 Hello Sam Example,
 
-Your free trial ends on 23 November 2026.
+Your free trial of Glideworth Cloud ends on 23 November 2026. On that day we will charge $9.00 USD a month, plus any tax that applies, to the card you gave when you started the trial. The subscription then renews until you cancel it.
 
-After that your workspace becomes read-only: you can still look at your plans and export your data, but you cannot change anything. Nothing is deleted.
+If you do not want to continue, cancel before 23 November 2026 on your billing page (Manage billing, then Cancel subscription). You will not be charged, and you keep full access until the trial ends.
 
-Subscribe to keep editing:
-https://app.example.test/billing?t=sample-token
-
---
-Glideworth
-Questions? Write to support@example.test.
-This is a service email about your account, so you cannot unsubscribe from it.
-"
-`;
-
-exports[`templates > trial-expired > text snapshot 1`] = `
-"Subject: Your Glideworth trial has ended
-
-Glideworth
-
-Your trial has ended
-
-Hello Sam Example,
-
-Your free trial has ended, so your workspace is now read-only. You can still look at your plans and export your data. Nothing has been deleted.
-
-Subscribe to keep editing:
+Open your billing page:
 https://app.example.test/billing?t=sample-token
 
 --

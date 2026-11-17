@@ -97,6 +97,38 @@ export class OperatorService {
     return { id, totpSecret: secret, otpauthUri: otpauthUri(secret, `operator ${email}`) };
   }
 
+  /**
+   * CLI only, for an operator who lost their authenticator: a new TOTP secret for an existing, enabled
+   * operator, sealed as `create` seals it. The old secret stops working at once and every session of that
+   * operator ends. Returns the secret and URI once, like `create`.
+   */
+  resetTotp(email: string): { id: string; totpSecret: string; otpauthUri: string } {
+    const norm = normalizeEmail(email);
+    if (!norm) throw new CloudError(400, "VALIDATION", "a valid email address is required");
+    const op = this.d.db.select().from(operators).where(eq(operators.email, norm)).get();
+    if (!op) throw new CloudError(404, "NOT_FOUND", "no operator with that email");
+    if (op.disabledAt) throw new CloudError(409, "CONFLICT", "that operator is disabled");
+    const secret = newTotpSecret();
+    const ended = this.d.db.transaction((tx) => {
+      tx.update(operators)
+        .set({
+          totpSecretEnc: this.d.keys.seal(TOTP_PURPOSE, Buffer.from(secret, "utf8")),
+          totpLastStep: null,
+        })
+        .where(eq(operators.id, op.id))
+        .run();
+      return tx.delete(operatorSessions).where(eq(operatorSessions.operatorId, op.id)).run()
+        .changes;
+    });
+    this.d.audit.record({
+      actorType: "system",
+      actorId: null,
+      event: "operator.action",
+      detail: { action: "operator_totp_reset", objectId: op.id, count: ended },
+    });
+    return { id: op.id, totpSecret: secret, otpauthUri: otpauthUri(secret, `operator ${norm}`) };
+  }
+
   disable(email: string): boolean {
     const norm = normalizeEmail(email);
     if (!norm) return false;

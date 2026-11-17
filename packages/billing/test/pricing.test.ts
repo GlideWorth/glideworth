@@ -26,9 +26,9 @@ function issuesOf(value: unknown): Array<{ path: string; message: string }> {
 }
 
 describe("pricing.example.json", () => {
-  it("matches the owner decisions: $9/month, $90/year, 30-day trial, 14-day grace, offered both", () => {
+  it("matches the owner decisions: $9/month, $90/year, 7-day trial, 14-day grace, offered both", () => {
     const cfg = pricing();
-    expect(cfg.trialDays).toBe(30);
+    expect(cfg.trialDays).toBe(7);
     expect(cfg.pastDueGraceDays).toBe(14);
     expect(cfg.trialEndingNoticeDays).toBe(3);
     expect(cfg.trialProductId).toBe("gw_cloud");

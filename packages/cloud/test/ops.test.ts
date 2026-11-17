@@ -7,7 +7,7 @@ import type { AddressInfo } from "node:net";
 import { serve } from "@hono/node-server";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { accounts, auditEvents } from "../src/control/schema.js";
+import { accounts, auditEvents, operators } from "../src/control/schema.js";
 import { base32Decode } from "../src/crypto/random.js";
 import { hotp, totpStep } from "../src/crypto/totp.js";
 import { createOpsApp } from "../src/ops/app.js";
@@ -199,6 +199,58 @@ describe("listener and sign-in", () => {
     cloud.advance(31 * 60_000);
     expect((await c.get("/")).location).toBe("/login");
   });
+
+  it("resetTotp: a new sealed secret, the old one stops working, every session ends, audited", async () => {
+    const svc = new OperatorService({
+      db: cloud.db,
+      keys: cloud.keys,
+      limiter: cloud.limiter,
+      audit: cloud.audit,
+      now: cloud.now,
+    });
+    const op = await operator();
+    const other = await operator();
+    const c = new OpsClient(opsBase);
+    await c.login({ ...op, code: op.code() });
+    const o = new OpsClient(opsBase);
+    await o.login({ ...other, code: other.code() });
+    expect((await c.get("/")).status).toBe(200);
+    const before = cloud.db.select().from(operators).where(eq(operators.id, op.id)).get();
+
+    const r = svc.resetTotp(op.email.toUpperCase());
+    remember(r.totpSecret);
+    expect(r.id).toBe(op.id);
+    expect(r.totpSecret).toMatch(/^[A-Z2-7]{32}$/);
+    expect(r.otpauthUri).toContain(`secret=${r.totpSecret}`);
+    const after = cloud.db.select().from(operators).where(eq(operators.id, op.id)).get();
+    expect(after?.totpSecretEnc).toMatch(/^v1\./);
+    expect(after?.totpSecretEnc).not.toBe(before?.totpSecretEnc);
+    expect(after?.totpSecretEnc).not.toContain(r.totpSecret);
+    expect(after?.totpLastStep).toBeNull();
+
+    // The operator's session is gone; another operator's is not.
+    expect((await c.get("/")).location).toBe("/login");
+    expect((await o.get("/")).status).toBe(200);
+    // A code from the old secret no longer signs in; one from the new secret does.
+    cloud.advance(60_000);
+    expect((await new OpsClient(opsBase).login({ ...op, code: op.code() })).status).toBe(401);
+    const fresh = hotp(base32Decode(r.totpSecret) as Uint8Array, totpStep(cloud.now().getTime()));
+    expect((await new OpsClient(opsBase).login({ ...op, code: fresh })).status).toBe(303);
+
+    const rows = cloud.db
+      .select()
+      .from(auditEvents)
+      .where(eq(auditEvents.event, "operator.action"))
+      .all()
+      .filter((e) => (e.detail as { action?: string } | null)?.action === "operator_totp_reset");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.detail).toEqual({ action: "operator_totp_reset", objectId: op.id, count: 1 });
+    expect(JSON.stringify(rows)).not.toContain(r.totpSecret);
+
+    expect(() => svc.resetTotp("nobody@example.org")).toThrow(/no operator/);
+    svc.disable(other.email);
+    expect(() => svc.resetTotp(other.email)).toThrow(/disabled/);
+  });
 });
 
 describe("pages and actions", () => {
@@ -264,7 +316,7 @@ describe("pages and actions", () => {
     expect((await owner.browser.get("/api/v1/whoami")).status).toBe(403);
     await c.get(`/workspaces/${id}`);
     expect((await c.post(`/workspaces/${id}/unsuspend`)).status).toBe(303);
-    expect((await c.post(`/workspaces/${id}/extend-trial`, { days: "7" })).status).toBe(303);
+    expect((await c.post(`/workspaces/${id}/extend-trial`, { days: "7" })).status).toBe(404);
     expect((await c.post(`/workspaces/${id}/comp`, { until: "2027-01-01" })).status).toBe(303);
     const events = cloud.db
       .select()
@@ -278,7 +330,6 @@ describe("pages and actions", () => {
         ["workspace.suspended", null],
         ["operator.action", "suspend"],
         ["operator.action", "unsuspend"],
-        ["operator.action", "extend_trial"],
         ["operator.action", "comp"],
       ]),
     );

@@ -137,6 +137,13 @@ export const ACCOUNT_LIMITS = {
   signinFailedAudit: [5, HOUR],
 } as const;
 
+/**
+ * Review finding 8 (owner decision 2026-11-17): after this many wrong second-factor codes in a row (sign-in,
+ * re-authentication and turning two-step off all count; a correct code starts the run again), the owner is
+ * emailed, at most once per `alertEvery`. No lock-out: the in-memory limits above stay as they are.
+ */
+export const SECOND_FACTOR_ALERT = { failures: 10, alertEvery: DAY } as const;
+
 const NAME_MAX = 100;
 const DEFAULT_WORKSPACE_NAME = "My workspace";
 const TERMS_RE = /^[A-Za-z0-9._-]{1,32}$/;
@@ -720,8 +727,10 @@ export class AccountsService {
     }
     if (!ok) {
       this.auditSigninFailed(user.id, m, method);
+      this.secondFactorFailed(user, m, method);
       throw wrongCode();
     }
+    this.secondFactorPassed(user.id);
     // Claim the challenge itself (single use, even if two requests raced with two valid codes).
     const claimed = this.db
       .update(userTokens)
@@ -839,6 +848,7 @@ export class AccountsService {
     } else throw validation("password or totpCode is required");
     if (!ok) {
       this.auditSigninFailed(user.id, m, method);
+      if (method === "totp" && user.totpEnabledAt) this.secondFactorFailed(user, m, method);
       throw method === "totp"
         ? wrongCode()
         : new CloudError(401, "UNAUTHORIZED", "the password is wrong");
@@ -849,6 +859,7 @@ export class AccountsService {
       .where(and(eq(sessions.id, s.sessionId), eq(sessions.userId, s.userId)))
       .get();
     if (!old) throw new CloudError(401, "UNAUTHORIZED", "sign in again");
+    if (method === "totp") this.secondFactorPassed(user.id);
     const issued = this.db.transaction(() => {
       this.db.delete(sessions).where(eq(sessions.id, old.id)).run();
       return this.issueSession(user.id, m, {
@@ -1300,6 +1311,7 @@ export class AccountsService {
         : this.consumeRecoveryCode(user.id, code, now);
     if (!ok) {
       this.auditSigninFailed(user.id, m, "totp");
+      this.secondFactorFailed(user, m, "totp");
       throw wrongCode();
     }
     this.db.transaction((tx) => {
@@ -1308,6 +1320,7 @@ export class AccountsService {
           totpSecretEnc: null,
           totpEnabledAt: null,
           totpLastStep: null,
+          secondFactorFailures: 0,
           updatedAt: now.toISOString(),
         })
         .where(eq(users.id, user.id))
@@ -1541,8 +1554,10 @@ export class AccountsService {
       .delete(sessions)
       .where(or(lt(sessions.expiresAt, now.toISOString()), lt(sessions.lastSeenAt, idle)))
       .run().changes;
-    // Federated sign-in state (federation/flows.ts): single use, minutes long.
-    this.db.delete(oidcFlows).where(lt(oidcFlows.expiresAt, dayAgo)).run();
+    // Federated sign-in state (federation/flows.ts): single use, minutes long. Deleted 12 hours after it expires,
+    // so with an hourly run it is gone within a day (privacy policy section 7).
+    const halfDayAgo = new Date(now.getTime() - DAY / 2).toISOString();
+    this.db.delete(oidcFlows).where(lt(oidcFlows.expiresAt, halfDayAgo)).run();
     return { users: removedUsers, tokens, sessions: sess };
   }
 
@@ -1867,6 +1882,79 @@ export class AccountsService {
       userAgent: m.userAgent,
       detail: { method },
     });
+  }
+
+  /**
+   * Review finding 8: one more wrong second-factor code in a row. Every `SECOND_FACTOR_ALERT.failures`-th one
+   * starts the run again, is audited (`user.second_factor_failures`) and emails the owner unless an alert went
+   * out in the last 24 hours. The counter lives in `users`, so a restart does not reset it, and the update,
+   * reset and claim of the alert happen in one transaction, so two racing requests cannot both send it.
+   */
+  private secondFactorFailed(user: UserRow, m: RequestMeta, method: "totp" | "recovery"): void {
+    const now = this.clock();
+    const since = new Date(now.getTime() - SECOND_FACTOR_ALERT.alertEvery).toISOString();
+    const outcome = this.db.transaction((tx) => {
+      const row = tx
+        .update(users)
+        .set({ secondFactorFailures: sql`${users.secondFactorFailures} + 1` })
+        .where(eq(users.id, user.id))
+        .returning({ failures: users.secondFactorFailures })
+        .get();
+      if (!row || row.failures < SECOND_FACTOR_ALERT.failures) return null;
+      tx.update(users).set({ secondFactorFailures: 0 }).where(eq(users.id, user.id)).run();
+      const claimed = tx
+        .update(users)
+        .set({ secondFactorAlertAt: now.toISOString() })
+        .where(
+          and(
+            eq(users.id, user.id),
+            or(isNull(users.secondFactorAlertAt), lt(users.secondFactorAlertAt, since)),
+          ),
+        )
+        .run();
+      return { mail: claimed.changes === 1 };
+    });
+    if (!outcome) return;
+    this.d.audit.record({
+      actorType: "system",
+      actorId: null,
+      subjectUserId: user.id,
+      event: "user.second_factor_failures",
+      ip: m.ip,
+      userAgent: m.userAgent,
+      detail: {
+        count: SECOND_FACTOR_ALERT.failures,
+        method,
+        status: outcome.mail ? "mailed" : "mailed_recently",
+      },
+    });
+    this.log.warn("auth.second_factor_failures", {
+      userId: user.id,
+      status: outcome.mail ? "mailed" : "mailed_recently",
+    });
+    if (!outcome.mail) return;
+    this.sendMail(
+      { email: user.email, name: user.name },
+      user.emailNormalized,
+      "second-factor-failures",
+      user.id,
+      {
+        name: user.name,
+        at: now.toISOString(),
+        resetUrl: `${this.publicUrl}/forgot-password`,
+        securityUrl: `${this.publicUrl}/settings/security`,
+      },
+      "security",
+    );
+  }
+
+  /** A correct second-factor code: the run of wrong ones starts again (one write, only when there was a run). */
+  private secondFactorPassed(userId: string): void {
+    this.db
+      .update(users)
+      .set({ secondFactorFailures: 0 })
+      .where(and(eq(users.id, userId), ne(users.secondFactorFailures, 0)))
+      .run();
   }
 
   private securityMail(user: UserRow, change: TemplateData["security-change"]["change"]): void {

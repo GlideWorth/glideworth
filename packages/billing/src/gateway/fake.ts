@@ -50,7 +50,7 @@ interface FakeSession {
   priceId: string;
   client_reference_id: string;
   metadata: Record<string, string>;
-  trialEnd: number | null;
+  trialPeriodDays: number | null;
   status: "open" | "complete" | "expired";
   payment_status: "unpaid" | "paid" | "no_payment_required";
   subscription: string | null;
@@ -88,7 +88,7 @@ const clone = <T>(v: T): T => structuredClone(v);
 
 /**
  * In-memory Stripe for tests (design 4.7). Implements the gateway contract (including the idempotency-key
- * semantics and the Checkout `trial_end` 48-hour rule) and offers helpers that move subscriptions through their
+ * semantics and Checkout's `trial_period_days` range) and offers helpers that move subscriptions through their
  * lifecycle and return the events Stripe would send. `sign()` produces a correctly signed request for any event.
  */
 export class FakeStripeGateway implements StripeGateway, WebhookEndpointAdmin {
@@ -337,12 +337,13 @@ export class FakeStripeGateway implements StripeGateway, WebhookEndpointAdmin {
       customerId: string;
       priceId: string;
       accountId: string;
-      trialEnd: number | null;
+      trialPeriodDays: number | null;
       successUrl: string;
       cancelUrl: string;
       allowPromotionCodes: boolean;
       collectTaxIds: boolean;
       expiresAt?: number;
+      currency: string;
     },
     idempotencyKey: string,
   ) {
@@ -352,10 +353,12 @@ export class FakeStripeGateway implements StripeGateway, WebhookEndpointAdmin {
       if (!customer || customer.deleted) throw missing("No such customer");
       const price = this.prices.get(p.priceId);
       if (!price?.active) throw invalid("Price is not active");
-      // docs.stripe.com/api/checkout/sessions/create: subscription_data.trial_end "Has to be at least 48 hours in
-      // the future."
-      if (p.trialEnd !== null && p.trialEnd < this.nowSeconds() + 48 * 3600) {
-        throw invalid("subscription_data[trial_end] must be at least 48 hours in the future");
+      // docs.stripe.com/api/checkout/sessions/create: subscription_data.trial_period_days is 1 to 730.
+      if (
+        p.trialPeriodDays !== null &&
+        (!Number.isInteger(p.trialPeriodDays) || p.trialPeriodDays < 1 || p.trialPeriodDays > 730)
+      ) {
+        throw invalid("subscription_data[trial_period_days] must be between 1 and 730");
       }
       // docs.stripe.com/api/checkout/sessions/create: expires_at is 30 minutes to 24 hours after creation.
       if (
@@ -373,7 +376,7 @@ export class FakeStripeGateway implements StripeGateway, WebhookEndpointAdmin {
         priceId: p.priceId,
         client_reference_id: p.accountId,
         metadata: { account_id: p.accountId },
-        trialEnd: p.trialEnd,
+        trialPeriodDays: p.trialPeriodDays,
         status: "open",
         payment_status: "unpaid",
         subscription: null,
@@ -394,7 +397,12 @@ export class FakeStripeGateway implements StripeGateway, WebhookEndpointAdmin {
     if (!session) throw missing("No such checkout session");
     if (session.status !== "open") return { status: session.status };
     session.status = "expired";
-    const { params: _params, priceId: _priceId, trialEnd: _trialEnd, ...sessionObject } = session;
+    const {
+      params: _params,
+      priceId: _priceId,
+      trialPeriodDays: _trial,
+      ...sessionObject
+    } = session;
     this.emit("checkout.session.expired", this.asObject(sessionObject));
     return { status: "expired" };
   }
@@ -569,7 +577,8 @@ export class FakeStripeGateway implements StripeGateway, WebhookEndpointAdmin {
   }
 
   /**
-   * Completes an open Checkout Session as if the customer paid (or started the carried-over trial).
+   * Completes an open Checkout Session as if the customer paid (or, with `trialPeriodDays`, started the trial;
+   * the trial ends that many days after completion, as in Stripe).
    * Emits `customer.subscription.created`, `invoice.paid`, `checkout.session.completed`.
    */
   completeCheckout(sessionId: string, o: { trialEnd?: number } = {}): StripeEventView[] {
@@ -580,7 +589,8 @@ export class FakeStripeGateway implements StripeGateway, WebhookEndpointAdmin {
     if (!price?.lookup_key) throw missing("No such price");
     const interval = price.recurring?.interval === "year" ? "year" : "month";
     const now = this.nowSeconds();
-    const trialEnd = o.trialEnd ?? session.trialEnd;
+    const trialEnd =
+      o.trialEnd ?? (session.trialPeriodDays !== null ? now + session.trialPeriodDays * DAY : null);
     const id = this.id("sub");
     const sub: FakeSubscription = {
       id,
@@ -608,7 +618,12 @@ export class FakeStripeGateway implements StripeGateway, WebhookEndpointAdmin {
     session.status = "complete";
     session.subscription = id;
     session.payment_status = trialEnd !== null ? "no_payment_required" : "paid";
-    const { params: _params, priceId: _priceId, trialEnd: _trialEnd, ...sessionObject } = session;
+    const {
+      params: _params,
+      priceId: _priceId,
+      trialPeriodDays: _trial,
+      ...sessionObject
+    } = session;
     return [
       this.emit("customer.subscription.created", sub),
       this.emit("invoice.paid", this.asObject(invoice)),

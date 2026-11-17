@@ -13,7 +13,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { checkinEmailData } from "../src/cloud-host.js";
 import { renderApiReference } from "../src/docs-page.js";
 import { renewalReminderSweep } from "../src/renewals.js";
-import { retentionSweep, twelveMonthsAfter } from "../src/retention.js";
+import { retentionSweep, twelveMonthsAfter, workspaceAuditSweep } from "../src/retention.js";
 import {
   addMember,
   apiKey,
@@ -286,7 +286,7 @@ describe("API keys from a browser session", () => {
   });
 });
 
-describe("retention (terms: deleted 12 months after an unpaid trial or a cancellation)", () => {
+describe("retention (terms: deleted 12 months after a cancelled trial or subscription ends)", () => {
   const sub = (
     accountId: string,
     patch: Partial<typeof controlSchema.subscriptions.$inferInsert>,
@@ -307,7 +307,9 @@ describe("retention (terms: deleted 12 months after an unpaid trial or a cancell
   it("warns 30 and 7 days before, never earlier than promised, then deletes", async () => {
     const owner = await signUp(cloud, { name: "Lapsed Owner" });
     const id = owner.accountId as string;
-    sub(id, { trialEndsAt: "2025-01-01T00:00:00.000Z" });
+    // The free trial was cancelled before its first charge and ended on 1 January 2025.
+    const ended = "2025-01-01T00:00:00.000Z";
+    sub(id, { status: "canceled", trialEndsAt: ended, currentPeriodEnd: ended, canceledAt: ended });
     expect(twelveMonthsAfter("2025-01-01T00:00:00.000Z").toISOString()).toBe(
       "2026-01-01T00:00:00.000Z",
     );
@@ -345,7 +347,8 @@ describe("retention (terms: deleted 12 months after an unpaid trial or a cancell
   it("a first sweep long after the date still warns first (never deletes without both warnings)", async () => {
     const owner = await signUp(cloud, { name: "Old Lapsed" });
     const id = owner.accountId as string;
-    sub(id, { trialEndsAt: "2020-01-01T00:00:00.000Z" });
+    const ended = "2020-01-01T00:00:00.000Z";
+    sub(id, { status: "canceled", trialEndsAt: ended, currentPeriodEnd: ended, canceledAt: ended });
     await retentionSweep(cloud.rt, at("2026-06-01T00:00:00Z"));
     expect(status(id)).toBe("active");
     await retentionSweep(cloud.rt, at("2026-06-20T00:00:00Z"));
@@ -391,6 +394,29 @@ describe("retention (terms: deleted 12 months after an unpaid trial or a cancell
     sub(cancelled.accountId as string, { status: "active", stripeSubscriptionId: "sub_back_1" });
     await retentionSweep(cloud.rt, at("2028-01-01T00:00:00Z"));
     expect(status(cancelled.accountId as string)).toBe("active");
+  });
+});
+
+describe("workspace audit log (privacy policy: covers the latest 400 days)", () => {
+  it("the daily sweep trims every live workspace, even one that writes little", async () => {
+    const written = Date.now();
+    const owner = await signUp(cloud, { name: "Quiet Owner" });
+    const id = owner.accountId as string;
+    const entries = () =>
+      cloud.rt.registry.with(id, (r) => r.services.audit.list({ limit: 500 }).length);
+    await cloud.rt.registry.with(id, (r) =>
+      r.services.audit.record({ via: "system", action: "test.retention" }),
+    );
+    const before = await entries();
+    expect(before).toBeGreaterThanOrEqual(1);
+    const DAY = 86_400_000;
+    const first = await workspaceAuditSweep(cloud.rt, new Date(written - 60_000 + 400 * DAY));
+    expect(first).toMatchObject({ ok: true, failed: 0 });
+    expect(await entries()).toBe(before);
+    const later = await workspaceAuditSweep(cloud.rt, new Date(Date.now() + 400 * DAY + 60_000));
+    expect(later.ok).toBe(true);
+    expect(later.count).toBeGreaterThanOrEqual(before);
+    expect(await entries()).toBe(0);
   });
 });
 

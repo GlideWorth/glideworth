@@ -1,8 +1,8 @@
 ---
 title: Data processing agreement
 description: Article 28 data processing terms for customers who use Glideworth to process personal data of other people, such as advisers handling client data.
-lastUpdated: 2026-11-16
-draft: true
+lastUpdated: 2026-11-17
+draft: false
 order: 6
 ---
 
@@ -18,15 +18,9 @@ import { site } from '../../config/site';
   name and we will send one back by email.
 </Callout>
 
-<Callout type="warning" title="The security measures are a design, not yet a record">
-  The hosted service is not open yet. Annex II describes the measures the service is designed to have. Each one
-  must be confirmed as built and working before the hosted service opens, and this agreement applies only from
-  then.
-</Callout>
-
 This agreement is between **{site.entity.name}** ("Glideworth", {site.entity.description}, registered address
 {' '}{site.entity.address}) and the customer who uses the service as described above ("the customer"). It forms
-part of the [terms of service](/legal/terms/). It applies to the UK GDPR, the EU GDPR and laws that implement
+part of the [terms of service](/legal/terms/) and has applied since the hosted service opened on 16 November 2026. It applies to the UK GDPR, the EU GDPR and laws that implement
 them ("Data Protection Law"). Terms such as "personal data", "controller", "processor" and "data subject" have
 their meaning in that law.
 
@@ -59,8 +53,9 @@ them if the protection is not reduced.
 The customer gives general authorisation for Glideworth to use the sub-processors on the
 [sub-processor list](/legal/subprocessors/). Glideworth will:
 
-- keep that list up to date and give the customer at least 30 days' notice of a new or replacement
-  sub-processor, so the customer can object on reasonable data protection grounds;
+- keep that list up to date and give the customer at least 30 days' notice, by email to account holders and on
+  that list, of a new or replacement sub-processor, so the customer can object on reasonable data protection
+  grounds;
 - if the customer objects and the parties cannot agree, allow the customer to stop using the service for the
   affected data and receive a refund of prepaid fees for the unused period;
 - put terms on each sub-processor that give the same level of protection as this agreement; and
@@ -68,8 +63,10 @@ The customer gives general authorisation for Glideworth to use the sub-processor
 
 ## 6. International transfers
 
-Glideworth stores customer data in the European Union (servers in the Netherlands, backups in Germany). Glideworth is based in the United Arab
-Emirates, and its staff may reach that data from there, only for support and operations and only under the access
+Glideworth stores customer data in the European Union (servers in the Netherlands, backups in Germany). Some
+sub-processors handle part of the data outside the EU, mainly in the United States; the [sub-processor
+list](/legal/subprocessors/) gives the location and the transfer safeguard for each. Glideworth is based in the
+United Arab Emirates, and its staff may reach that data from there, only for support and operations and only under the access
 controls in Annex II. The EU has not made an adequacy decision for the UAE, and Glideworth does not rely on an
 adequacy decision from the UK for it.
 
@@ -111,8 +108,9 @@ learns it.
 ## 9. Deletion and return
 
 At the end of the service, or when the customer asks, the customer can export a complete copy and delete the
-workspace in the app. On deletion the live database is deleted at once, and encrypted backups age out within a
-further 35 days. If the customer asks Glideworth to delete it, Glideworth does so within 30 days. Glideworth
+workspace in the app. On deletion the live database is deleted at once and the workspace's backup key is
+destroyed, so its encrypted backups can no longer be read; the backup files are then removed from storage. Backups
+of the account database, which hold account records but no workspace contents, age out within a further 35 days. If the customer asks Glideworth to delete it, Glideworth does so within 30 days. Glideworth
 keeps only what the law requires, such as billing and accounting records, and a minimal record that the
 workspace existed. A workspace that is read-only after a lapse is deleted on the timetable in the
 [privacy policy](/legal/privacy/), section 7, with warning emails 30 and 7 days before, so the customer should
@@ -154,31 +152,34 @@ standard contractual clauses.
 | Types of personal data | Names, ages or dates of birth, family and household structure, income, spending, assets, accounts, pensions and tax details, plans, assumptions, notes and any data the customer chooses to enter. Account data of the customer's users: email, name, sign-in and security records |
 | Special category data | Not intended. The customer must not enter it |
 | Frequency | Continuous, for the life of the workspace |
-| Location | European Union (servers in the Netherlands, backups in Germany). See sub-processors. Glideworth staff may reach it from the United Arab Emirates, as section 6 says |
+| Location | Workspace data: European Union (servers in the Netherlands, backups in Germany). Some account data, such as email addresses, names and IP addresses, is also processed by sub-processors outside the EU, as the sub-processor list shows. Glideworth staff may reach the data from the United Arab Emirates, as section 6 says |
 
 ## Annex II: Security measures
 
-These are the measures the hosted service is designed to have. **Each is to be confirmed as implemented
-before the hosted service opens.**
+These are the measures in place on the hosted service.
 
-- **In transit and at rest.** TLS for all traffic. Encrypted data volume. Backups encrypted per workspace with
-  their own key (AES-256-GCM). The service is **not end-to-end encrypted**: Glideworth's servers can read the
+- **In transit and at rest.** TLS for all traffic. The data volume is encrypted (LUKS). Backups encrypted per workspace
+  with their own key (AES-256-GCM). The service is **not end-to-end encrypted**: Glideworth's servers can read the
   workspace.
 - **Separation.** Each workspace is a separate database file. Credentials carry the workspace identity, and
   tests check that one workspace cannot read another.
 - **Authentication.** Passwords stored as salted scrypt hashes. Tokens, API keys and recovery codes stored as
-  hashes. Two-factor sign-in (planned). Sign-in throttling and bot checks. Password re-entry for sensitive
+  hashes. Optional two-factor sign-in with an authenticator app, with the secret stored encrypted. Sign-in
+  throttling and bot checks. Password re-entry for sensitive
   actions. Session lists and revocation. New-device alerts.
-- **Access.** Operator console on a private interface only, with mandatory two-factor sign-in. It does not show
+- **Access.** Operator console reachable only through an encrypted tunnel to the server, never from the public
+  internet, with mandatory two-factor sign-in. It does not show
   workspace contents. Time-limited, customer-created, read-only support grants are the only route to contents,
-  and each view is logged and notified to the customer. This applies to staff wherever they are, including in
+  and each view is logged in the workspace's audit trail. The customer is emailed when a grant is first used. This applies to staff wherever they are, including in
   the United Arab Emirates.
 - **Least data in logs.** An allowed-field logging rule. No financial values, request bodies, query strings,
   cookies, tokens or error text in logs or error reports, enforced by an automated test.
-- **Backups and recovery.** Changed workspaces are backed up every 15 minutes. Every backup is kept for 48
-  hours, then the newest each day for 30 days. Restore is tested regularly. Targets of 15 minutes for data loss
+- **Backups and recovery.** Changed workspaces are backed up every 15 minutes and the account database every 5
+  minutes, encrypted before upload. Every backup is kept for 48 hours, then the newest each day for 30 days. A
+  restore of sample workspaces is tested every day. Targets of 15 minutes for data loss
   and 15 minutes to restore one workspace are objectives, not guarantees.
-- **Deletion.** Workspace deletion removes the live database and the workspace's backups age out within 35 days.
+- **Deletion.** Workspace deletion removes the live database and destroys the workspace's backup key, then
+  removes its backups (section 9).
 - **Audit trail.** Account security events and per-workspace data changes are recorded.
 - **Network and host.** Firewall, hardened host, TLS with strict transport security, security headers.
 - **Incident handling.** A written incident process and a security contact (<a
@@ -187,5 +188,5 @@ before the hosted service opens.**
 
 ## Annex III: Sub-processors
 
-See the [sub-processor list](/legal/subprocessors/), which is incorporated into this agreement. It is currently
-a list of **proposed** providers. It will be final before the hosted service accepts sign-ups.
+See the [sub-processor list](/legal/subprocessors/), which is incorporated into this agreement. It names each
+sub-processor, what it does, the data it receives, where, and the safeguard that applies. Changes follow section 5.

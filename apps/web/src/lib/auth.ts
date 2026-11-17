@@ -54,7 +54,7 @@ export type AppMode = "selfhost" | "cloud";
 
 interface CloudAccess {
   level: "full" | "read_only" | "suspended";
-  /** trial, active, past_due_grace, comped, trial_expired, past_due, unpaid, canceled, paused, ... */
+  /** trial, active, past_due_grace, comped, no_subscription, past_due, unpaid, canceled, paused, ... */
   reason: string;
   changesAt: string | null;
 }

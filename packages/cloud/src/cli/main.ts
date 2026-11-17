@@ -3,6 +3,7 @@
  * hosted deployment's operations scripts call:
  *
  *   operator create --email E --name N --role admin|support [--password-stdin]
+ *   operator reset-totp --email E                new TOTP secret for an enabled operator; ends their sessions
  *   operator disable --email E
  *   backup-now                                  back up changed tenants and the control plane now
  *   restore-tenant <id> [--at ISO] | --all [--at ISO]
@@ -15,7 +16,7 @@
  * need the host's tenant runtime (`GLIDEWORTH_TENANT_RUNTIME_MODULE`, exporting `cloudHost`). Configuration is
  * the server's: the same environment, both key encodings (64 hex characters or base64 of 32 bytes).
  * Output is one JSON object per command on stdout; nothing secret is printed except the new operator's TOTP
- * secret, shown once.
+ * secret, shown once by `operator create` or `operator reset-totp`.
  */
 import { existsSync } from "node:fs";
 import { restoreControlPlane } from "../backups/service.js";
@@ -60,6 +61,7 @@ export interface CliIo {
 
 const USAGE = `usage: glideworth-cloud <command>
   operator create --email E --name N --role admin|support [--password-stdin]
+  operator reset-totp --email E
   operator disable --email E
   backup-now
   restore-tenant <id> [--at ISO] | restore-tenant --all [--at ISO]
@@ -207,6 +209,18 @@ async function operatorCommand(
       });
       return 0;
     }
+    if (sub === "reset-totp") {
+      const email = str(flags.email);
+      if (!email) throw new CloudError(400, "VALIDATION", "operator reset-totp needs --email");
+      const r = svc.resetTotp(email);
+      print({
+        operatorId: r.id,
+        totpSecret: r.totpSecret,
+        otpauthUri: r.otpauthUri,
+        note: "add the new secret to an authenticator app now; the old one no longer works, every session of this operator has ended, and this secret is not shown again",
+      });
+      return 0;
+    }
     if (sub === "disable") {
       const email = str(flags.email);
       if (!email) throw new CloudError(400, "VALIDATION", "operator disable needs --email");
@@ -214,7 +228,7 @@ async function operatorCommand(
       print({ disabled: ok });
       return ok ? 0 : 1;
     }
-    throw new CloudError(400, "VALIDATION", "operator create|disable");
+    throw new CloudError(400, "VALIDATION", "operator create|reset-totp|disable");
   } finally {
     close();
   }

@@ -58,15 +58,20 @@ export class AuditService {
           detail: e.detail ?? null,
         })
         .run();
-      // Old rows are trimmed now and then (a year and a bit is plenty for a household).
-      if (++this.writes % 500 === 0)
-        this.db
-          .delete(auditLog)
-          .where(lt(auditLog.at, new Date(Date.now() - RETENTION_DAYS * 86_400_000).toISOString()))
-          .run();
+      // Old rows are trimmed now and then (a year and a bit is plenty for a household). In cloud mode a
+      // daily sweep (retention.ts, `workspaceAuditSweep`) also trims workspaces that write little.
+      if (++this.writes % 500 === 0) this.prune();
     } catch {
       // Auditing must never break the request it describes.
     }
+  }
+
+  /** Delete entries older than 400 days (privacy policy: the log covers the latest 400 days). */
+  prune(now: Date = new Date()): number {
+    return this.db
+      .delete(auditLog)
+      .where(lt(auditLog.at, new Date(now.getTime() - RETENTION_DAYS * 86_400_000).toISOString()))
+      .run().changes;
   }
 
   list(

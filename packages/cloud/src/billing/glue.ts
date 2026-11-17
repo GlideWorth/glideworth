@@ -24,6 +24,25 @@ export const CHECKOUT_SESSION_TTL_MS = 24 * 3600_000;
 
 const day = (iso: string) => iso.slice(0, 10);
 
+/** "$9.00 USD a month" for the trial-ending email; the price's own currency, as Checkout charges it. */
+export function chargeText(
+  charge: { unitAmount: number; currency: string; interval: "month" | "year" } | null,
+): string {
+  if (!charge) return "the price of your plan";
+  const currency = charge.currency.toUpperCase();
+  let amount: string;
+  try {
+    amount = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      currencyDisplay: "narrowSymbol",
+    }).format(charge.unitAmount / 100);
+  } catch {
+    amount = (charge.unitAmount / 100).toFixed(2);
+  }
+  return `${amount} ${currency} a ${charge.interval}`;
+}
+
 export function billingNotifier(d: {
   db: ControlDb;
   outbox: MailOutbox;
@@ -72,32 +91,29 @@ export function billingNotifier(d: {
             to,
             userId: o.userId,
             template: "trial-ending",
-            data: { name: o.name, trialEndsOn: day(n.trialEndsAt), billingUrl },
+            data: {
+              name: o.name,
+              trialEndsOn: day(n.trialEndsAt),
+              amountText: chargeText(n.charge),
+              billingUrl,
+            },
             dedupeKey: `billing:${n.accountId}:trial-ending:${n.trialEndsAt}`,
           })
-        : n.kind === "trial-expired"
+        : n.kind === "payment-problem"
           ? d.outbox.enqueue({
               to,
               userId: o.userId,
-              template: "trial-expired",
-              data: { name: o.name, billingUrl },
-              dedupeKey: `billing:${n.accountId}:trial-expired`,
+              template: "payment-problem",
+              data: { name: o.name, portalUrl: billingUrl, readOnlyFrom: day(n.readOnlyFrom) },
+              dedupeKey: `billing:${n.accountId}:payment-problem:${n.readOnlyFrom}`,
             })
-          : n.kind === "payment-problem"
-            ? d.outbox.enqueue({
-                to,
-                userId: o.userId,
-                template: "payment-problem",
-                data: { name: o.name, portalUrl: billingUrl, readOnlyFrom: day(n.readOnlyFrom) },
-                dedupeKey: `billing:${n.accountId}:payment-problem:${n.readOnlyFrom}`,
-              })
-            : d.outbox.enqueue({
-                to,
-                userId: o.userId,
-                template: "subscription-canceled",
-                data: { name: o.name, accessUntil: day(n.accessUntil), billingUrl },
-                dedupeKey: `billing:${n.accountId}:subscription-canceled:${n.accessUntil}`,
-              });
+          : d.outbox.enqueue({
+              to,
+              userId: o.userId,
+              template: "subscription-canceled",
+              data: { name: o.name, accessUntil: day(n.accessUntil), billingUrl },
+              dedupeKey: `billing:${n.accountId}:subscription-canceled:${n.accessUntil}`,
+            });
     if (queued) d.kick?.();
   };
 }

@@ -161,14 +161,14 @@ describe("read-only workspace (item G)", () => {
         ...CLOUD_SIGNED_IN,
         workspace: {
           ...WORKSPACE,
-          access: { level: "read_only", reason: "trial_expired", changesAt: null },
+          access: { level: "read_only", reason: "canceled", changesAt: null },
         },
       },
       {
         ...noHousehold,
         "POST /api/v1/import": () =>
           apiError(402, "ACCOUNT_READ_ONLY", "the workspace is read-only; subscribe to edit", {
-            reason: "trial_expired",
+            reason: "canceled",
           }),
       },
     );

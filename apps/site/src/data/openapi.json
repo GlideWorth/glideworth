@@ -11686,7 +11686,7 @@
          },
          "createMissing": {
           "type": "boolean",
-          "description": "Create accounts / debts that do not exist yet."
+          "description": "Create accounts / debts that do not exist yet. One apply may create at most 1,000; more is a `400 VALIDATION`."
          }
         }
        }
@@ -32806,7 +32806,7 @@
      "Data"
     ],
     "summary": "OFX / QFX / QIF import: balances and spending. dryRun (the default) previews only",
-    "description": "Bank and card statements: balances are reconciled against current finances like the CSV balance import (match by name or `balances.accountMap`, optionally create missing accounts; foreign-currency accounts keep their currency), and transactions are summarised into annual expense events on `planId` (transfers, income and card payments are excluded). Account numbers are masked to their last four digits. Preview first (`dryRun: true`, the default); repeat with `dryRun: false` to apply atomically. Blocking errors are `422 IMPORT_FAILED` and nothing is written. `text` is limited to 2 MB (2,000,000 characters); a larger file is refused with `400 VALIDATION` before it is parsed. The file is parsed in a separate import thread, so other requests are not held up. An import that runs longer than the time limit (15 s by default) is stopped: `422 IMPORT_TIMEOUT`, nothing written; one that needs more memory than allowed is `422 IMPORT_OUT_OF_MEMORY`. When every import thread is busy and the import queue is full the answer is `503 IMPORT_BUSY` with `Retry-After`; a workspace may run 2 imports at once, a third is `429 RATE_LIMITED` with `Retry-After`. An apply whose household changed while the file was being parsed is `409 VERSION_CONFLICT` and writes nothing.\n\nScope: `write` (role owner or editor).",
+    "description": "Bank and card statements: balances are reconciled against current finances like the CSV balance import (match by name or `balances.accountMap`, optionally create missing accounts; foreign-currency accounts keep their currency), and transactions are summarised into annual expense events on `planId` (transfers, income and card payments are excluded). Account numbers are masked to their last four digits. Preview first (`dryRun: true`, the default); repeat with `dryRun: false` to apply atomically. Blocking errors are `422 IMPORT_FAILED` and nothing is written. `text` is limited to 2 MB (2,000,000 characters); a larger file is refused with `400 VALIDATION` before it is parsed. One apply may create at most 1,000 new accounts and debts with `balances.createMissing`; more is a `400 VALIDATION` naming the limit, and nothing is written. A dry run still reports how many it would create (`reconciliation.created`). The file is parsed in a separate import thread, so other requests are not held up. An import that runs longer than the time limit (15 s by default) is stopped: `422 IMPORT_TIMEOUT`, nothing written; one that needs more memory than allowed is `422 IMPORT_OUT_OF_MEMORY`. When every import thread is busy and the import queue is full the answer is `503 IMPORT_BUSY` with `Retry-After`; a workspace may run 2 imports at once, a third is `429 RATE_LIMITED` with `Retry-After`. An apply whose household changed while the file was being parsed is `409 VERSION_CONFLICT` and writes nothing.\n\nScope: `write` (role owner or editor).",
     "security": [
      {
       "bearer": []

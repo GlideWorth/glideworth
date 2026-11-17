@@ -359,34 +359,52 @@ describe("billing", () => {
     return api;
   };
 
-  it("trial: days left, no card, choose monthly or yearly with prices from the API", async () => {
-    const end = new Date(Date.now() + 12 * 86400_000 + 3600_000).toISOString();
+  it("Stripe trial: days left, the first charge and its date, cancel in the portal", async () => {
+    const end = new Date(Date.now() + 6 * 86400_000 + 3600_000).toISOString();
+    await show(
+      owner({
+        status: "trialing",
+        lookupKey: "cloud_monthly_v1",
+        access: { level: "full", reason: "trial", changesAt: null },
+        trialEndsAt: end,
+        currentPeriodEnd: end,
+      }),
+    );
+    // 6 days and an hour: whole days, rounded down as Stripe Checkout counts them.
+    expect(screen.getByText("Free trial: 6 days left")).toBeTruthy();
+    expect(
+      screen.getByText(/Your card will be charged \$9 plus any tax on .*, and then every month/),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Manage billing" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Subscribe|Start free trial/ })).toBeNull();
+  });
+
+  it("not started: the 7-day trial offer, monthly or yearly with prices from the API", async () => {
     await show(
       owner({
         status: "trialing_local",
-        access: { level: "full", reason: "trial", changesAt: end },
-        trialEndsAt: end,
+        trialDays: 7,
+        access: { level: "read_only", reason: "no_subscription", changesAt: null },
         interval: null,
         plan: null,
         currentPeriodEnd: null,
       }),
     );
-    // 12 days and an hour: whole days, rounded down as Stripe Checkout counts them.
-    expect(screen.getByText("Free trial: 12 days left")).toBeTruthy();
-    expect(screen.getByText(/No card is needed for the trial/)).toBeTruthy();
+    expect(screen.getAllByText("Start your 7-day free trial").length).toBeGreaterThan(0);
+    expect(screen.getByText(/You will not be charged until/)).toBeTruthy();
     expect(screen.getByText("$9")).toBeTruthy();
     expect(screen.getByText("$90")).toBeTruthy();
     expect(screen.getByText("Save 17%")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Subscribe monthly" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Subscribe yearly" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Start free trial, monthly" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Start free trial, yearly" })).toBeTruthy();
   });
 
   it("shows whatever prices the API sends, with whether tax is added or included", async () => {
     await show(
       owner({
         status: "trialing_local",
-        access: { level: "full", reason: "trial", changesAt: null },
-        trialEndsAt: new Date(Date.now() + 5 * 86400_000).toISOString(),
+        trialDays: 7,
+        access: { level: "read_only", reason: "no_subscription", changesAt: null },
         offered: [
           {
             lookupKey: "m",
@@ -480,17 +498,18 @@ describe("billing", () => {
     expect(screen.getByRole("button", { name: "Update payment method" })).toBeTruthy();
   });
 
-  it("read-only after the trial: explains what still works and the deletion schedule, owner can subscribe", async () => {
+  it("read-only after a cancelled trial: explains what still works and the deletion schedule, owner can subscribe", async () => {
     await show(
       owner({
-        status: "trialing_local",
-        access: { level: "read_only", reason: "trial_expired", changesAt: null },
+        status: "canceled",
+        trialDays: null,
+        access: { level: "read_only", reason: "canceled", changesAt: null },
         interval: null,
         plan: null,
       }),
     );
     expect(screen.getByText("This workspace is read-only")).toBeTruthy();
-    expect(screen.getByText(/Your free trial has ended/)).toBeTruthy();
+    expect(screen.getByText(/The subscription has ended/)).toBeTruthy();
     expect(screen.getByText(/deleted 12 months after/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Subscribe monthly" })).toBeTruthy();
   });
@@ -524,7 +543,7 @@ describe("billing", () => {
       }),
     });
     renderWithClient(<BillingSection />);
-    expect(await screen.findByText(/waiting for the payment to be confirmed/)).toBeTruthy();
+    expect(await screen.findByText(/waiting for Stripe to confirm/)).toBeTruthy();
     expect(window.location.search).toBe("");
     expect(api.calls.filter((c) => c.path === "/api/v1/billing").length).toBeGreaterThanOrEqual(1);
   });
@@ -861,7 +880,7 @@ describe("workspace", () => {
 });
 
 describe("shell: banners, switcher, suspended page", () => {
-  it("trial banner counts the days for the owner, with a way to choose a plan", () => {
+  it("trial banner counts the days for the owner, says when the card is charged, links to Billing", () => {
     const end = new Date(Date.now() + 9 * 86400_000 + 3600_000).toISOString();
     renderWithClient(
       <CloudBanners />,
@@ -869,18 +888,19 @@ describe("shell: banners, switcher, suspended page", () => {
     );
     const banner = screen.getByRole("status");
     expect(banner.textContent).toMatch(/Free trial: 9 days left/);
+    expect(banner.textContent).toMatch(/Your card is charged on .* unless you cancel in Billing/);
     expect(
-      (
-        within(banner).getByRole("link", { name: "Choose a plan" }) as HTMLAnchorElement
-      ).getAttribute("href"),
+      (within(banner).getByRole("link", { name: "Billing" }) as HTMLAnchorElement).getAttribute(
+        "href",
+      ),
     ).toBe("/settings/$section");
   });
 
   it("read-only banner: owners are told to subscribe, members to ask the owner (no button)", () => {
-    const access = { level: "read_only", reason: "trial_expired" };
+    const access = { level: "read_only", reason: "canceled" };
     renderWithClient(<CloudBanners />, signedIn("owner", access));
     expect(screen.getByRole("alert").textContent).toMatch(
-      /free trial has ended.*subscribe to edit again/,
+      /subscription has ended.*subscribe to edit again/,
     );
     expect(screen.getByRole("link", { name: "Subscribe" })).toBeTruthy();
     cleanup();
@@ -958,7 +978,7 @@ describe("402 ACCOUNT_READ_ONLY and 429 QUOTA_EXCEEDED", () => {
     mockFetch({
       "PATCH /api/v1/workspace/settings": () =>
         apiError(402, "ACCOUNT_READ_ONLY", "the workspace is read-only", {
-          reason: "trial_expired",
+          reason: "canceled",
           billingUrl: "/settings/billing",
         }),
       "GET /api/v1/auth/status": { mode: "cloud", authenticated: false },

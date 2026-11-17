@@ -80,19 +80,21 @@ repository today.
 ### What we did not compare
 
 Some things we could not establish from ProjectionLab's public pages, so this page says nothing about them:
-the length of the free trial and whether it asks for a card, whether international tax estimation is in the free
+whether its free trial asks for a card, whether international tax estimation is in the free
 tier or Premium (its pricing page and changelog read differently), its full list of countries and account types,
 which historical data sets and date ranges its simulations use, and whether it has a native mobile app.
 
 ## Price
 
 ProjectionLab's pricing page lists Basic at $0 a year, Premium at $129 a year and Pro at $549 a year, with a free
-trial for Premium and Pro; it does not give the trial's length, and the currency is not named
-([pricing](https://projectionlab.com/pricing), read 16 Nov 2026).
+trial for Premium and Pro; the currency is not named ([pricing](https://projectionlab.com/pricing), read 16 Nov
+2026). Its help pages say the trial lasts 7 days
+([help](https://cdn.projectionlab.com/help/subscription-charge), read 17 Nov 2026).
 
 Glideworth is free to self-host with every feature. The hosted service, Glideworth Cloud, costs
 {formatPrice(pricing.monthly)} a month or {formatPrice(pricing.yearly)} a year in US dollars, after a
-{pricing.trialDays}-day trial without a card; see [pricing](/pricing/).
+{pricing.trialDays}-day free trial (a card is needed to start it, and it is charged on day
+{pricing.trialDays + 1} unless you cancel); see [pricing](/pricing/). Both trials are 7 days long.
 
 In plain numbers, a year of the hosted plan is {formatPrice(pricing.yearly)}, against $129 for
 ProjectionLab Premium. These are not like-for-like: ProjectionLab's Basic tier is free and includes Monte Carlo,
@@ -131,7 +133,7 @@ confirmed where its app's menus offer the export, so check its help pages.
 <FAQ items={[
   {
     q: 'Can I try Glideworth before paying?',
-    a: '<p>Yes. Self-host it: every feature is available and there is no payment. Or start a ' + pricing.trialDays + '-day trial of the hosted service, which does not ask for a card.</p>'
+    a: '<p>Yes. Self-host it: every feature is available and there is no payment. Or start a ' + pricing.trialDays + '-day free trial of the hosted service: you add a card to start it and are charged on day ' + (pricing.trialDays + 1) + ' unless you cancel.</p>'
   },
   {
     q: 'Does Glideworth have everything ProjectionLab has?',

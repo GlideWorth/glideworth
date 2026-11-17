@@ -24,9 +24,9 @@ export const pricing = {
   currencySymbol: "$",
   monthly: 9,
   yearly: 90,
-  trialDays: 30,
-  /** No card is asked for during the trial. */
-  trialNeedsCard: false,
+  trialDays: 7,
+  /** A card is taken when the trial starts and charged the day after it ends, unless the trial is cancelled. */
+  trialNeedsCard: true,
   planName: "Glideworth Cloud",
   selfHostName: "Self-hosted",
   /**
@@ -109,8 +109,17 @@ export function yearlySaving(): { amount: number; percent: number; monthsFree: n
   };
 }
 
+/** The day the card is first charged: the day after the trial ends ("day 8" for a 7-day trial). */
+export const firstChargeDay = (): number => pricing.trialDays + 1;
+
+/** "7-day free trial with a card, charged on day 8 unless you cancel" (no final full stop). */
+export function trialTerms(): string {
+  return pricing.trialNeedsCard
+    ? `${pricing.trialDays}-day free trial with a card, charged on day ${firstChargeDay()} unless you cancel`
+    : `${pricing.trialDays}-day free trial, no card needed`;
+}
+
 /** One sentence for hero lines and calls to action. */
 export function priceSentence(): string {
-  const card = pricing.trialNeedsCard ? "" : ", no card needed";
-  return `${pricing.trialDays}-day free trial${card}. Then ${formatPrice(pricing.monthly)} a month or ${formatPrice(pricing.yearly)} a year.`;
+  return `${pricing.trialDays}-day free trial, then ${formatPrice(pricing.monthly)} a month or ${formatPrice(pricing.yearly)} a year. Your card is charged on day ${firstChargeDay()} unless you cancel.`;
 }

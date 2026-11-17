@@ -72,7 +72,8 @@ export function billingRoutes(k: RouteKit): void {
       method: "get",
       path: "/api/v1/billing",
       tag,
-      summary: "Plan, status, trial and period end, access level (all members; no card data)",
+      summary:
+        "Plan, status, trial and period end, the trial the next Checkout would start, access level (all members; no card data)",
       auth: "session",
       ok: 200,
       okSchema: z.object({ status: z.string().nullable() }).passthrough(),
@@ -91,6 +92,7 @@ export function billingRoutes(k: RouteKit): void {
           lookupKey: r?.priceLookupKey ?? null,
           interval: price?.price.interval ?? null,
           trialEndsAt: r?.trialEndsAt ?? null,
+          trialDays: st.trialDays,
           currentPeriodEnd: r?.currentPeriodEnd ?? null,
           cancelAtPeriodEnd: r?.cancelAtPeriodEnd ?? false,
           access: { level: e.level, reason: e.reason, changesAt: e.changesAt },

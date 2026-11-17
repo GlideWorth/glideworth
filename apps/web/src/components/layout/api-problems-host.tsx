@@ -29,6 +29,8 @@ export function ApiProblemHost() {
         }
         // The banner and the editors follow the fresh access level.
         void qc.invalidateQueries({ queryKey: ["session"] });
+        // A workspace whose trial has not started: the start-trial page explains it, not a toast.
+        if (p.reason === "no_subscription") return;
         if (Date.now() - lastReadOnly.current < 10_000) return;
         lastReadOnly.current = Date.now();
         toast({

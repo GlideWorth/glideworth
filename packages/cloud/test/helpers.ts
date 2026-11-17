@@ -113,7 +113,7 @@ export const LIMITS: PlanLimits = {
 
 export function fakeBilling(limits: PlanLimits = LIMITS): BillingService {
   const access: Access = { level: "full", reason: "trial", changesAt: null };
-  return { status: () => ({ record: null, access, limits }) };
+  return { status: () => ({ record: null, access, limits, trialDays: null }) };
 }
 
 export interface MemberCall {

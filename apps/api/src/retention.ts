@@ -1,8 +1,8 @@
 /**
  * Cloud mode: the retention rule of the terms of service (docs/launch/legal-decisions.md section 3 item 1).
  *
- * A workspace whose trial ended without a subscription, or whose subscription was cancelled, is deleted 12
- * months after the trial end or the end of the last paid period, with warning emails to the owner 30 days and
+ * A workspace whose subscription was cancelled (a free trial cancelled before its first charge included) is
+ * deleted 12 months after the trial end or the end of the last paid period, with warning emails to the owner 30 days and
  * 7 days before. Subscribing again restores access and stops the clock (a workspace at full access is never
  * touched; a later lapse starts a new 12 months from its own date). Signing in does not extend it.
  *
@@ -11,10 +11,11 @@
  * is recorded once in the control plane's `billing_notices` (permanent, `sent_at`) and mailed through the
  * outbox; the deletion itself is the cloud package's resumable workspace deletion (backups crypto-shredded).
  * Suspended workspaces and any other lapse (`past_due`, `unpaid`, `paused`) are left alone: they need a person.
+ * A workspace that never started its trial holds no plans (it has no access at all) and is not touched either.
  */
 import { controlSchema } from "@glideworth/cloud";
 import type { CloudRuntime } from "@glideworth/cloud/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { log } from "./log.js";
 import type { TenantRuntime } from "./tenant-runtime.js";
 
@@ -39,14 +40,8 @@ export function twelveMonthsAfter(iso: string): Date {
 type Sub = typeof controlSchema.subscriptions.$inferSelect;
 
 /** When the 12 months started, or null when the rule does not apply to this subscription. */
-function lapseStart(sub: Sub, now: Date): { since: string; why: "trial" | "canceled" } | null {
-  if (
-    sub.status === "trialing_local" &&
-    !sub.stripeSubscriptionId &&
-    sub.trialEndsAt &&
-    Date.parse(sub.trialEndsAt) <= now.getTime()
-  )
-    return { since: sub.trialEndsAt, why: "trial" };
+function lapseStart(sub: Sub, now: Date): { since: string; why: "canceled" } | null {
+  // A trial cancelled before its end is `canceled` with the period end at the trial end: the same rule.
   if (sub.status === "canceled") {
     const since = sub.currentPeriodEnd ?? sub.canceledAt;
     if (since && Date.parse(since) <= now.getTime()) return { since, why: "canceled" };
@@ -167,4 +162,35 @@ export async function retentionSweep(
   }
   if (out.warned) void rt.outbox.drain().catch(() => undefined);
   return out;
+}
+
+/**
+ * The inside-workspace audit log covers the latest 400 days (privacy policy section 7). Each workspace trims it
+ * as it writes (services/audit.ts), but one that writes little would keep older entries, so this daily sweep
+ * opens every live workspace in turn and deletes what is older. One failing workspace does not stop the rest.
+ */
+export async function workspaceAuditSweep(
+  rt: CloudRuntime<TenantRuntime>,
+  now: Date = new Date(),
+): Promise<{ ok: boolean; count: number; failed: number }> {
+  const { accounts } = controlSchema;
+  const ids = rt.db
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(inArray(accounts.status, ["active", "suspended"]))
+    .all()
+    .map((r) => r.id);
+  let count = 0;
+  let failed = 0;
+  for (const id of ids) {
+    try {
+      count += await rt.registry.with(id, (r) => r.services.audit.prune(now), {
+        allowSuspended: true,
+      });
+    } catch (err) {
+      failed++;
+      log.error("cloud.audit_prune_failed", { accountId: id, err });
+    }
+  }
+  return { ok: failed === 0, count, failed };
 }

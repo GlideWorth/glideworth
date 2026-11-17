@@ -10,6 +10,7 @@ import { migrateDocument } from "@glideworth/core";
 import type { BankImportRequest, CsvImportRequest, ImportIssue } from "@glideworth/importers";
 import type { ImportDeps } from "../deps.js";
 import {
+  checkBankFileNewAccounts,
   checkImportSize,
   IMPORT_LIMITS,
   validationProbe,
@@ -180,6 +181,9 @@ function csvImport(task: Extract<ImportTask, { op: "csv" }>, deps: ImportDeps) {
 
 function bankFileImport(task: Extract<ImportTask, { op: "bank-file" }>, deps: ImportDeps) {
   const out = deps.importBankFileInto(task.doc, task.text, task.request, { dryRun: task.dryRun });
+  // An apply that would create too many accounts is refused before its writes are worked out; a dry run
+  // still shows how many it would create.
+  if (!task.dryRun) checkBankFileNewAccounts(out.reconciliation?.created.length ?? 0);
   const preview = {
     format: out.format,
     dryRun: out.dryRun,

@@ -18,6 +18,7 @@ import { migrateDocument } from "@glideworth/core";
 import { createSampleDocument, createUkSampleDocument } from "@glideworth/core/samples";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import { importDeps } from "../src/deps.js";
+import { BANK_FILE_LIMITS } from "../src/jobs/import-limits.js";
 import { ImportPool } from "../src/jobs/import-pool.js";
 import { type ImportTask, runImportTask } from "../src/jobs/import-task.js";
 import { type Harness, setup, WRITE_KEY } from "./helpers.js";
@@ -293,11 +294,10 @@ describe("a hostile file at the cap does not hold up /health", () => {
 
   /**
    * Cap-size crafted files, and whether /health must keep answering during them. The last shape (each of
-   * ~35,000 `!Account` headers created as an account) is measured only: after the worker, the request thread
-   * still writes a household of 35,000 accounts (validation, JSON, the daily snapshot) through the existing
-   * household-write path, which is not the import's parsing (docs/launch/security-review.md, finding 4).
+   * ~35,000 `!Account` headers created as an account) is refused in the worker since an apply may create at
+   * most 1,000 accounts (`BANK_FILE_LIMITS`, finding 4's "Still open"), so the request thread never writes it.
    */
-  const shapes = (): Array<[string, unknown, boolean]> => {
+  const shapes = (): Array<[string, unknown, boolean, number?]> => {
     const qif = hostileQif();
     return [
       [
@@ -325,7 +325,8 @@ describe("a hostile file at the cap does not hold up /health", () => {
           planId: "plan-main",
           balances: { createMissing: true },
         },
-        false,
+        true,
+        400,
       ],
     ];
   };
@@ -337,10 +338,10 @@ describe("a hostile file at the cap does not hold up /health", () => {
     await p.run({ op: "csv-analyze", text: "a,b\n1,2\n", kind: "account-balances" });
     const base = await start(p);
     const timings: Record<string, unknown> = {};
-    for (const [name, body, checked] of shapes()) {
+    for (const [name, body, checked, status = 200] of shapes()) {
       const r = await healthDuring(base, () => post(base, body));
       const res = r.result as { status: number; text: string };
-      expect(res.status, res.text.slice(0, 300)).toBe(200);
+      expect(res.status, res.text.slice(0, 300)).toBe(status);
       timings[name] = {
         importMs: Math.round(r.took),
         healthWorstMs: Math.round(r.worst),
@@ -475,6 +476,65 @@ describe("limits and failures", () => {
     expect(r.status).toBe(400);
     expect(r.json.error.code).toBe("VALIDATION");
   }, 60_000);
+
+  it("one bank-file apply creates at most BANK_FILE_LIMITS.newAccounts accounts; more is 400 VALIDATION and writes nothing", async () => {
+    expect(BANK_FILE_LIMITS.newAccounts).toBe(1_000);
+    const qif = (n: number) =>
+      Array.from(
+        { length: n },
+        (_, i) => `!Account\nNNew ${i}\nTBank\n$1.00\n^\n!Type:Bank\nD01/05/2026\nT-1.00\nPx\n^\n`,
+      ).join("");
+    h = setup({ importRunner: pool() });
+    const url = "/api/v1/households/hh-sample/import/bank-file";
+    const accounts = () => h!.services.households.get("hh-sample").finances.accounts.length;
+    const n = accounts();
+    const over = { text: qif(1_001), format: "qif", balances: { createMissing: true } };
+
+    // A dry run still says how many an apply would create.
+    const dry = await h.call(url, { method: "POST", body: { ...over, dryRun: true } });
+    expect(dry.status, dry.text.slice(0, 300)).toBe(200);
+    expect(dry.json.reconciliation.created).toHaveLength(1_001);
+
+    const refused = await h.call(url, { method: "POST", body: { ...over, dryRun: false } });
+    expect(refused.status, refused.text.slice(0, 300)).toBe(400);
+    expect(refused.json.error.code).toBe("VALIDATION");
+    expect(refused.json.error.message).toContain("would create 1,001 new accounts");
+    expect(refused.json.error.message).toContain("at most 1,000");
+    expect(refused.json.error.details).toEqual({ limit: 1_000, count: 1_001 });
+    expect(accounts()).toBe(n);
+
+    // Without createMissing the same file creates nothing and is not refused.
+    const matchOnly = await h.call(url, {
+      method: "POST",
+      body: { ...over, balances: {}, dryRun: false },
+    });
+    expect(matchOnly.status, matchOnly.text.slice(0, 300)).toBe(200);
+    expect(accounts()).toBe(n);
+
+    const atLimit = await h.call(url, {
+      method: "POST",
+      body: { ...over, text: qif(1_000), dryRun: false },
+    });
+    expect(atLimit.status, atLimit.text.slice(0, 300)).toBe(200);
+    expect(accounts()).toBe(n + 1_000);
+  }, 60_000);
+
+  it("the new-account limit holds in-process too (MCP and tests without a pool)", () => {
+    const doc = migrateDocument(createSampleDocument());
+    const text = Array.from(
+      { length: 1_001 },
+      (_, i) => `!Account\nNNew ${i}\nTBank\n$1.00\n^\n`,
+    ).join("");
+    const task: ImportTask = {
+      op: "bank-file",
+      doc,
+      text,
+      request: { format: "qif", balances: { createMissing: true } } as never,
+      dryRun: false,
+    };
+    expect(() => runImportTask(task, importDeps)).toThrow(/at most 1,000/);
+    expect(() => runImportTask({ ...task, dryRun: true }, importDeps)).not.toThrow();
+  });
 
   it("a blocked apply writes nothing; the household changing meanwhile is a 409 and writes nothing", async () => {
     let release!: () => void;

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BillingError, type BillingErrorCode } from "../src/errors.js";
-import { CHECKOUT_LIMITS, TRIAL_CARRY_OVER_MIN_MS } from "../src/service.js";
+import { checkoutSessionParams } from "../src/gateway/stripe.js";
+import { CHECKOUT_LIMITS } from "../src/service.js";
 import { DAY, HOUR, harness, OWNER } from "./helpers.js";
 
 async function code(p: Promise<unknown>): Promise<BillingErrorCode> {
@@ -25,7 +26,7 @@ const input = (accountId: string, patch: Record<string, unknown> = {}) => ({
 describe("checkout guards (design 4.2, 4.6)", () => {
   it("creates the customer once and a subscription-mode session with the configured options", async () => {
     const h = await harness();
-    h.service.startTrial("tacct1", false);
+    h.service.openAccount("tacct1", false);
     const { url } = await h.service.createCheckout(input("tacct1"));
     expect(url).toMatch(/^https:\/\/checkout\.stripe\.test\//);
     const [customerCall] = h.fake.callsTo("createCustomer");
@@ -36,11 +37,12 @@ describe("checkout guards (design 4.2, 4.6)", () => {
     const session = [...h.fake.sessions.values()][0];
     expect(session?.params).toMatchObject({
       accountId: "tacct1",
-      trialEnd: null,
+      trialPeriodDays: null,
       successUrl: "https://app.glideworth.test/settings/billing?checkout=success",
       cancelUrl: "https://app.glideworth.test/settings/billing",
       allowPromotionCodes: false,
       collectTaxIds: true,
+      currency: "usd",
     });
     expect(session?.priceId).toBe(
       [...h.fake.prices.values()].find((p) => p.lookup_key === "cloud_monthly_v1")?.id,
@@ -184,37 +186,68 @@ describe("checkout guards (design 4.2, 4.6)", () => {
     await expect(h.service.createCheckout(input("tacct1"))).resolves.toHaveProperty("url");
   });
 
-  it("carries the local trial into Stripe only with more than 48 h (+10 min margin) left", async () => {
-    const h = await harness({ accounts: ["tacct1", "tacct2", "tacct3"] });
-    for (const a of ["tacct1", "tacct2", "tacct3"]) h.service.startTrial(a, true);
-    const trialEnd = Date.parse(h.store.getSubscription("tacct1")?.trialEndsAt ?? "");
-    expect(trialEnd).toBe(h.clock.t + 30 * DAY);
-
+  it("the first Checkout of a workspace with a trial available asks Stripe for a 7-day trial", async () => {
+    const h = await harness();
+    h.service.openAccount("tacct1", true);
+    expect(h.service.status("tacct1").trialDays).toBe(7);
     await h.service.createCheckout(input("tacct1"));
-    expect([...h.fake.sessions.values()].at(-1)?.trialEnd).toBe(Math.floor(trialEnd / 1000));
-
-    h.clock.set(trialEnd - TRIAL_CARRY_OVER_MIN_MS - 1);
-    await h.service.createCheckout(input("tacct2"));
-    expect([...h.fake.sessions.values()].at(-1)?.trialEnd).toBe(Math.floor(trialEnd / 1000));
-
-    h.clock.set(trialEnd - TRIAL_CARRY_OVER_MIN_MS);
-    await h.service.createCheckout(input("tacct3"));
-    expect([...h.fake.sessions.values()].at(-1)?.trialEnd).toBeNull();
+    expect([...h.fake.sessions.values()].at(-1)?.params).toMatchObject({ trialPeriodDays: 7 });
   });
 
-  it("a mid-trial subscriber is charged at the trial end, not at checkout", async () => {
+  it("no trial when the address already had one: Checkout charges at once", async () => {
     const h = await harness();
-    h.service.startTrial("tacct1", true);
+    h.service.openAccount("tacct1", false);
+    expect(h.service.status("tacct1").trialDays).toBeNull();
+    await h.service.createCheckout(input("tacct1"));
+    expect([...h.fake.sessions.values()].at(-1)?.params).toMatchObject({ trialPeriodDays: null });
+  });
+
+  it("an abandoned Checkout keeps the trial; a cancelled trial is never offered again (resubscribing pays at once)", async () => {
+    const h = await harness();
+    h.service.openAccount("tacct1", true);
+    await h.service.createCheckout(input("tacct1"));
+    h.clock.advance(HOUR);
+    expect(h.service.status("tacct1").trialDays).toBe(7);
+    const { subscriptionId, events } = await h.subscribe("tacct1");
+    await h.deliverAll(events);
+    expect(h.store.getSubscription("tacct1")).toMatchObject({
+      status: "trialing",
+      trialAvailable: false,
+    });
+    // Cancelled in the portal during the trial: access to the trial end, then read-only, never charged.
+    await h.deliverAll(h.fake.cancelAtPeriodEnd(subscriptionId));
+    expect(h.service.status("tacct1").access).toMatchObject({ level: "full", reason: "trial" });
+    h.clock.advance(7 * DAY);
+    expect(h.service.status("tacct1").access).toMatchObject({
+      level: "read_only",
+      reason: "canceled",
+    });
+    await h.deliverAll(h.fake.endPeriod(subscriptionId));
+    expect(h.store.getSubscription("tacct1")?.status).toBe("canceled");
+    expect([...h.fake.charges.values()]).toHaveLength(0);
+    expect(h.service.status("tacct1").trialDays).toBeNull();
+    h.clock.advance(HOUR);
+    await h.service.createCheckout(input("tacct1"));
+    expect([...h.fake.sessions.values()].at(-1)?.params).toMatchObject({ trialPeriodDays: null });
+  });
+
+  it("a trial subscriber is charged at the trial end (day 8), not at checkout", async () => {
+    const h = await harness();
+    h.service.openAccount("tacct1", true);
     const { subscriptionId, events } = await h.subscribe("tacct1");
     await h.deliverAll(events);
     const rec = h.store.getSubscription("tacct1");
     expect(rec?.status).toBe("trialing");
-    expect(rec?.trialEndsAt).toBe(new Date(h.clock.t + 30 * DAY).toISOString());
+    expect(rec?.trialEndsAt).toBe(
+      new Date(Math.floor(h.clock.t / 1000) * 1000 + 7 * DAY).toISOString(),
+    );
+    expect(h.service.status("tacct1").access).toMatchObject({ level: "full", reason: "trial" });
     expect([...h.fake.charges.values()]).toHaveLength(0);
     expect(h.notices.find((n) => n.kind === "payment-succeeded")).toBeUndefined();
-    h.clock.advance(30 * DAY);
+    h.clock.advance(7 * DAY);
     await h.deliverAll(h.fake.renew(subscriptionId));
     expect([...h.fake.charges.values()].map((c) => c.amount)).toEqual([900]);
+    expect(h.service.status("tacct1").access).toMatchObject({ level: "full", reason: "active" });
   });
 
   it("refuses when the Stripe price differs from the pricing file (never charge an unexpected amount)", async () => {
@@ -247,10 +280,47 @@ describe("checkout guards (design 4.2, 4.6)", () => {
   });
 });
 
+describe("Stripe Checkout parameters", () => {
+  const base = {
+    customerId: "cus_1",
+    priceId: "price_1",
+    accountId: "tacct1",
+    successUrl: "https://app.test/settings/billing?checkout=success",
+    cancelUrl: "https://app.test/settings/billing",
+    allowPromotionCodes: false,
+    collectTaxIds: true,
+    expiresAt: 1_800_000_000,
+    currency: "usd",
+  };
+
+  it("a trial: card always collected, 7 trial days, cancelled if the card is missing at the end", () => {
+    const p = checkoutSessionParams({ ...base, trialPeriodDays: 7 });
+    expect(p).toMatchObject({
+      mode: "subscription",
+      currency: "usd",
+      adaptive_pricing: { enabled: false },
+      payment_method_collection: "always",
+      subscription_data: {
+        metadata: { account_id: "tacct1" },
+        trial_period_days: 7,
+        trial_settings: { end_behavior: { missing_payment_method: "cancel" } },
+      },
+      automatic_tax: { enabled: true },
+      expires_at: 1_800_000_000,
+    });
+  });
+
+  it("no trial: charged at once, no trial settings", () => {
+    const p = checkoutSessionParams({ ...base, trialPeriodDays: null });
+    expect(p.payment_method_collection).toBe("always");
+    expect(p.subscription_data).toEqual({ metadata: { account_id: "tacct1" } });
+  });
+});
+
 describe("portal", () => {
   it("NO_CUSTOMER before the first checkout, then a session with the configured portal", async () => {
     const h = await harness();
-    h.service.startTrial("tacct1", true);
+    h.service.openAccount("tacct1", true);
     expect(await code(h.service.createPortal("tacct1"))).toBe("NO_CUSTOMER");
     await h.service.createCheckout(input("tacct1"));
     const { url } = await h.service.createPortal("tacct1");

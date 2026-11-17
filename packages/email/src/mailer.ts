@@ -136,7 +136,7 @@ export function createMailer(o: {
           if (e instanceof EmailTransportError) {
             const delay = delays[attempt];
             if (e.retryable && delay !== undefined) {
-              await sleep(delay);
+              await sleep(Math.max(delay, e.retryAfterMs ?? 0));
               continue;
             }
             return fail(e.code);

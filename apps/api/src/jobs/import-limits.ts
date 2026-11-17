@@ -27,6 +27,31 @@ export const IMPORT_LIMITS = {
 } as const;
 
 /**
+ * Bounds on a bank-file import (`POST /api/v1/households/{id}/import/bank-file` and the MCP bank-file tools).
+ * Each new account makes every later read and write of the household dearer, and one 2 MB QIF file can name
+ * tens of thousands of accounts (security review finding 4, "Still open"). A dry run still reports how many an
+ * apply would create (`reconciliation.created`).
+ */
+export const BANK_FILE_LIMITS = {
+  /** New accounts and debts one apply may create with `balances.createMissing`. */
+  newAccounts: 1_000,
+} as const;
+
+/**
+ * Throws a 400 when an apply of a bank file would create more than `BANK_FILE_LIMITS.newAccounts` accounts and
+ * debts. Runs in the import worker, before the apply's writes are worked out, so nothing is written.
+ */
+export function checkBankFileNewAccounts(created: number): void {
+  if (created <= BANK_FILE_LIMITS.newAccounts) return;
+  throw new ApiError(
+    400,
+    "VALIDATION",
+    `the file would create ${created.toLocaleString("en-US")} new accounts; one bank-file import may create at most ${BANK_FILE_LIMITS.newAccounts.toLocaleString("en-US")}. Map the file's accounts to existing ones with balances.accountMap, or import fewer accounts at a time`,
+    { limit: BANK_FILE_LIMITS.newAccounts, count: created },
+  );
+}
+
+/**
  * Throws a 400 when `data` has more than `IMPORT_LIMITS.values` values or nests deeper than
  * `IMPORT_LIMITS.depth`; returns the number of values. Iterative, and stops at the first value past a
  * limit, so it costs at most the limit however large the body is.

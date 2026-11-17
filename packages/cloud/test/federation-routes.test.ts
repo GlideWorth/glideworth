@@ -214,7 +214,8 @@ describe("identity mapping", () => {
     expect(s).toMatchObject({
       authenticated: true,
       user: { name: "Gwen Edited", password: false, google: true, totp: false },
-      workspace: { role: "owner", access: { level: "full", reason: "trial" } },
+      // The new workspace has no access until the owner starts the trial in Checkout.
+      workspace: { role: "owner", access: { level: "read_only", reason: "no_subscription" } },
     });
     const row = userOf(g.email);
     expect(row?.passwordHash).toBe("");

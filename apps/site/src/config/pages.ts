@@ -36,7 +36,7 @@ export const pages = {
   },
   "/pricing/": {
     title: "Pricing",
-    description: `Self-hosting is free with every feature. The hosted plan, ${pricing.planName}, opens later at ${formatPrice(pricing.monthly)} a month or ${formatPrice(pricing.yearly)} a year after a ${pricing.trialDays}-day trial, no card.`,
+    description: `Self-hosting is free with every feature. The hosted plan, ${pricing.planName}, opens later at ${formatPrice(pricing.monthly)} a month or ${formatPrice(pricing.yearly)} a year after a ${pricing.trialDays}-day free trial with a card.`,
     ogTitle: "One plan. Or run it yourself, free.",
     ogEyebrow: "Pricing",
   },

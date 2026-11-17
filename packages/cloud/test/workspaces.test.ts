@@ -82,7 +82,9 @@ describe("invitations", () => {
     expect(JSON.stringify(preview)).not.toContain("Olive");
 
     // Unknown, malformed and guessed tokens: the same INVALID_TOKEN as accepting.
-    for (const bad of [undefined, "", "short", "x".repeat(43), `${token.slice(0, -1)}A`, 42])
+    // The guessed token differs from the real one in its last character (whatever that character is).
+    const guessed = `${token.slice(0, -1)}${token.endsWith("A") ? "B" : "A"}`;
+    for (const bad of [undefined, "", "short", "x".repeat(43), guessed, 42])
       expect(await code(() => env.workspaces.previewInvitation(bad))).toBe("INVALID_TOKEN");
     // Withdrawn: nothing more than an unknown token.
     env.workspaces.revokeInvitation(owner.ctx, view.id);
@@ -331,6 +333,20 @@ describe("members", () => {
       env.db.select().from(sessions).where(eq(sessions.userId, editor.userId)).get()
         ?.activeAccountId,
     ).toBeNull();
+    // The removed person is told, with the workspace's name and nothing else from it.
+    await new Promise((r) => setTimeout(r, 0));
+    const notice = env.mailer.to(editor.email, "member-removed");
+    expect(notice).toHaveLength(1);
+    expect(Object.keys(notice[0]?.data ?? {}).sort()).toEqual(["name", "workspaceName"]);
+    expect(notice[0]?.data.workspaceName).toBe(
+      env.db
+        .select()
+        .from(accounts)
+        .where(eq(accounts.id, owner.accountId as string))
+        .get()?.name,
+    );
+    // Only the removed person is told.
+    expect(env.mailer.to(owner.email, "member-removed")).toHaveLength(0);
   });
 
   it("a stale session context cannot act after removal (membership is re-read)", async () => {

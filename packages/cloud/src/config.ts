@@ -3,6 +3,7 @@
  * is collected and reported together, by name only (values, which may be secrets, are never echoed).
  */
 import { availableParallelism } from "node:os";
+import { type HeartbeatConfig, loadHeartbeats } from "./heartbeat.js";
 
 export interface CloudConfig {
   publicUrl: string;
@@ -19,6 +20,8 @@ export interface CloudConfig {
    * not set: then no Google route is registered and the web app shows no button.
    */
   google: GoogleConfig | null;
+  /** Not in spec 1: optional dead-man's-switch ping URLs (heartbeat.ts). */
+  heartbeats: HeartbeatConfig;
 }
 
 export interface GoogleConfig {
@@ -130,6 +133,7 @@ export function loadCloudConfig(env: NodeJS.ProcessEnv): CloudConfig {
   if (!pricingFile) problems.push("GLIDEWORTH_PRICING_FILE is required");
 
   const google = loadGoogle(env, publicUrl, production, problems);
+  const heartbeats = loadHeartbeats(env, problems);
 
   if (problems.length) throw new CloudConfigError(problems);
   return {
@@ -143,6 +147,7 @@ export function loadCloudConfig(env: NodeJS.ProcessEnv): CloudConfig {
     opsListen,
     production,
     google,
+    heartbeats,
   };
 }
 

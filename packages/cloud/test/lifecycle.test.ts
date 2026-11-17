@@ -93,8 +93,15 @@ describe("export", () => {
     const exportId = String(ex.body.exportId);
     await cloud.outbox.drain();
     expect(cloud.mailer.to(owner.email, "export-ready")).toHaveLength(1);
+    const status = (b: typeof owner.browser) =>
+      b.get(`/api/v1/workspace/exports/${exportId}/status`);
+    // The status does not use the download up.
+    expect((await status(owner.browser)).body).toMatchObject({ status: "ready" });
+    expect((await status(owner.browser)).body).toMatchObject({ status: "ready" });
     const other = await signedUpBrowser(cloud);
     expect((await other.browser.get(`/api/v1/workspace/exports/${exportId}`)).status).toBe(404);
+    // Another workspace learns nothing: the id does not exist there.
+    expect((await status(other.browser)).status).toBe(404);
     const member = await invite(owner, "editor");
     expect((await member.browser.get(`/api/v1/workspace/exports/${exportId}`)).status).toBe(403);
     expect(
@@ -119,6 +126,9 @@ describe("export", () => {
     await new Promise((r) => setTimeout(r, 20));
     expect(existsSync(`${cloud.dataDir}/exports/${exportId}.db`)).toBe(false);
     expect((await owner.browser.get(`/api/v1/workspace/exports/${exportId}`)).status).toBe(404); // single download
+    // The link in the email can now say so.
+    expect((await status(owner.browser)).body).toMatchObject({ status: "downloaded" });
+    expect((await status(member.browser)).status).toBe(403);
   });
 
   it("expires after 24 hours", async () => {
@@ -130,6 +140,9 @@ describe("export", () => {
     const b = new Browser(cloud.app);
     await b.post("/api/v1/auth/signin", { email: owner.email, password: owner.password });
     remember(b.jar.get("__Host-gw_session") as string);
+    expect(
+      (await b.get(`/api/v1/workspace/exports/${ex.body.exportId}/status`)).body,
+    ).toMatchObject({ status: "expired" });
     expect((await b.get(`/api/v1/workspace/exports/${ex.body.exportId}`)).status).toBe(404);
     expect(cloud.workspaces.sweepExports()).toBeGreaterThanOrEqual(1);
   });

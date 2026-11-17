@@ -9,6 +9,7 @@ import { Switch } from "../../components/ui/switch";
 import { toast } from "../../components/ui/toaster";
 import { useAccess } from "../../lib/access";
 import { ApiRequestError, api, type Schedule } from "../../lib/api";
+import { useMode } from "../../lib/auth";
 import { relativeTime } from "../../lib/format";
 import { useActivePlan, useFormat, useWorkspace } from "../../lib/workspace";
 import { HealthHistory, useCheckInNow } from "../checkins/checkins";
@@ -22,6 +23,7 @@ const CADENCE: { value: Schedule["cadence"]; label: string }[] = [
 ];
 
 export function CheckinsSection() {
+  const cloud = useMode() === "cloud";
   const { data: ws } = useWorkspace();
   const f = useFormat();
   const qc = useQueryClient();
@@ -52,7 +54,10 @@ export function CheckinsSection() {
       <SectionIntro title="Check-ins">
         Glideworth re-runs your main plan on a schedule (projection, chance of success and the
         assumption audit), keeps each result as a point of plan health, and tells you when something
-        material moves. It runs on your server; nothing leaves it.
+        material moves.{" "}
+        {cloud
+          ? "It runs on the Glideworth Cloud servers that hold your workspace."
+          : "It runs on your server; nothing leaves it."}
       </SectionIntro>
       <SettingsGroup
         title="Schedule"

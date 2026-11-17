@@ -6,7 +6,7 @@
  * - `billingLogBridge`: the billing package's log callback -> the allowlisted logger, plus audit entries for
  *   state changes and an operator alert when two live subscriptions exist for one account (review finding 2).
  * - `trackCheckoutSessions`: wraps the Stripe gateway so every Checkout Session this cell creates is recorded;
- *   the checkout route refuses a second session while one is open (review finding 2).
+ *   the checkout route keeps at most one session open per account (review finding 2).
  */
 import { and, desc, eq, gt } from "drizzle-orm";
 import type { ControlAudit } from "../audit.js";
@@ -19,7 +19,7 @@ import type { Logger } from "../log/index.js";
 type StripeGateway = import("@glideworth/billing").StripeGateway;
 type BillingLogger = import("@glideworth/billing").BillingLogger;
 
-/** Stripe's default Checkout Session lifetime. */
+/** Stripe's default Checkout Session lifetime, used when the gateway call does not set `expiresAt`. */
 export const CHECKOUT_SESSION_TTL_MS = 24 * 3600_000;
 
 const day = (iso: string) => iso.slice(0, 10);
@@ -184,7 +184,9 @@ export function trackCheckoutSessions(
         priceId: p.priceId,
         url: s.url,
         createdAt: at.toISOString(),
-        expiresAt: new Date(at.getTime() + CHECKOUT_SESSION_TTL_MS).toISOString(),
+        expiresAt: new Date(
+          p.expiresAt !== undefined ? p.expiresAt * 1000 : at.getTime() + CHECKOUT_SESSION_TTL_MS,
+        ).toISOString(),
       })
       .onConflictDoNothing()
       .run();

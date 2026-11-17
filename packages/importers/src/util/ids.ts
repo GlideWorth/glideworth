@@ -15,7 +15,30 @@ export function slug(input: string, fallback: string): string {
  */
 export class IdRegistry {
   private readonly bySource = new Map<string, string>();
-  private readonly used = new Set<string>();
+  /**
+   * Ids handed out, and three that are never handed out: as keys of `accountSettings` and the like they would
+   * set the object's prototype instead of an entry, and the API refuses them in JSON Patch paths.
+   */
+  private readonly used = new Set<string>(["__proto__", "constructor", "prototype"]);
+  /**
+   * Next suffix to try for each base. Without it, the n-th id colliding on one base would test suffixes 2..n
+   * again, so a crafted export with many ids that shorten to the same base took time proportional to the
+   * square of their number (security review: hostile-input cost of the importers).
+   */
+  private readonly nextSuffix = new Map<string, number>();
+
+  /** `base`, or `base-<n>` with the smallest n not tried for this base before, that is not in use. */
+  private allocate(base: string): string {
+    let candidate = base;
+    let n = this.nextSuffix.get(base) ?? 2;
+    while (this.used.has(candidate)) {
+      const suffix = `-${n++}`;
+      candidate = `${base.slice(0, 64 - suffix.length)}${suffix}`;
+    }
+    this.nextSuffix.set(base, n);
+    this.used.add(candidate);
+    return candidate;
+  }
 
   /** Glideworth id for a source id, allocating one on first use. */
   get(sourceId: string | undefined, fallbackHint: string): string {
@@ -27,13 +50,7 @@ export class IdRegistry {
         ? sourceId
         : slug(sourceId ?? "", fallbackHint);
     if (base === "") base = fallbackHint;
-    let candidate = base;
-    let n = 2;
-    while (this.used.has(candidate)) {
-      const suffix = `-${n++}`;
-      candidate = `${base.slice(0, 64 - suffix.length)}${suffix}`;
-    }
-    this.used.add(candidate);
+    const candidate = this.allocate(base);
     this.bySource.set(key, candidate);
     return candidate;
   }
@@ -49,14 +66,6 @@ export class IdRegistry {
 
   /** Reserve an id for something with no source id (e.g. a derived loan). */
   fresh(base: string): string {
-    const root = slug(base, "id");
-    let candidate = root;
-    let n = 2;
-    while (this.used.has(candidate)) {
-      const suffix = `-${n++}`;
-      candidate = `${root.slice(0, 64 - suffix.length)}${suffix}`;
-    }
-    this.used.add(candidate);
-    return candidate;
+    return this.allocate(slug(base, "id"));
   }
 }

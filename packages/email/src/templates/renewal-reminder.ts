@@ -1,6 +1,6 @@
 import { action, compose, greeting, p } from "../layout.js";
 import type { RenderContext, Rendered, TemplateData } from "../types.js";
-import { freeText } from "../validate.js";
+import { dateText } from "../validate.js";
 
 /**
  * Sent a few days before an annual renewal. The amount is deliberately not a field: the email states the date,
@@ -16,7 +16,7 @@ export function renewalReminder(
     [
       p(greeting(data.name)),
       p(
-        `Your annual subscription renews on ${freeText(data.renewsOn, "renewsOn", 100)}. The payment method on your account will be charged then.`,
+        `Your annual subscription renews on ${dateText(data.renewsOn, "renewsOn")}. The payment method on your account will be charged then.`,
       ),
       p(
         "You can see the amount, change your payment method or cancel before that date on your billing page. If you cancel, you keep access until the end of the period you have paid for.",

@@ -1018,14 +1018,16 @@ export class HouseholdsService {
    *    the next version ('imported').
    *  - `merge`: like replace for the household body, finances and the plans in the document, but plans
    *    and snapshots that are not in the document are kept, and settings are left alone.
-   * Everything happens in one transaction.
+   * Everything happens in one transaction. `validated`: `raw` is already the output of `migrateDocument` (the
+   * imports validate in a worker thread), so it is not parsed again on the request thread.
    */
   importDocument(
     raw: unknown,
     actor: Actor,
     mode: "create" | "replace" | "merge" = "create",
+    opts: { validated?: boolean } = {},
   ): GlideworthDocument {
-    const doc = migrateDocument(raw);
+    const doc = opts.validated ? (raw as GlideworthDocument) : migrateDocument(raw);
     const hid = doc.household.id;
     // A document is one household: every plan in it must belong to that household. Say so instead of
     // failing on the database's foreign key (a hand-edited file that renamed the household).

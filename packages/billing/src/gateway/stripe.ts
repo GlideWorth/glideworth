@@ -192,11 +192,25 @@ export function stripeGateway(client: Stripe): StripeGateway & WebhookEndpointAd
           allow_promotion_codes: p.allowPromotionCodes,
           success_url: p.successUrl,
           cancel_url: p.cancelUrl,
+          ...(p.expiresAt !== undefined ? { expires_at: p.expiresAt } : {}),
         },
         { idempotencyKey },
       );
       if (!session.url) throw new BillingError("STRIPE_UNAVAILABLE", "Checkout session has no URL");
       return { id: session.id, url: session.url };
+    },
+
+    async expireCheckoutSession(id) {
+      try {
+        await client.checkout.sessions.expire(id);
+        return { status: "expired" };
+      } catch (err) {
+        // Stripe refuses to expire a session that is no longer open; report what it became instead.
+        const { status } = await client.checkout.sessions.retrieve(id);
+        if (status === "complete") return { status: "complete" };
+        if (status === "expired") return { status: "expired" };
+        throw err;
+      }
     },
 
     async createPortalSession(p) {

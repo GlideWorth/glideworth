@@ -8,12 +8,17 @@
  * app the host builds around `tenantAuth` and `registerCloudRoutes`, serves the operator console on the private
  * listener only (`GLIDEWORTH_OPS_LISTEN`), and runs the cell's periodic work: scheduler, outbox, backups,
  * restore test, retention, billing sweep, idle eviction, maintenance, operator commands from the CLI.
+ * Jobs whose interval is long compared with how often the server restarts keep their schedule in the
+ * control database (durable-jobs.ts), so a deploy does not postpone them.
  */
 import type { AddressInfo } from "node:net";
 import { serve } from "@hono/node-server";
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import type { MiddlewareHandler } from "hono";
 import { beat, CommandWorker, clearBeat, HEARTBEAT_MS } from "./commands.js";
+import { cellHeartbeat } from "./control/schema.js";
+import { type DurableJob, DurableJobs } from "./durable-jobs.js";
+import { createPinger, LIVENESS_MS, type Ping } from "./heartbeat.js";
 import { isCloudRoute, type SupportView } from "./http/kit.js";
 import { registerCloudRoutes } from "./http/routes/index.js";
 import { type CredentialVerifiers, type TenantVars, tenantAuth } from "./http/tenant-auth.js";
@@ -107,6 +112,65 @@ function every(
   return () => clearInterval(t);
 }
 
+/** Jobs at least this far apart keep their schedule in the control database. */
+const DURABLE_FROM_MS = 15 * 60_000;
+
+/**
+ * The cell's long-interval jobs (durable schedule) with their heartbeat pings. `controlOk` reports whether the
+ * last control-database backup succeeded, so the backup heartbeat covers both kinds of backup.
+ */
+export function durableCellJobs<R extends TenantRuntimeBase>(
+  r: CloudRuntime<R>,
+  o: {
+    ping: Ping;
+    controlOk: () => boolean;
+    hostTimers?: Array<{ name: string; ms: number; run(): Promise<unknown> | unknown }>;
+  },
+): DurableJob[] {
+  return [
+    {
+      name: "backup_tenants",
+      intervalMs: 15 * 60_000,
+      run: async () => {
+        const res = await r.backups.sweep();
+        return {
+          ok: res.failed.length === 0 && o.controlOk(),
+          count: res.backedUp,
+          failed: res.failed.length,
+        };
+      },
+      onDone: (ok) => o.ping("backup", ok),
+    },
+    {
+      name: "backup_prune",
+      intervalMs: 60 * 60_000,
+      run: async () => ({ ok: true, count: await r.backups.prune() }),
+    },
+    {
+      name: "restore_test",
+      intervalMs: 24 * 60 * 60_000,
+      run: async () => {
+        const res = await r.backups.verifySample(5);
+        return { ok: res.failed.length === 0, count: res.verified, failed: res.failed.length };
+      },
+      onDone: (ok) => o.ping("restoreTest", ok),
+    },
+    {
+      name: "maintenance",
+      intervalMs: 60 * 60_000,
+      run: () => {
+        r.accounts.maintenance();
+        r.audit.scrub();
+        r.quotas.prune();
+        r.outbox.prune();
+      },
+    },
+    ...(o.hostTimers ?? [])
+      .filter((t) => t.ms >= DURABLE_FROM_MS)
+      .map((t) => ({ name: t.name, intervalMs: t.ms, run: () => t.run() })),
+  ];
+}
+
 export async function start<R extends TenantRuntimeBase, P>(o: {
   env?: NodeJS.ProcessEnv;
   host: CloudHost<R, P>;
@@ -117,6 +181,8 @@ export async function start<R extends TenantRuntimeBase, P>(o: {
   overrides?: Parameters<typeof createCloudRuntime<R>>[0]["overrides"];
   /** The logger (tests use a capturing sink; default from `GLIDEWORTH_LOG_LEVEL`). */
   log?: Logger;
+  /** Tests: the HTTP client for heartbeat pings. */
+  heartbeatFetch?: typeof fetch;
 }): Promise<Started<R>> {
   const env = o.env ?? process.env;
   const runtime = await createCloudRuntime<R>({
@@ -168,30 +234,52 @@ export async function start<R extends TenantRuntimeBase, P>(o: {
 
   const stops: Array<() => void> = [];
   const worker = new CommandWorker(runtime, log);
+  let jobs: DurableJobs | null = null;
   if (o.timers !== false) {
     runtime.scheduler.start();
     beat(runtime.db);
     const r = runtime;
+    const ping = createPinger(runtime.config.heartbeats, log, o.heartbeatFetch);
+    let controlOk = true;
+    const hostTimers = o.host.timers?.(runtime) ?? [];
+    jobs = new DurableJobs({
+      db: r.db,
+      log,
+      jobs: durableCellJobs(r, { ping, controlOk: () => controlOk, hostTimers }),
+    });
+    jobs.start();
+    const live = () => {
+      try {
+        r.db.select({ id: cellHeartbeat.id }).from(cellHeartbeat).limit(1).all();
+        ping("liveness", true);
+      } catch (err) {
+        ping("liveness", false);
+        throw err;
+      }
+    };
+    live();
     stops.push(
       every(log, "heartbeat", HEARTBEAT_MS, () => beat(r.db)),
+      every(log, "liveness", LIVENESS_MS, live),
       every(log, "commands", 2_000, () => worker.poll()),
       every(log, "outbox", 30_000, () => r.outbox.drain()),
       every(log, "evict", 60_000, () => r.registry.evictIdle()),
       every(log, "billing_sweep", 5 * 60_000, () => r.billing.sweep()),
       every(log, "lifecycle", 5 * 60_000, () => r.workspaces.resumeLifecycle()),
       every(log, "exports", 10 * 60_000, () => r.workspaces.sweepExports()),
-      every(log, "backup_control", 5 * 60_000, () => r.backups.backupControl()),
-      every(log, "backup_tenants", 15 * 60_000, () => r.backups.sweep()),
-      every(log, "backup_prune", 60 * 60_000, () => r.backups.prune()),
-      every(log, "restore_test", 24 * 60 * 60_000, () => r.backups.verifySample(5)),
-      every(log, "maintenance", 60 * 60_000, () => {
-        r.accounts.maintenance();
-        r.audit.scrub();
-        r.quotas.prune();
-        r.outbox.prune();
+      every(log, "backup_control", 5 * 60_000, async () => {
+        try {
+          await r.backups.backupControl();
+          controlOk = true;
+        } catch (err) {
+          controlOk = false;
+          throw err;
+        }
       }),
+      () => jobs?.stop(),
     );
-    for (const t of o.host.timers?.(runtime) ?? []) stops.push(every(log, t.name, t.ms, t.run));
+    for (const t of hostTimers)
+      if (t.ms < DURABLE_FROM_MS) stops.push(every(log, t.name, t.ms, t.run));
   }
 
   let closed = false;
@@ -202,6 +290,12 @@ export async function start<R extends TenantRuntimeBase, P>(o: {
     runtime.scheduler.stop();
     await Promise.all([closeServer(pub.server), closeServer(ops.server)]);
     await runtime.scheduler.idle();
+    // Let a running backup or restore test finish its database writes, for a bounded time.
+    if (jobs) {
+      let t: ReturnType<typeof setTimeout> | undefined;
+      await Promise.race([jobs.idle(), new Promise<void>((r) => (t = setTimeout(r, 15_000)))]);
+      clearTimeout(t);
+    }
     await runtime.registry.shutdown();
     clearBeat(runtime.db);
     runtime.closeDb();

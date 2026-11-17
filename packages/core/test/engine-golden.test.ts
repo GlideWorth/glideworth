@@ -39,12 +39,13 @@ describe("golden: UK single accumulate -> retire -> drawdown", () => {
     expect(drawn.some((p) => (p.totals.taxFreePensionCash ?? 0) > 0)).toBe(true);
   });
 
-  it("pays the State Pension from 67 with the triple lock and stops salary at retirement", () => {
+  it("pays the State Pension from 68 (born 1978) with the triple lock and stops salary at retirement", () => {
     const sp = r.periods.map(
       (p) => p.income.find((l) => l.sourceId === "uk-state-pension")?.amount ?? 0,
     );
     const first = sp.findIndex((v) => v > 0);
-    expect(r.periods[first]!.year).toBe(2045);
+    // Born June 1978: State Pension age 68, so the first payment is in 2046.
+    expect(r.periods[first]!.year).toBe(2046);
     // Triple lock: earnings growth (2.5% inflation + 1%) beats the 2.5% floor.
     const full = sp.findIndex((v, i) => i > first && v > 0);
     expect(sp[full + 1]! / sp[full]!).toBeCloseTo(1.035, 9);

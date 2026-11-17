@@ -8,6 +8,7 @@ import {
   type MoneyMeasure,
   type Plan,
   type ProjectionResult,
+  SAMPLING_METHOD_LABEL,
   toBasis,
   totalsMeasure,
   type ValueBasis,
@@ -209,7 +210,10 @@ export function buildReportData(
     { label: "Dividend yield", value: rateText(plan.assumptions.dividendYield) },
     { label: "Tax mode", value: plan.tax.mode },
     { label: "Filing status", value: plan.tax.filingStatus },
-    { label: "Chance-of-success method", value: plan.monteCarlo.method },
+    {
+      label: "Chance-of-success method",
+      value: SAMPLING_METHOD_LABEL[plan.monteCarlo.method] ?? plan.monteCarlo.method,
+    },
     { label: "Currency / locale", value: `${doc.household.currency} / ${doc.household.locale}` },
   ];
   if (plan.withdrawalStrategy?.enabled)

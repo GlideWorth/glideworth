@@ -230,14 +230,15 @@ describe("plan templates", () => {
       expect(r.periods.length).toBeGreaterThan(10);
     });
   }
-  it("each person's state pension is named for and starts at that person's age", () => {
+  it("each person's state pension is named for and starts at that person's State Pension age", () => {
     const plan = buildPlanFromTemplate("work-save-retire", gbCtx, { id: "p", name: "p" });
     const sp = plan.income.filter((i) => i.type === "state-pension");
     expect(sp).toHaveLength(2);
     for (const i of sp) {
       const person = gbCtx.household.people.find((p) => p.id === i.owner)!;
       expect(i.name).toContain(person.name);
-      expect(i.range.start).toMatchObject({ kind: "age", personId: person.id, age: 67 });
+      // Both are born after April 1978: 68 under the Pensions Act 2007 (not a flat 67).
+      expect(i.range.start).toMatchObject({ kind: "age", personId: person.id, age: 68 });
     }
   });
   it("UK plans use the April tax year", () => {

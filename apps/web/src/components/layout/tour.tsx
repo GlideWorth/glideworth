@@ -1,7 +1,8 @@
 /**
  * Dismissible guided tour of the main areas. Each stop points at a real element (marked with
  * data-tour) and falls back to a centred card when the element is not on screen (e.g. phones).
- * Escape or "Skip tour" ends it; it can be restarted from the command palette or Settings.
+ * Escape or "Skip tour" ends it; it can be restarted from the command palette or Settings. While a dialog is
+ * open the tour is hidden (and ignores keys), and it comes back where it was when the dialog closes.
  */
 import { ArrowLeft, ArrowRight, X } from "lucide-react";
 import {
@@ -85,10 +86,35 @@ function visibleRect(selectors: string[]): DOMRect | null {
   return null;
 }
 
+/** An open modal dialog or alert (Radix marks them `data-state="open"`); the tour's own card is neither. */
+const MODAL_OPEN = '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]';
+
+/** True while a modal dialog is open anywhere on the page. */
+function useModalOpen(enabled: boolean): boolean {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!enabled) return;
+    const check = () => setOpen(document.querySelector(MODAL_OPEN) !== null);
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-state", "role"],
+    });
+    return () => observer.disconnect();
+  }, [enabled]);
+  return enabled && open;
+}
+
 export function Tour() {
   const tour = usePrefs((s) => s.tour);
   const set = usePrefs((s) => s.set);
-  const active = tour !== null && tour !== "done";
+  const started = tour !== null && tour !== "done";
+  // A dialog (above all a destructive one) always comes first: the tour steps aside until it closes.
+  const paused = useModalOpen(started);
+  const active = started && !paused;
   const index = active
     ? Math.max(
         0,
@@ -117,9 +143,13 @@ export function Tour() {
     };
   }, [stop]);
 
+  // Focus the card when a stop is shown, but not when the tour comes back after a dialog: focus then belongs
+  // to whatever the dialog returned it to.
+  const focusedStop = useRef<string | null>(null);
   useEffect(() => {
     if (!stop) return;
-    cardRef.current?.focus();
+    if (focusedStop.current !== stop.id) cardRef.current?.focus();
+    focusedStop.current = stop.id;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") end();
       else if (e.key === "ArrowRight") go(index + 1);

@@ -357,6 +357,24 @@ export function workspaceRoutes(k: RouteKit): void {
   k.op(
     {
       method: "get",
+      path: "/api/v1/workspace/exports/{id}/status",
+      tag,
+      summary:
+        "Whether an export can still be downloaded, without downloading it (owner): ready, downloaded or expired",
+      auth: "session",
+      ok: 200,
+      params: z.object({ id: z.string().max(64) }),
+      okSchema: z.object({
+        status: z.enum(["ready", "downloaded", "expired"]),
+        expiresAt: z.string().nullable(),
+      }),
+    },
+    (c, { params }) => c.json(d.workspaces.exportStatus(k.session(c), params.id as string), 200),
+  );
+
+  k.op(
+    {
+      method: "get",
       path: "/api/v1/workspace/exports/{id}",
       tag,
       summary: "Download an export (owner of the same workspace, once, within 24 h)",

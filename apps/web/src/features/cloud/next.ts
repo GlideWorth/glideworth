@@ -18,6 +18,8 @@ export function safeNext(next: unknown, origin: string = window.location.origin)
   try {
     const u = new URL(next, origin);
     if (u.origin !== origin) return "/";
+    // The parser removes dot segments, so `/.//host` comes out as `//host`: another origin once used as a URL.
+    if (u.pathname.startsWith("//")) return "/";
     if (CLOUD_PUBLIC_PATHS.includes(u.pathname) && !NEXT_ALLOWED_PUBLIC.has(u.pathname)) return "/";
     return `${u.pathname}${u.search}${u.hash}`;
   } catch {
@@ -33,5 +35,9 @@ export const nextFromLocation = (): string =>
 export const nav = {
   go(path: string) {
     window.location.assign(path);
+  },
+  /** The same, replacing this page in the history (a page that must not be opened again with Back). */
+  replace(path: string) {
+    window.location.replace(path);
   },
 };

@@ -1,6 +1,6 @@
 /** Withdrawal strategy, drawdown order, flexible spending and Monte Carlo settings. */
 import { DEFAULT_OUTCOME_CATEGORIES } from "@glideworth/core";
-import { arr, num, type Obj, obj, pct, pctClean, str } from "../util/read.js";
+import { table, arr, num, type Obj, obj, pct, pctClean, str } from "../util/read.js";
 import type { MappedAccount } from "./accounts.js";
 import { basisOf, clamp } from "./common.js";
 import { approximated, infoNote, invalid, type PlContext } from "./context.js";
@@ -140,7 +140,7 @@ export function mapWithdrawalStrategy(ctx: PlContext, raw: unknown, path: string
   return out;
 }
 
-const DRAWDOWN_CATEGORY: Record<string, string> = {
+const DRAWDOWN_CATEGORY: Record<string, string> = table({
   "all-cash": "cash",
   cash: "cash",
   taxable: "taxable",
@@ -157,7 +157,7 @@ const DRAWDOWN_CATEGORY: Record<string, string> = {
   "real-estate": "real-assets",
   "real-assets": "real-assets",
   assets: "real-assets",
-};
+});
 
 /** drawdownOrder[] -> DrawdownSettings.order (+ excess-cash accounts expanded in place). */
 export function mapDrawdown(
@@ -173,6 +173,10 @@ export function mapDrawdown(
   list.forEach((x, i) => {
     const key = typeof x === "string" ? x : "";
     if (key === "excess-cash") {
+      // Expanded once: a repeated entry adds nothing, and expanding every repeat made the order as long as
+      // the number of repeats times the number of accounts (security review: hostile-input cost).
+      if (seen.has("excess-cash")) return;
+      seen.add("excess-cash");
       const ids = accounts
         .filter((a) => obj(a.account.behaviour).isExcessCash === true)
         .map((a) => a.account.id as string);
@@ -234,7 +238,7 @@ export function mapFlexSpending(ctx: PlContext, raw: unknown, path: string): Obj
   return out;
 }
 
-const SAMPLING: Record<string, string> = {
+const SAMPLING: Record<string, string> = table({
   "backtest-random-restart": "historical-random-restart",
   "backtest-sequential": "historical-sequential",
   backtest: "historical-sequential",
@@ -246,7 +250,7 @@ const SAMPLING: Record<string, string> = {
   "monte-carlo": "normal",
   random: "normal",
   gaussian: "normal",
-};
+});
 
 const DIST_SERIES: [string, string][] = [
   ["investmentReturn", "stocks"],
@@ -334,14 +338,14 @@ export function mapMonteCarlo(
   return out;
 }
 
-const OUTCOME_ID: Record<string, string> = {
+const OUTCOME_ID: Record<string, string> = table({
   failedEarly: "failed-early",
   failedMid: "failed-mid",
   failedLate: "failed-late",
   almostFailed: "almost-failed",
   comfortable: "comfortable",
   largeSurplus: "large-surplus",
-};
+});
 
 /** settings.montecarlo.outcomeTypes -> UserSettings.outcomeCategories. */
 export function mapOutcomeCategories(

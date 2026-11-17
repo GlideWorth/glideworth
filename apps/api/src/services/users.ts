@@ -11,7 +11,7 @@
  */
 import { randomBytes } from "node:crypto";
 import { and, eq, gt, isNull } from "drizzle-orm";
-import { apiKeys, oauthTokens, users, userTokens } from "../db/schema.js";
+import { apiKeys, oauthCodes, oauthTokens, users, userTokens } from "../db/schema.js";
 import { ApiError, conflict, notFound } from "../errors.js";
 import { newId, nowIso, sha256 } from "../util.js";
 import type { AuthService } from "./auth.js";
@@ -214,6 +214,7 @@ export class UsersService {
     this.auth.logoutUser(id);
     this.db.delete(apiKeys).where(eq(apiKeys.userId, id)).run();
     this.db.delete(oauthTokens).where(eq(oauthTokens.userId, id)).run();
+    this.db.delete(oauthCodes).where(eq(oauthCodes.userId, id)).run();
     this.db.delete(users).where(eq(users.id, id)).run();
   }
 
@@ -255,13 +256,18 @@ export class UsersService {
       .all();
   }
 
-  /** Cloud: API keys and OAuth tokens of a person (ownership transfer swaps who `owner` is). */
+  /**
+   * Cloud: API keys, OAuth tokens and authorization codes of a person (ownership transfer swaps who `owner`
+   * is). The codes go too: a code issued before the swap would otherwise mint a token for whoever holds the
+   * tenant user id afterwards (security review finding 16).
+   */
   revokeCredentials(id: string): void {
     this.auth.logoutUser(id);
     const keys = this.db.select().from(apiKeys).all();
     for (const k of keys)
       if ((k.userId ?? "owner") === id) this.db.delete(apiKeys).where(eq(apiKeys.id, k.id)).run();
     this.db.delete(oauthTokens).where(eq(oauthTokens.userId, id)).run();
+    this.db.delete(oauthCodes).where(eq(oauthCodes.userId, id)).run();
   }
 
   /** Cloud: a member removed from the workspace (the owner row is never removed). */

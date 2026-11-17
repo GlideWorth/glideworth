@@ -1,4 +1,5 @@
 import { randomBytes, scryptSync } from "node:crypto";
+import { render } from "@glideworth/email";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { normalizeEmail } from "../src/accounts/email.js";
@@ -1061,6 +1062,42 @@ describe("two-factor authentication", () => {
     remember(ok.session.token);
   });
 
+  it("wrong recovery codes use up the same 5 attempts; another person's recovery code never works", async () => {
+    const a = await signedInWithPassword();
+    const { recoveryCodes: aCodes } = await enableTotp(a.ctx);
+    const b = await signedInWithPassword();
+    await enableTotp(b.ctx);
+    const r = await env.accounts.signIn({ email: b.email, password: b.password }, env.meta());
+    if (r.kind !== "totp-required") throw new Error();
+    remember(r.challenge);
+    for (const rc of aCodes.slice(0, 5))
+      expect(
+        await code(
+          env.accounts.completeSecondFactor(
+            { challenge: r.challenge, recoveryCode: rc },
+            env.meta(),
+          ),
+        ),
+      ).toBe("UNAUTHORIZED");
+    // The challenge is dead now, and A's codes were not used up by the attempts on B.
+    expect(
+      await code(
+        env.accounts.completeSecondFactor(
+          { challenge: r.challenge, recoveryCode: aCodes[5] as string },
+          env.meta(),
+        ),
+      ),
+    ).toBe("INVALID_TOKEN");
+    const ra = await env.accounts.signIn({ email: a.email, password: a.password }, env.meta());
+    if (ra.kind !== "totp-required") throw new Error();
+    remember(ra.challenge);
+    const ok = await env.accounts.completeSecondFactor(
+      { challenge: ra.challenge, recoveryCode: aCodes[0] as string },
+      env.meta(),
+    );
+    remember(ok.session.token);
+  });
+
   it("regenerating recovery codes replaces the whole set", async () => {
     const { ctx, email, password } = await signedInWithPassword();
     const { recoveryCodes: oldCodes } = await enableTotp(ctx);
@@ -1262,9 +1299,10 @@ describe("email change", () => {
     return v;
   }
 
-  it("a pending change does not survive a password reset or a password change", async () => {
-    for (const how of ["reset", "change"] as const) {
+  it("a pending change does not survive a password reset, a password change or turning two-step sign-in off (security review finding 5)", async () => {
+    for (const how of ["reset", "change", "totp-off"] as const) {
       const v = await reauthed();
+      const totp = how === "totp-off" ? await enableTotp(v.ctx) : null;
       const target = newEmail("intruder");
       await env.accounts.requestEmailChange(v.ctx, target, env.meta());
       await env.accounts.settled();
@@ -1274,8 +1312,10 @@ describe("email change", () => {
         await env.accounts.settled();
         const reset = env.mailer.token(v.email, "password-reset");
         await env.accounts.resetPassword(reset, newPassword(), env.meta());
-      } else {
+      } else if (how === "change") {
         await env.accounts.changePassword(v.ctx, v.password, newPassword(), env.meta());
+      } else {
+        await env.accounts.disableTotp(v.ctx, totpNow(env, totp?.secret as string), env.meta());
       }
       expect(await code(env.accounts.confirmEmailChange(pending, env.meta())), how).toBe(
         "INVALID_TOKEN",
@@ -1293,9 +1333,30 @@ describe("email change", () => {
     const target = newEmail("new");
     await env.accounts.requestEmailChange(v.ctx, `  ${target.toUpperCase()} `, env.meta());
     await env.accounts.settled();
-    expect(env.mailer.last(v.email, "security-change")?.data.change).toBe("email-changed");
+    // At request time the old address is told a change was asked for, to which address; not that it happened.
+    expect(env.mailer.to(v.email, "security-change")).toHaveLength(0);
+    const requested = env.mailer.last(v.email, "email-change-requested");
+    expect(requested?.data).toMatchObject({ newEmail: target.toUpperCase(), expiresInHours: 24 });
+    const requestedText = render("email-change-requested", requested?.data as never, {
+      productName: "Glideworth",
+      appUrl: "https://app.example.test",
+      supportEmail: "s@example.test",
+    }).text;
+    expect(requestedText).toContain(`asked to change its email address to ${target.toUpperCase()}`);
+    expect(requestedText).toContain("Nothing has changed yet.");
+    expect(requestedText).not.toContain("was changed");
     const token = env.mailer.token(target, "email-change-confirm");
     await env.accounts.confirmEmailChange(token, env.meta());
+    await env.accounts.settled();
+    // On confirmation the old address gets one "changed" notice naming the new address; the new one gets none.
+    const changed = env.mailer.to(v.email, "security-change");
+    expect(changed).toHaveLength(1);
+    expect(changed[0]?.data).toMatchObject({
+      change: "email-changed",
+      newEmail: target.toUpperCase(),
+    });
+    expect(env.mailer.to(target, "security-change")).toHaveLength(0);
+    expect(env.mailer.to(v.email, "email-change-requested")).toHaveLength(1);
     const u = env.db.select().from(users).where(eq(users.id, v.userId)).get();
     expect(u?.emailNormalized).toBe(target.toLowerCase());
     expect(await code(env.accounts.confirmEmailChange(token, env.meta()))).toBe("INVALID_TOKEN");

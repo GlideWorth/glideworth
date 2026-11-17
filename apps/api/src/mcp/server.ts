@@ -1955,8 +1955,8 @@ export function createMcpServer(ctx: McpContext): McpServer {
         },
         hint: { readOnly: false },
       },
-      ({ householdId, text, format, planId, createMissing }) => {
-        const out = services.imports.importBankFile(
+      async ({ householdId, text, format, planId, createMissing }) => {
+        const out = (await services.imports.importBankFile(
           householdId,
           {
             text,
@@ -1966,7 +1966,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
             balances: { createMissing },
           },
           actor,
-        ) as { issueCount: number; changes: unknown; format: string };
+        )) as { issueCount: number; changes: unknown; format: string };
         return {
           format: out.format,
           applied: true,
@@ -1991,8 +1991,8 @@ export function createMcpServer(ctx: McpContext): McpServer {
         },
         hint: { readOnly: false },
       },
-      ({ householdId, kind, text, options, planId }) => {
-        const out = services.imports.importCsv(
+      async ({ householdId, kind, text, options, planId }) => {
+        const out = (await services.imports.importCsv(
           householdId,
           {
             text,
@@ -2002,7 +2002,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
             ...(planId ? { planId } : {}),
           },
           actor,
-        ) as { issueCount: number; changes: unknown; kind: string };
+        )) as { issueCount: number; changes: unknown; kind: string };
         return { kind: out.kind, applied: true, issueCount: out.issueCount, changes: out.changes };
       },
     );

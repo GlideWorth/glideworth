@@ -10,8 +10,12 @@
  * "Sign in with Google" (`/api/v1/auth/google/*`, federation/service.ts) is registered only when the Google
  * client is configured. Its two browser-facing routes answer with redirects to fixed web-app paths:
  *   start     GET  -> 302 to Google (sets `__Host-gw_oidc`, the browser binding of the flow)
- *   callback  GET  -> 302 to `/`, `/signin/2fa#challenge=…`, `/signup/google`, `/signin/google-exists`,
- *                    `/signin?google=<code>` or `/settings/security?google=<code>`
+ *   callback  GET  -> 302 to `/` (or `next`, or `/invite#token=…`), `/signin/2fa#challenge=…`,
+ *                    `/signup/google`, `/signin/google-exists`, `/google-link` (linking, finished by the web
+ *                    app's POST /api/v1/account/identities/google/finish), `/signin?google=<code>` or
+ *                    `/settings/security?google=<code>`
+ * The callback never relies on the session cookie: it is `SameSite=Strict`, and the callback is a navigation
+ * that starts on Google's page, so browsers leave it out (security review finding 13).
  */
 import { z } from "@hono/zod-openapi";
 import type { Context } from "hono";
@@ -28,6 +32,12 @@ import type { RouteKit } from "../kit.js";
 export const OIDC_COOKIE = "__Host-gw_oidc";
 /** A new Google user's parked sign-up (flows.ts), read by the sign-up step's same-origin requests only. */
 const OIDC_SIGNUP_COOKIE = "__Host-gw_oidc_signup";
+/**
+ * A Google account waiting to be linked (flows.ts `pending_link`), read only by the same-origin POST that
+ * finishes the link (with the session and the CSRF token). Lax, like `__Host-gw_oidc`: it is set on the
+ * response to Google's cross-site redirect.
+ */
+export const OIDC_LINK_COOKIE = "__Host-gw_oidc_link";
 const OIDC_COOKIE_MAX_AGE = 10 * 60;
 const OIDC_SIGNUP_MAX_AGE = 15 * 60;
 
@@ -46,7 +56,7 @@ export function setOidcCookie(c: Context, value: string): void {
     maxAge: OIDC_COOKIE_MAX_AGE,
   });
 }
-const clearCookie = (c: Context, name: string, sameSite: "Lax" | "Strict") =>
+export const clearCookie = (c: Context, name: string, sameSite: "Lax" | "Strict") =>
   setCookie(c, name, "", { path: "/", secure: true, httpOnly: true, sameSite, maxAge: 0 });
 
 const Email = z.string().max(512);
@@ -410,12 +420,24 @@ function googleRoutes(k: RouteKit): void {
       summary: "Continue with Google (redirects to Google; the sign-in page links here)",
       auth: "none",
       ok: 302,
-      query: z.object({ next: Next }),
+      query: z.object({
+        next: Next,
+        /**
+         * The token of the invitation page the person came from. Signing in or up then ends on that
+         * invitation (`/invite#token=…`) instead of `next`, while it can still be accepted.
+         */
+        invitation: Token.optional(),
+      }),
     },
     async (c, { query }) => {
       k.floodLimit(c, "auth");
       const next = safeNext(query.next, k.publicOrigin);
-      const { url, browser } = await fed.startSignIn(getCookie(c, OIDC_COOKIE), next, k.meta(c));
+      const { url, browser } = await fed.startSignIn(
+        getCookie(c, OIDC_COOKIE),
+        next,
+        k.meta(c),
+        query.invitation ?? null,
+      );
       setOidcCookie(c, browser);
       return redirect(c, url);
     },
@@ -439,11 +461,9 @@ function googleRoutes(k: RouteKit): void {
     },
     async (c, { query }) => {
       k.floodLimit(c, "auth");
-      const session = d.accounts.resolveSession(sessionCookie(c));
       const out = await fed.callback(
         { code: query.code, state: query.state, error: query.error },
         getCookie(c, OIDC_COOKIE),
-        session,
         k.meta(c),
       );
       // Single use: the binding cookie goes whatever the outcome.
@@ -471,8 +491,15 @@ function googleRoutes(k: RouteKit): void {
           maxAge: OIDC_SIGNUP_MAX_AGE,
         });
         return "/signup/google";
-      case "linked":
-        return "/settings/security?google=linked";
+      case "pending-link":
+        setCookie(c, OIDC_LINK_COOKIE, out.linkToken, {
+          path: "/",
+          secure: true,
+          httpOnly: true,
+          sameSite: "Lax",
+          maxAge: OIDC_COOKIE_MAX_AGE,
+        });
+        return "/google-link";
       case "failed":
         if (out.intent === "link") return `/settings/security?google=${out.code}`;
         if (out.code === "exists") return "/signin/google-exists";
@@ -488,7 +515,11 @@ function googleRoutes(k: RouteKit): void {
       summary: "The new Google user's sign-up step: the name to prefill and the address",
       auth: "none",
       ok: 200,
-      okSchema: z.object({ name: z.string(), email: z.string() }),
+      okSchema: z.object({
+        name: z.string(),
+        email: z.string(),
+        invitedTo: z.string().nullable(),
+      }),
     },
     (c) => {
       k.floodLimit(c, "auth");

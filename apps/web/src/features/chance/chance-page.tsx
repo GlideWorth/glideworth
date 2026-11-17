@@ -5,6 +5,7 @@ import {
   type MonteCarloResult,
   MonteCarloSettings,
   type ProjectionResult,
+  SAMPLING_METHOD_LABEL,
   type SamplingMethod,
 } from "@glideworth/core";
 import { Dices, Loader2, Play, Square } from "lucide-react";
@@ -27,6 +28,7 @@ import { Card, CardBody, CardHeader } from "../../components/ui/card";
 import { Field, Input } from "../../components/ui/input";
 import { Segmented } from "../../components/ui/segmented";
 import { Select } from "../../components/ui/select";
+import { useMode } from "../../lib/auth";
 import { cn } from "../../lib/cn";
 import { total } from "../../lib/money";
 import { periodShortLabel } from "../../lib/period";
@@ -50,13 +52,6 @@ import {
 import { FxRiskSettings } from "./fx-risk";
 import { McCancelled, poolSize, runChanceOfSuccess, runTrialDetail } from "./mc-pool";
 import { useMcStore } from "./mc-store";
-
-const METHOD_LABEL: Record<SamplingMethod, string> = {
-  "historical-random-restart": "Historical, random start years",
-  "historical-sequential": "Historical, every start year once",
-  "block-bootstrap": "Block bootstrap of history",
-  normal: "Random returns (normal)",
-};
 
 type Status = "idle" | "running" | "done" | "error" | "cancelled";
 
@@ -157,9 +152,9 @@ function SettingsPanel({
             id={id}
             value={value.method}
             onValueChange={(m) => set({ method: m })}
-            options={(Object.keys(METHOD_LABEL) as SamplingMethod[]).map((m) => ({
+            options={(Object.keys(SAMPLING_METHOD_LABEL) as SamplingMethod[]).map((m) => ({
               value: m,
-              label: METHOD_LABEL[m],
+              label: SAMPLING_METHOD_LABEL[m],
             }))}
           />
         )}
@@ -572,6 +567,7 @@ export function TrialExplorer({
 
 export function ChanceView() {
   const { plan, input, result: det, isLoading, error: detError, basis, f, doc } = useAnalysis();
+  const cloud = useMode() === "cloud";
   const theme = useResolvedTheme();
   const currencies = useMemo(
     () => (doc && plan ? foreignCurrencies(doc, [plan]) : []),
@@ -719,7 +715,9 @@ export function ChanceView() {
               <div className="text-[12px] text-ink-3">Run cancelled.</div>
             ) : null}
             <p className="text-[11.5px] text-ink-3">
-              Runs locally in background workers; your data never leaves this device.
+              {cloud
+                ? "Runs in background workers in this browser. Your plans are saved in your Glideworth Cloud workspace."
+                : "Runs locally in background workers; your data never leaves this device."}
             </p>
           </CardBody>
         </Card>

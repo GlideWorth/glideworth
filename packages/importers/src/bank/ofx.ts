@@ -5,6 +5,7 @@
  */
 import type { ImportIssue } from "../types.js";
 import type { BankAccount, BankParse, BankTransaction } from "./types.js";
+import { table } from "../util/read.js";
 
 interface Node {
   tag: string;
@@ -129,13 +130,13 @@ const num = (s: string | undefined): number | undefined => {
 export const maskAccount = (id: string | undefined): string =>
   id ? `••${id.replace(/\s+/g, "").slice(-4)}` : "••";
 
-const ACCT_TYPE: Record<string, { type: string; label: string }> = {
+const ACCT_TYPE: Record<string, { type: string; label: string }> = table({
   CHECKING: { type: "cash", label: "Current account" },
   SAVINGS: { type: "savings", label: "Savings account" },
   MONEYMRKT: { type: "savings", label: "Money market account" },
   CREDITLINE: { type: "cash", label: "Credit line" },
   CD: { type: "certificate", label: "Certificate of deposit" },
-};
+});
 
 export function parseOfx(text: string): BankParse {
   const issues: ImportIssue[] = [];

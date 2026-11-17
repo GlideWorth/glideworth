@@ -101,6 +101,31 @@ This is a service email about your account, so you cannot unsubscribe from it.
 "
 `;
 
+exports[`templates > email-change-requested > text snapshot 1`] = `
+"Subject: Someone asked to change your Glideworth email address
+
+Glideworth
+
+A change of email address was requested
+
+Hello Sam Example,
+
+On 16 November 2026, 09:14 UTC, someone signed in to your Glideworth account asked to change its email address to sam.new@example.test.
+
+Nothing has changed yet. The change happens only if the confirmation link we sent to sam.new@example.test is opened within 24 hours. Until then, this address stays on the account.
+
+If you asked for this, there is nothing to do.
+
+If you did not, change your password now (that also cancels the request), then contact us:
+https://app.example.test/settings/security?t=sample-token
+
+--
+Glideworth
+Questions? Write to support@example.test.
+This is a service email about your account, so you cannot unsubscribe from it.
+"
+`;
+
 exports[`templates > export-ready > text snapshot 1`] = `
 "Subject: Your Glideworth export is ready
 
@@ -141,6 +166,28 @@ https://app.example.test/invitations/accept?t=sample-token
 The invitation expires in 7 days. You need a Glideworth account with this email address to accept it; if you do not have one yet, you can create one first.
 
 If you were not expecting this, you can ignore this email.
+
+--
+Glideworth
+Questions? Write to support@example.test.
+This is a service email about your account, so you cannot unsubscribe from it.
+"
+`;
+
+exports[`templates > member-removed > text snapshot 1`] = `
+"Subject: You have been removed from a Glideworth workspace
+
+Glideworth
+
+You have been removed from a workspace
+
+Hello Sam Example,
+
+The owner of the Glideworth workspace "Sample household" has removed you from it. You can no longer see or change its plans.
+
+Your own Glideworth account is not affected: you can still sign in, and you can create a workspace of your own or join another one you are invited to.
+
+If you think this was a mistake, ask the workspace owner to invite you again.
 
 --
 Glideworth

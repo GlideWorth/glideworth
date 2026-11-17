@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  dateText,
   EmailValidationError,
   render,
   SUBJECTS,
@@ -12,8 +13,8 @@ const ctxFor = (id: (typeof TEMPLATE_IDS)[number]) =>
   TEMPLATE_CATEGORY[id] === "checkin" ? CHECKIN_CTX : CTX;
 
 describe("templates", () => {
-  it("covers every template in the spec (17) and the account deletion notice", () => {
-    expect(TEMPLATE_IDS).toHaveLength(18);
+  it("covers every template in the spec (17), the account deletion, email change request and removal notices", () => {
+    expect(TEMPLATE_IDS).toHaveLength(20);
     expect(Object.keys(FIXTURES).sort()).toEqual([...TEMPLATE_IDS].sort());
   });
 
@@ -191,5 +192,82 @@ describe("templates", () => {
     );
     expect(r.text).toContain("support");
     expect(r.text).not.toContain("secure your account");
+  });
+});
+
+describe("dates and times", () => {
+  it("formats ISO dates and timestamps unambiguously, in UTC, and leaves other text alone", () => {
+    expect(dateText("2026-11-18T06:00:00.000Z", "at")).toBe("18 November 2026, 06:00 UTC");
+    expect(dateText("2026-11-17T05:51:45.364Z", "at")).toBe("17 November 2026, 05:51 UTC");
+    expect(dateText("2026-11-18T07:30:00+01:00", "at")).toBe("18 November 2026, 06:30 UTC");
+    expect(dateText("2026-12-01", "on")).toBe("1 December 2026");
+    expect(dateText("16 November 2026", "on")).toBe("16 November 2026");
+    expect(dateText("2026-13-45", "on")).toBe("2026-13-45");
+  });
+
+  it("no email shows a raw ISO timestamp", () => {
+    const iso = "2026-11-18T05:54:51.238Z";
+    const data: Record<string, Record<string, unknown>> = {
+      "security-change": { ...FIXTURES["security-change"], at: iso },
+      "signin-alert": { ...FIXTURES["signin-alert"], at: iso },
+      "export-ready": { ...FIXTURES["export-ready"], expiresAt: iso },
+      "email-change-requested": { ...FIXTURES["email-change-requested"], at: iso },
+      "account-deleted": { ...FIXTURES["account-deleted"], deletedAt: iso, backupsPurgedBy: iso },
+      "user-account-deleted": { ...FIXTURES["user-account-deleted"], deletedAt: iso },
+      "trial-ending": { ...FIXTURES["trial-ending"], trialEndsOn: iso },
+      "renewal-reminder": { ...FIXTURES["renewal-reminder"], renewsOn: iso },
+      "payment-problem": { ...FIXTURES["payment-problem"], readOnlyFrom: iso },
+      "subscription-canceled": { ...FIXTURES["subscription-canceled"], accessUntil: iso },
+      "deletion-warning": { ...FIXTURES["deletion-warning"], deletesOn: iso },
+    };
+    for (const [id, d] of Object.entries(data)) {
+      const r = render(id as never, d as never, CTX);
+      expect(r.text, id).not.toContain("2026-11-18T");
+      expect(r.text, id).toContain("18 November 2026, 05:54 UTC");
+    }
+  });
+});
+
+describe("change of email address", () => {
+  it("the request notice says a change was asked for, to which address, and what to do if it was not you", () => {
+    const r = render("email-change-requested", FIXTURES["email-change-requested"], CTX);
+    expect(r.subject).toBe("Someone asked to change your Glideworth email address");
+    expect(r.text).toContain("asked to change its email address to sam.new@example.test");
+    expect(r.text).toContain("Nothing has changed yet.");
+    expect(r.text).toContain("If you did not, change your password now");
+    expect(r.text).toContain("16 November 2026, 09:14 UTC");
+    expect(r.text).not.toMatch(/was changed/);
+  });
+
+  it("the confirmation notice names the new address", () => {
+    const r = render(
+      "security-change",
+      { ...FIXTURES["security-change"], change: "email-changed", newEmail: "sam.new@example.test" },
+      CTX,
+    );
+    expect(r.text).toContain(
+      "The email address on your account was changed to sam.new@example.test.",
+    );
+  });
+
+  it("rejects a hostile new address in the request notice", () => {
+    expect(() =>
+      render(
+        "email-change-requested",
+        { ...FIXTURES["email-change-requested"], newEmail: "a@b.test\r\nBcc: x@y.test" },
+        CTX,
+      ),
+    ).toThrow(EmailValidationError);
+  });
+});
+
+describe("removal from a workspace", () => {
+  it("names the workspace and nothing else from it", () => {
+    const r = render("member-removed", FIXTURES["member-removed"], CTX);
+    expect(r.subject).toBe("You have been removed from a Glideworth workspace");
+    expect(r.text).toContain(
+      'The owner of the Glideworth workspace "Sample household" has removed you',
+    );
+    expect(r.text).toContain("Your own Glideworth account is not affected");
   });
 });

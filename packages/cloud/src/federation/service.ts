@@ -15,8 +15,15 @@
  *    discarded when the Google user confirms ("newest sign-up wins", accounts/service.ts), never merged.
  * 5. A Google account whose address later changes still maps by `sub`; the Glideworth address is not touched.
  * 6. Linking (from security settings): a signed-in, recently re-authenticated session starts the flow, and
- *    only that session in that browser can finish it. A `sub` linked to someone else is refused.
+ *    only that session in that browser can finish it. A `sub` linked to someone else is refused. The callback
+ *    cannot finish it: it is a navigation from Google's page, so the browser leaves out the `SameSite=Strict`
+ *    session cookie (security review finding 13). It parks the verified claims (flows.ts `pending_link`) and
+ *    sends the browser to the web app's `/google-link` page, whose same-origin POST (session and CSRF token)
+ *    calls `finishLink`.
  * 7. Unlinking: only when a password exists (the account would otherwise have no way in), re-auth required.
+ * 8. Invitations: a sign-in or sign-up started from an invitation page carries the invitation's token through
+ *    the flow (sealed, server side) and ends on that invitation (`/invite#token=…`) while it can still be
+ *    accepted, as the email sign-up does (accounts/service.ts `signUp`).
  *
  * Abuse and privacy: per-address flood limits on every route plus a per-address callback limit; audit
  * `user.signin` (method google), `identity.linked`, `identity.unlinked`; nothing from Google (email, name,
@@ -52,8 +59,13 @@ export type CallbackOutcome =
   | { kind: "signed-in"; session: IssuedSession; next: string }
   | { kind: "totp"; challenge: string; next: string }
   | { kind: "pending-signup"; pendingToken: string }
-  | { kind: "linked" }
+  | { kind: "pending-link"; linkToken: string }
   | { kind: "failed"; code: CallbackError; intent: "signin" | "link" };
+
+/** The answer of `finishLink`: "linked", or why not (the web app shows it on the security settings page). */
+export type LinkOutcome =
+  | "linked"
+  | Extract<CallbackError, "expired" | "taken" | "already-linked" | "session">;
 
 type CallbackError =
   /** The person cancelled at Google, or Google reported an error. */
@@ -83,6 +95,8 @@ export interface FederationDeps {
   audit: ControlAudit;
   limiter: RateLimiter;
   oidc: OidcClient;
+  /** The workspace name of an invitation that can still be accepted, or null (WorkspacesService). */
+  invitation?: (token: unknown) => { workspaceName: string } | null;
   now?: () => Date;
   log?: Logger;
 }
@@ -100,14 +114,19 @@ export class FederationService {
   }
 
   // ------------------------------------------------------------------------------------------ start
-  /** Sign-in or sign-up from the Google button. `next` must already be `safeNext`-validated. */
+  /**
+   * Sign-in or sign-up from the Google button. `next` must already be `safeNext`-validated. `invitation` is the
+   * token of the invitation page the person came from; it is kept only while it can be accepted.
+   */
   async startSignIn(
     browserCookie: string | null | undefined,
     next: string,
     m: RequestMeta,
+    invitation?: string | null,
   ): Promise<{ url: string; browser: string }> {
     this.limit(`oidc:start:${m.ip}`, FEDERATION_LIMITS.startIp);
-    return this.start(browserCookie, { intent: "signin", next });
+    const live = invitation && this.d.invitation?.(invitation) ? invitation : null;
+    return this.start(browserCookie, { intent: "signin", next, invitation: live });
   }
 
   /** Link Google to the signed-in account (security settings). Needs a re-authentication in the last 10 min. */
@@ -132,7 +151,13 @@ export class FederationService {
 
   private async start(
     browserCookie: string | null | undefined,
-    o: { intent: "signin" | "link"; next: string; userId?: string; sessionId?: string },
+    o: {
+      intent: "signin" | "link";
+      next: string;
+      userId?: string;
+      sessionId?: string;
+      invitation?: string | null;
+    },
   ): Promise<{ url: string; browser: string }> {
     const browser = FlowStore.browserToken(browserCookie).token;
     const f = this.flows.createAuthorize({ provider: this.provider, browser, ...o });
@@ -148,13 +173,13 @@ export class FederationService {
 
   // --------------------------------------------------------------------------------------- callback
   /**
-   * The redirect back from Google. `session` is this browser's current session (linking only). Never throws
-   * for a protocol failure: the outcome is a fixed code the route turns into a redirect.
+   * The redirect back from Google. Never throws for a protocol failure: the outcome is a fixed code the route
+   * turns into a redirect. It does not look at the session: browsers do not send the `SameSite=Strict` session
+   * cookie on this navigation, which starts on Google's page, so a link is finished later by `finishLink`.
    */
   async callback(
     q: { code?: string | undefined; state?: string | undefined; error?: string | undefined },
     browserCookie: string | null | undefined,
-    session: SessionContext | null,
     m: RequestMeta,
   ): Promise<CallbackOutcome> {
     if (!this.d.limiter.hit(`oidc:cb:${m.ip}`, ...FEDERATION_LIMITS.callbackIp).allowed)
@@ -187,8 +212,16 @@ export class FederationService {
       throw err;
     }
 
-    if (flow.intent === "link")
-      return this.finishLink(claims, claim.userId, claim.sessionId, session, m);
+    if (flow.intent === "link") {
+      // Parked for the session that started the link; the web app's same-origin POST finishes it.
+      if (!claim.userId || !claim.sessionId) return fail("session");
+      const linkToken = this.flows.createPendingLink(
+        this.provider,
+        { userId: claim.userId, sessionId: claim.sessionId },
+        { subject: claims.subject, email: claims.email },
+      );
+      return { kind: "pending-link", linkToken };
+    }
 
     // Rule 1: a known subject.
     const known = identityBySubject(this.d.db, this.provider, claims.subject);
@@ -201,9 +234,10 @@ export class FederationService {
         throw err;
       }
       touchIdentity(this.d.db, known.id, this.clock());
+      const next = this.nextFor(flow);
       return r.kind === "signed-in"
-        ? { kind: "signed-in", session: r.session, next: flow.next }
-        : { kind: "totp", challenge: r.challenge, next: flow.next };
+        ? { kind: "signed-in", session: r.session, next }
+        : { kind: "totp", challenge: r.challenge, next };
     }
 
     const norm = normalizeEmail(claims.email);
@@ -218,28 +252,33 @@ export class FederationService {
       email: claims.email,
       name: claims.name,
       next: flow.next,
+      ...(flow.invitation ? { invitation: flow.invitation } : {}),
     });
     return { kind: "pending-signup", pendingToken };
   }
 
-  private finishLink(
-    claims: { subject: string; email: string },
-    userId: string | null,
-    sessionId: string | null,
-    session: SessionContext | null,
-    m: RequestMeta,
-  ): CallbackOutcome {
-    const fail = (code: CallbackError): CallbackOutcome => ({
-      kind: "failed",
-      code,
-      intent: "link",
-    });
+  /** Where a sign-in ends: the invitation it started from while that can still be accepted, else `next`. */
+  private nextFor(f: { next: string; invitation?: string | undefined }): string {
+    if (f.invitation && this.d.invitation?.(f.invitation))
+      return `/invite#token=${encodeURIComponent(f.invitation)}`;
+    return f.next;
+  }
+
+  // ------------------------------------------------------------------------------------ finish link
+  /**
+   * Finish a link parked by the callback (`linkToken`, the `__Host-gw_oidc_link` cookie). Called by the web
+   * app's same-origin POST, so `s` is this browser's session and the route has checked the CSRF token. Only
+   * the session that started the link can finish it. The parked claims are used up whatever the outcome.
+   */
+  finishLink(s: SessionContext, linkToken: string | null | undefined, m: RequestMeta): LinkOutcome {
+    const parked = this.flows.claimPendingLink(linkToken);
+    if (!parked) return "expired";
+    const { link: claims, userId } = parked;
     // The browser finishing the link must still be signed in as the session that started it.
-    if (!userId || !session || session.userId !== userId || session.sessionId !== sessionId)
-      return fail("session");
+    if (!userId || s.userId !== userId || s.sessionId !== parked.sessionId) return "session";
     const known = identityBySubject(this.d.db, this.provider, claims.subject);
-    if (known) return known.userId === userId ? { kind: "linked" } : fail("taken");
-    if (identityOfUser(this.d.db, userId, this.provider)) return fail("already-linked");
+    if (known) return known.userId === userId ? "linked" : "taken";
+    if (identityOfUser(this.d.db, userId, this.provider)) return "already-linked";
     try {
       insertIdentity(this.d.db, {
         userId,
@@ -249,8 +288,7 @@ export class FederationService {
         now: this.clock(),
       });
     } catch (err) {
-      if (String((err as { code?: unknown })?.code).startsWith("SQLITE_CONSTRAINT"))
-        return fail("taken");
+      if (String((err as { code?: unknown })?.code).startsWith("SQLITE_CONSTRAINT")) return "taken";
       throw err;
     }
     this.d.audit.record({
@@ -263,14 +301,25 @@ export class FederationService {
       detail: { method: this.provider },
     });
     this.log.info("auth.identity_linked", { userId, provider: this.provider });
-    return { kind: "linked" };
+    return "linked";
   }
 
   // ------------------------------------------------------------------------------------- pending
-  /** What the sign-up step shows: the name to prefill (editable) and the address (read-only). */
-  pending(token: string | null | undefined): { name: string; email: string } | null {
+  /**
+   * What the sign-up step shows: the name to prefill (editable), the address (read-only), and the workspace
+   * of the invitation the sign-up started from while it can still be accepted (no trial is started then).
+   */
+  pending(
+    token: string | null | undefined,
+  ): { name: string; email: string; invitedTo: string | null } | null {
     const p = this.flows.peekPending(token);
-    return p ? { name: (p.name ?? "").slice(0, 100), email: p.email } : null;
+    if (!p) return null;
+    const invited = p.invitation ? (this.d.invitation?.(p.invitation) ?? null) : null;
+    return {
+      name: (p.name ?? "").slice(0, 100),
+      email: p.email,
+      invitedTo: invited?.workspaceName ?? null,
+    };
   }
 
   async completeSignup(
@@ -315,7 +364,7 @@ export class FederationService {
       },
       m,
     );
-    return { ...r, next: p.next };
+    return { ...r, next: this.nextFor(p) };
   }
 
   // -------------------------------------------------------------------------------------- unlink

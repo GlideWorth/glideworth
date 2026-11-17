@@ -1,8 +1,18 @@
 import type { Actor, GlideworthDocument } from "@glideworth/core";
-import { migrateDocument } from "@glideworth/core";
 import type { BankImportRequest, QifDateFormat, TransactionOptions } from "@glideworth/importers";
 import { z } from "zod";
+import { type ImportDeps, importDeps } from "../deps.js";
 import { ApiError } from "../errors.js";
+import { checkImportSize, checkPlanCount } from "../jobs/import-limits.js";
+import { type ImportPool, sharedImportPool } from "../jobs/import-pool.js";
+import {
+  type DocumentImportResult,
+  type HouseholdImportResult,
+  type ImportTask,
+  type ImportTaskResult,
+  type ImportWrites,
+  runImportTask,
+} from "../jobs/import-task.js";
 import type { ServiceCtx } from "./context.js";
 import type { HouseholdsService } from "./households.js";
 import type { PlansService } from "./plans.js";
@@ -101,8 +111,8 @@ export type CsvAnalyzeBody = z.infer<typeof CsvAnalyzeBody>;
 
 /**
  * Largest bank file the import accepts, in characters (2 MB of text; years of statements fit). The
- * file is parsed on the request thread, so its size bounds how long one import can hold the server
- * (security review finding 4). The MCP bank-file tools declare the same limit.
+ * file is parsed in an import worker thread (`jobs/import-pool.ts`); the limit bounds that thread's time and
+ * memory (security review finding 4). The MCP bank-file tools declare the same limit.
  */
 export const MAX_BANK_FILE_CHARS = 2_000_000;
 const BANK_FILE_TOO_LARGE = `the file is larger than the 2 MB limit (${MAX_BANK_FILE_CHARS.toLocaleString("en-US")} characters); export a shorter date range`;
@@ -181,64 +191,100 @@ export function bankAnnualise(v: BankFileImportBody["annualise"]): Annualise | u
   return v;
 }
 
+/** Imports one workspace may have running at once; more are `429 RATE_LIMITED` (security review finding 4). */
+const MAX_IMPORTS_PER_WORKSPACE = 2;
+
+/**
+ * Where import tasks run: the process's worker pool (default), or `"inline"` (in-process; tests). Fake
+ * importers (`ctx.imports` replaced in tests) always run in-process: a worker thread only has the real ones.
+ */
+export type ImportRunnerOption = ImportPool | "inline";
+
 export class ImportsService {
+  private inFlight = 0;
+
   constructor(
     private readonly ctx: ServiceCtx,
     private readonly households: HouseholdsService,
     private readonly plans: PlansService,
+    private readonly runner: ImportRunnerOption = sharedImportPool(),
   ) {}
 
-  /** Import a whole workspace (Glideworth export or ProjectionLab JSON). */
-  import(body: ImportBody, actor: Actor) {
-    let format = body.format;
-    if (format === "auto")
-      format = this.ctx.imports.detectProjectionLabExport(body.data)
-        ? "projectionlab"
-        : "glideworth";
-    let document: GlideworthDocument;
-    let issues: unknown[] = [];
-    let stats: Record<string, number> = {};
-    let report: unknown;
-    if (format === "projectionlab") {
-      const r = this.ctx.imports.importProjectionLab(
-        body.data,
-        body.householdId ? { householdId: body.householdId } : {},
+  /** Imports waiting for or running in a worker thread. */
+  busy(): boolean {
+    return this.inFlight > 0;
+  }
+
+  /**
+   * Hand the CPU-heavy part to a worker thread and wait for it; the event loop keeps serving other requests
+   * (security review finding 4). Limits: see `ImportPool` and `MAX_IMPORTS_PER_WORKSPACE`.
+   */
+  private async run<T extends ImportTaskResult>(task: ImportTask): Promise<T> {
+    if (this.inFlight >= MAX_IMPORTS_PER_WORKSPACE)
+      throw new ApiError(
+        429,
+        "RATE_LIMITED",
+        `this workspace already has ${MAX_IMPORTS_PER_WORKSPACE} imports running; try again when one finishes`,
+        { retryAfterSeconds: 5 },
       );
-      document = r.document;
-      issues = r.issues;
-      stats = r.stats;
-      report = r.report;
-    } else {
-      document = migrateDocument(body.data);
-      stats = {
-        plans: document.plans.length,
-        accounts: document.finances.accounts.length,
-        snapshots: document.progress.length,
-      };
+    this.inFlight++;
+    try {
+      const deps = this.ctx.imports;
+      if (this.runner === "inline" || deps !== importDeps) return runImportTask(task, deps) as T;
+      return (await this.runner.run(task)) as T;
+    } finally {
+      this.inFlight--;
     }
-    const preview = {
-      format,
+  }
+
+  /** Import a whole workspace (Glideworth export or ProjectionLab JSON). */
+  async import(body: ImportBody, actor: Actor) {
+    // Cheap bounds on the request thread, before the document is copied to a worker (security review pass 3).
+    checkImportSize(body.data);
+    if (body.format !== "projectionlab") checkPlanCount(body.data);
+    const r = await this.run<DocumentImportResult>({
+      op: "document",
+      format: body.format,
+      data: body.data,
       dryRun: body.dryRun,
-      householdId: document.household.id,
-      issues,
-      stats,
-      ...(report ? { report } : {}),
-    };
-    if (body.dryRun) return { ...preview, imported: false };
-    if (issues.some((i) => (i as { severity?: string }).severity === "error"))
+      ...(body.householdId ? { householdId: body.householdId } : {}),
+    });
+    if (body.dryRun) return { ...r.preview, imported: false };
+    if (r.blocking)
       throw new ApiError(
         422,
         "IMPORT_FAILED",
         "the import has blocking errors; run with dryRun=true to inspect them",
-        { issues },
+        { issues: r.blocking },
       );
-    this.households.importDocument(document, actor, body.mode);
-    return { ...preview, imported: true };
+    // Snapshots go in through the bulk path: `importDocument` reads and validates the household once per
+    // snapshot, so many snapshots of a household with many accounts took time proportional to their product
+    // (security review pass 3). Same outcome in one transaction: a snapshot id that exists is a conflict, except
+    // in `merge`, which replaces it.
+    const document = r.document!;
+    this.households.db.transaction(() => {
+      this.households.importDocument({ ...document, progress: [] }, actor, body.mode, {
+        validated: true,
+      });
+      if (document.progress.length > 0)
+        this.households.bulkImportSnapshots(
+          document.household.id,
+          document.progress,
+          body.mode === "merge" ? "replace" : "error",
+        );
+    });
+    return { ...r.preview, imported: true };
   }
 
   /** Detect delimiter, preset, columns and formats of a CSV without importing anything. */
-  analyzeCsv(body: CsvAnalyzeBody) {
-    return this.ctx.imports.analyzeCsv(body.text, body.kind, body.options as never);
+  async analyzeCsv(body: CsvAnalyzeBody) {
+    const r = await this.run<{ op: "csv-analyze"; analysis: unknown }>({
+      op: "csv-analyze",
+      text: body.text,
+      kind: body.kind,
+      ...(body.options ? { options: body.options } : {}),
+    });
+    return r.analysis as ReturnType<ImportDeps["analyzeCsv"]>;
   }
 
   /**
@@ -252,47 +298,29 @@ export class ImportsService {
       body.kind === "transactions"
         ? { kind: body.kind, planId: this.requirePlan(body.planId), options: body.options as never }
         : ({ kind: body.kind, options: body.options } as never);
-    const out = this.ctx.imports.importCsvInto(doc, body.text, request, { dryRun: body.dryRun });
-    const base = {
-      kind: out.kind,
-      dryRun: out.dryRun,
-      applied: false,
-      analysis: { ...out.analysis, sample: out.analysis.sample.slice(0, 10) },
-      issues: out.issues.slice(0, 200),
-      issueCount: out.issues.length,
-      ...(out.reconciliation ? { reconciliation: out.reconciliation } : {}),
-      ...(out.snapshots
-        ? { snapshots: { count: out.snapshots.length, first: out.snapshots.slice(0, 20) } }
-        : {}),
-      ...(out.summary ? { summary: { ...out.summary, issues: undefined } } : {}),
-    };
-    if (body.dryRun) return base;
-    if (out.issues.some((i) => i.severity === "error"))
-      throw new ApiError(
-        422,
-        "IMPORT_FAILED",
-        "the CSV has blocking errors; run with dryRun=true to inspect them",
-        {
-          issues: out.issues.filter((i) => i.severity === "error").slice(0, 50),
-        },
-      );
-    const changes = this.applyDocument(
+    return this.applyHousehold(
       householdId,
       doc,
-      out.document,
+      {
+        op: "csv",
+        doc,
+        text: body.text,
+        request,
+        dryRun: body.dryRun,
+        replaceProgress: body.options?.mode === "replace",
+      },
       actor,
-      body.options?.mode === "replace",
+      "the CSV has blocking errors; run with dryRun=true to inspect them",
     );
-    return { ...base, applied: true, changes };
   }
 
   /**
    * OFX / QFX / QIF import into a household: balances (reconciled like the CSV balance import) and spending
    * (summarised into annual expense events on `planId`). `dryRun` (the default) previews only. Account numbers
-   * are already masked to their last four digits by the parser.
+   * are already masked to their last four digits by the parser. Input errors are thrown at once (not as a
+   * rejected promise), before anything is handed to a worker.
    */
   importBankFile(householdId: string, body: BankFileImportBody, actor: Actor) {
-    // The route and MCP schemas refuse this first; no other caller may hand the parser a larger file either.
     if (body.text.length > MAX_BANK_FILE_CHARS)
       throw new ApiError(413, "PAYLOAD_TOO_LARGE", BANK_FILE_TOO_LARGE);
     const doc = this.households.getDocument(householdId);
@@ -311,31 +339,13 @@ export class ImportsService {
       ...(body.balances !== undefined ? { balances: body.balances } : {}),
       ...(body.planId ? { transactionsToPlanId: body.planId } : {}),
     };
-    const out = this.ctx.imports.importBankFileInto(doc, body.text, request, {
-      dryRun: body.dryRun,
-    });
-    const base = {
-      format: out.format,
-      dryRun: out.dryRun,
-      applied: false,
-      accounts: out.accounts,
-      issues: out.issues.slice(0, 200),
-      issueCount: out.issues.length,
-      ...(out.reconciliation ? { reconciliation: out.reconciliation } : {}),
-      summary: { ...out.summary, issues: undefined },
-    };
-    if (body.dryRun) return base;
-    if (out.issues.some((i) => i.severity === "error"))
-      throw new ApiError(
-        422,
-        "IMPORT_FAILED",
-        "the file has blocking errors; run with dryRun=true to inspect them",
-        {
-          issues: out.issues.filter((i) => i.severity === "error").slice(0, 50),
-        },
-      );
-    const changes = this.applyDocument(householdId, doc, out.document, actor, false);
-    return { ...base, applied: true, changes };
+    return this.applyHousehold(
+      householdId,
+      doc,
+      { op: "bank-file", doc, text: body.text, request, dryRun: body.dryRun },
+      actor,
+      "the file has blocking errors; run with dryRun=true to inspect them",
+    );
   }
 
   private requirePlan(planId: string | undefined): string {
@@ -343,45 +353,76 @@ export class ImportsService {
     return planId;
   }
 
-  /** Write the differences between two versions of a household document, atomically. */
-  private applyDocument(
+  /** Run a CSV / bank-file task, then (apply) write its result unless the household changed meanwhile. */
+  private async applyHousehold(
     householdId: string,
     before: GlideworthDocument,
-    after: GlideworthDocument,
+    task: Extract<ImportTask, { op: "csv" | "bank-file" }>,
     actor: Actor,
-    replaceProgress: boolean,
-  ) {
+    blockingMessage: string,
+  ): Promise<Record<string, unknown>> {
+    const stamp = task.dryRun ? "" : this.stamp(householdId, before);
+    const r = await this.run<HouseholdImportResult>(task);
+    if (task.dryRun) return r.preview;
+    if (r.blocking)
+      throw new ApiError(422, "IMPORT_FAILED", blockingMessage, { issues: r.blocking });
+    const changes = this.applyWrites(householdId, stamp, r.writes!, actor);
+    return { ...r.preview, applied: true, changes };
+  }
+
+  /** The household as the import saw it (its version, plans and snapshots). */
+  private stamp(householdId: string, doc: GlideworthDocument): string {
+    return JSON.stringify([
+      this.households.version(householdId),
+      doc.household,
+      doc.finances,
+      doc.plans.map((p) => [p.id, p.version]),
+      doc.progress,
+    ]);
+  }
+
+  /**
+   * Write an import's result atomically. The import was worked out on a copy read before the worker ran; if
+   * the household changed since, nothing is written (409, run it again).
+   */
+  private applyWrites(householdId: string, stamp: string, writes: ImportWrites, actor: Actor) {
     const changes = {
       finances: false,
       snapshots: { created: 0, replaced: 0, removed: 0 },
       plans: [] as string[],
     };
     this.households.db.transaction(() => {
-      if (JSON.stringify(before.finances) !== JSON.stringify(after.finances)) {
-        this.households.replaceCurrent(householdId, { finances: after.finances }, undefined, actor);
+      if (this.stamp(householdId, this.households.getDocument(householdId)) !== stamp)
+        throw new ApiError(
+          409,
+          "VERSION_CONFLICT",
+          "the household changed while the import was being prepared; nothing was written. Run the import again",
+        );
+      if (writes.finances) {
+        this.households.replaceCurrent(
+          householdId,
+          { finances: writes.finances },
+          undefined,
+          actor,
+        );
         changes.finances = true;
       }
-      const known = new Map(before.progress.map((s) => [s.id, JSON.stringify(s)]));
-      const items = after.progress.filter((s) => known.get(s.id) !== JSON.stringify(s));
-      if (items.length) {
-        const r = this.households.bulkImportSnapshots(householdId, items, "replace");
+      if (writes.snapshots.length) {
+        const r = this.households.bulkImportSnapshots(
+          householdId,
+          writes.snapshots as never,
+          "replace",
+        );
         changes.snapshots.created = r.created;
         changes.snapshots.replaced = r.replaced;
       }
-      if (replaceProgress) {
-        const keep = new Set(after.progress.map((s) => s.id));
-        for (const s of before.progress)
-          if (!keep.has(s.id)) {
-            this.households.deleteSnapshot(householdId, s.id);
-            changes.snapshots.removed++;
-          }
+      for (const id of writes.removeSnapshotIds) {
+        this.households.deleteSnapshot(householdId, id);
+        changes.snapshots.removed++;
       }
-      for (const p of after.plans) {
-        const was = before.plans.find((x) => x.id === p.id);
-        if (was && JSON.stringify(was) !== JSON.stringify(p)) {
-          this.plans.write(p.id, () => p, { actor, message: "CSV import" });
-          changes.plans.push(p.id);
-        }
+      for (const p of writes.plans) {
+        this.plans.write(p.id, () => p, { actor, message: "CSV import" });
+        changes.plans.push(p.id);
       }
     });
     return changes;

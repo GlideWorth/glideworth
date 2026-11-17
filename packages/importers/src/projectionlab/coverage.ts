@@ -1043,7 +1043,14 @@ function compile(rule: Rule): Compiled {
   return { rule, re: new RegExp(`^${re}$`), specificity: p.length - wildcards * 100 };
 }
 
-const COMPILED: Compiled[] = RULES.map(compile).sort((a, b) => b.specificity - a.specificity);
+/**
+ * Wildcard rules only: a rule without a wildcard matches exactly its own pattern, which {@link EXACT} looks up
+ * first. Testing all 900-odd patterns against every unknown path made a report of a few thousand unknown keys
+ * take seconds (security review: hostile-input cost of the importers).
+ */
+const COMPILED: Compiled[] = RULES.filter((r) => r.pattern.includes("*"))
+  .map(compile)
+  .sort((a, b) => b.specificity - a.specificity);
 const EXACT = new Map<string, Rule>();
 for (const r of RULES)
   if (!r.pattern.includes("*")) if (!EXACT.has(r.pattern)) EXACT.set(r.pattern, r);
@@ -1063,6 +1070,29 @@ export interface KeyPathInfo {
 }
 
 const MAX_DEPTH = 64;
+/**
+ * Bounds on the key-path table (security review: hostile-input cost of the importers). A path is built from
+ * every key above it, so long keys nested deeply made each path tens of kilobytes and the walk took seconds
+ * on an 80 KB file; distinct keys made the table as large as the file. A real export has a few hundred
+ * paths of under 200 characters. Anything past these limits is counted under {@link OVERFLOW_KEY_PATH}
+ * (an unknown path, so the report still says something was not accounted for) and not descended into.
+ */
+export const MAX_KEY_PATH_CHARS = 512;
+export const MAX_KEY_PATHS = 2_000;
+export const OVERFLOW_KEY_PATH = "$.(more key paths than the report lists)";
+
+/**
+ * True when the walk should stop at `norm` and count it as {@link OVERFLOW_KEY_PATH}: the path is too long,
+ * or it is new and the table is full. `known` is the table being built, or the finished one.
+ */
+export function overflowsKeyPaths(norm: string, known: Map<string, unknown>): boolean {
+  return norm.length > MAX_KEY_PATH_CHARS || (!known.has(norm) && known.size >= MAX_KEY_PATHS);
+}
+
+/** A concrete path cut to {@link MAX_KEY_PATH_CHARS} for a report. */
+export function clipPath(path: string): string {
+  return path.length > MAX_KEY_PATH_CHARS ? `${path.slice(0, MAX_KEY_PATH_CHARS)}…` : path;
+}
 
 /** Enumerate every key path (arrays collapsed to `[]`) in a JSON value. Structure only. */
 export function collectKeyPaths(raw: unknown): Map<string, KeyPathInfo> {
@@ -1077,6 +1107,10 @@ export function collectKeyPaths(raw: unknown): Map<string, KeyPathInfo> {
     if (e.concrete.length < 3) e.concrete.push(concrete);
   };
   const walk = (v: unknown, norm: string, concrete: string, depth: number): void => {
+    if (overflowsKeyPaths(norm, out)) {
+      add(OVERFLOW_KEY_PATH, clipPath(concrete));
+      return;
+    }
     add(norm, concrete);
     if (depth > MAX_DEPTH) return;
     if (Array.isArray(v)) {

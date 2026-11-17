@@ -100,7 +100,7 @@ export function axisStyle(t: ChartTokens) {
   };
 }
 
-/** HTML for one tooltip row: swatch, label, right-aligned value (text stays in ink tokens). */
+/** HTML for one tooltip row: swatch, label, right-aligned value (text stays in ink tokens). Label and value are text. */
 export function tooltipRow(
   color: string | null,
   label: string,
@@ -110,7 +110,7 @@ export function tooltipRow(
   const sw = color
     ? `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${color};margin-right:6px"></span>`
     : '<span style="display:inline-block;width:14px"></span>';
-  return `<div style="display:flex;justify-content:space-between;gap:16px;line-height:1.55;${strong ? "font-weight:600" : ""}"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sw}${escapeHtml(label)}</span><span>${value}</span></div>`;
+  return `<div style="display:flex;justify-content:space-between;gap:16px;line-height:1.55;${strong ? "font-weight:600" : ""}"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sw}${escapeHtml(label)}</span><span>${escapeHtml(value)}</span></div>`;
 }
 
 export function tooltipHeader(title: string, sub?: string): string {

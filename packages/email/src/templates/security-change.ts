@@ -1,6 +1,6 @@
 import { compose, greeting, link, p } from "../layout.js";
 import type { RenderContext, Rendered, SecurityChange, TemplateData } from "../types.js";
-import { EmailValidationError, freeText } from "../validate.js";
+import { assertEmail, dateText, EmailValidationError } from "../validate.js";
 
 const CHANGE_TEXT: Readonly<Record<SecurityChange, string>> = {
   "password-changed": "Your password was changed.",
@@ -25,13 +25,17 @@ export function securityChange(
   if (!Object.hasOwn(CHANGE_TEXT, data.change)) {
     throw new EmailValidationError("invalid_data", "change is not a known security change");
   }
+  const changeText =
+    data.change === "email-changed" && data.newEmail !== undefined
+      ? `The email address on your account was changed to ${assertEmail(data.newEmail, "newEmail")}. Account emails now go to that address, not this one.`
+      : CHANGE_TEXT[data.change];
   return compose(
     "security-change",
     "A security setting changed",
     [
       p(greeting(data.name)),
-      p(CHANGE_TEXT[data.change]),
-      p(`This happened at ${freeText(data.at, "at", 100)}.`),
+      p(changeText),
+      p(`This happened at ${dateText(data.at, "at")}.`),
       p(
         data.change === "support-access-used"
           ? "If you asked support for help, there is nothing to do."

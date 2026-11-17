@@ -1156,15 +1156,29 @@ export class AccountsService {
         newEmail: display,
         expiresInHours: ACCOUNT_TTL.emailChange / HOUR,
       });
-    // Warn the current address at once, so its owner can react before the change is confirmed.
-    this.securityMail(user, "email-changed");
+    // Warn the current address at once, so its owner can react before the change is confirmed. It is told a
+    // change was requested, not that it happened (that notice follows on confirmation).
+    this.sendMail(
+      { email: user.email, name: user.name },
+      user.emailNormalized,
+      "email-change-requested",
+      user.id,
+      {
+        name: user.name,
+        newEmail: display,
+        at: now.toISOString(),
+        expiresInHours: ACCOUNT_TTL.emailChange / HOUR,
+        securityUrl: `${this.publicUrl}/settings/security`,
+      },
+      "security",
+    );
   }
 
   async confirmEmailChange(token: string, m: RequestMeta): Promise<void> {
     const now = this.clock();
-    let userId: string | null;
+    let changed: { old: UserRow; email: string } | null;
     try {
-      userId = this.db.transaction((tx) => {
+      changed = this.db.transaction((tx) => {
         const row = claimTokenTx(tx, token, "email_change", now);
         if (!row) return null;
         const p = row.payload ?? {};
@@ -1185,14 +1199,15 @@ export class AccountsService {
         // Links already mailed to the old address must not keep working.
         dropUnused(tx, u.id, "reset_password");
         dropUnused(tx, u.id, "verify_email");
-        return u.id;
+        return { old: u, email };
       });
     } catch (err) {
       if (isConstraintError(err))
         throw new CloudError(409, "CONFLICT", "that address is already in use");
       throw err;
     }
-    if (!userId) throw invalidToken();
+    if (!changed) throw invalidToken();
+    const userId = changed.old.id;
     this.d.audit.record({
       actorType: "user",
       actorId: userId,
@@ -1201,6 +1216,21 @@ export class AccountsService {
       ip: m.ip,
       userAgent: m.userAgent,
     });
+    // The old address learns the change happened (it was told of the request earlier).
+    this.sendMail(
+      { email: changed.old.email, name: changed.old.name },
+      changed.old.emailNormalized,
+      "security-change",
+      userId,
+      {
+        name: changed.old.name,
+        change: "email-changed",
+        newEmail: changed.email,
+        at: now.toISOString(),
+        securityUrl: `${this.publicUrl}/settings/security`,
+      },
+      "security",
+    );
   }
 
   // ================================================================================================ TOTP

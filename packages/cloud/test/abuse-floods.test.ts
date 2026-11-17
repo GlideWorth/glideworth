@@ -4,6 +4,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { controlOAuthClients, OAUTH_REGISTRATION_LIMITS } from "../src/control/oauth-clients.js";
+import * as controlSchema from "../src/control/schema.js";
 import {
   Browser,
   type Cloud,
@@ -103,6 +104,42 @@ describe("OAuth client registration", () => {
     }
     expect(refusedAt).toBe(OAUTH_REGISTRATION_LIMITS.perDay - OAUTH_REGISTRATION_LIMITS.perMinute);
     expect(() => reg.register(client(n++), "203.0.113.7")).not.toThrow();
+  });
+
+  it("IPv6 addresses in one /48 share the limits (review finding 18)", () => {
+    const reg = controlOAuthClients({ db: cloud.db, limiter: cloud.limiter, now: cloud.now });
+    let n = 5000;
+    for (let i = 0; i < OAUTH_REGISTRATION_LIMITS.perMinute; i++)
+      reg.register(client(n++), `2001:db8:77:${i.toString(16)}::1`);
+    expect(() => reg.register(client(n++), "2001:db8:77:ffff::2")).toThrow(
+      /too many client registrations/,
+    );
+    expect(() => reg.register(client(n++), "2001:db8:78::1")).not.toThrow();
+  });
+
+  it("at the ceiling the oldest never-consented client makes room; consented ones are kept (review finding 18)", () => {
+    const reg = controlOAuthClients({
+      db: cloud.db,
+      limiter: cloud.limiter,
+      now: cloud.now,
+      maxTotal: 3,
+    });
+    cloud.db.delete(controlSchema.oauthClients).run();
+    reg.register(client(9001), "203.0.113.40");
+    reg.markConsented("glideworth-client-9001");
+    cloud.advance(1000);
+    reg.register(client(9002), "203.0.113.41");
+    cloud.advance(1000);
+    reg.register(client(9003), "203.0.113.42");
+    cloud.advance(1000);
+    // Full: before the fix this was a 503 for everyone until the flood aged out.
+    reg.register(client(9004), "203.0.113.43");
+    expect(reg.get("glideworth-client-9002")).toBeNull();
+    expect(reg.get("glideworth-client-9001")).not.toBeNull();
+    expect(reg.get("glideworth-client-9004")).not.toBeNull();
+    // Only a table of consented clients refuses.
+    for (const id of ["glideworth-client-9003", "glideworth-client-9004"]) reg.markConsented(id);
+    expect(() => reg.register(client(9005), "203.0.113.44")).toThrow(/temporarily unavailable/);
   });
 
   it("never-consented clients are purged after 24 hours; consented ones stay", () => {

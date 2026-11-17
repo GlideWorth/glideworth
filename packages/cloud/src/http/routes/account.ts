@@ -6,7 +6,7 @@ import { z } from "@hono/zod-openapi";
 import { getCookie } from "hono/cookie";
 import { clearSessionCookies, setSessionCookies } from "../common.js";
 import type { RouteKit } from "../kit.js";
-import { OIDC_COOKIE, setOidcCookie } from "./auth.js";
+import { clearCookie, OIDC_COOKIE, OIDC_LINK_COOKIE, setOidcCookie } from "./auth.js";
 
 const Ok = z.object({ status: z.literal("ok") });
 
@@ -161,6 +161,29 @@ export function accountRoutes(k: RouteKit): void {
         const { url, browser } = await fed.startLink(s, getCookie(c, OIDC_COOKIE), k.meta(c));
         setOidcCookie(c, browser);
         return c.json({ url }, 200);
+      },
+    );
+
+    k.op(
+      {
+        method: "post",
+        path: "/api/v1/account/identities/google/finish",
+        tag,
+        summary:
+          "Finish linking the Google account chosen at Google (the web app's /google-link page)",
+        description:
+          "Google's redirect cannot finish a link: browsers do not send the SameSite=Strict session cookie on a navigation that starts on Google's page. The callback parks the Google account in a short-lived record bound to this browser, and the web app posts here, with the session and the CSRF token. `google` is `linked`, or why not: `expired` (nothing parked, used, or older than 10 minutes), `session` (not the session that started the link), `taken` or `already-linked`. The parked record is used up either way.",
+        auth: "session",
+        ok: 200,
+        okSchema: z.object({
+          google: z.enum(["linked", "expired", "session", "taken", "already-linked"]),
+        }),
+      },
+      (c) => {
+        const s = k.session(c);
+        const google = fed.finishLink(s, getCookie(c, OIDC_LINK_COOKIE), k.meta(c));
+        clearCookie(c, OIDC_LINK_COOKIE, "Lax");
+        return c.json({ google }, 200);
       },
     );
 

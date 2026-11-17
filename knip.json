@@ -26,7 +26,7 @@
       "project": ["src/**/*.ts", "test/**/*.ts"]
     },
     "apps/api": {
-      "entry": ["src/cli/*.ts", "src/jobs/worker.ts", "scripts/*.mjs"],
+      "entry": ["src/cli/*.ts", "src/jobs/worker.ts", "src/jobs/import-worker.ts", "scripts/*.mjs"],
       "project": ["src/**/*.ts", "test/**/*.ts", "scripts/**/*.mjs"]
     },
     "apps/web": {

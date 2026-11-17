@@ -1,6 +1,6 @@
 /** Accounts: today.savingsAccounts[] / investmentAccounts[] and per-plan account events. */
 import { ACCOUNT_TYPES, AccountBehaviour } from "@glideworth/core";
-import { arr, bool, num, type Obj, obj, pct, pctClean, str } from "../util/read.js";
+import { table, arr, bool, num, type Obj, obj, pct, pctClean, str } from "../util/read.js";
 import {
   appearanceOf,
   basisOf,
@@ -13,7 +13,7 @@ import {
 import { approximated, infoNote, invalid, type PlContext } from "./context.js";
 import { resolveRef } from "./dates.js";
 
-const TYPE_ALIASES: Record<string, string> = {
+const TYPE_ALIASES: Record<string, string> = table({
   checking: "cash",
   current: "cash",
   cd: "certificate",
@@ -33,7 +33,7 @@ const TYPE_ALIASES: Record<string, string> = {
   lira: "ca-lira",
   "ca-registered": "ca-non-registered",
   super: "au-super-accumulation",
-};
+});
 
 const TYPE_SET = new Set<string>(ACCOUNT_TYPES);
 

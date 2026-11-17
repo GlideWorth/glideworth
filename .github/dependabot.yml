@@ -5,6 +5,10 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
+    # pnpm refuses versions younger than its minimum release age; without a matching cooldown
+    # Dependabot proposes them and its update job fails (ERR_PNPM_NO_MATURE_MATCHING_VERSION).
+    cooldown:
+      default-days: 7
     groups:
       minor-and-patch:
         update-types: [minor, patch]

@@ -8,6 +8,7 @@ import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   auditEvents,
+  invitations,
   oidcFlows,
   trialGrants,
   userIdentities,
@@ -52,6 +53,12 @@ afterEach(async () => {
 
 // ------------------------------------------------------------------------------------------- helpers
 const loc = (r: { headers: Headers }) => r.headers.get("location") ?? "";
+/**
+ * Google's redirect back is a top-level navigation started on Google's page: a real browser sends the Lax
+ * cookies (the flow's binding cookie) and leaves out the SameSite=Strict ones (the session and CSRF cookies).
+ * Every callback below is requested this way (security review finding 13).
+ */
+const xs = { crossSite: true } as const;
 const cookieLine = (r: { setCookies: string[] }, name: string) =>
   r.setCookies.find((c) => c.startsWith(`${name}=`)) ?? "";
 
@@ -66,7 +73,7 @@ async function start(b: Browser, next?: string): Promise<string> {
 /** The button, Google, and the callback in one browser. */
 async function viaGoogle(b: Browser, u: FakeUser, next?: string) {
   const url = await start(b, next);
-  return b.get(op.authorize(url, u));
+  return b.get(op.authorize(url, u), xs);
 }
 
 async function signUpWithGoogle(b: Browser, u: FakeUser, name = "Gwen Googler") {
@@ -90,13 +97,26 @@ const identities = () => cloud.db.select().from(userIdentities).all();
 const status = async (b: Browser) => (await b.get("/api/v1/auth/status")).body;
 const reauth = (b: Browser, password: string) => b.post("/api/v1/auth/reauth", { password });
 
-async function link(b: Browser, password: string, u: FakeUser) {
+/**
+ * What the web app's `/google-link` page does: the same-origin POST that finishes a link, then the security
+ * settings page with the answer. Returns that page's address.
+ */
+async function finishLink(b: Browser): Promise<string> {
+  const r = await b.post("/api/v1/account/identities/google/finish");
+  expect(r.status, r.text).toBe(200);
+  return `/settings/security?google=${String(r.body.google)}`;
+}
+
+/** Security settings → Link Google → Google → the callback (cross-site) → `/google-link` → its POST. */
+async function link(b: Browser, password: string, u: FakeUser): Promise<string> {
   expect((await reauth(b, password)).status).toBe(200);
   remember(b.jar.get("__Host-gw_session") as string);
   remember(b.jar.get("__Host-gw_csrf") as string);
   const r = await b.post("/api/v1/account/identities/google");
   expect(r.status, r.text).toBe(200);
-  return b.get(op.authorize(r.body.url as string, u));
+  const cb = await b.get(op.authorize(r.body.url as string, u), xs);
+  if (loc(cb) !== "/google-link") return loc(cb);
+  return finishLink(b);
 }
 
 async function enableTotp(b: Browser, password: string): Promise<() => string> {
@@ -164,7 +184,7 @@ describe("identity mapping", () => {
     expect(cloud.db.select().from(users).all()).toHaveLength(usersBefore);
 
     const pending = await b.get("/api/v1/auth/google/pending");
-    expect(pending.body).toEqual({ name: g.name, email: g.email });
+    expect(pending.body).toEqual({ name: g.name, email: g.email, invitedTo: null });
 
     // The sign-up rules: adults only and a terms version, checked before anything is created.
     const noAdult = await b.post("/api/v1/auth/google/complete", {
@@ -270,7 +290,7 @@ describe("identity mapping", () => {
     expect(identities()).toHaveLength(0);
     // The real owner proves the account with the password, then links from settings.
     const linked = await link(victim.browser, victim.password, googleUser({ email: victim.email }));
-    expect(loc(linked)).toBe("/settings/security?google=linked");
+    expect(linked).toBe("/settings/security?google=linked");
     expect(identities()).toHaveLength(1);
   });
 
@@ -376,7 +396,7 @@ describe("identity mapping", () => {
   it("cancelling at Google lands on sign-in with a reason", async () => {
     const b = new Browser(cloud.app);
     const url = await start(b);
-    const cb = await b.get(op.authorize(url, googleUser(), { deny: true }));
+    const cb = await b.get(op.authorize(url, googleUser(), { deny: true }), xs);
     expect(loc(cb)).toBe("/signin?google=cancelled");
   });
 });
@@ -386,7 +406,7 @@ describe("two-factor and re-authentication", () => {
   it("Google sign-in still asks for the TOTP code: no session until the second step", async () => {
     const u = await signedUpBrowser(cloud);
     const g = googleUser({ email: u.email });
-    expect(loc(await link(u.browser, u.password, g))).toBe("/settings/security?google=linked");
+    expect(await link(u.browser, u.password, g)).toBe("/settings/security?google=linked");
     const code = await enableTotp(u.browser, u.password);
 
     const b = new Browser(cloud.app);
@@ -584,8 +604,8 @@ describe("linking from security settings", () => {
     const a = await signedUpBrowser(cloud);
     const b = await signedUpBrowser(cloud);
     const g = googleUser();
-    expect(loc(await link(a.browser, a.password, g))).toBe("/settings/security?google=linked");
-    expect(loc(await link(b.browser, b.password, g))).toBe("/settings/security?google=taken");
+    expect(await link(a.browser, a.password, g)).toBe("/settings/security?google=linked");
+    expect(await link(b.browser, b.password, g)).toBe("/settings/security?google=taken");
     expect(identities().map((i) => i.userId)).toEqual([identities()[0]?.userId]);
     await reauth(a.browser, a.password);
     const second = await a.browser.post("/api/v1/account/identities/google");
@@ -601,7 +621,7 @@ describe("linking from security settings", () => {
     const r = await attacker.browser.post("/api/v1/account/identities/google");
     const cb = op.authorize(r.body.url as string, googleUser());
     // The victim's browser opens the attacker's callback URL.
-    const hit = await victim.browser.get(cb);
+    const hit = await victim.browser.get(cb, xs);
     expect(loc(hit)).toBe("/signin?google=expired");
     expect(identities()).toHaveLength(0);
   });
@@ -616,9 +636,211 @@ describe("linking from security settings", () => {
     await u.browser.post("/api/v1/auth/signout");
     await u.browser.post("/api/v1/auth/signin", { email: u.email, password: u.password });
     remember(u.browser.jar.get("__Host-gw_session") as string);
-    const cb = await u.browser.get(op.authorize(r.body.url as string, googleUser()));
-    expect(loc(cb)).toBe("/settings/security?google=session");
+    remember(u.browser.jar.get("__Host-gw_csrf") as string);
+    const cb = await u.browser.get(op.authorize(r.body.url as string, googleUser()), xs);
+    expect(loc(cb)).toBe("/google-link");
+    expect(await finishLink(u.browser)).toBe("/settings/security?google=session");
     expect(identities()).toHaveLength(0);
+  });
+
+  it("the callback works without the Strict session cookie: it parks the Google account and the web app's same-origin POST links it (security review finding 13)", async () => {
+    const u = await signedUpBrowser(cloud);
+    expect(u.browser.sameSite.get("__Host-gw_session")).toBe("strict");
+    await reauth(u.browser, u.password);
+    remember(u.browser.jar.get("__Host-gw_session") as string);
+    remember(u.browser.jar.get("__Host-gw_csrf") as string);
+    const r = await u.browser.post("/api/v1/account/identities/google");
+    const g = googleUser({ email: u.email });
+    const cb = await u.browser.get(op.authorize(r.body.url as string, g), xs);
+    // No session reached the callback, and it did not need one.
+    expect(cb.status).toBe(302);
+    expect(loc(cb)).toBe("/google-link");
+    expect(cb.headers.get("referrer-policy")).toBe("no-referrer");
+    const c = cookieLine(cb, "__Host-gw_oidc_link");
+    expect(c).toMatch(/; Max-Age=600/);
+    expect(c).toMatch(/; Path=\//);
+    expect(c).toMatch(/; HttpOnly/);
+    expect(c).toMatch(/; Secure/);
+    expect(c).toMatch(/; SameSite=Lax/);
+    expect(c).not.toMatch(/Domain=/i);
+    // Parked, sealed and bound to this user and session; nothing is linked yet.
+    expect(identities()).toHaveLength(0);
+    const parked = cloud.db
+      .select()
+      .from(oidcFlows)
+      .all()
+      .filter((f) => f.kind === "pending_link");
+    expect(parked).toHaveLength(1);
+    expect(parked[0]?.userId).toBe(u.userId);
+    expect(parked[0]?.payloadEnc).not.toContain(g.sub);
+    // The finishing POST is an ordinary cookie-authenticated write: CSRF token and same origin required,
+    // and a refused attempt leaves the parked link for the real one.
+    const noCsrf = await u.browser.post("/api/v1/account/identities/google/finish", undefined, {
+      csrf: false,
+    });
+    expect(noCsrf.status).toBe(403);
+    const evil = await u.browser.post("/api/v1/account/identities/google/finish", undefined, {
+      origin: "https://evil.example",
+    });
+    expect(evil.status).toBe(403);
+    expect(await finishLink(u.browser)).toBe("/settings/security?google=linked");
+    expect(identities().map((i) => [i.userId, i.subject])).toEqual([[u.userId, g.sub]]);
+    expect(u.browser.jar.has("__Host-gw_oidc_link")).toBe(false);
+    expect(
+      cloud.db
+        .select()
+        .from(auditEvents)
+        .all()
+        .filter((e) => e.event === "identity.linked"),
+    ).toHaveLength(1);
+    // Single use: the same parked link cannot be finished twice.
+    u.browser.jar.set("__Host-gw_oidc_link", c.split(";")[0]?.split("=")[1] as string);
+    expect(await finishLink(u.browser)).toBe("/settings/security?google=expired");
+    // And Google sign-in now works with that Google account.
+    expect(loc(await viaGoogle(new Browser(cloud.app), g))).toBe("/");
+  });
+
+  it("a parked link is finished only by the browser and session that started it, within 10 minutes", async () => {
+    const u = await signedUpBrowser(cloud);
+    const other = await signedUpBrowser(cloud);
+    await reauth(u.browser, u.password);
+    remember(u.browser.jar.get("__Host-gw_session") as string);
+    remember(u.browser.jar.get("__Host-gw_csrf") as string);
+    const begin = async () => {
+      const r = await u.browser.post("/api/v1/account/identities/google");
+      expect(r.status, r.text).toBe(200);
+      const cb = await u.browser.get(op.authorize(r.body.url as string, googleUser()), xs);
+      expect(loc(cb)).toBe("/google-link");
+      return u.browser.jar.get("__Host-gw_oidc_link") as string;
+    };
+    // Another signed-in person who somehow holds the cookie value gets "session", and uses it up.
+    const stolen = remember(await begin());
+    other.browser.jar.set("__Host-gw_oidc_link", stolen);
+    expect(await finishLink(other.browser)).toBe("/settings/security?google=session");
+    expect(await finishLink(u.browser)).toBe("/settings/security?google=expired");
+    // Without the cookie (another browser of the same person, or nothing parked): "expired".
+    u.browser.jar.delete("__Host-gw_oidc_link");
+    expect(await finishLink(u.browser)).toBe("/settings/security?google=expired");
+    // Signed out: the POST needs a session at all.
+    const anon = new Browser(cloud.app);
+    expect((await anon.post("/api/v1/account/identities/google/finish")).status).toBe(401);
+    // Older than 10 minutes: "expired". (Re-authenticate first: starting a link needs it.)
+    await reauth(u.browser, u.password);
+    remember(u.browser.jar.get("__Host-gw_session") as string);
+    remember(u.browser.jar.get("__Host-gw_csrf") as string);
+    await begin();
+    cloud.advance(10 * 60_000 + 1);
+    expect(await finishLink(u.browser)).toBe("/settings/security?google=expired");
+    expect(identities()).toHaveLength(0);
+  });
+});
+
+// ------------------------------------------------------------------------------------ invitations
+describe("from an invitation page", () => {
+  async function invited(role: "editor" | "viewer" = "viewer") {
+    const owner = await signedUpBrowser(cloud, { name: "Olive Owner" });
+    expect(
+      (await owner.browser.patch("/api/v1/workspace/settings", { name: "Example Household" }))
+        .status,
+    ).toBe(200);
+    const email = uniqueEmail("guest");
+    const created = await owner.browser.post("/api/v1/workspace/invitations", { email, role });
+    expect(created.status).toBe(201);
+    await new Promise((r) => setTimeout(r, 0));
+    const token = remember(
+      decodeURIComponent(
+        String(cloud.mailer.last(email, "invitation")?.data.url).split("#token=")[1] ?? "",
+      ),
+    );
+    return { owner, email, token, page: `/invite#token=${encodeURIComponent(token)}` };
+  }
+  const startFrom = async (b: Browser, token: string, next?: string) => {
+    const q = new URLSearchParams({ invitation: token, ...(next ? { next } : {}) });
+    const r = await b.get(`/api/v1/auth/google/start?${q.toString()}`);
+    expect(r.status, r.text).toBe(302);
+    return loc(r);
+  };
+
+  it("a Google sign-up returns to the invitation, through the sign-up step, and starts no trial", async () => {
+    const { email, token, page } = await invited();
+    const g = googleUser({ email });
+    const b = new Browser(cloud.app);
+    const cb = await b.get(op.authorize(await startFrom(b, token), g), xs);
+    expect(loc(cb)).toBe("/signup/google");
+    // The sign-up step names the workspace (the copy then says "join", not "start a trial").
+    const pending = await b.get("/api/v1/auth/google/pending");
+    expect(pending.body).toMatchObject({ email, invitedTo: "Example Household" });
+    const trials = cloud.db.select().from(trialGrants).all().length;
+    const done = await b.post("/api/v1/auth/google/complete", {
+      name: "Gus Guest",
+      termsVersion: "2026-11",
+      adultConfirmed: true,
+    });
+    expect(done.status, done.text).toBe(200);
+    remember(b.jar.get("__Host-gw_session") as string);
+    remember(b.jar.get("__Host-gw_csrf") as string);
+    expect(done.body.redirectTo).toBe(page);
+    const accepted = await b.post("/api/v1/workspace/invitations/accept", { token });
+    expect(accepted.status, accepted.text).toBe(200);
+    expect(accepted.body).toMatchObject({ role: "viewer", name: "Gus Guest" });
+    // An invitee joins the inviting workspace: no workspace of their own, no trial.
+    expect(cloud.db.select().from(trialGrants).all().length).toBe(trials);
+    expect(((await status(b)).workspace as { name: string }).name).toBe("Example Household");
+  });
+
+  it("a Google sign-in (with or without two-step) returns to the invitation", async () => {
+    const { email, token, page } = await invited("editor");
+    const u = await signedUpBrowser(cloud, { email });
+    const g = googleUser({ email });
+    expect(await link(u.browser, u.password, g)).toBe("/settings/security?google=linked");
+    const b = new Browser(cloud.app);
+    const cb = await b.get(op.authorize(await startFrom(b, token, "/plans/3"), g), xs);
+    expect(loc(cb)).toBe(page);
+    remember(b.jar.get("__Host-gw_session") as string);
+    remember(b.jar.get("__Host-gw_csrf") as string);
+
+    await enableTotp(u.browser, u.password);
+    const b2 = new Browser(cloud.app);
+    const cb2 = await b2.get(op.authorize(await startFrom(b2, token), g), xs);
+    const frag = new URLSearchParams(loc(cb2).split("#")[1]);
+    remember(frag.get("challenge") as string);
+    expect(loc(cb2).startsWith("/signin/2fa#")).toBe(true);
+    expect(frag.get("next")).toBe(page);
+  });
+
+  it("an unknown, used or withdrawn invitation is ignored: the flow ends where it would have", async () => {
+    const { email, token } = await invited();
+    const b = new Browser(cloud.app);
+    const g = googleUser({ email: uniqueEmail("stranger") });
+    const fake = remember("A".repeat(43));
+    const cb = await b.get(op.authorize(await startFrom(b, fake), g), xs);
+    expect(loc(cb)).toBe("/signup/google");
+    expect((await b.get("/api/v1/auth/google/pending")).body).toMatchObject({ invitedTo: null });
+    const done = await b.post("/api/v1/auth/google/complete", {
+      name: "Sam Stranger",
+      termsVersion: "2026-11",
+      adultConfirmed: true,
+    });
+    remember(b.jar.get("__Host-gw_session") as string);
+    remember(b.jar.get("__Host-gw_csrf") as string);
+    expect(done.body.redirectTo).toBe("/");
+
+    // Live at the start, accepted by someone before the sign-up step was confirmed: plain `/`.
+    const b2 = new Browser(cloud.app);
+    const g2 = googleUser({ email });
+    expect(loc(await b2.get(op.authorize(await startFrom(b2, token), g2), xs))).toBe(
+      "/signup/google",
+    );
+    cloud.db.update(invitations).set({ acceptedAt: cloud.now().toISOString() }).run();
+    const done2 = await b2.post("/api/v1/auth/google/complete", {
+      name: "Gus Guest",
+      termsVersion: "2026-11",
+      adultConfirmed: true,
+    });
+    remember(b2.jar.get("__Host-gw_session") as string);
+    remember(b2.jar.get("__Host-gw_csrf") as string);
+    expect(done2.status, done2.text).toBe(200);
+    expect(done2.body.redirectTo).toBe("/");
   });
 });
 
@@ -637,7 +859,7 @@ describe("state, PKCE and code handling", () => {
     const noState = cb.replace(/state=[^&]+&?/, "");
     expect(loc(await b.get(noState))).toBe("/signin?google=expired");
     // Unknown state.
-    expect(loc(await b.get(cb.replace(/state=[^&]+/, `state=${"A".repeat(43)}`)))).toBe(
+    expect(loc(await b.get(cb.replace(/state=[^&]+/, `state=${"A".repeat(43)}`), xs))).toBe(
       "/signin?google=expired",
     );
     expect(tokenCalls()).toBe(before);
@@ -648,30 +870,30 @@ describe("state, PKCE and code handling", () => {
     const binding = b2.jar.get("__Host-gw_oidc") as string;
     remember(binding);
     const cb2 = op.authorize(url2, g);
-    expect(loc(await b2.get(cb2))).toBe("/");
+    expect(loc(await b2.get(cb2, xs))).toBe("/");
     remember(b2.jar.get("__Host-gw_session") as string);
     b2.jar.set("__Host-gw_oidc", binding);
     const n = tokenCalls();
-    expect(loc(await b2.get(cb2))).toBe("/signin?google=expired");
+    expect(loc(await b2.get(cb2, xs))).toBe("/signin?google=expired");
     expect(tokenCalls()).toBe(n);
 
     // Expired: 10 minutes.
     const b3 = new Browser(cloud.app);
     const url3 = await start(b3);
     cloud.advance(10 * 60_000 + 1_000);
-    expect(loc(await b3.get(op.authorize(url3, g)))).toBe("/signin?google=expired");
+    expect(loc(await b3.get(op.authorize(url3, g), xs))).toBe("/signin?google=expired");
 
     // Another browser's state (no binding cookie at all, or its own different cookie).
     const owner = new Browser(cloud.app);
     const url4 = await start(owner);
     const cb4 = op.authorize(url4, g);
     const other = new Browser(cloud.app);
-    expect(loc(await other.get(cb4))).toBe("/signin?google=expired");
+    expect(loc(await other.get(cb4, xs))).toBe("/signin?google=expired");
     const other2 = new Browser(cloud.app);
     await start(other2);
-    expect(loc(await other2.get(cb4))).toBe("/signin?google=expired");
+    expect(loc(await other2.get(cb4, xs))).toBe("/signin?google=expired");
     // And the owner cannot use it afterwards either: single use, whoever tried first.
-    expect(loc(await owner.get(cb4))).toBe("/signin?google=expired");
+    expect(loc(await owner.get(cb4, xs))).toBe("/signin?google=expired");
     expect(tokenCalls()).toBe(n);
   });
 
@@ -684,12 +906,12 @@ describe("state, PKCE and code handling", () => {
     const trap = op.authorize(url, attackerGoogle);
     // The victim, signed in to their own account or not, is made to open the callback URL.
     const victim = await signedUpBrowser(cloud);
-    const hit = await victim.browser.get(trap);
+    const hit = await victim.browser.get(trap, xs);
     expect(loc(hit)).toBe("/signin?google=expired");
     expect(cookieLine(hit, "__Host-gw_session")).toBe("");
     expect((await status(victim.browser)).user).toMatchObject({ id: victim.userId });
     const fresh = new Browser(cloud.app);
-    expect(loc(await fresh.get(trap))).toBe("/signin?google=expired");
+    expect(loc(await fresh.get(trap, xs))).toBe("/signin?google=expired");
     expect((await status(fresh)).authenticated).toBe(false);
   });
 
@@ -699,7 +921,7 @@ describe("state, PKCE and code handling", () => {
     const b = new Browser(cloud.app);
     const url = await start(b);
     const cb = op.authorize(url, g);
-    expect(loc(await b.get(cb))).toBe("/");
+    expect(loc(await b.get(cb, xs))).toBe("/");
     remember(b.jar.get("__Host-gw_session") as string);
     const code = new URL(cb, PUBLIC_URL).searchParams.get("code") as string;
     const c = new Browser(cloud.app);
@@ -762,7 +984,7 @@ describe("state, PKCE and code handling", () => {
       const b = new Browser(cloud.app);
       const url = await start(b);
       op.tamperNext = t;
-      const r = await b.get(op.authorize(url, attacker));
+      const r = await b.get(op.authorize(url, attacker), xs);
       expect(loc(r)).toBe("/signin?google=failed");
       expect(cookieLine(r, "__Host-gw_session")).toBe("");
     }

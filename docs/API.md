@@ -43,10 +43,11 @@ a per-period `priceIndex`; the compact views below default to real (today's) mon
 | 401 / 403 | `UNAUTHORIZED`, `FORBIDDEN` (details.required = the scope or `owner` role you lack; details.role = your role), `CSRF` (cookie-authenticated write without a valid `X-CSRF-Token`, or from another origin)                                                                                                                                                                             |
 | 404       | `NOT_FOUND`                                                                                                                                                                                                                                                                                                                                                                           |
 | 409       | `VERSION_CONFLICT`, `CONFLICT`, `IN_USE`, `PATCH_CONFLICT` (a patch op whose target is missing or whose `test` failed: core's `PatchConflictError`), `CHANGESET_CONFLICT`, `CHANGESET_NOT_PROPOSED`, `PARENT_MOVED`, `LAST_WRITE_KEY`, `JOB_NOT_FINISHED`, `JOB_FAILED`, `JOB_CANCELLED`, `ALREADY_CONFIGURED`, `SETUP_REQUIRED`, `LOGIN_TAKEN`, `OWNER_PROTECTED`, `CHECKIN_RUNNING` |
-| 422       | scenario errors (dangling reference, circular milestone, unknown person in a template), `IMPORT_FAILED`, `IDEMPOTENCY_KEY_REUSED`                                                                                                                                                                                                                                                     |
+| 422       | scenario errors (dangling reference, circular milestone, unknown person in a template), `IMPORT_FAILED`, `IMPORT_TIMEOUT`, `IMPORT_OUT_OF_MEMORY` (see "Export and import"), `IDEMPOTENCY_KEY_REUSED`                                                                                                                                                                                 |
 | 413       | `PAYLOAD_TOO_LARGE`: the body exceeds `GLIDEWORTH_MAX_BODY_MB` (default 10)                                                                                                                                                                                                                                                                                                           |
 | 429       | `RATE_LIMITED` (with `Retry-After`)                                                                                                                                                                                                                                                                                                                                                   |
 | 501       | `NOT_IMPLEMENTED` with `details.feature` and `details.workstream`: the plan uses something the engine does not model yet                                                                                                                                                                                                                                                              |
+| 503       | `IMPORT_BUSY` (with `Retry-After`): every import thread is busy and the import queue is full; `TENANT_UNAVAILABLE`                                                                                                                                                                                                                                                                    |
 
 **Pagination.** List endpoints take `limit` (1-200, default 50) and `cursor`, and return
 `{ "items": [...], "nextCursor": "..." | null, "total": n }`.
@@ -672,6 +673,21 @@ are updated; everything else is kept; settings are left alone). **Plan version h
 that already exists keeps every earlier version and the import is recorded as its next version (message
 `imported`, actor = who imported); a new plan starts at version 1 with an `imported` entry. A household that is
 replaced or merged keeps counting its version (ETag) upward.
+
+**Imports run in a worker thread.** The document import (`POST /import`), the CSV routes (`import/csv`,
+`import/csv/analyze`) and the bank-file import are parsed, analysed and previewed in a separate thread (and so are
+the MCP import tools), so a large or crafted file does not hold up other requests. The request waits for the result;
+an apply is then written in one transaction. Limits:
+
+| Situation                                                                                                                                       | Answer                                                                                                                                     |
+| ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| The import runs longer than 15 s (`GLIDEWORTH_IMPORT_TIMEOUT_SECONDS`)                                                                          | `422 IMPORT_TIMEOUT` (`details.limitSeconds`); the thread is stopped and nothing is written. Import a smaller file or a shorter date range |
+| The import needs more than 512 MiB of memory (`GLIDEWORTH_IMPORT_WORKER_MAX_MB`)                                                                | `422 IMPORT_OUT_OF_MEMORY`; nothing is written                                                                                             |
+| Every import thread is busy (default min(2, CPUs - 1); `GLIDEWORTH_IMPORT_WORKERS`) and 8 more imports already wait (`GLIDEWORTH_IMPORT_QUEUE`) | `503 IMPORT_BUSY` with `Retry-After: 5`                                                                                                    |
+| The workspace already has 2 imports running                                                                                                     | `429 RATE_LIMITED` with `Retry-After: 5`                                                                                                   |
+| The household changed between reading it and writing the import (`dryRun: false`)                                                               | `409 VERSION_CONFLICT`; nothing is written. Run the import again                                                                           |
+
+The two `422`s depend on the file, so retrying the same file does not help; `503` and `429` are worth retrying.
 
 ### OFX / QFX / QIF import (dry run first)
 

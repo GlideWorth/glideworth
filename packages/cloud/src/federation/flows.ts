@@ -15,6 +15,13 @@
  *
  * A new Google user's confirmed claims wait in a `pending_signup` row (sealed; 15 minutes) keyed by SHA-256
  * of a second random cookie, `__Host-gw_oidc_signup` (SameSite=Strict), until they accept the terms.
+ *
+ * Linking from settings ends the same way: the callback is a navigation started on Google's page, so the
+ * browser does not send the `SameSite=Strict` session cookie with it and the callback cannot tell who is
+ * signed in. The verified claims wait in a `pending_link` row (sealed; 10 minutes, with the user and session
+ * that started the link) keyed by SHA-256 of a third random cookie, `__Host-gw_oidc_link`. The web app's
+ * `/google-link` page then finishes the link with an ordinary same-origin POST, which carries the session and
+ * the CSRF token (`FederationService.finishLink`).
  */
 import { and, eq, gt, isNull } from "drizzle-orm";
 import type { ControlDb } from "../control/db.js";
@@ -24,7 +31,7 @@ import { randomToken, safeEqual, sha256Hex, TOKEN_RE } from "../crypto/random.js
 import type { Provider } from "./identities.js";
 
 const MINUTE = 60 * 1000;
-const FLOW_TTL = { authorize: 10 * MINUTE, pending: 15 * MINUTE } as const;
+const FLOW_TTL = { authorize: 10 * MINUTE, pending: 15 * MINUTE, link: 10 * MINUTE } as const;
 const SEAL_PURPOSE = "oidc-flow";
 
 export type Intent = "signin" | "link";
@@ -34,6 +41,8 @@ export interface AuthorizeState {
   nonce: string;
   intent: Intent;
   next: string;
+  /** Sign-in from an invitation page: the invitation's token, so the person ends on it (`/invite`). */
+  invitation?: string;
 }
 
 export interface PendingSignup {
@@ -41,6 +50,13 @@ export interface PendingSignup {
   email: string;
   name: string | null;
   next: string;
+  invitation?: string;
+}
+
+/** A Google account's verified claims, waiting for the session that started the link to claim them. */
+export interface PendingLink {
+  subject: string;
+  email: string;
 }
 
 export type ClaimFailure = "missing" | "unknown" | "browser" | "used" | "expired";
@@ -66,12 +82,19 @@ export class FlowStore {
     next: string;
     userId?: string | null;
     sessionId?: string | null;
+    invitation?: string | null;
   }): { state: string; nonce: string; verifier: string } {
     const state = randomToken();
     const nonce = randomToken();
     const verifier = randomToken(); // 43 base64url characters: the RFC 7636 minimum, 256 bits.
     const now = this.clock();
-    const payload: AuthorizeState = { verifier, nonce, intent: o.intent, next: o.next };
+    const payload: AuthorizeState = {
+      verifier,
+      nonce,
+      intent: o.intent,
+      next: o.next,
+      ...(o.invitation ? { invitation: o.invitation } : {}),
+    };
     this.db
       .insert(oidcFlows)
       .values({
@@ -146,23 +169,65 @@ export class FlowStore {
   }
 
   peekPending(token: unknown): PendingSignup | null {
-    const row = this.pendingRow(token);
+    const row = this.pendingRow(token, "pending_signup");
     return row ? this.open<PendingSignup>(row.payloadEnc) : null;
   }
 
   /** Use up the pending sign-up (single use). */
   claimPending(token: unknown): PendingSignup | null {
-    const row = this.pendingRow(token);
-    if (!row) return null;
+    const row = this.pendingRow(token, "pending_signup");
+    if (!row || !this.use(row.id)) return null;
+    return this.open<PendingSignup>(row.payloadEnc);
+  }
+
+  /** Park a Google account's verified claims for the link the user and session started. Returns the cookie. */
+  createPendingLink(
+    provider: Provider,
+    o: { userId: string; sessionId: string },
+    p: PendingLink,
+  ): string {
+    const token = randomToken();
+    const now = this.clock();
+    this.db
+      .insert(oidcFlows)
+      .values({
+        id: sha256Hex(token),
+        kind: "pending_link",
+        provider,
+        browserHash: sha256Hex(token),
+        userId: o.userId,
+        sessionId: o.sessionId,
+        payloadEnc: this.seal(p),
+        createdAt: now.toISOString(),
+        expiresAt: new Date(now.getTime() + FLOW_TTL.link).toISOString(),
+      })
+      .run();
+    return token;
+  }
+
+  /** Use up a parked link (single use, whatever the caller then decides). */
+  claimPendingLink(
+    token: unknown,
+  ): { link: PendingLink; userId: string | null; sessionId: string | null } | null {
+    const row = this.pendingRow(token, "pending_link");
+    if (!row || !this.use(row.id)) return null;
+    return {
+      link: this.open<PendingLink>(row.payloadEnc),
+      userId: row.userId,
+      sessionId: row.sessionId,
+    };
+  }
+
+  private use(id: string): boolean {
     const res = this.db
       .update(oidcFlows)
       .set({ usedAt: this.clock().toISOString() })
-      .where(and(eq(oidcFlows.id, row.id), isNull(oidcFlows.usedAt)))
+      .where(and(eq(oidcFlows.id, id), isNull(oidcFlows.usedAt)))
       .run();
-    return res.changes === 1 ? this.open<PendingSignup>(row.payloadEnc) : null;
+    return res.changes === 1;
   }
 
-  private pendingRow(token: unknown) {
+  private pendingRow(token: unknown, kind: "pending_signup" | "pending_link") {
     if (typeof token !== "string" || !TOKEN_RE.test(token)) return null;
     const id = sha256Hex(token);
     const row = this.db
@@ -171,7 +236,7 @@ export class FlowStore {
       .where(
         and(
           eq(oidcFlows.id, id),
-          eq(oidcFlows.kind, "pending_signup"),
+          eq(oidcFlows.kind, kind),
           isNull(oidcFlows.usedAt),
           gt(oidcFlows.expiresAt, this.clock().toISOString()),
         ),

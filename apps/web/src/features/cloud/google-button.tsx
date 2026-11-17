@@ -11,7 +11,9 @@
  * other third-party option (it is the only one). Google asks for Google Sans Medium 14/20; that font is not
  * bundled, so the stack falls back to Roboto / the system sans at weight 500.
  */
+import { useState } from "react";
 import { googleStartPath } from "./client";
+import { heldInvitation } from "./held-invitation";
 
 /** Google's standard-colour "G" (four paths, Google's colours). Decorative: the link text names it. */
 export function GoogleLogo({ className }: { className?: string }) {
@@ -46,9 +48,15 @@ const buttonClass = [
   "outline-offset-2 focus-visible:outline-2 focus-visible:outline-[var(--accent)]",
 ].join(" ");
 
+/**
+ * The link to start. An invitation held in this tab (the person came from an invitation page) goes with it,
+ * so a sign-in or a new account through Google ends on that invitation (the trip to Google reloads the
+ * page, which empties that memory).
+ */
 export function ContinueWithGoogle({ next }: { next: string }) {
+  const [invitation] = useState(() => heldInvitation()?.token ?? null);
   return (
-    <a href={googleStartPath(next)} className={buttonClass}>
+    <a href={googleStartPath(next, invitation)} className={buttonClass}>
       <GoogleLogo className="size-[18px] shrink-0" />
       <span>Continue with Google</span>
     </a>

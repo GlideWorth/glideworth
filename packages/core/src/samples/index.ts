@@ -456,7 +456,8 @@ const ukSampleInput: GlideworthDocumentInput = {
           country: "GB",
           amount: { value: 11_973, basis: "real" },
           frequency: "yearly",
-          range: { start: { kind: "age", personId: SAM, age: 67 }, end: { kind: "planEnd" } },
+          // Born June 1978: State Pension age 68 under the Pensions Act 2007 (ukStatePensionAge).
+          range: { start: { kind: "age", personId: SAM, age: 68 }, end: { kind: "planEnd" } },
           tripleLock: { earningsPremium: 0.01, floor: 0.025 },
         },
       ],

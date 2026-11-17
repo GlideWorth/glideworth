@@ -6,9 +6,9 @@ import { buildSimulationInput, simulate } from "@glideworth/core";
 import { createSampleDocument } from "@glideworth/core/samples";
 import { importProjectionLab } from "@glideworth/importers";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createElement } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildSyntheticExport } from "../../../packages/importers/test/fixtures/projectionlab-synthetic";
 import { Chart } from "../src/components/charts/echarts";
 import { buildSankey } from "../src/features/cashflow/sankey";
@@ -27,6 +27,11 @@ vi.mock("../src/components/charts/echarts-runtime", () => ({
     dispose: vi.fn(),
   }),
 }));
+
+// Unmount after each test (no Vitest globals, so Testing Library does not do it by itself): a tree left
+// mounted keeps reacting to async work, and if that work lands after the file's jsdom is torn down React
+// throws "window is not defined" as an unhandled error.
+afterEach(() => cleanup());
 
 describe("bug 14: cash-flow Saved tile", () => {
   it("counts pay that goes straight into an account, so the tiles add up like the diagram", () => {
@@ -125,10 +130,16 @@ describe("bug 18: the lowest trial is the lowest ending net worth, and says so",
   };
   it("labels the ends by the measure used and picks the matching trial", () => {
     const onTrial = vi.fn();
+    // TrialExplorer formats through useWorkspace(). Give it a workspace up front so no query (API call,
+    // sample import) is still running when the test ends.
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+    });
+    client.setQueryData(["workspace"], { doc: createSampleDocument(), source: "sample" });
     render(
       createElement(
         QueryClientProvider,
-        { client: new QueryClient() },
+        { client },
         createElement(TrialExplorer, {
           mc: mc as never,
           det: {} as never,
@@ -147,5 +158,8 @@ describe("bug 18: the lowest trial is the lowest ending net worth, and says so",
     expect(onTrial).toHaveBeenLastCalledWith(2);
     expect(screen.getByText(/ranked by what they end with/i)).toBeTruthy();
     expect(screen.getByLabelText(/ranked by ending net worth, lowest first/i)).toBeTruthy();
+    expect(client.isFetching()).toBe(0);
+    cleanup();
+    client.clear();
   });
 });

@@ -34,6 +34,7 @@ import { PASSWORD_RULES, passwordProblem } from "../password-rules";
 import { encodeQr } from "../qr";
 import { failToast, Loading, LoadError } from "../settings-kit";
 import { describeError, Notice, StrengthMeter, TextField, useErrorFocus } from "../ui";
+import { useLocale } from "../../../lib/workspace";
 
 // ------------------------------------------------------------------------------------------- the QR
 /** An inline SVG: black on a white card with the quiet zone the standard asks for, in both themes. */
@@ -738,6 +739,7 @@ function DisableDialog({
 // ------------------------------------------------------------------------------------------ sessions
 function SessionsGroup() {
   const qc = useQueryClient();
+  const locale = useLocale();
   const sessions = useQuery({
     queryKey: ["cloud", "sessions"],
     queryFn: cloudApi.sessions,
@@ -798,7 +800,7 @@ function SessionsGroup() {
                   {s.current ? <Badge tone="accent">This browser</Badge> : null}
                 </div>
                 <div className="mt-0.5 text-[11.5px] text-ink-3">
-                  Last active {relativeTime(s.lastSeenAt ?? null, navigator.language).toLowerCase()}
+                  Last active {relativeTime(s.lastSeenAt ?? null, locale).toLowerCase()}
                   {s.ip ? ` · ${s.ip}` : ""}
                 </div>
               </div>

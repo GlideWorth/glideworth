@@ -19,9 +19,11 @@ const FREE_TEXT_FIELDS: Record<string, string[]> = {
   "verify-email": ["name"],
   "password-reset": ["name"],
   "email-change-confirm": ["name"],
+  "email-change-requested": ["name", "at"],
   "signin-alert": ["name", "at", "device", "ip"],
   "security-change": ["name", "at"],
   invitation: ["inviterName", "workspaceName"],
+  "member-removed": ["name", "workspaceName"],
   "trial-ending": ["name", "trialEndsOn"],
   "trial-expired": ["name"],
   "renewal-reminder": ["name", "renewsOn"],
@@ -80,6 +82,26 @@ describe("newlines in free text are neutralised in the body", () => {
     );
     expect(r.text).toContain("Hello Sam Bcc: attacker@example.test x y,");
     expect(r.text.split("\n").some((l) => l.startsWith("Bcc:"))).toBe(false);
+  });
+
+  // An inviter or workspace name is chosen by someone else and mailed to any address. A right-to-left
+  // override would let it show text in a different order from the one it is stored in (for example a
+  // reversed web address), so direction controls are removed. Ordinary right-to-left text is kept.
+  it("removes direction override and isolate characters, and keeps right-to-left letters", () => {
+    const r = render(
+      "invitation",
+      {
+        ...FIXTURES.invitation,
+        inviterName: "Robin \u202emoc.elpmaxe-live\u202c",
+        workspaceName: "\u2067بيت\u2069 \u202aSample\u202d",
+      },
+      CTX,
+    );
+    for (const out of [r.text, r.html]) {
+      expect(out).not.toMatch(/[\u202a-\u202e\u2066-\u2069]/);
+      expect(out).toContain("Robin moc.elpmaxe-live");
+      expect(out).toContain("بيت Sample");
+    }
   });
 
   it("truncates very long values", () => {
@@ -195,19 +217,41 @@ describe("header injection through the mailer", () => {
     expect(log.entries[0]?.status).toBe("failed");
   });
 
-  it.each(["Sam\r\nBcc: attacker@example.test", "Sam\nx", "Sam\u0000"])(
-    "rejects recipient name %j",
-    async (name) => {
-      const { mailer, transport } = setup();
-      const out = await mailer.send(
-        { email: "sam@example.test", name },
-        "verify-email",
-        FIXTURES["verify-email"],
-      );
-      expect(out).toEqual({ status: "failed", code: "invalid_address" });
-      expect(transport.sent).toHaveLength(0);
-    },
-  );
+  // The account's own display name is free text. One the header check refuses (a control character, a Unicode
+  // line separator, a direction override, too long) is left out of the To header; it must not stop the mail,
+  // or a name like "Sam\u2028Lee" would silently block every password reset and security alert to that person.
+  it.each([
+    "Sam\r\nBcc: attacker@example.test",
+    "Sam\nx",
+    "Sam\u0000",
+    "Sam\u2028Lee",
+    "Sam\u2029",
+    "Sam\u0085Lee",
+    "Sam\u202eeiL",
+    "x".repeat(201),
+  ])("sends to the bare address when the recipient name is %j", async (name) => {
+    const { mailer, transport } = setup();
+    for (const id of ["password-reset", "security-change"] as const) {
+      const out = await mailer.send({ email: "sam@example.test", name }, id, FIXTURES[id]);
+      expect(out.status).toBe("sent");
+    }
+    expect(transport.sent).toHaveLength(2);
+    for (const m of transport.sent) {
+      expect(m.to).toEqual({ email: "sam@example.test" });
+      expect(JSON.stringify(m.headers)).not.toMatch(/[\r\n]/);
+    }
+  });
+
+  it("keeps an ordinary recipient name, quotes and commas included", async () => {
+    const { mailer, transport } = setup();
+    const name = 'Sam "Sammy" O\'Brien, Jr.';
+    await mailer.send(
+      { email: "sam@example.test", name },
+      "verify-email",
+      FIXTURES["verify-email"],
+    );
+    expect(transport.sent[0]?.to).toEqual({ email: "sam@example.test", name });
+  });
 
   it("a hostile name inside template data cannot add headers or change the subject", async () => {
     const { mailer, transport } = setup();

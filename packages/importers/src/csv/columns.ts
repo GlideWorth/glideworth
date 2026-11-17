@@ -1,6 +1,7 @@
 /** Column auto-detection (header aliases + content sniffing) and budgeting-tool presets. */
 import type { CsvKind, CsvLocale } from "../types.js";
 import { type DateFormat, detectDecimalSeparator, parseDate, parseNumber } from "./locale.js";
+import { table } from "../util/read.js";
 
 /** Logical fields a CSV column can play. */
 export type Field =
@@ -286,12 +287,12 @@ export interface CsvPreset {
 }
 
 /** Old preset ids that still resolve (stored mappings, API callers). */
-export const PRESET_ALIASES: Readonly<Record<string, string>> = {
+export const PRESET_ALIASES: Readonly<Record<string, string>> = table({
   "monarch-balances": "generic-balances",
   // Preset ids from before the rename to Glideworth.
   "cairn-accounts": "glideworth-accounts",
   "cairn-progress": "glideworth-progress",
-};
+});
 
 export const PRESETS: CsvPreset[] = [
   {

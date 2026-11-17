@@ -3,8 +3,10 @@ import { accountDeleted } from "./account-deleted.js";
 import { checkinSummary } from "./checkin-summary.js";
 import { deletionWarning } from "./deletion-warning.js";
 import { emailChangeConfirm } from "./email-change-confirm.js";
+import { emailChangeRequested } from "./email-change-requested.js";
 import { exportReady } from "./export-ready.js";
 import { invitation } from "./invitation.js";
+import { memberRemoved } from "./member-removed.js";
 import { passwordReset } from "./password-reset.js";
 import { paymentProblem } from "./payment-problem.js";
 import { paymentReceipt } from "./payment-receipt.js";
@@ -28,9 +30,11 @@ export const TEMPLATES: { readonly [K in TemplateId]: TemplateFn<K> } = {
   "signup-existing-account": signupExistingAccount,
   "password-reset": passwordReset,
   "email-change-confirm": emailChangeConfirm,
+  "email-change-requested": emailChangeRequested,
   "signin-alert": signinAlert,
   "security-change": securityChange,
   invitation,
+  "member-removed": memberRemoved,
   "trial-ending": trialEnding,
   "trial-expired": trialExpired,
   "renewal-reminder": renewalReminder,

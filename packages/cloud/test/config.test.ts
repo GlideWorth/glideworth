@@ -91,6 +91,21 @@ describe("loadCloudConfig", () => {
     expect(c.opsListen).toEqual({ host: "::1", port: 9000 });
   });
 
+  it("heartbeat URLs are optional, https only, and reported by name", () => {
+    expect(loadCloudConfig({ ...base }).heartbeats).toEqual({
+      backup: null,
+      restoreTest: null,
+      liveness: null,
+    });
+    expect(
+      loadCloudConfig({ ...base, GLIDEWORTH_HEARTBEAT_LIVENESS_URL: "https://hc.example.test/p/1" })
+        .heartbeats.liveness,
+    ).toBe("https://hc.example.test/p/1");
+    expect(() =>
+      loadCloudConfig({ ...base, GLIDEWORTH_HEARTBEAT_BACKUP_URL: "http://hc.example.test/p/2" }),
+    ).toThrow(/GLIDEWORTH_HEARTBEAT_BACKUP_URL must be an https URL/);
+  });
+
   it("parseKey32 accepts hex and base64 of exactly 32 bytes", () => {
     expect(parseKey32(secret)).toHaveLength(32);
     expect(parseKey32(randomBytes(32).toString("base64url"))).toHaveLength(32);

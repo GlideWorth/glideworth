@@ -320,6 +320,29 @@ export class WorkspacesService {
     return { path, filename: `glideworth-workspace-${now.slice(0, 10)}.db` };
   }
 
+  /**
+   * Not in spec 8.3: what became of an export, without using it up, so the link in the "export is ready" email
+   * can say it was already downloaded or has expired. An unknown id (or another workspace's) is 404, like the
+   * download itself; rows are removed a week after they expire, so the page reads 404 as expired too.
+   */
+  exportStatus(
+    s: SessionContext,
+    exportId: string,
+  ): { status: "ready" | "downloaded" | "expired"; expiresAt: string | null } {
+    const me = this.requireOwner(s);
+    const row = isExportId(exportId)
+      ? this.db
+          .select()
+          .from(exports)
+          .where(and(eq(exports.id, exportId), eq(exports.accountId, me.accountId)))
+          .get()
+      : undefined;
+    if (!row) throw new CloudError(404, "NOT_FOUND", "no such export");
+    if (row.downloadedAt) return { status: "downloaded", expiresAt: row.expiresAt };
+    const live = row.expiresAt > this.clock().toISOString();
+    return { status: live ? "ready" : "expired", expiresAt: row.expiresAt };
+  }
+
   /** Not in spec 8.3: delete a downloaded export file (after streaming) and expired ones (sweeper). */
   finishExport(exportId: string): void {
     if (!isExportId(exportId) || !this.d.dataDir) return;
@@ -358,7 +381,8 @@ export class WorkspacesService {
       .get();
     const typed =
       typeof confirmName === "string" ? stripControl(confirmName.normalize("NFKC")).trim() : "";
-    if (!acct?.name || typed !== acct.name)
+    // The stored name is cleaned the same way: a name saved before the cleaning rule widened still matches.
+    if (!acct?.name || typed !== stripControl(acct.name).trim())
       throw new CloudError(400, "VALIDATION", "type the workspace name exactly to confirm");
     await this.deleteOwnedByUser(s.userId, me.accountId);
   }
@@ -1295,6 +1319,19 @@ export class WorkspacesService {
       subject: userId,
       detail: { role: target.role },
     });
+    // Tell the person, naming the workspace only.
+    const removed = this.db.select().from(users).where(eq(users.id, userId)).get();
+    const workspaceName =
+      this.db
+        .select({ name: accounts.name })
+        .from(accounts)
+        .where(eq(accounts.id, me.accountId))
+        .get()?.name ?? "";
+    if (removed && !removed.disabledAt)
+      this.sendMail({ email: removed.email, name: removed.name }, "member-removed", removed.id, {
+        name: removed.name,
+        workspaceName,
+      });
   }
 
   async leave(s: SessionContext): Promise<void> {

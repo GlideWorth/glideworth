@@ -21,6 +21,7 @@ import type { ImportIssue } from "../types.js";
 import { parseOfx } from "./ofx.js";
 import { parseQif, type QifDateFormat } from "./qif.js";
 import type { BankAccount, BankFileFormat, BankParse, BankTransaction } from "./types.js";
+import { table } from "../util/read.js";
 
 export * from "./ofx.js";
 export * from "./qif.js";
@@ -71,7 +72,7 @@ export function parseBankFile(text: string, opts: BankFileOptions = {}): BankPar
   };
 }
 
-const TITLE: Record<string, string> = {
+const TITLE: Record<string, string> = table({
   housing: "Housing",
   healthcare: "Healthcare",
   education: "Education",
@@ -85,7 +86,7 @@ const TITLE: Record<string, string> = {
   pets: "Pets",
   "tax-payment": "Taxes",
   living: "Living costs",
-};
+});
 
 const CARD_PAYMENT = /\b(payment|thank you|autopay|direct debit received)\b/i;
 

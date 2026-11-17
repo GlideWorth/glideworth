@@ -1,5 +1,5 @@
 /** Small value mappers shared by the entity mappers: basis, owner, frequency, change-over-time... */
-import { isObj, num, type Obj, pctClean, stableJson, str } from "../util/read.js";
+import { table, isObj, num, type Obj, pctClean, stableJson, str } from "../util/read.js";
 import { approximated, infoNote, invalid, type PlContext } from "./context.js";
 import { resolveRef } from "./dates.js";
 
@@ -67,7 +67,7 @@ const FREQUENCIES = new Set([
   "semiannually",
   "yearly",
 ]);
-const FREQUENCY_ALIASES: Record<string, string> = {
+const FREQUENCY_ALIASES: Record<string, string> = table({
   annually: "yearly",
   annual: "yearly",
   year: "yearly",
@@ -77,7 +77,7 @@ const FREQUENCY_ALIASES: Record<string, string> = {
   "bi-weekly": "biweekly",
   "semi-monthly": "semimonthly",
   "semi-annually": "semiannually",
-};
+});
 
 export function frequencyOf(
   ctx: PlContext,

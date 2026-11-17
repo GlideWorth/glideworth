@@ -144,7 +144,40 @@ export function ResetPasswordPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [dead, setDead] = useState(false);
   const [busy, setBusy] = useState(false);
+  /** Set once the server accepted the new password: what the success screen's button does next. */
+  const [done, setDone] = useState<{ redirectTo?: string; twoStep: boolean } | null>(null);
   const { ref, failed } = useErrorFocus();
+
+  if (done)
+    return (
+      <AuthLayout
+        title="Your password was reset"
+        subtitle={
+          done.twoStep
+            ? "Next, enter the code from your authenticator app to sign in."
+            : "You are signed in. Other browsers were signed out."
+        }
+      >
+        <div className={authCard}>
+          {/* The same words as the security email the reset sends (packages/email security-change). */}
+          <Notice tone="neutral">
+            Apps connected to your account were disconnected; your API keys still work. Connect an
+            app again if you still use it.
+          </Notice>
+          <Button
+            variant="primary"
+            size="lg"
+            // oxlint-disable-next-line jsx-a11y/no-autofocus -- the only action on a single-purpose screen
+            autoFocus
+            onClick={() =>
+              void (done.twoStep ? navigate({ to: "/signin/2fa" }) : finish(done.redirectTo, "/"))
+            }
+          >
+            Continue
+          </Button>
+        </div>
+      </AuthLayout>
+    );
 
   if (!token || dead)
     return (
@@ -177,10 +210,10 @@ export function ResetPasswordPage() {
       const r = await cloudApi.resetPassword(token, password);
       if (r.status === "totp-required" && r.challenge) {
         setChallenge({ token: r.challenge, next: "/" });
-        await navigate({ to: "/signin/2fa" });
+        setDone({ twoStep: true });
         return;
       }
-      await finish(r.redirectTo, "/");
+      setDone({ twoStep: false, ...(r.redirectTo ? { redirectTo: r.redirectTo } : {}) });
     } catch (err) {
       if (isCode(err, "INVALID_TOKEN")) return setDead(true);
       if (isCode(err, "WEAK_PASSWORD")) setErrors({ password: describeError(err) });

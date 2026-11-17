@@ -31,7 +31,7 @@ import { EventBus, type ServiceCtx } from "./services/context.js";
 import { CrossBorderService } from "./services/crossborder.js";
 import { ExportsService } from "./services/exports.js";
 import { HouseholdsService } from "./services/households.js";
-import { ImportsService } from "./services/imports.js";
+import { type ImportRunnerOption, ImportsService } from "./services/imports.js";
 import { type JobsOptions, JobsService } from "./services/jobs.js";
 import { type KeysOptions, KeysService } from "./services/keys.js";
 import { type OAuthOptions, OAuthService } from "./services/oauth.js";
@@ -47,6 +47,8 @@ import { type WebhookOptions, WebhooksService } from "./services/webhooks.js";
 export interface ServicesOptions {
   deps?: CoreDeps;
   imports?: ImportDeps;
+  /** Where imports are parsed. Default: the process's import worker pool (`jobs/import-pool.ts`). */
+  importRunner?: ImportRunnerOption;
   /** Where background jobs run. Default: a worker thread per job. */
   executor?: JobExecutor;
   maxConcurrentJobs?: number;
@@ -122,7 +124,7 @@ export class Services {
     this.changeSets = new ChangeSetsService(this.ctx, this.plans, this.sim);
     this.keys = new KeysService(this.ctx, opts.keys);
     this.webhooks = new WebhooksService(this.ctx, opts.webhooks);
-    this.imports = new ImportsService(this.ctx, this.households, this.plans);
+    this.imports = new ImportsService(this.ctx, this.households, this.plans, opts.importRunner);
     this.scenarios = new ScenariosService(this.ctx, this.plans, this.sim);
     this.exports = new ExportsService(this.ctx, this.households, this.plans, this.sim);
     this.auth = new AuthService(db, opts.auth);

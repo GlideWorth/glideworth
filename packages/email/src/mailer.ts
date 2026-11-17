@@ -17,7 +17,12 @@ import {
   type TemplateId,
   type UnsubscribeSigner,
 } from "./types.js";
-import { assertAddress, defaultNormalize, EmailValidationError } from "./validate.js";
+import {
+  assertAddress,
+  defaultNormalize,
+  EmailValidationError,
+  headerSafeName,
+} from "./validate.js";
 
 /** Sent even to suppressed addresses: the person is trying to get into their account (spec 5.4). */
 const ALWAYS_ATTEMPT: ReadonlySet<TemplateId> = new Set<TemplateId>([
@@ -80,7 +85,11 @@ export function createMailer(o: {
       let recipient: Address;
       let from: Address;
       try {
-        recipient = assertAddress(to, "to");
+        const name = headerSafeName(to?.name);
+        recipient = assertAddress(
+          name === undefined ? { email: to?.email } : { email: to?.email, name },
+          "to",
+        );
         from = assertAddress(o.from, "from");
       } catch (e) {
         return fail(e instanceof EmailValidationError ? e.code : "invalid_address");

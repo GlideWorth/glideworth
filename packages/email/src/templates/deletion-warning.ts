@@ -1,6 +1,6 @@
 import { action, compose, greeting, link, p, plural } from "../layout.js";
 import type { RenderContext, Rendered, TemplateData } from "../types.js";
-import { freeText, positiveInt } from "../validate.js";
+import { dateText, freeText, positiveInt } from "../validate.js";
 
 /** Sent 30 and 7 days before a lapsed workspace is deleted (the retention rule of the terms of service). */
 export function deletionWarning(
@@ -15,7 +15,7 @@ export function deletionWarning(
     [
       p(greeting(data.name)),
       p(
-        `Your workspace "${workspace}" has no active subscription. It will be deleted on ${freeText(data.deletesOn, "deletesOn", 100)}, in ${left}, together with everything in it.`,
+        `Your workspace "${workspace}" has no active subscription. It will be deleted on ${dateText(data.deletesOn, "deletesOn")}, in ${left}, together with everything in it.`,
       ),
       p("Subscribing again before that date keeps the workspace and everything in it."),
       action("Subscribe to keep your workspace", data.billingUrl),

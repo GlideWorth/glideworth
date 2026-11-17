@@ -1,12 +1,12 @@
 /** Milestones (+ computed account-target milestones). */
-import { arr, num, type Obj, obj, str } from "../util/read.js";
+import { table, arr, num, type Obj, obj, str } from "../util/read.js";
 import { appearanceOf, basisOf, nameOf } from "./common.js";
 import { approximated, infoNote, invalid, type PlContext, resolveSource } from "./context.js";
 import { shiftMonths, toMonth } from "./dates.js";
 
 const COMPARATORS = new Set([">=", ">", "<=", "<", "="]);
 
-const METRICS: Record<string, string> = {
+const METRICS: Record<string, string> = table({
   netWorth: "netWorth",
   liquidNetWorth: "liquidNetWorth",
   portfolio: "portfolio",
@@ -18,15 +18,15 @@ const METRICS: Record<string, string> = {
   income: "income",
   spending: "spending",
   expenses: "expenses",
-};
+});
 
-const BUILTIN: Record<string, { kind: string; who: "me" | "spouse" | undefined }> = {
+const BUILTIN: Record<string, { kind: string; who: "me" | "spouse" | undefined }> = table({
   retirement: { kind: "retirement", who: "me" },
   spouseRetirement: { kind: "retirement", who: "spouse" },
   lifeExpectancy: { kind: "life-expectancy", who: "me" },
   spouseLifeExpectancy: { kind: "life-expectancy", who: "spouse" },
   fi: { kind: "financial-independence", who: undefined },
-};
+});
 
 function personFor(ctx: PlContext, who: "me" | "spouse" | undefined): string | undefined {
   if (who === "spouse") return ctx.partnerId;

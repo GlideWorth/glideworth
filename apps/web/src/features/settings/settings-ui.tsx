@@ -2,6 +2,7 @@
 import { Cloud, Laptop } from "lucide-react";
 import { type ReactNode, useId } from "react";
 import { Tooltip } from "../../components/ui/tooltip";
+import { useMode } from "../../lib/auth";
 import { cn } from "../../lib/cn";
 
 export function SettingsGroup({
@@ -77,18 +78,19 @@ export function SettingRow({
 }
 
 export function StoredWhere({ where }: { where: "server" | "device" }) {
+  const server = useMode() === "cloud" ? "your Glideworth Cloud account" : "your Glideworth server";
   return (
     <Tooltip
       content={
         where === "server"
-          ? "Saved to your Glideworth server: follows you to every device"
+          ? `Saved to ${server}: follows you to every device`
           : "Saved on this device only"
       }
     >
       <span
         className="inline-flex text-ink-3"
         role="img"
-        aria-label={where === "server" ? "Saved to your Glideworth server" : "Saved on this device"}
+        aria-label={where === "server" ? `Saved to ${server}` : "Saved on this device"}
       >
         {where === "server" ? <Cloud className="size-3" /> : <Laptop className="size-3" />}
       </span>

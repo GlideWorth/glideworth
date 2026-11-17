@@ -33,7 +33,7 @@ export function AboutSection() {
         <GlideworthMark className="size-11" />
         <div>
           <div className="display text-[20px] font-semibold">Glideworth</div>
-          <p className="text-[12.5px] text-ink-2">Self-hosted life and retirement planning.</p>
+          <p className="text-[12.5px] text-ink-2">Life and retirement planning.</p>
         </div>
       </div>
       <SettingsGroup title="Versions">

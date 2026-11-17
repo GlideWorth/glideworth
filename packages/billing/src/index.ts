@@ -41,6 +41,7 @@ export {
   BillingService,
   type BillingServiceDeps,
   CHECKOUT_LIMITS,
+  CHECKOUT_SESSION_TTL_MS,
   type CheckoutActor,
   MAX_EVENT_ATTEMPTS,
   TRIAL_CARRY_OVER_MIN_MS,

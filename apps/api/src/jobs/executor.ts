@@ -134,6 +134,19 @@ export function inlineExecutor(deps: CoreDeps, sharding?: ShardingOptions): JobE
 }
 
 // ------------------------------------------------------------------------------------- workers
+/**
+ * `execArgv` for a worker thread started from this directory. Compiled (`dist/`): none, the worker inherits the
+ * process's. Source mode needs tsx + the @glideworth/source condition inside the worker too; when we were
+ * started by tsx those flags are already in process.execArgv and are inherited automatically.
+ */
+export function workerExecArgv(): string[] | undefined {
+  const isSource = import.meta.url.endsWith(".ts");
+  const hasTsx = process.execArgv.some((a) => a.includes("tsx"));
+  if (!isSource || hasTsx) return undefined;
+  const tsx = pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href;
+  return [...process.execArgv, "--conditions=@glideworth/source", "--import", tsx];
+}
+
 /** Default heap limit of one job thread (`resourceLimits.maxOldGenerationSizeMb`), in MiB. */
 const DEFAULT_WORKER_MAX_MB = 2048;
 
@@ -221,17 +234,7 @@ async function slot(
  * several (`maxShards`). Works both from source (tsx) and from the compiled `dist/` output.
  */
 export function workerExecutor(opts: WorkerExecutorOptions = {}): JobExecutor {
-  const isSource = import.meta.url.endsWith(".ts");
-  let execArgv = opts.execArgv;
-  if (!execArgv) {
-    // Source mode needs tsx + the @glideworth/source condition inside the worker too. When we were started
-    // by tsx those flags are already in process.execArgv and are inherited automatically.
-    const hasTsx = process.execArgv.some((a) => a.includes("tsx"));
-    if (isSource && !hasTsx) {
-      const tsx = pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href;
-      execArgv = [...process.execArgv, "--conditions=@glideworth/source", "--import", tsx];
-    }
-  }
+  const execArgv = opts.execArgv ?? workerExecArgv();
   const heapMb = opts.maxOldGenerationSizeMb ?? DEFAULT_WORKER_MAX_MB;
   const one: JobExecutor = async (spec, hooks) => {
     let release: (() => void) | null = null;

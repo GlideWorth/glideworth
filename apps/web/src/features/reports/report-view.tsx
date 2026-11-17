@@ -2,7 +2,7 @@
  * Print-optimised plan report (browser print → PDF): summary, assumptions, charts, milestones,
  * a year-by-year table and caveats. Printing always uses the light theme.
  */
-import { ENGINE_VERSION, type Plan, type RateSpec } from "@glideworth/core";
+import { ENGINE_VERSION, type Plan, type RateSpec, SAMPLING_METHOD_LABEL } from "@glideworth/core";
 import { Download, Printer } from "lucide-react";
 import { useMemo } from "react";
 import { taxKindColor } from "../../components/charts/palette";
@@ -66,7 +66,7 @@ function Section({
   );
 }
 
-function assumptionsRows(plan: Plan, pct: (v: number) => string): [string, string][] {
+export function assumptionsRows(plan: Plan, pct: (v: number) => string): [string, string][] {
   const a = plan.assumptions;
   return [
     ["Inflation", rate(a.inflation, pct)],
@@ -86,7 +86,10 @@ function assumptionsRows(plan: Plan, pct: (v: number) => string): [string, strin
           ? "Custom brackets"
           : "Estimated from location",
     ],
-    ["Chance-of-success method", `${plan.monteCarlo.method}, ${plan.monteCarlo.trials} trials`],
+    [
+      "Chance-of-success method",
+      `${SAMPLING_METHOD_LABEL[plan.monteCarlo.method] ?? plan.monteCarlo.method}, ${plan.monteCarlo.trials} trials`,
+    ],
   ];
 }
 

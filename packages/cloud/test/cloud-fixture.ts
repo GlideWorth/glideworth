@@ -416,6 +416,7 @@ export async function makeCloud(
           redirectUri: `${PUBLIC_URL}/api/v1/auth/google/callback`,
         }
       : null,
+    heartbeats: { backup: null, restoreTest: null, liveness: null },
   };
   const federation = o.google
     ? new FederationService({
@@ -426,6 +427,7 @@ export async function makeCloud(
         limiter,
         log: testLog,
         now,
+        invitation: (token) => workspaces.liveInvitation(token),
         oidc: new OidcClient({
           issuer: o.google.issuer,
           acceptedIssuers: googleIssuers(o.google.issuer),
@@ -581,6 +583,8 @@ export interface Res {
 /** A browser: a cookie jar, same-origin `Origin`, and the CSRF header taken from the readable cookie. */
 export class Browser {
   jar = new Map<string, string>();
+  /** Each cookie's SameSite attribute, so a cross-site navigation can leave out the Strict ones. */
+  sameSite = new Map<string, string>();
   ip = `203.0.113.${Math.floor(Math.random() * 200) + 1}`;
   constructor(
     readonly app: { request: (p: string, i?: RequestInit) => Response | Promise<Response> },
@@ -595,6 +599,11 @@ export class Browser {
       origin?: string | null;
       headers?: Record<string, string>;
       raw?: string;
+      /**
+       * A top-level navigation that another site started (the redirect back from Google, a link in an
+       * email): like a real browser, send no `SameSite=Strict` cookie, only Lax and None ones.
+       */
+      crossSite?: boolean;
     } = {},
   ): Promise<Res> {
     const headers: Record<string, string> = {
@@ -602,7 +611,10 @@ export class Browser {
       "user-agent": "Mozilla/5.0 Test",
       ...(o.headers ?? {}),
     };
-    if (this.jar.size) headers.cookie = [...this.jar].map(([k, v]) => `${k}=${v}`).join("; ");
+    const sent = [...this.jar].filter(
+      ([k]) => !o.crossSite || (this.sameSite.get(k) ?? "lax") !== "strict",
+    );
+    if (sent.length) headers.cookie = sent.map(([k, v]) => `${k}=${v}`).join("; ");
     if (method !== "GET" && o.origin !== null) headers.origin = o.origin ?? PUBLIC_URL;
     if (o.csrf !== false && method !== "GET" && this.jar.get("__Host-gw_csrf"))
       headers["x-csrf-token"] = this.jar.get("__Host-gw_csrf") as string;
@@ -624,7 +636,10 @@ export class Browser {
       const k = (pair as string).slice(0, i);
       const v = (pair as string).slice(i + 1);
       if (/Max-Age=0/i.test(sc) || v === "") this.jar.delete(k);
-      else this.jar.set(k, v);
+      else {
+        this.jar.set(k, v);
+        this.sameSite.set(k, (/;\s*SameSite=(\w+)/i.exec(sc)?.[1] ?? "lax").toLowerCase());
+      }
     }
     const text = await res.text();
     let parsed: Record<string, unknown> = {};

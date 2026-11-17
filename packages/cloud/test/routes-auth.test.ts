@@ -160,6 +160,11 @@ describe("next redirects", () => {
       "/\\evil.example",
       "\\\\evil.example",
       "javascript:alert(1)",
+      // Dot segments that normalise to `//host` (review pass 3).
+      "/.//evil.example",
+      "/x/..//evil.example",
+      "/%2e//evil.example",
+      "/%2E%2E//evil.example",
       "/%0d%0aSet-Cookie:x",
       " /x",
       "/x\ny",

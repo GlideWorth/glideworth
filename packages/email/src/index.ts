@@ -13,4 +13,4 @@ export { memoryTransport } from "./transports/memory.js";
 export { smtpTransport } from "./transports/smtp.js";
 export * from "./types.js";
 export { type HmacUnsubscribeSignerOptions, hmacUnsubscribeSigner } from "./unsubscribe.js";
-export { EmailValidationError } from "./validate.js";
+export { dateText, EmailValidationError } from "./validate.js";

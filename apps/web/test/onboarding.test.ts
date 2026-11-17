@@ -63,6 +63,27 @@ describe("guided setup → document", () => {
     expect(result.periods.length).toBeGreaterThan(30);
   });
 
+  it("starts the UK State Pension at each person's own State Pension age, not a flat 67", () => {
+    // Production QA: born January 1980 (State Pension age 68 under the Pensions Act 2007) started at 67.
+    const doc = buildSetupDocument(
+      answers({
+        you: { name: "Robin", birthMonth: "1980-01" },
+        partner: { name: "Kim", birthMonth: "1960-08" },
+      }),
+      { now: NOW },
+    );
+    const starts = Object.fromEntries(
+      doc.plans[0]!.income.filter((i) => i.type === "state-pension").map((i) => [
+        i.owner,
+        i.range.start.kind === "age" ? i.range.start.age : null,
+      ]),
+    );
+    const [me, partner] = doc.household.people;
+    expect(starts[me!.id]).toBe(68);
+    // Born August 1960: 66 years and 5 months.
+    expect(starts[partner!.id]).toBeCloseTo(66 + 5 / 12, 6);
+  });
+
   it("supports couples with joint and partner-owned accounts", () => {
     const doc = buildSetupDocument(
       answers({

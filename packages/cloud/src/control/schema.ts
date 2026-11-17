@@ -173,10 +173,10 @@ export const oidcFlows = sqliteTable(
   "oidc_flows",
   {
     id: text("id").primaryKey(),
-    kind: text("kind", { enum: ["authorize", "pending_signup"] }).notNull(),
+    kind: text("kind", { enum: ["authorize", "pending_signup", "pending_link"] }).notNull(),
     provider: text("provider", { enum: ["google"] }).notNull(),
     browserHash: text("browser_hash").notNull(),
-    /** Linking only: the signed-in user and session that started the flow. */
+    /** Linking only (`authorize`, `pending_link`): the signed-in user and session that started the flow. */
     userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
     sessionId: text("session_id"),
     payloadEnc: text("payload_enc").notNull(),
@@ -654,6 +654,18 @@ export const cellHeartbeat = sqliteTable("cell_heartbeat", {
   at: text("at").notNull(),
 });
 
+/**
+ * Not in spec 2.2: when each long-interval periodic job (restore test, prune, maintenance, backup sweep) last
+ * ran and last succeeded, so a restart does not reset its clock (server.ts `DurableJobs`). Names and times only.
+ */
+export const jobRuns = sqliteTable("job_runs", {
+  name: text("name").primaryKey(),
+  lastStartedAt: text("last_started_at"),
+  lastSuccessAt: text("last_success_at"),
+  lastFailureAt: text("last_failure_at"),
+  consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+});
+
 /** Everything, for `drizzle(sqlite, { schema })` and the `ControlDb` type. */
 export const schema = {
   users,
@@ -689,4 +701,5 @@ export const schema = {
   webhookNonces,
   opsCommands,
   cellHeartbeat,
+  jobRuns,
 };

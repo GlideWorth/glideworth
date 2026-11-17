@@ -23,6 +23,14 @@ export const SamplingMethod = z
   .meta({ id: "SamplingMethod" });
 export type SamplingMethod = z.infer<typeof SamplingMethod>;
 
+/** How each sampling method is named to people (reports, the chance-of-success page). Never show the raw id. */
+export const SAMPLING_METHOD_LABEL: Readonly<Record<SamplingMethod, string>> = {
+  "historical-random-restart": "Historical, random start years",
+  "historical-sequential": "Historical, every start year once",
+  "block-bootstrap": "Block bootstrap of history",
+  normal: "Random returns (normal)",
+};
+
 export const OutcomeCategory = z
   .object({
     id: Id,

@@ -1,6 +1,6 @@
 import { compose, facts, greeting, link, p } from "../layout.js";
 import type { RenderContext, Rendered, TemplateData } from "../types.js";
-import { freeText } from "../validate.js";
+import { dateText, freeText } from "../validate.js";
 
 export function signinAlert(data: TemplateData["signin-alert"], ctx: RenderContext): Rendered {
   return compose(
@@ -10,7 +10,7 @@ export function signinAlert(data: TemplateData["signin-alert"], ctx: RenderConte
       p(greeting(data.name)),
       p("We noticed a sign-in to your Glideworth account from a device we have not seen before."),
       facts(
-        ["When", freeText(data.at, "at", 100)],
+        ["When", dateText(data.at, "at")],
         ["Device", freeText(data.device, "device", 200)],
         ["IP address", freeText(data.ip, "ip", 64)],
       ),

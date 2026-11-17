@@ -5,6 +5,7 @@ import { insertKey } from "../src/auth.js";
 import { openDb } from "../src/db/client.js";
 import { type CoreDeps, coreDeps } from "../src/deps.js";
 import { inlineExecutor, type JobExecutor } from "../src/jobs/executor.js";
+import type { ImportRunnerOption } from "../src/services/imports.js";
 import type { AuthOptions } from "../src/services/auth.js";
 import type { WebhookOptions } from "../src/services/webhooks.js";
 import { Services } from "../src/services.js";
@@ -155,6 +156,8 @@ export interface SetupOptions {
   realEngine?: boolean;
   deps?: Partial<CoreDeps>;
   executor?: JobExecutor;
+  /** Where imports are parsed (default: the process's import worker pool). */
+  importRunner?: ImportRunnerOption;
   seed?: boolean;
   mcpAllowWrites?: boolean;
   rateLimitPerMinute?: number;
@@ -184,6 +187,7 @@ export function setup(o: SetupOptions = {}) {
   const services = new Services(ctx.db, {
     deps,
     executor: o.executor ?? inlineExecutor(deps),
+    ...(o.importRunner ? { importRunner: o.importRunner } : {}),
     webhooks: { retryDelaysMs: [0, 0], ...(o.fetch ? { fetch: o.fetch } : {}), ...o.webhooks },
     ...(o.auth ? { auth: o.auth } : {}),
   });

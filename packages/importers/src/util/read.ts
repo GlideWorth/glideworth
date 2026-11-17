@@ -3,6 +3,15 @@
 export type Json = unknown;
 export type Obj = Record<string, unknown>;
 
+/**
+ * A lookup table without `Object.prototype`, so a key read from an import (`constructor`, `toString`,
+ * `__proto__`) finds nothing instead of an inherited function. `SECTION["constructor"]` used to send a QIF
+ * file with `!Type:constructor` down a code path that failed with a 500 (security review).
+ */
+export function table<T>(entries: Record<string, T>): Readonly<Record<string, T>> {
+  return Object.freeze(Object.assign(Object.create(null) as Record<string, T>, entries));
+}
+
 export function isObj(v: unknown): v is Obj {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }

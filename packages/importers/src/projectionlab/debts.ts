@@ -1,13 +1,13 @@
 /** Debts: today.debts[] and the per-plan `debt` expense events that mirror them. */
 import { DEBT_TYPES, DebtBehaviour } from "@glideworth/core";
-import { arr, num, type Obj, obj, str } from "../util/read.js";
+import { table, arr, num, type Obj, obj, str } from "../util/read.js";
 import { interestOf } from "./assets.js";
 import { appearanceOf, basisOf, behaviourOverride, currencyOf, nameOf, ownerOf } from "./common.js";
 import { approximated, invalid, type PlContext } from "./context.js";
 import { resolveRef } from "./dates.js";
 
 const DEBT_TYPE_SET = new Set<string>(DEBT_TYPES);
-const DEBT_ALIASES: Record<string, string> = {
+const DEBT_ALIASES: Record<string, string> = table({
   mortgage: "other",
   student: "student-loan",
   "credit-card-debt": "credit-card",
@@ -15,7 +15,7 @@ const DEBT_ALIASES: Record<string, string> = {
   loan: "personal-loan",
   auto: "auto-loan",
   car: "auto-loan",
-};
+});
 
 export interface MappedDebt {
   sourceId: string;
@@ -102,6 +102,22 @@ export function mapDebts(ctx: PlContext, today: Obj): MappedDebt[] {
  * `debt`-typed expense events -> Plan.debtSettings. Returns the settings and the set of
  * source debt ids the plan lists (for excludedIds).
  */
+/**
+ * Debts by source id, built once per list. A plan's debt events used to search the whole list each, so many
+ * debts and many debt events took time proportional to their product (security review: hostile-input cost of
+ * the importers). The first debt with a source id wins, as `find` did.
+ */
+const debtIndexes = new WeakMap<MappedDebt[], Map<string, MappedDebt>>();
+function debtBySource(debts: MappedDebt[], sid: string): MappedDebt | undefined {
+  let index = debtIndexes.get(debts);
+  if (!index) {
+    index = new Map();
+    for (const d of debts) if (!index.has(d.sourceId)) index.set(d.sourceId, d);
+    debtIndexes.set(debts, index);
+  }
+  return index.get(sid);
+}
+
 export function mapPlanDebtEvent(
   ctx: PlContext,
   src: Obj,
@@ -109,7 +125,7 @@ export function mapPlanDebtEvent(
   debts: MappedDebt[],
 ): { debtId: string; patch: Obj } | undefined {
   const sid = str(src.debtId);
-  const base = sid ? debts.find((d) => d.sourceId === sid) : undefined;
+  const base = sid ? debtBySource(debts, sid) : undefined;
   if (!base) return undefined;
   const behaviour = debtBehaviour(ctx, src, path);
   const baseBehaviour = obj(base.debt.behaviour);

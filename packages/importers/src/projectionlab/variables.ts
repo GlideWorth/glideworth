@@ -1,6 +1,6 @@
 /** Plan `variables`: assumptions (returns, inflation, bonds, dividends) and tax configuration. */
 import { hasTaxPreset } from "@glideworth/core";
-import { arr, bool, num, type Obj, obj, pct, pctClean, str } from "../util/read.js";
+import { table, arr, bool, num, type Obj, obj, pct, pctClean, str } from "../util/read.js";
 import { scheduleFromSeries } from "./accounts.js";
 import { clamp } from "./common.js";
 import { approximated, infoNote, invalid, type PlContext, resolveSource } from "./context.js";
@@ -194,7 +194,7 @@ export function mapAssumptions(
 // Tax
 // ---------------------------------------------------------------------------------------------
 
-const FILING: Record<string, string> = {
+const FILING: Record<string, string> = table({
   single: "single",
   joint: "married-joint",
   "married-joint": "married-joint",
@@ -204,7 +204,7 @@ const FILING: Record<string, string> = {
   "head-of-household": "head-of-household",
   "qualifying-surviving-spouse": "qualifying-surviving-spouse",
   widow: "qualifying-surviving-spouse",
-};
+});
 
 function bracketTable(ctx: PlContext, raw: unknown, path: string): Obj | undefined {
   const rows: { from: number; rate: number }[] = [];

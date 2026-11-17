@@ -7,7 +7,7 @@ import { readFragmentParam } from "../src/features/cloud/fragment";
 import { safeNext } from "../src/features/cloud/next";
 import { passwordProblem } from "../src/features/cloud/password-rules";
 import { encodeQr } from "../src/features/cloud/qr";
-import { daysLeft, fmtPrice } from "../src/features/cloud/format";
+import { daysLeft, daysText, fmtPrice } from "../src/features/cloud/format";
 import { ApiRequestError } from "../src/lib/api-error";
 import type { BillingInfo } from "../src/features/cloud/client";
 import { describeError } from "../src/features/cloud/ui";
@@ -42,6 +42,16 @@ describe("the `next` redirect validator", () => {
     42,
     `/${"a".repeat(3000)}`,
   ])("refuses %j", (v) => {
+    expect(safeNext(v, origin)).toBe("/");
+  });
+  // Dot segments are removed by the URL parser, which can leave a path that starts with `//`. Returned as is,
+  // that is a protocol-relative URL to another host.
+  it.each([
+    "/.//evil.example",
+    "/x/..//evil.example/y",
+    "/%2e//evil.example",
+    "/a/%2E%2E//evil.example?q=1",
+  ])("refuses %j, which normalises to //host", (v) => {
     expect(safeNext(v, origin)).toBe("/");
   });
   it("never sends a signed-in person back to a sign-in page", () => {
@@ -372,9 +382,15 @@ describe("QR code (drawn locally)", () => {
 });
 
 describe("formatting", () => {
-  it("counts trial days up and prices in minor units", () => {
-    expect(daysLeft("2026-11-17T01:00:00Z", new Date("2026-11-16T12:00:00Z"))).toBe(1);
+  it("counts whole trial days left as Stripe does, and prices in minor units", () => {
+    // A 30-day trial a few minutes after it started: Stripe Checkout says "29 days free".
+    expect(daysLeft("2026-12-17T05:41:00Z", new Date("2026-11-17T05:44:00Z"))).toBe(29);
+    expect(daysLeft("2026-12-17T05:41:00Z", new Date("2026-11-17T05:41:00Z"))).toBe(30);
+    expect(daysLeft("2026-11-17T01:00:00Z", new Date("2026-11-16T12:00:00Z"))).toBe(0);
     expect(daysLeft("2026-11-10T00:00:00Z", new Date("2026-11-16T12:00:00Z"))).toBe(0);
+    expect(daysText(0)).toBe("less than a day");
+    expect(daysText(1)).toBe("1 day");
+    expect(daysText(29)).toBe("29 days");
     expect(fmtPrice(900, "usd", "en-US")).toBe("$9");
     expect(fmtPrice(9000, "usd", "en-US")).toBe("$90");
     expect(fmtPrice(950, "gbp", "en-GB")).toBe("£9.50");

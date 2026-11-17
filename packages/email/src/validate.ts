@@ -15,6 +15,9 @@ export class EmailValidationError extends Error {
 const CONTROL = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/;
 // oxlint-disable-next-line eslint/no-control-regex -- matching control characters is the point.
 const CONTROL_G = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g;
+// Bidirectional embedding, override and isolate controls: they reorder how the text around them is shown.
+const BIDI_G = /[\u202a-\u202e\u2066-\u2069]/g;
+const BIDI = /[\u202a-\u202e\u2066-\u2069]/;
 const ADDRESS = /^[^\s@<>(),;:"\\[\]]+@[^\s@<>(),;:"\\[\]]+\.[^\s@<>(),;:"\\[\]]+$/;
 const HEADER_NAME = /^[A-Za-z0-9][A-Za-z0-9-]*$/;
 
@@ -39,6 +42,17 @@ export function assertAddress(a: Address, label: string): Address {
     throw new EmailValidationError("invalid_address", `${label} name is not allowed`);
   }
   return { email, name: a.name };
+}
+
+/**
+ * A person's display name for the To header, or `undefined` when it cannot go in a header (control
+ * characters, line separators, direction controls, over 200 characters, blank). The caller then sends to
+ * the bare address: a name is decoration, and it must never stop account or security mail.
+ */
+export function headerSafeName(name: unknown): string | undefined {
+  if (typeof name !== "string" || name.length > 200) return undefined;
+  if (CONTROL.test(name) || BIDI.test(name) || name.trim().length === 0) return undefined;
+  return name;
 }
 
 export function assertHeaderValue(name: string, value: unknown): string {
@@ -105,7 +119,7 @@ export function assertUrl(
 
 /** Collapse whitespace and control characters so a free-text value stays on one line. */
 export function oneLine(s: string): string {
-  return s.replace(CONTROL_G, " ").replace(/\s+/g, " ").trim();
+  return s.replace(CONTROL_G, " ").replace(BIDI_G, "").replace(/\s+/g, " ").trim();
 }
 
 /** Free text from the outside (names, devices, workspace names): a bounded single line. */
@@ -114,6 +128,41 @@ export function freeText(value: unknown, label: string, max = 200): string {
     throw new EmailValidationError("invalid_data", `${label} must be a string`);
   const s = oneLine(value);
   return s.length > max ? `${s.slice(0, max - 1)}…` : s;
+}
+
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const;
+const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/;
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+/**
+ * A date or time for a reader anywhere: an ISO date becomes "18 November 2026" and an ISO timestamp becomes
+ * "18 November 2026, 06:00 UTC" (no numeric day/month order to misread). Anything else is free text, unchanged.
+ */
+export function dateText(value: unknown, label: string): string {
+  const s = freeText(value, label, 100);
+  const day = ISO_DATE.exec(s);
+  if (day) {
+    const month = MONTHS[Number(day[2]) - 1];
+    return month ? `${Number(day[3])} ${month} ${day[1]}` : s;
+  }
+  if (!ISO_DATE_TIME.test(s)) return s;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return s;
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}, ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())} UTC`;
 }
 
 export function positiveInt(value: unknown, label: string): number {

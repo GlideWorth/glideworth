@@ -12,6 +12,7 @@ import { Select } from "../../../components/ui/select";
 import { SwitchField } from "../../../components/ui/switch";
 import { Textarea } from "../../../components/ui/textarea";
 import { toast } from "../../../components/ui/toaster";
+import { ApiRequestError } from "../../../lib/api-error";
 import { ReauthCancelled, withReauth } from "../../../lib/reauth";
 import { SectionIntro, SettingRow, SettingsGroup } from "../../settings/settings-ui";
 import { cloudApi, exportDownloadPath } from "../client";
@@ -19,6 +20,7 @@ import { fmtDateTime } from "../format";
 import { nav } from "../next";
 import { failToast, Loading, LoadError, TypedConfirmDialog } from "../settings-kit";
 import { describeError, Notice, TextField, useErrorFocus } from "../ui";
+import { useLocale } from "../../../lib/workspace";
 
 export function WorkspaceSection() {
   const qc = useQueryClient();
@@ -161,6 +163,7 @@ export function WorkspaceSection() {
 // ------------------------------------------------------------------------------------ support access
 function SupportAccess() {
   const qc = useQueryClient();
+  const locale = useLocale();
   const grants = useQuery({
     queryKey: ["cloud", "support"],
     queryFn: cloudApi.supportGrants,
@@ -256,9 +259,7 @@ function SupportAccess() {
         </div>
         <div role="status" aria-live="polite">
           {created ? (
-            <Notice>
-              Support can see your workspace until {fmtDateTime(created, navigator.language)}.
-            </Notice>
+            <Notice>Support can see your workspace until {fmtDateTime(created, locale)}.</Notice>
           ) : null}
         </div>
       </form>
@@ -291,8 +292,7 @@ function SupportAccess() {
                     )}
                   </div>
                   <div className="mt-0.5 text-[11.5px] text-ink-3">
-                    {live ? "Until" : "Was until"}{" "}
-                    {fmtDateTime(g.revokedAt ?? g.expiresAt, navigator.language)}
+                    {live ? "Until" : "Was until"} {fmtDateTime(g.revokedAt ?? g.expiresAt, locale)}
                   </div>
                 </div>
                 {live ? (
@@ -316,11 +316,43 @@ function SupportAccess() {
 }
 
 // ------------------------------------------------------------------------------------------- export
+/** The export named by the link in the "export is ready" email (`#export=<id>`), if the page was opened from it. */
+function linkedExportId(): string | null {
+  const m = /(?:^#|&)export=([^&]+)/.exec(window.location.hash);
+  return m?.[1] ? decodeURIComponent(m[1]) : null;
+}
+
 function ExportGroup() {
+  const locale = useLocale();
   const [ready, setReady] = useState<{ id: string; expiresAt: string } | null>(null);
+  const [linked] = useState(linkedExportId);
+  const [linkGone, setLinkGone] = useState<"downloaded" | "expired" | null>(null);
+  // Opened from the email: offer the download if it is still there, or say why it is not.
+  const linkedStatus = useQuery({
+    queryKey: ["cloud", "export-status", linked],
+    queryFn: () => cloudApi.exportStatus(linked as string),
+    enabled: linked !== null,
+    retry: false,
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+  useEffect(() => {
+    // 404: the export's record is gone (a week after it expired), so it has expired.
+    const st =
+      linkedStatus.error instanceof ApiRequestError && linkedStatus.error.status === 404
+        ? ({ status: "expired", expiresAt: null } as const)
+        : linkedStatus.data;
+    if (!st || !linked) return;
+    if (st.status === "ready" && st.expiresAt) setReady({ id: linked, expiresAt: st.expiresAt });
+    else if (st.status !== "ready")
+      setLinkGone(st.status === "downloaded" ? "downloaded" : "expired");
+    window.history.replaceState(window.history.state, "", window.location.pathname);
+  }, [linkedStatus.data, linkedStatus.error, linked]);
   const exportDb = useMutation({
     mutationFn: () => withReauth(() => cloudApi.exportWorkspace()),
-    onSuccess: (r) => setReady({ id: r.exportId, expiresAt: r.expiresAt }),
+    onSuccess: (r) => {
+      setLinkGone(null);
+      setReady({ id: r.exportId, expiresAt: r.expiresAt });
+    },
     onError: (e) => {
       if (!(e instanceof ReauthCancelled)) failToast("Could not prepare the export", e);
     },
@@ -336,11 +368,21 @@ function ExportGroup() {
         </Button>
       </SettingRow>
       <div role="status" aria-live="polite" className="empty:hidden">
+        {linkGone && !ready ? (
+          <div className="px-5 py-3.5">
+            <Notice tone="neutral">
+              {linkGone === "downloaded"
+                ? "The export from your email has already been downloaded. Each export can be downloaded once."
+                : "The export from your email has expired. Download links work for 24 hours."}{" "}
+              To get a new copy, choose Prepare export.
+            </Notice>
+          </div>
+        ) : null}
         {ready ? (
           <div className="flex flex-wrap items-center gap-3 px-5 py-3.5">
             <p className="min-w-0 flex-1 text-[13px] text-ink-2">
               Your export is ready. It can be downloaded once, until{" "}
-              {fmtDateTime(ready.expiresAt, navigator.language)}. We have also emailed you.
+              {fmtDateTime(ready.expiresAt, locale)}. We have also emailed you.
             </p>
             <Button size="sm" variant="primary" asChild>
               <a href={exportDownloadPath(ready.id)} download>

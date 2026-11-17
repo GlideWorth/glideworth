@@ -12,7 +12,7 @@ import { openControlDb } from "../src/control/db.js";
 import { MailOutbox } from "../src/control/outbox.js";
 import { auditEvents, mailOutbox, stripeEvents, subscriptions } from "../src/control/schema.js";
 import { withWriterLock } from "../src/control/writer-lock.js";
-import { webhookLockKey } from "../src/http/routes/billing.js";
+import { STRIPE_WEBHOOK_PER_MINUTE, webhookLockKey } from "../src/http/routes/billing.js";
 import { controlDbPath } from "../src/tenancy/paths.js";
 import {
   Browser,
@@ -260,6 +260,44 @@ describe("finding 1: per-account single writer across processes", () => {
     }
   });
 
+  it("a flood from one address is limited per address, high enough for Stripe's bursts (security review finding 10)", async () => {
+    const post = (ip: string, header = "t=1,v1=00") =>
+      cloud.app.request("/stripe/webhook", {
+        method: "POST",
+        headers: {
+          "stripe-signature": header,
+          "content-type": "application/json",
+          "x-forwarded-for": ip,
+        },
+        body: "{}",
+      });
+    for (let i = 0; i < STRIPE_WEBHOOK_PER_MINUTE; i++)
+      expect((await post("198.51.100.7")).status).toBe(400);
+    const limited = await post("198.51.100.7");
+    expect(limited.status).toBe(429);
+    expect(((await limited.json()) as { error: { code: string } }).error.code).toBe("RATE_LIMITED");
+    // Another address (Stripe sends from several) is not held up, and a signed event from it is processed.
+    const s = await subscribed();
+    const signed = cloud.fake.sign(
+      cloud.fake.setSubscription(s.subscriptionId, { status: "past_due" }),
+      WEBHOOK_SECRET,
+    );
+    const ok = await cloud.app.request("/stripe/webhook", {
+      method: "POST",
+      headers: {
+        "stripe-signature": signed.header,
+        "content-type": "application/json",
+        "x-forwarded-for": "198.51.100.8",
+      },
+      body: signed.body,
+    });
+    expect(ok.status).toBe(200);
+    expect(sub(s.id)?.status).toBe("past_due");
+    // The window is a minute: the first address is served again after it.
+    cloud.advance(61_000);
+    expect((await post("198.51.100.7")).status).toBe(400);
+  });
+
   it("a writer whose lease was taken over cannot write (fencing token + version check)", async () => {
     const s = await subscribed();
     const initial = sub(s.id)?.status;
@@ -290,7 +328,7 @@ describe("finding 1: per-account single writer across processes", () => {
 });
 
 describe("finding 2: one open checkout per account, duplicate subscriptions alert", () => {
-  it("the same price reuses the open session; another price is refused while it is open", async () => {
+  it("the same price reuses the open session; another price expires it and opens a new one", async () => {
     const owner = await signedUpBrowser(cloud);
     const first = await owner.browser.post("/api/v1/billing/checkout", {
       lookupKey: "cloud_monthly_v1",
@@ -300,6 +338,50 @@ describe("finding 2: one open checkout per account, duplicate subscriptions aler
       lookupKey: "cloud_monthly_v1",
     });
     expect(again.body).toMatchObject({ url: first.body.url, reused: true });
+    // Back from Stripe, then the other period: the monthly session is expired on Stripe and a yearly one opens.
+    const yearly = await owner.browser.post("/api/v1/billing/checkout", {
+      lookupKey: "cloud_yearly_v1",
+    });
+    expect(yearly.status).toBe(200);
+    expect(yearly.body.reused).toBe(false);
+    expect(yearly.body.url).not.toBe(first.body.url);
+    const firstId = sessionIdOf(String(first.body.url));
+    expect(cloud.fake.sessions.get(firstId)?.status).toBe("expired");
+    expect(cloud.fake.callsTo("expireCheckoutSession")).toHaveLength(1);
+    // The session is short-lived: Stripe is asked to end it after about an hour, not the default 24 hours.
+    const created = cloud.fake.callsTo("createCheckoutSession");
+    const params = created.at(-1)?.args[0] as { expiresAt?: number };
+    const nowS = cloud.now().getTime() / 1000;
+    expect(params.expiresAt).toBeGreaterThanOrEqual(nowS + 3600);
+    expect(params.expiresAt).toBeLessThanOrEqual(nowS + 4200);
+    // Switching back within the same idempotency window gives a fresh monthly session, not the expired one.
+    const monthly = await owner.browser.post("/api/v1/billing/checkout", {
+      lookupKey: "cloud_monthly_v1",
+    });
+    expect(monthly.status).toBe(200);
+    expect(monthly.body.url).not.toBe(first.body.url);
+    expect(cloud.fake.sessions.get(sessionIdOf(String(monthly.body.url)))?.status).toBe("open");
+    expect(cloud.fake.sessions.get(sessionIdOf(String(yearly.body.url)))?.status).toBe("expired");
+    expect([...cloud.fake.sessions.values()].filter((x) => x.status === "open")).toHaveLength(1);
+    // The expired-session webhooks Stripe sends are accepted and change nothing.
+    for (const ev of cloud.fake.outbox.filter((e) => e.type === "checkout.session.expired"))
+      expect((await deliver(ev)).status).toBe(200);
+    // Completing it makes a live subscription; checkout is then refused outright.
+    for (const ev of cloud.fake.completeCheckout(sessionIdOf(String(monthly.body.url))))
+      await deliver(ev);
+    const after = await owner.browser.post("/api/v1/billing/checkout", {
+      lookupKey: "cloud_yearly_v1",
+    });
+    expect(after.body).toMatchObject({ error: { code: "ALREADY_SUBSCRIBED" } });
+  });
+
+  it("a session already completed on Stripe (webhook not yet here) blocks a checkout for the other price", async () => {
+    const owner = await signedUpBrowser(cloud);
+    const first = await owner.browser.post("/api/v1/billing/checkout", {
+      lookupKey: "cloud_monthly_v1",
+    });
+    // Paid on Stripe, but the events have not been delivered.
+    cloud.fake.completeCheckout(sessionIdOf(String(first.body.url)));
     const yearly = await owner.browser.post("/api/v1/billing/checkout", {
       lookupKey: "cloud_yearly_v1",
     });
@@ -313,14 +395,17 @@ describe("finding 2: one open checkout per account, duplicate subscriptions aler
         .where(eq(auditEvents.event, "billing.checkout_refused"))
         .all(),
     ).toHaveLength(1);
-    // Completing it ends the block; a live subscription then refuses checkout outright.
-    for (const ev of cloud.fake.completeCheckout(sessionIdOf(String(first.body.url))))
-      await deliver(ev);
-    const after = await owner.browser.post("/api/v1/billing/checkout", {
+  });
+
+  it("a session Stripe could not expire leaves the block in place and creates nothing", async () => {
+    const owner = await signedUpBrowser(cloud);
+    await owner.browser.post("/api/v1/billing/checkout", { lookupKey: "cloud_monthly_v1" });
+    cloud.fake.failNext("expireCheckoutSession");
+    const yearly = await owner.browser.post("/api/v1/billing/checkout", {
       lookupKey: "cloud_yearly_v1",
     });
-    expect(after.body).toMatchObject({ error: { code: "ALREADY_SUBSCRIBED" } });
-    // After 24 h an abandoned session no longer blocks (Stripe expires it).
+    expect(yearly.status).toBeGreaterThanOrEqual(500);
+    expect(cloud.fake.callsTo("createCheckoutSession")).toHaveLength(1);
   });
 
   it("a second live subscription for the account (two sessions completed) raises an operator alert", async () => {

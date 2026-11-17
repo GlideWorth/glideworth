@@ -342,6 +342,7 @@ export class FakeStripeGateway implements StripeGateway, WebhookEndpointAdmin {
       cancelUrl: string;
       allowPromotionCodes: boolean;
       collectTaxIds: boolean;
+      expiresAt?: number;
     },
     idempotencyKey: string,
   ) {
@@ -355,6 +356,13 @@ export class FakeStripeGateway implements StripeGateway, WebhookEndpointAdmin {
       // the future."
       if (p.trialEnd !== null && p.trialEnd < this.nowSeconds() + 48 * 3600) {
         throw invalid("subscription_data[trial_end] must be at least 48 hours in the future");
+      }
+      // docs.stripe.com/api/checkout/sessions/create: expires_at is 30 minutes to 24 hours after creation.
+      if (
+        p.expiresAt !== undefined &&
+        (p.expiresAt < this.nowSeconds() + 30 * 60 || p.expiresAt > this.nowSeconds() + 24 * 3600)
+      ) {
+        throw invalid("expires_at must be between 30 minutes and 24 hours from now");
       }
       const id = this.id("cs_test");
       this.sessions.set(id, {
@@ -374,6 +382,21 @@ export class FakeStripeGateway implements StripeGateway, WebhookEndpointAdmin {
       });
       return { id, url: `https://checkout.stripe.test/c/pay/${id}` };
     });
+  }
+
+  /**
+   * An open session becomes `expired` (and emits `checkout.session.expired`, as Stripe does); a session that is no
+   * longer open is left alone and its status returned, as the real gateway does after Stripe refuses.
+   */
+  async expireCheckoutSession(id: string): Promise<{ status: "open" | "complete" | "expired" }> {
+    this.enter("expireCheckoutSession", [id]);
+    const session = this.sessions.get(id);
+    if (!session) throw missing("No such checkout session");
+    if (session.status !== "open") return { status: session.status };
+    session.status = "expired";
+    const { params: _params, priceId: _priceId, trialEnd: _trialEnd, ...sessionObject } = session;
+    this.emit("checkout.session.expired", this.asObject(sessionObject));
+    return { status: "expired" };
   }
 
   async createPortalSession(p: { customerId: string; returnUrl: string; configurationId: string }) {

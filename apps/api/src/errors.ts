@@ -119,11 +119,16 @@ export function toErrorResponse(err: unknown, c: Context) {
       cloud.status,
     );
   }
-  if (err instanceof ApiError)
+  if (err instanceof ApiError) {
+    // A busy server or a per-workspace limit says when to retry (e.g. 503 IMPORT_BUSY, 429 RATE_LIMITED).
+    const retry = (err.details as { retryAfterSeconds?: unknown } | undefined)?.retryAfterSeconds;
+    if ((err.status === 429 || err.status === 503) && typeof retry === "number")
+      c.header("Retry-After", String(retry));
     return c.json(
       { error: { code: err.code, message: err.message, details: err.details } },
       err.status,
     );
+  }
   if (isNotImplemented(err)) {
     const e = err as GlideworthError;
     return c.json({ error: { code: e.code, message: e.message, details: e.details } }, 501);

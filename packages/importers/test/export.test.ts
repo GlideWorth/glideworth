@@ -251,6 +251,10 @@ describe("printable report data", () => {
     expect(report.income).toHaveLength(doc.plans[0]!.income.length);
     expect(report.expenses).toHaveLength(doc.plans[0]!.expenses.length);
     expect(report.assumptions.find((a) => a.label === "Inflation")!.value).toMatch(/%/);
+    // The chance-of-success method is named as people know it, never by its internal id.
+    expect(report.assumptions.find((a) => a.label === "Chance-of-success method")!.value).toBe(
+      "Historical, random start years",
+    );
   });
 
   it("never claims certainty: standing caveats are always present", () => {

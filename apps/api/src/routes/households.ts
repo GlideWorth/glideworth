@@ -866,6 +866,12 @@ export function householdRoutes({ app, svc }: RouteCtx) {
   );
 
   // ----------------------------------------------------------------------------- import
+  /** Security review finding 4: imports are parsed in a worker thread; its limits, stated on every import route. */
+  const IMPORT_THREAD =
+    "The file is parsed in a separate import thread, so other requests are not held up. " +
+    "An import that runs longer than the time limit (15 s by default) is stopped: `422 IMPORT_TIMEOUT`, nothing written; one that needs more memory than allowed is `422 IMPORT_OUT_OF_MEMORY`. " +
+    "When every import thread is busy and the import queue is full the answer is `503 IMPORT_BUSY` with `Retry-After`; a workspace may run 2 imports at once, a third is `429 RATE_LIMITED` with `Retry-After`. " +
+    "An apply whose household changed while the file was being parsed is `409 VERSION_CONFLICT` and writes nothing.";
   app.openapi(
     route("write", {
       method: "post",
@@ -874,6 +880,7 @@ export function householdRoutes({ app, svc }: RouteCtx) {
       tags: ["Data"],
       summary:
         "Import a Glideworth export or a ProjectionLab export (dryRun=true returns issues and stats only)",
+      description: IMPORT_THREAD,
       request: {
         body: { content: { "application/json": { schema: ImportBody } }, required: true },
       },
@@ -897,7 +904,8 @@ export function householdRoutes({ app, svc }: RouteCtx) {
         ),
       },
     }),
-    (c) => c.json(svc(c).imports.import(c.req.valid("json"), actorOf(c)) as never, 200),
+    async (c) =>
+      c.json((await svc(c).imports.import(c.req.valid("json"), actorOf(c))) as never, 200),
   );
   app.openapi(
     route("write", {
@@ -907,13 +915,14 @@ export function householdRoutes({ app, svc }: RouteCtx) {
       tags: ["Data"],
       summary:
         "Detect the delimiter, bank preset, columns, date and number formats of a CSV (writes nothing)",
+      description: IMPORT_THREAD,
       request: {
         params: IdParam,
         body: { content: { "application/json": { schema: CsvAnalyzeBody } }, required: true },
       },
       responses: { 200: json(z.record(z.string(), z.unknown()), "Analysis with a sample of rows") },
     }),
-    (c) => c.json(svc(c).imports.analyzeCsv(c.req.valid("json")) as never, 200),
+    async (c) => c.json((await svc(c).imports.analyzeCsv(c.req.valid("json"))) as never, 200),
   );
   app.openapi(
     route("write", {
@@ -925,16 +934,21 @@ export function householdRoutes({ app, svc }: RouteCtx) {
         "CSV import: account balances, progress/net-worth history or transactions. dryRun (the default) previews only",
       description:
         "Preview first (`dryRun: true`, the default): you get the CSV analysis, any issues and a reconciliation (matched / created / unmatched accounts with before/after balances). " +
-        "Repeat with `dryRun: false` to apply atomically (finances, snapshots and, for transactions, the plan in one transaction); blocking errors are a 422 IMPORT_FAILED and nothing is written.",
+        "Repeat with `dryRun: false` to apply atomically (finances, snapshots and, for transactions, the plan in one transaction); blocking errors are a 422 IMPORT_FAILED and nothing is written. " +
+        IMPORT_THREAD,
       request: {
         params: IdParam,
         body: { content: { "application/json": { schema: CsvImportBody } }, required: true },
       },
       responses: { 200: json(z.record(z.string(), z.unknown()), "Preview or result") },
     }),
-    (c) =>
+    async (c) =>
       c.json(
-        svc(c).imports.importCsv(c.req.valid("param").id, c.req.valid("json"), actorOf(c)) as never,
+        (await svc(c).imports.importCsv(
+          c.req.valid("param").id,
+          c.req.valid("json"),
+          actorOf(c),
+        )) as never,
         200,
       ),
   );
@@ -948,20 +962,21 @@ export function householdRoutes({ app, svc }: RouteCtx) {
       description:
         "Bank and card statements: balances are reconciled against current finances like the CSV balance import (match by name or `balances.accountMap`, optionally create missing accounts; foreign-currency accounts keep their currency), and transactions are summarised into annual expense events on `planId` (transfers, income and card payments are excluded). Account numbers are masked to their last four digits. " +
         "Preview first (`dryRun: true`, the default); repeat with `dryRun: false` to apply atomically. Blocking errors are `422 IMPORT_FAILED` and nothing is written. " +
-        "`text` is limited to 2 MB (2,000,000 characters); a larger file is refused with `400 VALIDATION` before it is parsed.",
+        "`text` is limited to 2 MB (2,000,000 characters); a larger file is refused with `400 VALIDATION` before it is parsed. " +
+        IMPORT_THREAD,
       request: {
         params: IdParam,
         body: { content: { "application/json": { schema: BankFileImportBody } }, required: true },
       },
       responses: { 200: json(z.record(z.string(), z.unknown()), "Preview or result") },
     }),
-    (c) =>
+    async (c) =>
       c.json(
-        svc(c).imports.importBankFile(
+        (await svc(c).imports.importBankFile(
           c.req.valid("param").id,
           c.req.valid("json"),
           actorOf(c),
-        ) as never,
+        )) as never,
         200,
       ),
   );

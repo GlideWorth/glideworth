@@ -35,6 +35,12 @@ const HOUR_MS = 60 * MINUTE_MS;
 /** Design 4.2: carry the local trial into Stripe only with more than 48 h left. Stripe requires `trial_end` at
  * least 48 h after session creation; the extra 10 minutes absorb clock skew and request latency. */
 export const TRIAL_CARRY_OVER_MIN_MS = 48 * HOUR_MS + 10 * MINUTE_MS;
+/**
+ * How long a Checkout Session stays payable (Stripe allows 30 minutes to 24 hours; its default is 24 hours). Short,
+ * so an abandoned session does not linger; the session's `expires_at` is 60 to 70 minutes after creation, fixed per
+ * 10-minute idempotency window so a retried request sends identical parameters.
+ */
+export const CHECKOUT_SESSION_TTL_MS = 60 * MINUTE_MS;
 /** Design 4.6. */
 export const CHECKOUT_LIMITS = {
   perAccount: { limit: 5, windowMs: HOUR_MS },
@@ -211,6 +217,8 @@ export class BillingService {
     lookupKey: string;
     ip: string;
     actor?: CheckoutActor;
+    /** The id of an open session this one replaces (expired by the caller first); keeps the idempotency key fresh. */
+    replaces?: string;
   }): Promise<{ url: string }> {
     const now = this.now();
     if (i.actor && (i.actor.role !== "owner" || !i.actor.emailVerified)) {
@@ -274,6 +282,9 @@ export class BillingService {
           : null;
       const priceId = await this.stripePriceId(found.product.id, found.price, now);
       const window = Math.floor(now.getTime() / (10 * MINUTE_MS));
+      const expiresAt = Math.floor(
+        ((window + 1) * 10 * MINUTE_MS + CHECKOUT_SESSION_TTL_MS) / 1000,
+      );
       const checkoutCustomerId = customerId;
       const session = await this.stripe(() =>
         this.d.gateway.createCheckoutSession(
@@ -286,9 +297,11 @@ export class BillingService {
             cancelUrl: this.billingUrl,
             allowPromotionCodes: this.d.pricing.checkout.allowPromotionCodes,
             collectTaxIds: this.d.pricing.checkout.collectTaxIds,
+            expiresAt,
           },
-          // A double click within the same 10-minute window gets the same session back, not a second one.
-          `checkout:${i.accountId}:${i.lookupKey}:${trialEnd ?? "now"}:${window}`,
+          // A double click within the same 10-minute window gets the same session back, not a second one. A session
+          // that replaces an expired one gets a new key, or Stripe would hand the expired session back.
+          `checkout:${i.accountId}:${i.lookupKey}:${trialEnd ?? "now"}:${window}${i.replaces ? `:after:${i.replaces}` : ""}`,
         ),
       );
       this.log("info", "billing.checkout_started", {
@@ -297,6 +310,16 @@ export class BillingService {
       });
       return { url: session.url };
     });
+  }
+
+  /**
+   * Ends an open Checkout Session (the person changed their mind about the price, or came back without paying).
+   * Returns `complete` when Stripe says the session was already finished: the caller must then not start another.
+   */
+  async expireCheckout(sessionId: string): Promise<"open" | "complete" | "expired"> {
+    const { status } = await this.stripe(() => this.d.gateway.expireCheckoutSession(sessionId));
+    this.log("info", "billing.checkout_expired", { sessionId, status });
+    return status;
   }
 
   /**

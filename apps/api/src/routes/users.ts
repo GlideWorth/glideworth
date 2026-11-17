@@ -334,7 +334,7 @@ export function userRoutes({ app, svc, mode }: RouteCtx) {
       throw new ApiError(
         403,
         "FORBIDDEN",
-        "sign in with your passphrase (or use a write key) to manage API keys",
+        "sign in with your passphrase (or use a write key) to manage API keys and connected apps",
       );
     return p;
   };
@@ -425,12 +425,15 @@ export function userRoutes({ app, svc, mode }: RouteCtx) {
       path: "/api/v1/me/oauth-grants/{grantId}",
       operationId: "revokeMyOAuthGrant",
       tags: ["OAuth"],
-      summary: "Disconnect an MCP client (revokes its tokens)",
+      summary:
+        "Disconnect an MCP client (revokes its tokens; needs a signed-in session or a write key). The owner may disconnect anyone's",
+      "x-session-or-write": true,
       request: { params: z.object({ grantId: pathId("grantId") }) },
       responses: Deleted,
     }),
     (c) => {
-      const p = c.get("principal");
+      // Revoking credentials is a write: a read-only key may not do it (review finding 17).
+      const p = ownKeysAllowed(c);
       svc(c).oauth.revokeGrant(p.userId, c.req.valid("param").grantId, p.role === "owner");
       return c.body(null, 204);
     },

@@ -27,6 +27,7 @@ import {
   FinancesPage,
   ForgotPasswordPage,
   GoogleExistsPage,
+  GoogleLinkPage,
   GoogleSignUpPage,
   ImportPage,
   InvitePage,
@@ -212,6 +213,12 @@ const routeGoogleExists = createRoute({
   path: "/signin/google-exists",
   component: cloudOnly(GoogleExistsPage),
 });
+// Linking Google from security settings ends here (signed in): the page finishes the link with a POST.
+const routeGoogleLink = createRoute({
+  getParentRoute: () => root,
+  path: "/google-link",
+  component: cloudOnly(GoogleLinkPage),
+});
 
 const routeTree = root.addChildren([
   route0,
@@ -246,6 +253,7 @@ const routeTree = root.addChildren([
   routeConfirmEmail,
   routeGoogleSignUp,
   routeGoogleExists,
+  routeGoogleLink,
 ]);
 
 /** The app's router. `history` is only given by tests (a memory history); the app uses the browser's. */

@@ -8,9 +8,11 @@ export type TemplateId =
   | "signup-existing-account"
   | "password-reset"
   | "email-change-confirm"
+  | "email-change-requested"
   | "signin-alert"
   | "security-change"
   | "invitation"
+  | "member-removed"
   | "trial-ending"
   | "trial-expired"
   | "renewal-reminder"
@@ -25,6 +27,7 @@ export type TemplateId =
 export type SecurityChange =
   | "password-changed"
   | "password-reset"
+  /** Sent to the old address once the change (to `newEmail`) is confirmed. */
   | "email-changed"
   | "totp-enabled"
   | "totp-disabled"
@@ -44,8 +47,23 @@ export interface TemplateData {
   "signup-existing-account": { signInUrl: string; resetUrl: string };
   "password-reset": { name: string; url: string; expiresInMinutes: number };
   "email-change-confirm": { name: string; url: string; newEmail: string; expiresInHours: number };
+  /** Sent to the current address when a change to `newEmail` is requested; nothing has changed yet. */
+  "email-change-requested": {
+    name: string;
+    newEmail: string;
+    at: string;
+    expiresInHours: number;
+    securityUrl: string;
+  };
   "signin-alert": { name: string; at: string; device: string; ip: string; sessionsUrl: string };
-  "security-change": { name: string; change: SecurityChange; at: string; securityUrl: string };
+  "security-change": {
+    name: string;
+    change: SecurityChange;
+    at: string;
+    securityUrl: string;
+    /** For `email-changed`: the new address, named in the notice. */
+    newEmail?: string;
+  };
   invitation: {
     inviterName: string;
     workspaceName: string;
@@ -53,6 +71,8 @@ export interface TemplateData {
     url: string;
     expiresInDays: number;
   };
+  /** To a person the owner removed from a workspace. Names the workspace only; nothing from inside it. */
+  "member-removed": { name: string; workspaceName: string };
   "trial-ending": { name: string; trialEndsOn: string; billingUrl: string };
   "trial-expired": { name: string; billingUrl: string };
   /** Annual renewals only. No amount: the date and a link to the billing page. */
@@ -90,9 +110,11 @@ export const TEMPLATE_CATEGORY: Readonly<Record<TemplateId, EmailCategory>> = Ob
   "signup-existing-account": "essential",
   "password-reset": "essential",
   "email-change-confirm": "essential",
+  "email-change-requested": "essential",
   "signin-alert": "essential",
   "security-change": "essential",
   invitation: "essential",
+  "member-removed": "essential",
   "trial-ending": "essential",
   "trial-expired": "essential",
   "renewal-reminder": "essential",

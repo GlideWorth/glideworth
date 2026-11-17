@@ -1,6 +1,6 @@
 import { action, compose, greeting, p } from "../layout.js";
 import type { RenderContext, Rendered, TemplateData } from "../types.js";
-import { freeText } from "../validate.js";
+import { dateText } from "../validate.js";
 
 export function paymentProblem(
   data: TemplateData["payment-problem"],
@@ -16,7 +16,7 @@ export function paymentProblem(
       ),
       action("Update your payment details", data.portalUrl),
       p(
-        `If this is not sorted out by ${freeText(data.readOnlyFrom, "readOnlyFrom", 100)}, your workspace will become read-only: you will still be able to look at your plans and export your data, but not change them. Nothing is deleted.`,
+        `If this is not sorted out by ${dateText(data.readOnlyFrom, "readOnlyFrom")}, your workspace will become read-only: you will still be able to look at your plans and export your data, but not change them. Nothing is deleted.`,
       ),
     ],
     ctx,

@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, statSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
@@ -48,6 +48,8 @@ const SECOND_PACKAGE_TABLES = [
   // "Sign in with Google" (schema.ts, migration 0003).
   "user_identities",
   "oidc_flows",
+  // Durable schedules of the long-interval periodic jobs (durable-jobs.ts, migration 0005).
+  "job_runs",
 ];
 
 const dirs: string[] = [];
@@ -101,7 +103,12 @@ describe("openControlDb", () => {
     const applied = raw.prepare("SELECT count(*) AS n FROM __drizzle_migrations").get() as {
       n: number;
     };
-    expect(applied.n).toBe(5);
+    // One row per migration in the journal (so adding a migration does not need this test changed).
+    const journal = JSON.parse(
+      readFileSync(join(__dirname, "..", "drizzle", "meta", "_journal.json"), "utf8"),
+    ) as { entries: unknown[] };
+    expect(journal.entries.length).toBeGreaterThanOrEqual(6);
+    expect(applied.n).toBe(journal.entries.length);
     raw.close();
   });
 

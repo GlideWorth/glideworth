@@ -47,8 +47,9 @@ export interface CountryDefaults {
  * Starting points for new entities, all from core's `defaultsForCountry` (the single source for what a
  * household gets from its country), so the editor cannot drift from onboarding, templates and the API.
  */
-export const countryDefaults = (c: string): CountryDefaults => {
-  const core = defaultsForCountry(c);
+/** `birthMonth` (YYYY-MM) makes the State Pension age the person's own (the UK's depends on the birth date). */
+export const countryDefaults = (c: string, birthMonth?: string): CountryDefaults => {
+  const core = defaultsForCountry(c, birthMonth ? { birthMonth } : {});
   const t = core.accountTypes;
   return {
     currency: core.currency,
@@ -98,7 +99,7 @@ function nextYearMonth(ctx: Ctx): string {
 export function newIncome(type: IncomeType, ctx: Ctx, plan?: Plan): IncomeEvent {
   const h = ctx.household;
   const me = primary(h);
-  const cd = countryDefaults(h.location.country);
+  const cd = countryDefaults(h.location.country, me.birthMonth);
   const base = {
     id: newId("inc"),
     type,

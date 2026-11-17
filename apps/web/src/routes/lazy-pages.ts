@@ -67,6 +67,10 @@ export const GoogleExistsPage = lazyRouteComponent(
   () => import("../features/cloud/screens/google"),
   "GoogleExistsPage",
 );
+export const GoogleLinkPage = lazyRouteComponent(
+  () => import("../features/cloud/screens/google"),
+  "GoogleLinkPage",
+);
 export const ForgotPasswordPage = lazyRouteComponent(
   () => import("../features/cloud/screens/password-reset"),
   "ForgotPasswordPage",

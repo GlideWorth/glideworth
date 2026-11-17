@@ -2,10 +2,10 @@
  * Billing routes (spec 4.2, 4.3) and the Stripe webhook.
  *
  * Every billing writer for an account (checkout, webhook) runs inside the cross-process writer lock
- * `billing:<account>` (review finding 1). Checkout refuses a second session while one this cell created is
- * still open for the account (review finding 2): the same price returns the open session's URL, another price is
- * `409 CHECKOUT_IN_PROGRESS` until it completes or expires (the gateway cannot expire
- * sessions).
+ * `billing:<account>` (review finding 1). At most one Checkout Session this cell created is open per account
+ * (review finding 2): the same price returns the open session's URL; another price first expires the open session
+ * through Stripe and then starts a new one. If Stripe says the open session was already completed, a new checkout
+ * is refused (`409 CHECKOUT_IN_PROGRESS`) so the account never pays for two subscriptions.
  */
 import { findPrice } from "@glideworth/billing";
 import { z } from "@hono/zod-openapi";
@@ -23,6 +23,8 @@ import { CloudError } from "../../errors.js";
 import type { RouteKit } from "../kit.js";
 
 const WEBHOOK_MAX_BYTES = 1024 * 1024;
+/** Requests a minute from one address to `POST /stripe/webhook` (`floodLimit`). */
+export const STRIPE_WEBHOOK_PER_MINUTE = 600;
 
 /** Which account an incoming event concerns, for the lock only (the body is not trusted for anything else). */
 export function webhookLockKey(
@@ -130,20 +132,25 @@ export function billingRoutes(k: RouteKit): void {
         const open = openCheckoutSession(d.db, m.accountId, k.now());
         if (open) {
           if (open.lookupKey === lookupKey) return { url: open.url, reused: true };
-          d.audit.record({
-            actorType: "user",
-            actorId: s.userId,
-            accountId: m.accountId,
-            subjectUserId: s.userId,
-            event: "billing.checkout_refused",
-            detail: { reason: "session_open" },
-          });
-          throw new CloudError(
-            409,
-            "CHECKOUT_IN_PROGRESS",
-            "a checkout is already open for this workspace; finish it or wait for it to expire",
-            { expiresAt: open.expiresAt },
-          );
+          // Another price: end the open session so it can no longer be paid, then start a new one.
+          const status = await d.billing.expireCheckout(open.id);
+          if (status !== "expired") {
+            if (status === "complete") closeCheckoutSession(d.db, open.id, "complete");
+            d.audit.record({
+              actorType: "user",
+              actorId: s.userId,
+              accountId: m.accountId,
+              subjectUserId: s.userId,
+              event: "billing.checkout_refused",
+              detail: { reason: status === "complete" ? "session_complete" : "session_open" },
+            });
+            throw new CloudError(
+              409,
+              "CHECKOUT_IN_PROGRESS",
+              "a checkout for this workspace was just completed; the subscription will appear shortly",
+            );
+          }
+          closeCheckoutSession(d.db, open.id, "expired");
         }
         const r = await d.billing.createCheckout({
           accountId: m.accountId,
@@ -152,6 +159,7 @@ export function billingRoutes(k: RouteKit): void {
           lookupKey,
           ip: k.ip(c),
           actor: { userId: s.userId, role: m.role, emailVerified: true },
+          ...(open ? { replaces: open.id } : {}),
         });
         setCheckoutLookupKey(d.db, r.url, m.accountId, lookupKey);
         d.audit.record({
@@ -198,6 +206,10 @@ export function billingRoutes(k: RouteKit): void {
       },
     },
     async (c) => {
+      // Per-address flood limit before the body is read (security review finding 10). Stripe sends from a
+      // small set of addresses and can deliver many events a second after an outage or a bulk change, so the
+      // limit is far above the other public routes; a refused delivery is retried by Stripe.
+      k.floodLimit(c, "stripe-webhook", STRIPE_WEBHOOK_PER_MINUTE);
       const len = Number(c.req.header("content-length") ?? "0");
       if (len > WEBHOOK_MAX_BYTES)
         throw new CloudError(413, "PAYLOAD_TOO_LARGE", "request body too large");

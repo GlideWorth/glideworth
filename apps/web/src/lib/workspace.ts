@@ -140,6 +140,12 @@ export function useProjection(planId: string | undefined) {
   });
 }
 
+/** The person's display locale (Settings > Profile), falling back to the household's, then the browser's. */
+export function useLocale(): string {
+  const { data } = useWorkspace();
+  return data?.doc.settings?.locale ?? data?.doc.household.locale ?? navigator.language;
+}
+
 export function useFormat() {
   const { data } = useWorkspace();
   const s = data?.doc.settings;

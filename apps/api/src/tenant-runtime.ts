@@ -118,7 +118,12 @@ export class TenantRuntime implements TenantRuntimeBase {
   }
 
   busy(): boolean {
-    return this.streams > 0 || this.services.jobs.busy() || this.services.webhooks.busy();
+    return (
+      this.streams > 0 ||
+      this.services.jobs.busy() ||
+      this.services.webhooks.busy() ||
+      this.services.imports.busy()
+    );
   }
 
   /** Stop accepting jobs, cancel queued ones, wait for running ones (30 s), flush webhooks, close the file. */

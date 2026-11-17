@@ -9,6 +9,7 @@ import {
   axisStyle,
   baseOption,
   type ChartTokens,
+  escapeHtml,
   tooltipHeader,
   tooltipRow,
 } from "../../components/charts/tokens";
@@ -403,7 +404,7 @@ export function ProgressView() {
               )
               .join(
                 "",
-              )}${snap?.note ? `<div style="opacity:.7;margin-top:2px">${snap.note.replace(/</g, "&lt;")}</div>` : ""}`;
+              )}${snap?.note ? `<div style="opacity:.7;margin-top:2px">${escapeHtml(snap.note)}</div>` : ""}`;
           },
         },
         xAxis: { type: "time", ...ax, splitLine: { show: false }, ...(from ? { min: from } : {}) },

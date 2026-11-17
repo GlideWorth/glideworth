@@ -7,6 +7,7 @@ import { Dialog, DialogContent } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { toast } from "../../components/ui/toaster";
 import { api } from "../../lib/api";
+import { useMode } from "../../lib/auth";
 import { plural } from "../../lib/format";
 import { useWorkspace } from "../../lib/workspace";
 import { usePrefs } from "../../stores/prefs";
@@ -17,10 +18,13 @@ import { SectionIntro, SettingsGroup } from "./settings-ui";
 export const DELETE_PHRASE = "delete everything";
 
 export function DataSection() {
+  const cloud = useMode() === "cloud";
   return (
     <>
       <SectionIntro title="Data">
-        Your data lives on your own Glideworth server. Take it with you, bring more in, or erase it.
+        {cloud
+          ? "Your data is kept in this Glideworth Cloud workspace. Take it with you, bring more in, or erase it."
+          : "Your data lives on your own Glideworth server. Take it with you, bring more in, or erase it."}
       </SectionIntro>
       <div className="grid gap-5 xl:grid-cols-2">
         <BackupCard />

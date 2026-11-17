@@ -5,10 +5,14 @@
  * metadata as today, then `register` applies the abuse limits and inserts the row. At consent the host copies
  * the row into the tenant's own `oauth_clients` (so its foreign keys hold) and calls `markConsented`.
  *
- * Limits: 20 registrations per minute and 200 per day per IP (the daily count is read from the table, so it
- * survives restarts), a global ceiling, and clients never consented to are purged after 24 hours.
+ * Limits: 20 registrations per minute and 200 per day per IPv4 address or IPv6 /48 (the daily count is read
+ * from the table, so it survives restarts), and clients never consented to are purged after 24 hours. At the
+ * global ceiling the oldest never-consented client makes room, so a flood from many addresses cannot stop
+ * everyone else from registering (security review finding 18); only a table full of consented clients is a 503.
  */
-import { and, count, eq, gt, isNull, lt } from "drizzle-orm";
+import { isIP } from "node:net";
+import { and, asc, count, eq, gt, isNull, lt } from "drizzle-orm";
+import { networkPrefix } from "../abuse/ip.js";
 import type { RateLimiter } from "../abuse/rate-limiter.js";
 import { CloudError } from "../errors.js";
 import type { ControlDb } from "./db.js";
@@ -30,8 +34,25 @@ export interface ControlOAuthClient {
   lastUsedAt: string | null;
 }
 
-export function controlOAuthClients(d: { db: ControlDb; limiter: RateLimiter; now?: () => Date }) {
+/**
+ * Who a registration is counted against: the address for IPv4, the /48 for IPv6 (one subscriber holds a whole
+ * prefix, so per-address buckets would be unlimited there).
+ */
+function registrationBucket(ip: string): string {
+  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(ip);
+  if (mapped) return (mapped[1] as string).slice(0, 64);
+  return isIP(ip) === 6 ? networkPrefix(ip) : ip.slice(0, 64);
+}
+
+export function controlOAuthClients(d: {
+  db: ControlDb;
+  limiter: RateLimiter;
+  now?: () => Date;
+  /** Tests: a smaller global ceiling. */
+  maxTotal?: number;
+}) {
   const clock = d.now ?? (() => new Date());
+  const maxTotal = d.maxTotal ?? OAUTH_REGISTRATION_LIMITS.total;
   const tooMany = (retryAfterSeconds: number) =>
     new CloudError(429, "RATE_LIMITED", "too many client registrations from this address", {
       retryAfterSeconds,
@@ -55,7 +76,12 @@ export function controlOAuthClients(d: { db: ControlDb; limiter: RateLimiter; no
       c: { id: string; name: string; redirectUris: string[]; scope: string | null },
       ip: string,
     ): void {
-      const minute = d.limiter.hit(`oauth:reg:${ip}`, OAUTH_REGISTRATION_LIMITS.perMinute, 60_000);
+      const bucket = registrationBucket(ip);
+      const minute = d.limiter.hit(
+        `oauth:reg:${bucket}`,
+        OAUTH_REGISTRATION_LIMITS.perMinute,
+        60_000,
+      );
       if (!minute.allowed) throw tooMany(Math.ceil(minute.retryAfterMs / 1000));
       const now = clock();
       const since = new Date(now.getTime() - 24 * 3600_000).toISOString();
@@ -63,21 +89,27 @@ export function controlOAuthClients(d: { db: ControlDb; limiter: RateLimiter; no
         d.db
           .select({ n: count() })
           .from(oauthClients)
-          .where(
-            and(eq(oauthClients.registeredIp, ip.slice(0, 64)), gt(oauthClients.createdAt, since)),
-          )
+          .where(and(eq(oauthClients.registeredIp, bucket), gt(oauthClients.createdAt, since)))
           .get()?.n ?? 0;
       if (today >= OAUTH_REGISTRATION_LIMITS.perDay) throw tooMany(3600);
       purge();
-      if (
-        (d.db.select({ n: count() }).from(oauthClients).get()?.n ?? 0) >=
-        OAUTH_REGISTRATION_LIMITS.total
-      )
-        throw new CloudError(
-          503,
-          "TENANT_UNAVAILABLE",
-          "client registration is temporarily unavailable",
-        );
+      const total = d.db.select({ n: count() }).from(oauthClients).get()?.n ?? 0;
+      if (total >= maxTotal) {
+        const unused = d.db
+          .select({ id: oauthClients.id })
+          .from(oauthClients)
+          .where(isNull(oauthClients.lastUsedAt))
+          .orderBy(asc(oauthClients.createdAt))
+          .limit(total - maxTotal + 1)
+          .all();
+        if (total - unused.length >= maxTotal)
+          throw new CloudError(
+            503,
+            "TENANT_UNAVAILABLE",
+            "client registration is temporarily unavailable",
+          );
+        for (const u of unused) d.db.delete(oauthClients).where(eq(oauthClients.id, u.id)).run();
+      }
       d.db
         .insert(oauthClients)
         .values({
@@ -86,7 +118,7 @@ export function controlOAuthClients(d: { db: ControlDb; limiter: RateLimiter; no
           redirectUris: c.redirectUris,
           scope: c.scope,
           createdAt: now.toISOString(),
-          registeredIp: ip.slice(0, 64),
+          registeredIp: bucket,
         })
         .run();
     },

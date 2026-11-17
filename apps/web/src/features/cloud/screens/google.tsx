@@ -7,16 +7,21 @@
  * - `/signin/google-exists`: Google's address belongs to an account that is not linked to that Google account.
  *   Nothing was signed in or linked. The page says so without naming the address, and offers the safe way:
  *   sign in with the password, then link Google in security settings.
+ * - `/google-link`: linking from security settings. Google's redirect cannot finish the link, because browsers
+ *   do not send the session cookie (SameSite=Strict) on a navigation that starts on Google's page. The server
+ *   parks the Google account for this browser, and this page finishes the link with an ordinary same-origin
+ *   POST (session and CSRF token), then returns to security settings with the answer.
  */
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { KeyRound, Loader2, UserPlus } from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { useSession } from "../../../lib/auth";
 import { cloudApi } from "../client";
 import { GoogleLogo } from "../google-button";
 import { FALLBACK_TERMS_VERSION, LEGAL_URL } from "../legal";
+import { nav } from "../next";
 import { useFinishSignIn } from "../session-flow";
 import {
   AuthLayout,
@@ -111,7 +116,11 @@ export function GoogleSignUpPage() {
   return (
     <AuthLayout
       title="One more step"
-      subtitle="Confirm a few details to create your Glideworth account and start a 30-day free trial."
+      subtitle={
+        pending.data.invitedTo
+          ? `Confirm a few details to create your Glideworth account. Then we take you back to the invitation to join ${pending.data.invitedTo}.`
+          : "Confirm a few details to create your Glideworth account and start a 30-day free trial."
+      }
       footer={
         <Link to="/signin" className="text-accent underline underline-offset-2">
           Cancel
@@ -212,6 +221,39 @@ export function GoogleExistsPage() {
           </Link>
         </Button>
       </div>
+    </AuthLayout>
+  );
+}
+
+/** `/google-link`: finishes a link from security settings (see the top of this file), once. */
+export function GoogleLinkPage() {
+  const started = useRef(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    cloudApi.finishGoogleLink().then(
+      (r) => nav.replace(`/settings/security?google=${encodeURIComponent(r.google)}`),
+      (e: unknown) => setError(describeError(e)),
+    );
+  }, []);
+  return (
+    <AuthLayout
+      title={error ? "Google was not linked" : "Linking your Google account"}
+      subtitle={error ?? "One moment while we finish."}
+    >
+      <div role="status" aria-live="polite" className="flex justify-center">
+        {error ? null : (
+          <Loader2 className="size-8 animate-spin text-accent" aria-label="Working" />
+        )}
+      </div>
+      {error ? (
+        <Button variant="primary" size="lg" className="w-full" asChild>
+          <Link to="/settings/$section" params={{ section: "security" }}>
+            Back to Security settings
+          </Link>
+        </Button>
+      ) : null}
     </AuthLayout>
   );
 }

@@ -119,9 +119,16 @@ export interface StripeGateway {
       cancelUrl: string;
       allowPromotionCodes: boolean;
       collectTaxIds: boolean;
+      /** Unix seconds; Stripe accepts 30 minutes to 24 hours after creation (its default is 24 hours). */
+      expiresAt?: number;
     },
     idempotencyKey: string,
   ): Promise<{ id: string; url: string }>;
+  /**
+   * Ends an open Checkout Session so it can no longer be paid. Returns the session's final status: `expired`, or
+   * `complete` when the customer finished it first (Stripe refuses to expire a completed session).
+   */
+  expireCheckoutSession(id: string): Promise<{ status: "open" | "complete" | "expired" }>;
   createPortalSession(p: {
     customerId: string;
     returnUrl: string;

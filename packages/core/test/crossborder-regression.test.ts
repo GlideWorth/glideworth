@@ -32,7 +32,8 @@ function fnv(s: string): string {
 const BEFORE: Record<string, string> = {
   "sample-us:plan-main": "8a0c18739edb7045",
   "sample-us:plan-early": "69b4a468bfb6d7d6",
-  "sample-uk:uk-plan-main": "d3d3428c9fa009cf",
+  // Re-recorded when the sample's State Pension moved from 67 to 68 (Sam is born 1978; Pensions Act 2007).
+  "sample-uk:uk-plan-main": "d0abbb374af13e01",
   "sample-de:de-plan-main": "b5b24f96cb250abb",
   "sample-nl:nl-plan-main": "33947faa14f65e50",
   "GB-ENG-single": "008b8866c5fad8fa",

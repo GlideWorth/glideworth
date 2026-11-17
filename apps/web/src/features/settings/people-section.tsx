@@ -28,6 +28,7 @@ import { ROLE_HINT, ROLE_LABEL, useAccess } from "../../lib/access";
 import { ApiRequestError, api, type Role, type UserInfo } from "../../lib/api";
 import { useMode } from "../../lib/auth";
 import { useFormat } from "../../lib/workspace";
+import { acceptLink } from "../share/accept-page";
 import { CopyButton, relativeTime } from "./keys-section";
 import { SectionIntro, SettingsGroup } from "./settings-ui";
 
@@ -72,9 +73,7 @@ function TokenDialog({
   onClose: () => void;
 }) {
   const f = useFormat();
-  const link = token
-    ? `${window.location.origin}/accept?token=${encodeURIComponent(token.token)}`
-    : "";
+  const link = token ? acceptLink(window.location.origin, token.token) : "";
   return (
     <Dialog open={!!token} onOpenChange={(o) => !o && onClose()}>
       <DialogContent

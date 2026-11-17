@@ -334,6 +334,7 @@ export async function createCloudRuntime<R extends TenantRuntimeBase>(
         audit,
         limiter,
         log,
+        invitation: (token) => workspaces.liveInvitation(token),
         oidc: new OidcClient({
           issuer: config.google.issuer,
           acceptedIssuers: googleIssuers(config.google.issuer),

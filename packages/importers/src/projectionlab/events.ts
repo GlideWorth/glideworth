@@ -1,5 +1,5 @@
 /** Income and expense events. */
-import { arr, num, type Obj, obj, pctClean, str } from "../util/read.js";
+import { table, arr, num, type Obj, obj, pctClean, str } from "../util/read.js";
 import {
   amountOf,
   appearanceOf,
@@ -54,7 +54,7 @@ const INCOME_TYPES = new Set([
   "ca-gis",
   "other",
 ]);
-const INCOME_ALIASES: Record<string, string> = {
+const INCOME_ALIASES: Record<string, string> = table({
   wages: "salary",
   wage: "salary",
   "self-employed": "self-employment",
@@ -63,7 +63,7 @@ const INCOME_ALIASES: Record<string, string> = {
   "one-time": "windfall",
   "defined-benefit": "pension",
   "uk-state-pension": "state-pension",
-};
+});
 
 const TAX_CHARACTERS = new Set([
   "auto",
@@ -256,7 +256,7 @@ const EXPENSE_TYPES = new Set([
   "tax-deduction",
   "other",
 ]);
-const EXPENSE_ALIASES: Record<string, string> = {
+const EXPENSE_ALIASES: Record<string, string> = table({
   "living-expenses": "living",
   "housing-expenses": "housing",
   rent: "housing",
@@ -274,7 +274,7 @@ const EXPENSE_ALIASES: Record<string, string> = {
   transport: "transportation",
   taxes: "tax-payment",
   "one-time": "other",
-};
+});
 
 const SPENDING_TYPES = new Set(["essential", "discretionary", "hybrid", "not-spending"]);
 

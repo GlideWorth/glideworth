@@ -21,11 +21,13 @@ import { fmtDate, plural } from "../format";
 import { failToast, Loading, LoadError } from "../settings-kit";
 import { describeError, FormAlert, isCode, Notice, TextField, useErrorFocus } from "../ui";
 import { nav } from "../next";
+import { useLocale } from "../../../lib/workspace";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function MembersSection() {
   const qc = useQueryClient();
+  const locale = useLocale();
   const me = useCloudSession()?.user.id;
   const settings = useQuery({
     queryKey: ["cloud", "workspace"],
@@ -279,7 +281,9 @@ export function MembersSection() {
                         <Badge>{ROLE_LABEL[i.role]}</Badge>
                       </div>
                       <div className="mt-0.5 text-[11.5px] text-ink-3">
-                        {i.expiresAt ? `Expires ${fmtDate(i.expiresAt)}` : "Waiting for a reply"}
+                        {i.expiresAt
+                          ? `Expires ${fmtDate(i.expiresAt, locale)}`
+                          : "Waiting for a reply"}
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -383,6 +387,8 @@ function InviteForm({
       setSentTo(email.trim());
       setEmail("");
       onInvited();
+      // The button was disabled while sending, which drops focus; put it in the empty field for the next one.
+      ref.current?.querySelector<HTMLInputElement>('input[type="email"]')?.focus();
     } catch (err) {
       if (isCode(err, "SEAT_LIMIT")) {
         const d = (err as ApiRequestError).details as { limit?: number; role?: string } | undefined;

@@ -1,6 +1,6 @@
 import { action, compose, greeting, p } from "../layout.js";
 import type { RenderContext, Rendered, TemplateData } from "../types.js";
-import { freeText } from "../validate.js";
+import { dateText } from "../validate.js";
 
 export function subscriptionCanceled(
   data: TemplateData["subscription-canceled"],
@@ -12,7 +12,7 @@ export function subscriptionCanceled(
     [
       p(greeting(data.name)),
       p(
-        `Your Glideworth subscription is cancelled. You keep full access until ${freeText(data.accessUntil, "accessUntil", 100)}.`,
+        `Your Glideworth subscription is cancelled. You keep full access until ${dateText(data.accessUntil, "accessUntil")}.`,
       ),
       p(
         "After that your workspace becomes read-only. Nothing is deleted, and you can export your data at any time.",

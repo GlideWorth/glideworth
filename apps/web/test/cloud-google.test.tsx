@@ -9,7 +9,12 @@ import { ConfirmHost } from "../src/components/ui/confirm-dialog";
 import { Toaster } from "../src/components/ui/toaster";
 import { nav } from "../src/features/cloud/next";
 import { ReauthHost } from "../src/features/cloud/reauth-dialog";
-import { GoogleExistsPage, GoogleSignUpPage } from "../src/features/cloud/screens/google";
+import { holdInvitation } from "../src/features/cloud/held-invitation";
+import {
+  GoogleExistsPage,
+  GoogleLinkPage,
+  GoogleSignUpPage,
+} from "../src/features/cloud/screens/google";
 import { SignInPage, TwoFactorPage } from "../src/features/cloud/screens/signin";
 import { SignUpPage } from "../src/features/cloud/screens/signup";
 import { setChallenge } from "../src/features/cloud/session-flow";
@@ -35,6 +40,8 @@ beforeEach(() => {
   window.history.replaceState(null, "", "/");
   withCsrfCookie("csrf-tok");
   vi.spyOn(nav, "go").mockImplementation(() => undefined);
+  vi.spyOn(nav, "replace").mockImplementation(() => undefined);
+  holdInvitation(null);
   Element.prototype.scrollIntoView ??= vi.fn();
   Element.prototype.hasPointerCapture ??= () => false;
   Element.prototype.releasePointerCapture ??= () => undefined;
@@ -112,6 +119,84 @@ describe("second step after a Google sign-in", () => {
       code: "123456",
       next: "/plans/2",
     });
+  });
+});
+
+describe("from an invitation page", () => {
+  it("the button carries the invitation held in this tab, on sign-up and on sign-in", () => {
+    holdInvitation({
+      token: "inv-tok",
+      offer: { workspaceName: "Example Household", role: "viewer" },
+    });
+    renderWithClient(<SignUpPage />, signedOut({ googleSignIn: true }));
+    expect(googleLink().getAttribute("href")).toBe("/api/v1/auth/google/start?invitation=inv-tok");
+    cleanup();
+    window.history.replaceState(null, "", "/signin?next=%2Finvite");
+    renderWithClient(<SignInPage />, signedOut({ googleSignIn: true }));
+    expect(googleLink().getAttribute("href")).toBe(
+      "/api/v1/auth/google/start?next=%2Finvite&invitation=inv-tok",
+    );
+  });
+
+  it("the sign-up step names the workspace instead of a trial, and goes where the server says (the invitation)", async () => {
+    mockFetch({
+      "GET /api/v1/auth/google/pending": {
+        name: "Gus Guest",
+        email: "gus@gmail.com",
+        invitedTo: "Example Household",
+      },
+      "POST /api/v1/auth/google/complete": {
+        status: "signed-in",
+        redirectTo: "/invite#token=inv-tok",
+      },
+      "GET /api/v1/auth/status": { mode: "cloud", authenticated: false },
+    });
+    renderWithClient(<GoogleSignUpPage />, signedOut());
+    expect(
+      await screen.findByText(/take you back to the invitation to join Example Household/),
+    ).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/free trial/);
+    fireEvent.click(screen.getByRole("checkbox", { name: /18 or over/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Create account/ }));
+    await waitFor(() =>
+      expect(navigateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ to: "/invite", hash: "token=inv-tok" }),
+      ),
+    );
+  });
+});
+
+describe("finishing a link (/google-link)", () => {
+  it("posts once with the CSRF token, then returns to security settings with the answer", async () => {
+    const api = mockFetch({
+      "POST /api/v1/account/identities/google/finish": { google: "linked" },
+    });
+    renderWithClient(<GoogleLinkPage />, signedIn("owner", undefined, { googleSignIn: true }));
+    expect(screen.getByRole("heading", { name: "Linking your Google account" })).toBeTruthy();
+    await waitFor(() =>
+      expect(nav.replace).toHaveBeenCalledWith("/settings/security?google=linked"),
+    );
+    const posts = api.calls.filter((c) => c.method === "POST");
+    expect(posts.map((c) => c.path)).toEqual(["/api/v1/account/identities/google/finish"]);
+    expect(posts[0]?.headers.get("x-csrf-token")).toBe("csrf-tok");
+  });
+
+  it("a refusal is shown on security settings; a failed request says so here", async () => {
+    mockFetch({ "POST /api/v1/account/identities/google/finish": { google: "session" } });
+    renderWithClient(<GoogleLinkPage />, signedIn("owner"));
+    await waitFor(() =>
+      expect(nav.replace).toHaveBeenCalledWith("/settings/security?google=session"),
+    );
+    cleanup();
+    mockFetch({
+      "POST /api/v1/account/identities/google/finish": () =>
+        apiError(503, "TENANT_UNAVAILABLE", "try again shortly"),
+    });
+    renderWithClient(<GoogleLinkPage />, signedIn("owner"));
+    expect(await screen.findByRole("heading", { name: "Google was not linked" })).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Back to Security settings" }).getAttribute("href"),
+    ).toBeTruthy();
   });
 });
 

@@ -419,6 +419,15 @@ describe("password reset", () => {
     type("New password", STRONG);
     type("Confirm new password", STRONG);
     submit("Set password and sign in");
+    // A success screen first, in the words of the security email (security review finding 3).
+    expect(await screen.findByRole("heading", { name: "Your password was reset" })).toBeTruthy();
+    expect(
+      screen.getByText(
+        /Apps connected to your account were disconnected; your API keys still work\./,
+      ),
+    ).toBeTruthy();
+    expect(navigateSpy).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     await waitFor(() => expect(navigateSpy).toHaveBeenCalled());
     const call = api.last("POST /api/v1/auth/password/reset")!;
     expect(call.body).toEqual({ token: "reset-tok-1", password: STRONG });
@@ -433,6 +442,11 @@ describe("password reset", () => {
     type("New password", STRONG);
     type("Confirm new password", STRONG);
     submit("Set password and sign in");
+    expect(
+      await screen.findByText(/Next, enter the code from your authenticator app/),
+    ).toBeTruthy();
+    expect(screen.getByText(/your API keys still work/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith({ to: "/signin/2fa" }));
   });
 

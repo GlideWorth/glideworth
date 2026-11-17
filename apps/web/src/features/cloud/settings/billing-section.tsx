@@ -8,7 +8,6 @@ import { CalendarClock, CreditCard, ExternalLink, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
-import { ApiRequestError } from "../../../lib/api-error";
 import { cn } from "../../../lib/cn";
 import { SectionIntro, SettingsGroup } from "../../settings/settings-ui";
 import { type BillingInfo, cloudApi, type OfferedPrice } from "../client";
@@ -18,6 +17,7 @@ import { LEGAL_URL, SUPPORT_EMAIL } from "../legal";
 import { nav } from "../next";
 import { Loading, LoadError } from "../settings-kit";
 import { describeError, FormAlert, isCode, Notice } from "../ui";
+import { useLocale } from "../../../lib/workspace";
 
 /** Only ever send the browser to Stripe's https pages (the server decides the URL; we check it anyway). */
 function goToStripe(url: string): boolean {
@@ -74,7 +74,7 @@ export function BillingSection() {
 }
 
 function BillingBody({ b, returned }: { b: BillingInfo; returned: boolean }) {
-  const locale = navigator.language;
+  const locale = useLocale();
   const view = billingView(b, new Date(), locale);
   const owner = b.role === "owner";
   const [error, setError] = useState<string | null>(null);
@@ -98,12 +98,11 @@ function BillingBody({ b, returned }: { b: BillingInfo; returned: boolean }) {
         setError(
           "A subscription already exists for this workspace. Use Manage billing to change it.",
         );
-      else if (isCode(e, "CHECKOUT_IN_PROGRESS")) {
-        const until = (e as ApiRequestError).details as { expiresAt?: string } | undefined;
+      else if (isCode(e, "CHECKOUT_IN_PROGRESS"))
         setError(
-          `A checkout is already open for this workspace${until?.expiresAt ? ` (it expires ${fmtDateTime(until.expiresAt, locale)})` : ""}. Finish it, or wait for it to expire and start again.`,
+          "A checkout for this workspace was just completed. Your subscription will show here shortly; refresh the page in a minute.",
         );
-      } else setError(describeError(e));
+      else setError(describeError(e));
     },
   });
 

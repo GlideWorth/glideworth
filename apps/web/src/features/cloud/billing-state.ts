@@ -4,7 +4,7 @@
  * description comes out, so every state is covered by tests.
  */
 import type { BillingInfo } from "./client";
-import { daysLeft, fmtDate } from "./format";
+import { daysLeft, daysText, fmtDate } from "./format";
 
 type BillingState =
   | "trialing"
@@ -67,7 +67,7 @@ export function billingView(b: BillingInfo, now: Date = new Date(), locale?: str
         state: "trialing",
         label: "Free trial",
         trialDaysLeft: left,
-        headline: `Free trial: ${left === 1 ? "1 day" : `${left} days`} left`,
+        headline: `Free trial: ${daysText(left)} left`,
         body: [
           `You have full access until ${fmtDate(b.trialEndsAt, locale)}. No card is needed for the trial. Choose a plan before then to keep editing.`,
           "If you do not, the workspace becomes read-only: you can still look at everything, run simulations and export your data, and nothing is lost.",
@@ -148,7 +148,7 @@ export function bannerFor(
   if (access.level === "full") {
     if (access.reason === "trial") {
       const left = daysLeft(trialEndsAt ?? access.changesAt, now);
-      const days = left === 1 ? "1 day" : `${left} days`;
+      const days = daysText(left);
       return {
         tone: left <= 3 ? "warning" : "info",
         text: owner

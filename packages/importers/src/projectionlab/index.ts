@@ -36,7 +36,15 @@ import {
   type PlanScope,
   type PlContext,
 } from "./context.js";
-import { buildCoverage, classifyPath, collectKeyPaths } from "./coverage.js";
+import {
+  buildCoverage,
+  classifyPath,
+  clipPath,
+  collectKeyPaths,
+  MAX_KEY_PATHS,
+  OVERFLOW_KEY_PATH,
+  overflowsKeyPaths,
+} from "./coverage.js";
 import { toMonth } from "./dates.js";
 import { mapDebts, mapPlanDebtEvent } from "./debts.js";
 import { mapExpenseEvent, mapIncomeEvent } from "./events.js";
@@ -52,12 +60,70 @@ import {
 } from "./strategies.js";
 import { mapAssumptions, mapTax } from "./variables.js";
 
-export { buildCoverage, classifyPath, collectKeyPaths, RULES, type Rule } from "./coverage.js";
+export {
+  buildCoverage,
+  classifyPath,
+  collectKeyPaths,
+  MAX_KEY_PATH_CHARS,
+  MAX_KEY_PATHS,
+  OVERFLOW_KEY_PATH,
+  RULES,
+  type Rule,
+} from "./coverage.js";
 
 export function detectProjectionLabExport(raw: unknown): boolean {
   if (!raw || typeof raw !== "object") return false;
   const r = raw as Record<string, unknown>;
   return typeof r.today === "object" && Array.isArray(r.plans) && typeof r.meta === "object";
+}
+
+/**
+ * Largest export the importer takes (security review: hostile-input cost of the importers). Each plan lists
+ * or excludes every Current Finances item, so the work and the document grow with plans times items: 2,000
+ * plans and 2,000 accounts took seconds and a few thousand more ran out of memory. Mapping an event or a
+ * progress entry costs about 10 microseconds, so a few hundred thousand of them held the server for seconds.
+ * A larger export is a `ValidationError` before anything is mapped. Real exports have a handful of plans,
+ * tens of items and hundreds of events.
+ */
+export const PROJECTIONLAB_LIMITS = {
+  /** `plans[]`. */
+  plans: 100,
+  /** Each of: accounts (`today.savingsAccounts` and `today.investmentAccounts` together), `today.assets`, `today.debts`. */
+  itemsPerKind: 500,
+  /** Events and milestones of all plans together. */
+  events: 20_000,
+  /** `progress.data[]`. */
+  progress: 20_000,
+} as const;
+
+function checkLimits(raw: Obj): void {
+  const today = obj(raw.today);
+  const plans = arr(raw.plans);
+  let events = 0;
+  for (const p of plans) {
+    const plan = obj(p);
+    for (const section of ["accounts", "assets", "income", "expenses", "priorities"])
+      events += arr(obj(plan[section]).events).length;
+    events += arr(plan.milestones).length + arr(plan.computedMilestones).length;
+  }
+  const counts: [string, number, number][] = [
+    ["plans", plans.length, PROJECTIONLAB_LIMITS.plans],
+    [
+      "accounts",
+      arr(today.savingsAccounts).length + arr(today.investmentAccounts).length,
+      PROJECTIONLAB_LIMITS.itemsPerKind,
+    ],
+    ["assets", arr(today.assets).length, PROJECTIONLAB_LIMITS.itemsPerKind],
+    ["debts", arr(today.debts).length, PROJECTIONLAB_LIMITS.itemsPerKind],
+    ["plan events and milestones", events, PROJECTIONLAB_LIMITS.events],
+    ["progress entries", arr(obj(raw.progress).data).length, PROJECTIONLAB_LIMITS.progress],
+  ];
+  for (const [what, n, max] of counts)
+    if (n > max)
+      throw new ValidationError(
+        `the export has ${n.toLocaleString("en-US")} ${what}; at most ${max.toLocaleString("en-US")} can be imported`,
+        { limit: max, count: n, kind: what },
+      );
 }
 
 export interface ImportProjectionLabOptions {
@@ -68,6 +134,8 @@ export interface ImportProjectionLabOptions {
 }
 
 const KNOWN_MAJOR = 4;
+/** Notes listing excluded items, per plan and kind; the rest are counted in one more note. */
+const MAX_EXCLUSION_NOTES = 20;
 
 function monthOfMs(ms: unknown): string | undefined {
   return typeof ms === "number" ? toMonth(ms) : undefined;
@@ -89,10 +157,61 @@ function isSet(v: unknown): boolean {
   return true;
 }
 
-/** Walk concrete leaves, emitting issues for unsupported / ignored / unknown paths. */
-function reportCoverageIssues(ctx: PlContext, raw: unknown, unknownPaths: Set<string>): void {
+/** Notes per key path about unrecognised or unsupported values; the rest are counted in one more note. */
+const MAX_NOTES_PER_KEY_PATH = 3;
+
+/**
+ * Walk concrete leaves, emitting issues for unsupported / ignored / unknown paths. `paths` is the key-path
+ * table of the same value: a path it does not hold was counted as `OVERFLOW_KEY_PATH` and is not descended
+ * into. Notes are capped per key path, so one unknown array of a million numbers is three notes and a count,
+ * not a million notes (security review: hostile-input cost of the importers).
+ */
+function reportCoverageIssues(
+  ctx: PlContext,
+  raw: unknown,
+  unknownPaths: Set<string>,
+  paths: Map<string, unknown>,
+): void {
   const ignoredGroups = new Map<string, { count: number; example: string }>();
+  const noted = new Map<
+    string,
+    {
+      count: number;
+      severity: ImportIssue["severity"];
+      category: ImportIssueCategory;
+      message: string;
+      code: string;
+      suggestedField?: string | undefined;
+      example: string;
+    }
+  >();
+  const rules = new Map<string, ReturnType<typeof classifyPath>>();
+  const emit = (
+    norm: string,
+    concrete: string,
+    severity: ImportIssue["severity"],
+    category: ImportIssueCategory,
+    message: string,
+    extra: { code: string; suggestedField?: string | undefined },
+  ): void => {
+    const g = noted.get(norm);
+    if (!g) noted.set(norm, { count: 1, severity, category, message, ...extra, example: concrete });
+    else g.count += 1;
+    if ((g?.count ?? 1) <= MAX_NOTES_PER_KEY_PATH)
+      note(ctx, severity, category, concrete, message, extra);
+  };
   const walk = (v: unknown, norm: string, concrete: string, depth: number): void => {
+    if (overflowsKeyPaths(norm, paths)) {
+      emit(
+        OVERFLOW_KEY_PATH,
+        clipPath(concrete),
+        "warning",
+        "unrecognised",
+        `key path too long, or more distinct key paths than the report lists (${MAX_KEY_PATHS.toLocaleString("en-US")}); not imported`,
+        { code: "pl.unrecognised" },
+      );
+      return;
+    }
     const container = Array.isArray(v) ? v.length > 0 : isObj(v) && Object.keys(v).length > 0;
     if (container && depth < 64) {
       if (Array.isArray(v)) {
@@ -104,27 +223,30 @@ function reportCoverageIssues(ctx: PlContext, raw: unknown, unknownPaths: Set<st
     }
     // Leaf (primitive or empty container).
     if (unknownPaths.has(norm)) {
-      note(
-        ctx,
+      emit(
+        norm,
+        concrete,
         norm.startsWith("$.settings") ? "info" : "warning",
         "unrecognised",
-        concrete,
         "key not recognised by this importer (newer export version?); not imported",
-        {
-          code: "pl.unrecognised",
-        },
+        { code: "pl.unrecognised" },
       );
       return;
     }
-    const rule = classifyPath(norm);
+    let rule = rules.get(norm);
+    if (rule === undefined && !rules.has(norm)) {
+      rule = classifyPath(norm);
+      rules.set(norm, rule);
+    }
     if (!rule) return;
     if (rule.status === "unsupported") {
       const set = isSet(v);
-      note(
-        ctx,
+      emit(
+        // Set and default values get different notes, so they are capped separately.
+        `${norm}\u0000${set ? "set" : "default"}`,
+        concrete,
         set ? "warning" : "info",
         "unsupported",
-        concrete,
         `${rule.note ?? "no Glideworth equivalent"}${set ? "" : " (value is a default/empty, nothing lost)"}`,
         { code: "pl.unsupported", suggestedField: rule.target },
       );
@@ -136,6 +258,20 @@ function reportCoverageIssues(ctx: PlContext, raw: unknown, unknownPaths: Set<st
     }
   };
   walk(raw, "$", "$", 0);
+  for (const g of noted.values()) {
+    if (g.count <= MAX_NOTES_PER_KEY_PATH) continue;
+    note(
+      ctx,
+      g.severity,
+      g.category,
+      g.example,
+      `${g.count - MAX_NOTES_PER_KEY_PATH} more value(s) at this key path: ${g.message}`,
+      {
+        code: g.code,
+        ...(g.suggestedField !== undefined ? { suggestedField: g.suggestedField } : {}),
+      },
+    );
+  }
   for (const [reason, g] of ignoredGroups) {
     note(
       ctx,
@@ -234,6 +370,7 @@ export function importProjectionLab(
       "not a ProjectionLab export: expected an object with `today` and `plans`",
     );
   }
+  checkLimits(raw);
   const issues: ImportIssue[] = [];
   const meta = obj(raw.meta);
   const version = str(meta.version);
@@ -491,47 +628,56 @@ export function importProjectionLab(
     srcCounts.flows += prioritySrc.length;
     counts.flows += flows.length;
 
-    // Exclusions: Current Finances items the plan does not list.
+    // Exclusions: Current Finances items the plan does not list. The excluded ids are part of the plan;
+    // the notes about them are capped per plan and kind, so plans times items cannot grow the report
+    // without bound (security review: hostile-input cost of the importers).
     const excludedIds: string[] = [];
-    if (accountEvents.length > 0) {
-      for (const a of accounts) {
-        if (!acct.present.has(a.sourceId)) {
-          excludedIds.push(a.account.id as string);
+    const exclude = (
+      items: { id: string; present: boolean }[],
+      kind: "account" | "asset" | "debt",
+      notePath: string,
+    ): void => {
+      let noted = 0;
+      for (const { id, present } of items) {
+        if (present) continue;
+        excludedIds.push(id);
+        if (noted++ < MAX_EXCLUSION_NOTES)
           infoNote(
             ctx,
-            `${path}.accounts.events`,
-            `account ${a.account.id as string} is not listed in this plan; excluded from it`,
-            "pl.excluded-account",
+            notePath,
+            `${kind} ${id} is not listed in this plan; excluded from it`,
+            `pl.excluded-${kind}`,
           );
-        }
       }
-    }
-    if (assetEvents.length > 0) {
-      for (const a of assets) {
-        if (!ast.present.has(a.sourceId)) {
-          excludedIds.push(a.asset.id as string);
-          infoNote(
-            ctx,
-            `${path}.assets.events`,
-            `asset ${a.asset.id as string} is not listed in this plan; excluded from it`,
-            "pl.excluded-asset",
-          );
-        }
-      }
-    }
-    if (debtEventCount > 0) {
-      for (const d of debts) {
-        if (!presentDebts.has(d.sourceId)) {
-          excludedIds.push(d.debt.id as string);
-          infoNote(
-            ctx,
-            `${path}.expenses.events`,
-            `debt ${d.debt.id as string} is not listed in this plan; excluded from it`,
-            "pl.excluded-debt",
-          );
-        }
-      }
-    }
+      if (noted > MAX_EXCLUSION_NOTES)
+        infoNote(
+          ctx,
+          notePath,
+          `${noted - MAX_EXCLUSION_NOTES} more ${kind}s are not listed in this plan; excluded from it`,
+          `pl.excluded-${kind}`,
+        );
+    };
+    if (accountEvents.length > 0)
+      exclude(
+        accounts.map((a) => ({
+          id: a.account.id as string,
+          present: acct.present.has(a.sourceId),
+        })),
+        "account",
+        `${path}.accounts.events`,
+      );
+    if (assetEvents.length > 0)
+      exclude(
+        assets.map((a) => ({ id: a.asset.id as string, present: ast.present.has(a.sourceId) })),
+        "asset",
+        `${path}.assets.events`,
+      );
+    if (debtEventCount > 0)
+      exclude(
+        debts.map((d) => ({ id: d.debt.id as string, present: presentDebts.has(d.sourceId) })),
+        "debt",
+        `${path}.expenses.events`,
+      );
 
     const variables = obj(plan.variables);
     const assumptions = mapAssumptions(
@@ -631,10 +777,15 @@ export function importProjectionLab(
   });
 
   // Foreign-currency entities need an FX rate to simulate (the engine refuses a missing pair).
+  // Currencies with a rate to or from the household currency, collected once: searching every rate for each
+  // currency took time proportional to their product on a crafted export.
+  const ratedCurrencies = new Set<string>();
+  for (const r of fxRates) {
+    if (r.to === ctx.currency) ratedCurrencies.add(r.from);
+    if (r.from === ctx.currency) ratedCurrencies.add(r.to);
+  }
   for (const c of ctx.foreignCurrencies ?? []) {
-    const known = fxRates.some(
-      (r) => (r.from === c && r.to === ctx.currency) || (r.from === ctx.currency && r.to === c),
-    );
+    const known = ratedCurrencies.has(c);
     if (!known)
       note(
         ctx,
@@ -734,7 +885,7 @@ export function importProjectionLab(
   if (mainIndex >= 0 && plans[mainIndex]) docSettings.defaultPlanId = plans[mainIndex]!.id;
 
   // --- generic coverage issues + assemble ------------------------------------------------------
-  reportCoverageIssues(ctx, raw, new Set(coverage.unaccountedPaths));
+  reportCoverageIssues(ctx, raw, new Set(coverage.unaccountedPaths), paths);
 
   const candidate = {
     app: "glideworth" as const,

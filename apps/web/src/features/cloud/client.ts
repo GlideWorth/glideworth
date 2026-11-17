@@ -218,7 +218,16 @@ export const cloudApi = {
     call("POST", "/api/v1/auth/password/reset", SignedIn, { token, password }),
   // "Sign in with Google": the button itself is a plain link (googleStartPath), not a request.
   googlePending: () =>
-    call("GET", "/api/v1/auth/google/pending", z.object({ name: z.string(), email: z.string() })),
+    call(
+      "GET",
+      "/api/v1/auth/google/pending",
+      z.object({
+        name: z.string(),
+        email: z.string(),
+        /** The workspace of the invitation this sign-up started from, while it can be accepted. */
+        invitedTo: z.string().nullable().optional(),
+      }),
+    ),
   googleComplete: (b: { name: string; termsVersion: string; adultConfirmed: true }) =>
     call("POST", "/api/v1/auth/google/complete", SignedIn, b),
 
@@ -253,6 +262,9 @@ export const cloudApi = {
   linkGoogle: () =>
     call("POST", "/api/v1/account/identities/google", z.object({ url: z.string() })),
   unlinkGoogle: () => callVoid("DELETE", "/api/v1/account/identities/google"),
+  /** Finish the link Google's redirect parked for this browser (`/google-link`): "linked", or why not. */
+  finishGoogleLink: () =>
+    call("POST", "/api/v1/account/identities/google/finish", z.object({ google: z.string() })),
 
   // workspaces
   workspaceSettings: () => call("GET", "/api/v1/workspace/settings", WorkspaceSettings),
@@ -302,6 +314,16 @@ export const cloudApi = {
       "/api/v1/workspace/export",
       z.object({ exportId: z.string(), expiresAt: z.string() }),
     ),
+  /** Whether an export can still be downloaded; does not use the download up. */
+  exportStatus: (exportId: string) =>
+    call(
+      "GET",
+      `/api/v1/workspace/exports/${enc(exportId)}/status`,
+      z.object({
+        status: z.enum(["ready", "downloaded", "expired"]),
+        expiresAt: z.string().nullable(),
+      }),
+    ),
   supportGrants: () => call("GET", "/api/v1/workspace/support-grants", Items(SupportGrant)),
   createSupportGrant: (reason: string, days: number) =>
     call(
@@ -331,6 +353,15 @@ export const cloudApi = {
 export const exportDownloadPath = (exportId: string) =>
   `/api/v1/workspace/exports/${enc(exportId)}`;
 
-/** "Continue with Google": a top-level navigation to the server, which redirects to Google. */
-export const googleStartPath = (next: string) =>
-  `/api/v1/auth/google/start${next && next !== "/" ? `?next=${enc(next)}` : ""}`;
+/**
+ * "Continue with Google": a top-level navigation to the server, which redirects to Google. `invitation` is
+ * the token of the invitation held in this tab: the server keeps it with the flow and the person ends on
+ * that invitation, as after an email sign-up.
+ */
+export const googleStartPath = (next: string, invitation?: string | null) => {
+  const q = new URLSearchParams();
+  if (next && next !== "/") q.set("next", next);
+  if (invitation) q.set("invitation", invitation);
+  const s = q.toString();
+  return `/api/v1/auth/google/start${s ? `?${s}` : ""}`;
+};

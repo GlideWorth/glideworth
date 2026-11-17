@@ -7,6 +7,7 @@
  */
 import type { ImportIssue } from "../types.js";
 import type { BankAccount, BankParse, BankTransaction } from "./types.js";
+import { table } from "../util/read.js";
 
 export type QifDateFormat = "auto" | "MM/DD/YYYY" | "DD/MM/YYYY";
 
@@ -48,14 +49,14 @@ const amount = (s: string): number | undefined => {
 const SECTION: Record<
   string,
   { statement: BankTransaction["statement"]; entity: "account" | "debt"; type?: string }
-> = {
+> = table({
   bank: { statement: "bank", entity: "account", type: "cash" },
   cash: { statement: "cash", entity: "account", type: "cash" },
   ccard: { statement: "card", entity: "debt" },
   "oth a": { statement: "bank", entity: "account", type: "other" },
   "oth l": { statement: "card", entity: "debt" },
   invst: { statement: "investment", entity: "account", type: "taxable" },
-};
+});
 
 export function parseQif(
   text: string,

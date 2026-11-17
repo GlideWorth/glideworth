@@ -540,7 +540,7 @@ export async function restoreControlPlane(o: {
   const dest = controlDbPath(o.dataDir);
   let previous: string | null = null;
   try {
-    await openToFile(
+    const header = await openToFile(
       (await o.store.get(chosen)) as AsyncIterable<Buffer>,
       scratch,
       controlBackupKey(o.kek),
@@ -548,6 +548,10 @@ export async function restoreControlPlane(o: {
         tenant: "control",
       },
     );
+    // The object's name chose it, and nothing else records control backups: the authenticated creation time
+    // must be the one in the name, or an older backup copied over the newest would be restored silently.
+    if (fileStamp(new Date(header.createdAt)) !== (chosen.split("/").pop() as string).slice(0, -10))
+      throw new BackupIntegrityError("backup time does not match its name");
     if (!checkIntegrity(scratch, true)) throw new BackupIntegrityError("integrity check failed");
     if (existsSync(dest)) {
       previous = `${dest}.pre-restore-${fileStamp(clock())}`;

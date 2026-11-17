@@ -101,6 +101,8 @@ export function safeNext(next: unknown, publicOrigin: string): string {
   try {
     const u = new URL(next, publicOrigin);
     if (u.origin !== publicOrigin) return "/";
+    // Dot segments are removed after the `//` check above: `/.//host` would come out as `//host`.
+    if (u.pathname.startsWith("//")) return "/";
     return `${u.pathname}${u.search}${u.hash}`;
   } catch {
     return "/";

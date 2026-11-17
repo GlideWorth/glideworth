@@ -24,6 +24,13 @@ export const FIXTURES: { [K in TemplateId]: TemplateData[K] } = {
     newEmail: "sam.new@example.test",
     expiresInHours: 24,
   },
+  "email-change-requested": {
+    name: "Sam Example",
+    newEmail: "sam.new@example.test",
+    at: "2026-11-16T09:14:05.123Z",
+    expiresInHours: 24,
+    securityUrl: U("settings/security"),
+  },
   "signin-alert": {
     name: "Sam Example",
     at: "16 November 2026, 09:14 UTC",
@@ -44,6 +51,7 @@ export const FIXTURES: { [K in TemplateId]: TemplateData[K] } = {
     url: U("invitations/accept"),
     expiresInDays: 7,
   },
+  "member-removed": { name: "Sam Example", workspaceName: "Sample household" },
   "trial-ending": {
     name: "Sam Example",
     trialEndsOn: "23 November 2026",
@@ -109,6 +117,13 @@ export const FIXTURES_ALT: { [K in TemplateId]: TemplateData[K] } = {
     newEmail: "alex48000@example.test",
     expiresInHours: 2,
   },
+  "email-change-requested": {
+    name: "Alex £48,000 (7.5%)",
+    newEmail: "alex48000@example.test",
+    at: "£1,234,567 at 99%",
+    expiresInHours: 2,
+    securityUrl: U("settings/security"),
+  },
   "signin-alert": {
     name: "Alex £48,000 (7.5%)",
     at: "£1,234,567 at 99%",
@@ -128,6 +143,10 @@ export const FIXTURES_ALT: { [K in TemplateId]: TemplateData[K] } = {
     role: "viewer",
     url: U("invitations/accept"),
     expiresInDays: 1,
+  },
+  "member-removed": {
+    name: "Alex £48,000 (7.5%)",
+    workspaceName: "Retire at 55 with £2m (92% chance)",
   },
   "trial-ending": {
     name: "Alex £48,000 (7.5%)",

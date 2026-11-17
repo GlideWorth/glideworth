@@ -13,6 +13,7 @@ import {
   axisStyle,
   baseOption,
   type ChartTokens,
+  escapeHtml,
   tooltipHeader,
   tooltipRow,
 } from "../../components/charts/tokens";
@@ -284,7 +285,10 @@ export function ProjectionChart({
               : "";
             const ev = events
               .filter((e) => e.periodIndex === i)
-              .map((e) => `<div style="color:${laneColor(e)};font-size:11px">● ${e.label}</div>`)
+              .map(
+                (e) =>
+                  `<div style="color:${laneColor(e)};font-size:11px">● ${escapeHtml(e.label)}</div>`,
+              )
               .join("");
             const status =
               p.status === "shortfall"
@@ -437,7 +441,7 @@ export function ProjectionChart({
                     formatter: (x: { name: string; dataIndex: number }) => {
                       const ev = markers[x.dataIndex]?.e;
                       const p = ev ? P[ev.periodIndex] : undefined;
-                      return `${tooltipHeader(x.name)}${p ? `<div style="opacity:.7">${p.year} · ${agesLabel(p, index.people)}</div>` : ""}`;
+                      return `${tooltipHeader(x.name)}${p ? `<div style="opacity:.7">${p.year} · ${escapeHtml(agesLabel(p, index.people))}</div>` : ""}`;
                     },
                   },
                 },

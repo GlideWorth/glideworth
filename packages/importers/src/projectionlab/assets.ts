@@ -1,7 +1,7 @@
 /** Real assets (property, vehicles, valuables) with loans, rental and sale behaviour. */
 import { REAL_ASSET_TYPES, RealAssetBehaviour } from "@glideworth/core";
 import type { ImportIssue } from "../types.js";
-import { arr, deepEqual, isObj, num, type Obj, obj, pctClean, str } from "../util/read.js";
+import { table, arr, deepEqual, isObj, num, type Obj, obj, pctClean, str } from "../util/read.js";
 import {
   appearanceOf,
   basisOf,
@@ -17,7 +17,7 @@ import { approximated, infoNote, invalid, type PlContext } from "./context.js";
 import { resolveRange, resolveRef } from "./dates.js";
 
 const ASSET_TYPE_SET = new Set<string>(REAL_ASSET_TYPES);
-const ASSET_ALIASES: Record<string, string> = {
+const ASSET_ALIASES: Record<string, string> = table({
   "real-estate": "house",
   property: "house",
   home: "house",
@@ -32,7 +32,7 @@ const ASSET_ALIASES: Record<string, string> = {
   musical: "instrument",
   equipment: "machinery",
   other: "custom",
-};
+});
 
 export function assetTypeOf(ctx: PlContext, src: Obj, path: string): string {
   const raw = typeof src.type === "string" ? src.type : "";

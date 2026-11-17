@@ -18,6 +18,7 @@ const EVIL = `<script>alert("x")</script>&'"<img src=x onerror=alert(1)>`;
 const FREE_TEXT_FIELDS: Record<string, string[]> = {
   "verify-email": ["name"],
   "password-reset": ["name"],
+  "password-setup": ["name"],
   "email-change-confirm": ["name"],
   "email-change-requested": ["name", "at"],
   "signin-alert": ["name", "at", "device", "ip"],

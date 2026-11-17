@@ -13,8 +13,8 @@ const ctxFor = (id: (typeof TEMPLATE_IDS)[number]) =>
   TEMPLATE_CATEGORY[id] === "checkin" ? CHECKIN_CTX : CTX;
 
 describe("templates", () => {
-  it("covers every template in the spec (17, less the retired trial-expired), the account deletion, email change request and removal notices, and the two-step guessing alert", () => {
-    expect(TEMPLATE_IDS).toHaveLength(20);
+  it("covers every template in the spec (17, less the retired trial-expired), the account deletion, email change request and removal notices, the two-step guessing alert and the first-password link", () => {
+    expect(TEMPLATE_IDS).toHaveLength(21);
     expect(Object.keys(FIXTURES).sort()).toEqual([...TEMPLATE_IDS].sort());
   });
 
@@ -84,10 +84,11 @@ describe("templates", () => {
     });
   });
 
-  it("security-change covers all eleven kinds with distinct text", () => {
+  it("security-change covers all twelve kinds with distinct text", () => {
     const kinds = [
       "password-changed",
       "password-reset",
+      "password-set",
       "email-changed",
       "totp-enabled",
       "totp-disabled",
@@ -101,7 +102,23 @@ describe("templates", () => {
     const bodies = kinds.map(
       (change) => render("security-change", { ...FIXTURES["security-change"], change }, CTX).text,
     );
-    expect(new Set(bodies).size).toBe(11);
+    expect(new Set(bodies).size).toBe(12);
+  });
+
+  it("password-setup invites a first password and never uses reset wording; password-reset keeps it", () => {
+    const setup = render("password-setup", FIXTURES["password-setup"], CTX);
+    expect(setup.subject).toBe("Set a password for your Glideworth account");
+    expect(setup.category).toBe("essential");
+    expect(setup.text).toContain("Set a password for your Glideworth account");
+    expect(setup.text).toContain("Set your password");
+    expect(setup.text).toContain("https://app.example.test/set-password?t=sample-token");
+    expect(setup.text.toLowerCase()).not.toContain("reset");
+    expect(setup.html.toLowerCase()).not.toContain("reset");
+    expect(setup.text).not.toContain("\u2014");
+    const reset = render("password-reset", FIXTURES["password-reset"], CTX);
+    expect(reset.subject).toBe("Reset your Glideworth password");
+    expect(reset.text).toContain("We received a request to reset the password");
+    expect(reset.text).toContain("Choose a new password");
   });
 
   it("second-factor-failures says what happened and links to the password reset and security settings (finding 8)", () => {

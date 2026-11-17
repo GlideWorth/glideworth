@@ -89,6 +89,8 @@ export function SignUpPage() {
     setFormError(null);
     if (Object.keys(e).length) return failed();
     setBusy(true);
+    const source = handoff?.tool ?? "direct";
+    posthog?.capture("signup_started", { method: "email", source });
     try {
       await cloudApi.signUp({
         email: email.trim(),
@@ -99,9 +101,7 @@ export function SignUpPage() {
         ...(token ? { captchaToken: token } : {}),
         ...(invitation ? { invitation: invitation.token } : {}),
       });
-      posthog?.capture("account_sign_up_submitted", {
-        source: handoff?.tool ?? "direct",
-      });
+      posthog?.capture("account_created", { method: "email", source });
       pendingEmail = email.trim();
       await navigate({ to: "/check-email" });
     } catch (err) {
@@ -144,6 +144,14 @@ export function SignUpPage() {
             You came from the {HANDOFF_TOOLS[handoff.tool]}. After you confirm your email we will
             offer to start your first plan from those inputs.
           </Notice>
+        ) : null}
+        {google ? (
+          // First, so the quickest way in is in view without scrolling. The next step (name, 18 or
+          // over, terms) is asked on /signup/google, before any account exists.
+          <>
+            <ContinueWithGoogle next="/" />
+            <OrDivider />
+          </>
         ) : null}
         <TextField
           label="Your name"
@@ -233,13 +241,6 @@ export function SignUpPage() {
           {busy ? <Loader2 className="animate-spin" /> : <UserPlus />}
           Create account
         </Button>
-        {google ? (
-          <>
-            <OrDivider />
-            {/* The next step (name, 18 or over, terms) is asked before any account exists. */}
-            <ContinueWithGoogle next="/" />
-          </>
-        ) : null}
       </form>
     </AuthLayout>
   );

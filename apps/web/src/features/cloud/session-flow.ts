@@ -10,8 +10,14 @@ import { useCallback } from "react";
 import { safeNext } from "./next";
 
 /** Handed from the password step to the two-factor step. Memory only: the challenge is a credential. */
-let challenge: { token: string; next: string } | null = null;
-export const setChallenge = (c: { token: string; next: string } | null) => {
+type Challenge = {
+  token: string;
+  next: string;
+  /** From the set-password page: tell a waiting tab once the code is accepted (lib/reauth.ts). */
+  announceReauth?: boolean;
+};
+let challenge: Challenge | null = null;
+export const setChallenge = (c: Challenge | null) => {
   challenge = c;
 };
 export const getChallenge = () => challenge;

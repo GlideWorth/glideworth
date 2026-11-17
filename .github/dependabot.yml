@@ -12,11 +12,19 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+  # One pull request per ecosystem and week instead of one per action or image: every pull request runs
+  # the full CI and the Docker build.
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: weekly
+    groups:
+      docker:
+        patterns: ["*"]

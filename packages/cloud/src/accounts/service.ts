@@ -19,8 +19,12 @@
  * - federated sign-in ("Sign in with Google", federation/) finds a person by the provider's subject only.
  *   `createFromIdentity` applies the sign-up rules (adults only, terms, disposable domains, sign-up limits,
  *   one trial per address) and never takes over a verified account; `signInWithIdentity` still asks for
- *   TOTP; a Google sign-in never counts as a re-authentication. An account without a password costs the
- *   same scrypt work on a password sign-in as any other (no timing signal that it exists);
+ *   TOTP; a Google sign-in never counts as a re-authentication (Google cannot be asked to confirm a recent
+ *   sign-in). An account without a password costs the same scrypt work on a password sign-in as any other
+ *   (no timing signal that it exists);
+ * - a first password set from the emailed setup link counts as a re-authentication only for the session that
+ *   asked for the link, and only when that session's browser completes it (`requestPasswordSetup`,
+ *   `resetPassword`); TOTP still applies;
  * - a verification link alone verifies an account only in the browser whose sign-up set its password
  *   (`browser`, the `__Host-gw_signup` cookie; its hash travels with the link's token). Anywhere else the
  *   link also needs the account's current password, under the sign-in limits and without using up the link.
@@ -81,6 +85,7 @@ import { identitiesOfUser, insertIdentity, type Provider } from "../federation/i
 import { describeDevice } from "./device.js";
 import { emailDomain, normalizeEmail } from "./email.js";
 import { assertRecentAuthIn } from "./reauth.js";
+import { reauthReturnPath } from "./return-path.js";
 import { claimTokenTx, dropUnused, invalidToken, issueToken, peekToken } from "./tokens.js";
 
 export interface AccountsDeps {
@@ -752,8 +757,14 @@ export class AccountsService {
       this.securityMail(user, "recovery-code-used");
     }
     const first: SignInMethod = row.payload?.method === "google" ? "google" : "password";
+    const active = typeof row.payload?.active === "string" ? row.payload.active : null;
     return {
-      session: this.finishSignIn(user, m, { mfa: true, reauth: true, method: first }),
+      session: this.finishSignIn(user, m, {
+        mfa: true,
+        reauth: true,
+        method: first,
+        activeAccountId: active,
+      }),
       userId: user.id,
     };
   }
@@ -978,6 +989,9 @@ export class AccountsService {
     const user = this.userByEmail(norm);
     if (!user || user.disabledAt || !user.emailVerifiedAt) return;
     const now = this.clock();
+    // No password yet (signed up with Google): there is nothing to reset, so the set-a-password email. No
+    // session asked, so completing it is never a re-authentication. The answer is the same 202 either way.
+    const setup = !hasPassword(user);
     const { token } = this.db.transaction((tx) => {
       dropUnused(tx, user.id, "reset_password");
       return issueToken(tx, {
@@ -985,22 +999,34 @@ export class AccountsService {
         purpose: "reset_password",
         ttlMs: ACCOUNT_TTL.resetPassword,
         now,
+        ...(setup ? { payload: { setup: true, next: reauthReturnPath(null) } } : {}),
       });
     });
-    this.sendMail({ email: user.email, name: user.name }, norm, "password-reset", user.id, {
-      name: user.name,
-      url: this.link("/reset-password", token),
-      expiresInMinutes: ACCOUNT_TTL.resetPassword / MINUTE,
-    });
+    this.sendMail(
+      { email: user.email, name: user.name },
+      norm,
+      setup ? "password-setup" : "password-reset",
+      user.id,
+      {
+        name: user.name,
+        url: this.link(setup ? "/set-password" : "/reset-password", token),
+        expiresInMinutes: ACCOUNT_TTL.resetPassword / MINUTE,
+      },
+    );
   }
 
   /**
    * Not in spec 3.4: a signed-in person without a password (Google-only) asks for a link to set their first
-   * one. It is the password-reset email to their own verified address: following it proves control of the
-   * inbox now (the fresh check for this action), sets the password, signs out everywhere and signs in again
-   * (TOTP still applies). Same per-address limit as forgot-password.
+   * one (`password-setup` email, to their own verified address). Following it proves control of the inbox now,
+   * sets the password, signs out everywhere and signs in again (TOTP still applies). Same per-address limit
+   * as forgot-password.
+   *
+   * The link usually answers a "confirm it is you" prompt, so it remembers two things (in the token's row,
+   * never in the URL): the session that asked (`session`, the stored hash, which `resetPassword` compares
+   * with the session of the browser completing the link: only then does the new session count as
+   * re-authenticated), and where to go back to (`next`, allow-listed by `reauthReturnPath`).
    */
-  requestPasswordSetup(s: SessionContext): void {
+  requestPasswordSetup(s: SessionContext, o: { returnTo?: unknown } = {}): void {
     const user = this.requireUser(s.userId);
     if (hasPassword(user))
       throw new CloudError(409, "CONFLICT", "you already have a password; change it instead");
@@ -1015,16 +1041,17 @@ export class AccountsService {
         purpose: "reset_password",
         ttlMs: ACCOUNT_TTL.resetPassword,
         now,
+        payload: { setup: true, session: s.sessionId, next: reauthReturnPath(o.returnTo) },
       });
     });
     this.sendMail(
       { email: user.email, name: user.name },
       user.emailNormalized,
-      "password-reset",
+      "password-setup",
       user.id,
       {
         name: user.name,
-        url: this.link("/reset-password", token),
+        url: this.link("/set-password", token),
         expiresInMinutes: ACCOUNT_TTL.resetPassword / MINUTE,
       },
       "security",
@@ -1036,8 +1063,20 @@ export class AccountsService {
    * Not in spec 3.4: the person's connected apps (OAuth access tokens, refresh tokens, unused authorization
    * codes) are revoked in every workspace they belong to; API keys keep working. A workspace that cannot be
    * opened never fails the reset: its revocation happens before its next lease (tenancy/registry.ts).
+   *
+   * A setup link (`requestPasswordSetup`) also answers `next`, the settings section it was asked from, and
+   * `recentAuth`: true when `current` (the session of the browser completing the link, read from its cookie)
+   * is the session that asked for the link. Then the new session counts as re-authenticated, with the usual
+   * 10-minute window, so the person is not asked for the password they just chose. Anywhere else (another
+   * browser, a signed-out tab, another session) it is an ordinary reset. With TOTP on, the challenge comes
+   * first either way (completing it re-authenticates, as every second-factor sign-in does).
    */
-  async resetPassword(token: string, password: string, m: RequestMeta): Promise<SignInResult> {
+  async resetPassword(
+    token: string,
+    password: string,
+    m: RequestMeta,
+    current?: SessionContext | null,
+  ): Promise<SignInResult & { next?: string; recentAuth?: boolean }> {
     const now = this.clock();
     const peek = peekToken(this.db, token, "reset_password", now);
     if (!peek) throw invalidToken();
@@ -1045,9 +1084,16 @@ export class AccountsService {
     if (!before || before.disabledAt) throw invalidToken();
     assertPasswordPolicy({ password, email: before.emailNormalized });
     const passwordHash = await hashPassword(password);
+    let setup: { next: string; session: string | null } | null = null;
     const user = this.db.transaction((tx) => {
       const row = claimTokenTx(tx, token, "reset_password", this.clock());
       if (!row) return null;
+      const p = row.payload ?? {};
+      if (p.setup === true)
+        setup = {
+          next: reauthReturnPath(p.next),
+          session: typeof p.session === "string" ? p.session : null,
+        };
       tx.update(users)
         .set({ passwordHash, updatedAt: now.toISOString() })
         .where(eq(users.id, row.userId))
@@ -1068,6 +1114,12 @@ export class AccountsService {
     });
     if (!user) throw invalidToken();
     await this.d.workspaces().revokeOAuthGrantsNow(user.id);
+    const done = setup as { next: string; session: string | null } | null;
+    const sameSession =
+      !!done?.session &&
+      !!current &&
+      current.userId === user.id &&
+      safeEqual(current.sessionId, done.session);
     this.d.audit.record({
       actorType: "user",
       actorId: user.id,
@@ -1075,13 +1127,34 @@ export class AccountsService {
       event: "user.password_reset",
       ip: m.ip,
       userAgent: m.userAgent,
+      ...(done ? { detail: { method: "setup-link" } } : {}),
     });
-    this.securityMail(user, "password-reset");
-    if (user.totpEnabledAt) return this.challenge(user.id, "password");
+    // Recorded like every other re-authentication. With TOTP on, the challenge records the sign-in instead.
+    if (sameSession && !user.totpEnabledAt)
+      this.d.audit.record({
+        actorType: "user",
+        actorId: user.id,
+        subjectUserId: user.id,
+        event: "user.reauthenticated",
+        ip: m.ip,
+        userAgent: m.userAgent,
+        detail: { method: "setup-link" },
+      });
+    this.securityMail(user, done ? "password-set" : "password-reset");
+    // The same session carries on: keep its workspace, so the change it was making runs where it started.
+    const active = sameSession ? (current?.activeAccountId ?? null) : null;
+    const extra = done ? { next: done.next, recentAuth: sameSession } : {};
+    if (user.totpEnabledAt) return { ...this.challenge(user.id, "password", active), ...extra };
     return {
       kind: "signed-in",
-      session: this.finishSignIn(user, m, { mfa: false, reauth: false, method: "password" }),
+      session: this.finishSignIn(user, m, {
+        mfa: false,
+        reauth: sameSession,
+        method: "password",
+        activeAccountId: active,
+      }),
       userId: user.id,
+      ...extra,
     };
   }
 
@@ -1655,7 +1728,8 @@ export class AccountsService {
     return (rows.find((r) => r.role === "owner") ?? rows[0])?.accountId ?? null;
   }
 
-  private challenge(userId: string, method: SignInMethod): SignInResult {
+  /** `active`: the workspace the session after the code should open on (the set-password link, same session). */
+  private challenge(userId: string, method: SignInMethod, active?: AccountId | null): SignInResult {
     const now = this.clock();
     const t = this.db.transaction((tx) => {
       dropUnused(tx, userId, "signin_challenge");
@@ -1664,7 +1738,7 @@ export class AccountsService {
         purpose: "signin_challenge",
         ttlMs: ACCOUNT_TTL.signinChallenge,
         now,
-        payload: { attempts: 0, method },
+        payload: { attempts: 0, method, ...(active ? { active } : {}) },
       });
     });
     return { kind: "totp-required", challenge: t.token, expiresAt: t.expiresAt };
@@ -1707,13 +1781,23 @@ export class AccountsService {
   private finishSignIn(
     user: UserRow,
     m: RequestMeta,
-    o: { mfa: boolean; reauth: boolean; method: SignInMethod },
+    o: {
+      mfa: boolean;
+      reauth: boolean;
+      method: SignInMethod;
+      /** Keep this workspace open (still a member) instead of the default one. */
+      activeAccountId?: AccountId | null;
+    },
   ): IssuedSession {
     const now = this.clock();
+    const keep =
+      typeof o.activeAccountId === "string" && this.isMember(o.activeAccountId, user.id)
+        ? o.activeAccountId
+        : null;
     const session = this.issueSession(user.id, m, {
       mfa: o.mfa,
       reauth: o.reauth,
-      activeAccountId: this.defaultAccount(user.id),
+      activeAccountId: keep ?? this.defaultAccount(user.id),
     });
     this.db
       .update(users)

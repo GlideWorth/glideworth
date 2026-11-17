@@ -8,6 +8,7 @@
  */
 import { facts } from "../lib/facts";
 import { formatPrice, pricing } from "./pricing";
+import { site } from "./site";
 
 const n = facts.taxCountryCount;
 
@@ -36,7 +37,10 @@ export const pages = {
   },
   "/pricing/": {
     title: "Pricing",
-    description: `Self-hosting is free with every feature. The hosted plan, ${pricing.planName}, opens later at ${formatPrice(pricing.monthly)} a month or ${formatPrice(pricing.yearly)} a year after a ${pricing.trialDays}-day free trial with a card.`,
+    // Follows site.cloudLaunched, like the pricing page body, so the snippet never contradicts the page.
+    description: site.cloudLaunched
+      ? `Self-hosting is free with every feature. ${pricing.planName} is open now: a ${pricing.trialDays}-day free trial${pricing.trialNeedsCard ? " with a card" : ""}, then ${formatPrice(pricing.monthly)} a month or ${formatPrice(pricing.yearly)} a year.`
+      : `Self-hosting is free with every feature. The hosted plan, ${pricing.planName}, opens later at ${formatPrice(pricing.monthly)} a month or ${formatPrice(pricing.yearly)} a year after a ${pricing.trialDays}-day free trial${pricing.trialNeedsCard ? " with a card" : ""}.`,
     ogTitle: "One plan. Or run it yourself, free.",
     ogEyebrow: "Pricing",
   },
@@ -85,7 +89,7 @@ export const pages = {
   "/roadmap/": {
     title: "Roadmap",
     description:
-      "What Glideworth is building next: deeper tax rules, more market history, balance sync, randomised lifespan in Monte Carlo, and the hosted service itself.",
+      "What Glideworth is building next: fixes to the hosted service, deeper tax rules, more market history, balance sync and randomised lifespan in Monte Carlo.",
     ogEyebrow: "Roadmap",
   },
   "/tools/": {

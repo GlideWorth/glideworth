@@ -197,6 +197,19 @@ table {
   max-width: 100%;
   overflow-x: auto;
   overscroll-behavior-x: contain;
+  /* A shadow on whichever edge has more table behind it, so a cut-off column reads as
+     "swipe for more" (phones hide scrollbars). The covers scroll with the content and hide
+     the shadow at each end; they must match the background, which a section sets with
+     --table-scroll-bg. */
+  --_cover: var(--table-scroll-bg, var(--bg));
+  --_shade: color-mix(in srgb, var(--ink) 22%, transparent);
+  background:
+    linear-gradient(to right, var(--_cover) 40%, transparent) left / 2.5rem 100% no-repeat local,
+    linear-gradient(to left, var(--_cover) 40%, transparent) right / 2.5rem 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, var(--_shade), transparent) left / 0.9rem 100% no-repeat
+      scroll,
+    radial-gradient(farthest-side at 100% 50%, var(--_shade), transparent) right / 0.9rem 100%
+      no-repeat scroll;
 }
 .table-scroll:focus-visible {
   outline: 2px solid var(--focus);
@@ -208,7 +221,8 @@ table {
   min-width: 100%;
 }
 .table-scroll > table:has(:is(th, td):nth-child(3)) {
-  min-width: 32rem;
+  /* A page whose cells are mostly prose can set --table-min-width: 100% to wrap instead. */
+  min-width: var(--table-min-width, 32rem);
 }
 
 /* ------------------------------------------------------------------ layout helpers */

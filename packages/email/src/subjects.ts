@@ -8,6 +8,7 @@ export const SUBJECTS: Readonly<Record<TemplateId, string>> = Object.freeze({
   "verify-email": "Confirm your email address for Glideworth",
   "signup-existing-account": "You already have a Glideworth account",
   "password-reset": "Reset your Glideworth password",
+  "password-setup": "Set a password for your Glideworth account",
   "email-change-confirm": "Confirm your new email address",
   "email-change-requested": "Someone asked to change your Glideworth email address",
   "signin-alert": "New sign-in to your Glideworth account",

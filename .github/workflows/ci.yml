@@ -1,5 +1,5 @@
 # Quality gates on every pull request and every push to main: lint (oxlint), format check (oxfmt),
-# typecheck, tests (sharded), build, and secret scanning. Change detection skips the heavy jobs when a
+# typecheck, tests, build, and secret scanning. Change detection skips the heavy jobs when a
 # change touches documentation only; the "CI gate" job is the single, stable required check.
 name: CI
 
@@ -91,13 +91,69 @@ jobs:
           rm -f changed.list
           echo "code=$code" >> "$GITHUB_OUTPUT"
 
-  # ─── Fast checks ────────────────────────────────────────────────────────────
-  lint:
-    name: Lint (oxlint)
+  # ─── Quick checks (one runner) ──────────────────────────────────────────────
+  # GitHub bills every job rounded up to a whole minute, so the checks that take seconds share one job:
+  # format (always: it also covers the Markdown, YAML and JSON a docs-only change edits), the secret scan
+  # (always) and lint (code changes only). Every step runs even when an earlier one fails, so one push
+  # reports all three.
+  quick:
+    name: Format, lint and secret scan
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Full history for the secret scan.
+      - name: Check out (full history)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Official gitleaks image, pinned by digest (v8.30.1). Scans every commit reachable from the
+      # checkout, not just the tip. Findings are redacted in the log. To allow a known false positive,
+      # add a .gitleaks.toml or .gitleaksignore file; do not disable the step.
+      - name: Scan history with gitleaks
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
+            -v "$GITHUB_WORKSPACE:/repo" -w /repo \
+            ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
+            git --no-banner --redact --verbose /repo
+
+      # pnpm's version comes from "packageManager" in package.json.
+      - name: Set up pnpm
+        if: ${{ !cancelled() }}
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Set up Node
+        if: ${{ !cancelled() }}
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        id: install
+        if: ${{ !cancelled() }}
+        run: pnpm install --frozen-lockfile
+
+      - name: Check formatting
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm format:check
+
+      - name: Lint
+        if: ${{ !cancelled() && steps.install.outcome == 'success' && needs.changes.outputs.code == 'true' }}
+        run: pnpm lint
+
+  # ─── Typecheck and build (one runner, only when code changed) ───────────────
+  # Neither is on the critical path (the tests take longer), so sharing a runner saves the second setup
+  # and a rounded-up minute without slowing the run down. Deploy (deploy.yml) reads this job's name to
+  # recognise a documentation-only push: rename both together.
+  typecheck-build:
+    name: Typecheck and build
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -117,65 +173,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint
-        run: pnpm lint
-
-  # Runs for every change: it also covers Markdown, YAML and JSON, which are exactly what a docs-only
-  # change edits, and it is the cheapest job.
-  format:
-    name: Format (oxfmt)
-    needs: changes
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Check out
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-
-      - name: Set up Node
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Check formatting
-        run: pnpm format:check
-
-  typecheck:
-    name: Typecheck
-    needs: changes
-    if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Check out
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-
-      - name: Set up Node
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Build
+        run: pnpm build
+
   # ─── Unit and integration tests (sharded across runners) ────────────────────
+  # Sharded on purpose. Private-repository runners have 2 vCPUs, so Vitest runs one file at a time on each:
+  # one runner took 16.5 minutes (PR #7) against about 7.5 for three shards, for about the same billed minutes.
   test:
     # No matrix expression in the name: a skipped job never expands it. GitHub appends the shard itself.
     name: Tests
@@ -193,6 +199,7 @@ jobs:
         with:
           persist-credentials: false
 
+      # pnpm's version comes from "packageManager" in package.json.
       - name: Set up pnpm
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
@@ -209,62 +216,12 @@ jobs:
       - name: Test
         run: pnpm test --shard=${{ matrix.shard }}/3
 
-  # ─── Build (only when code changed) ─────────────────────────────────────────
-  build:
-    name: Build
-    needs: changes
-    if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Check out
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-
-      - name: Set up Node
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm build
-
-  # ─── Secret scan (always, full history) ─────────────────────────────────────
-  secrets:
-    name: Secret scan
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Check out (full history)
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      # Official gitleaks image, pinned by digest (v8.30.1). Scans every commit reachable from the
-      # checkout, not just the tip. Findings are redacted in the log. To allow a known false positive,
-      # add a .gitleaks.toml or .gitleaksignore file; do not disable the step.
-      - name: Scan history with gitleaks
-        run: |
-          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
-            -v "$GITHUB_WORKSPACE:/repo" -w /repo \
-            ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
-            git --no-banner --redact --verbose /repo
-
   # ─── Aggregator (the one required status check) ─────────────────────────────
   # Branch protection should require only "CI gate". Skipped jobs are fine when no code changed; when
   # code did change, every job must have succeeded.
   gate:
     name: CI gate
-    needs: [changes, lint, format, typecheck, test, build, secrets]
+    needs: [changes, quick, typecheck-build, test]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 2
@@ -273,15 +230,12 @@ jobs:
         env:
           CODE_CHANGED: ${{ needs.changes.outputs.code }}
           CHANGES: ${{ needs.changes.result }}
-          LINT: ${{ needs.lint.result }}
-          FORMAT: ${{ needs.format.result }}
-          TYPECHECK: ${{ needs.typecheck.result }}
+          QUICK: ${{ needs.quick.result }}
+          TYPECHECK_BUILD: ${{ needs.typecheck-build.result }}
           TEST: ${{ needs.test.result }}
-          BUILD: ${{ needs.build.result }}
-          SECRETS: ${{ needs.secrets.result }}
         run: |
           fail=0
-          for pair in "changes=$CHANGES" "format=$FORMAT" "secrets=$SECRETS"; do
+          for pair in "changes=$CHANGES" "quick=$QUICK"; do
             if [ "${pair#*=}" != "success" ]; then echo "::error::${pair%%=*} job: ${pair#*=}"; fail=1; fi
           done
           # Without a trustworthy answer from change detection the other jobs' state is meaningless
@@ -290,7 +244,7 @@ jobs:
             echo "::error::change detection gave no usable answer (result: $CHANGES, code: '$CODE_CHANGED')"
             exit 1
           fi
-          for pair in "lint=$LINT" "typecheck=$TYPECHECK" "test=$TEST" "build=$BUILD"; do
+          for pair in "typecheck-build=$TYPECHECK_BUILD" "test=$TEST"; do
             result="${pair#*=}"
             if [ "$CODE_CHANGED" = "true" ]; then
               [ "$result" = "success" ] || { echo "::error::${pair%%=*} job: $result"; fail=1; }
@@ -298,5 +252,5 @@ jobs:
               [ "$result" = "skipped" ] || { echo "::error::${pair%%=*} job: $result (expected skipped)"; fail=1; }
             fi
           done
-          if [ "$CODE_CHANGED" != "true" ]; then echo "No code changes: lint, typecheck, test and build skipped."; fi
+          if [ "$CODE_CHANGED" != "true" ]; then echo "No code changes: lint, typecheck, build and tests skipped."; fi
           exit "$fail"

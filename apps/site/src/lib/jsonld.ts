@@ -36,7 +36,7 @@ export function website(): JsonLdObject {
 
 /** The product, with the hosted plan's prices as offers (from src/config/pricing.ts). */
 export function softwareApplication(): JsonLdObject {
-  // The hosted plan is not open yet, so its offers say so; the self-hosted build is available today.
+  // The hosted plan's offers follow site.cloudLaunched (PreSale until it opens); the self-hosted build is always available.
   const hostedAvailability = site.cloudLaunched
     ? "https://schema.org/InStock"
     : "https://schema.org/PreSale";

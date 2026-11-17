@@ -11,7 +11,8 @@ import { facts } from '../../lib/facts';
 The web app has no private back door. Whatever it does, it does through the same REST API that your scripts can
 call: reading plans, editing them, running simulations and solvers, importing, exporting and managing access.
 The OpenAPI 3.1 document is generated from the same schemas as the engine, so request and response shapes cannot
-drift from the code. It describes {facts.apiOperations} operations, each with an operation id, tags, a required scope and an
+drift from the code. The hosted service's document describes {facts.apiOperations} operations ({facts.apiOperationsSelfHost} on a self-hosted
+server, which has no account, workspace or billing routes), each with an operation id, tags, a required scope and an
 explicit security declaration, and it is checked by tests for validity and completeness.
 
 ## Conventions

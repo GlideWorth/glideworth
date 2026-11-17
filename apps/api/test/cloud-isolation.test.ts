@@ -7,8 +7,8 @@
  * of A's, A's database must be byte-for-byte unchanged afterwards, and every route under /api of the running
  * app must be in the document (so a new route cannot escape the sweep). Then the targeted cases of the design.
  */
-import { readdirSync } from "node:fs";
-import { join } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { controlSchema } from "@glideworth/cloud";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -600,6 +600,24 @@ describe("T-ISO targeted cases", () => {
     });
     expect(r.json.issuer).toBe(PUBLIC_URL);
     expect(r.text).not.toContain("evil.example");
+  });
+});
+
+// ------------------------------------------------------------------------------------- site operation count
+describe("the marketing site's API operation count", () => {
+  it("is this document's (the hosted service: cloud mode with Google sign-in)", async () => {
+    const doc = (await (await fetch(`${cloud.base}/openapi.json`)).json()) as Record<
+      string,
+      unknown
+    >;
+    const facts = readFileSync(
+      resolve(import.meta.dirname, "..", "..", "site", "src", "lib", "facts.ts"),
+      "utf8",
+    );
+    const stated = Number(facts.match(/apiOperations:\s*(\d+)/)?.[1]);
+    expect(stated, "update apiOperations in apps/site/src/lib/facts.ts").toBe(
+      operations(doc).length,
+    );
   });
 });
 

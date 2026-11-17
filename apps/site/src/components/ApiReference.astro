@@ -6,7 +6,6 @@
  * request to any other origin.
  */
 import raw from '../data/openapi.json?raw';
-import { facts } from '../lib/facts';
 
 type Schema = Record<string, unknown> | undefined;
 interface Param {
@@ -48,13 +47,6 @@ for (const [path, item] of Object.entries(doc.paths)) {
     if (methodRank(method) >= 0) rows.push({ method, path, op });
   }
 }
-if (rows.length !== facts.apiOperations) {
-  throw new Error(
-    `src/data/openapi.json has ${rows.length} operations but facts.apiOperations is ${facts.apiOperations}. ` +
-      'Run `pnpm --filter @glideworth/site snapshot:openapi` and update src/lib/facts.ts.',
-  );
-}
-
 /** "#/components/schemas/Plan" -> "Plan"; arrays, unions and plain types described in a few words. */
 function label(schema: Schema): string {
   if (!schema) return 'no body';

@@ -15,11 +15,14 @@ import '@fontsource-variable/fraunces/opsz-italic.css';
 import '../styles/global.css';
 import frauncesUrl from '@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2?url';
 import interUrl from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
+import ConsentBanner from '../components/ConsentBanner.astro';
 import Footer from '../components/Footer.astro';
 import GoogleTagManager from '../components/GoogleTagManager.astro';
 import Header from '../components/Header.astro';
+import { PUBLIC_GTM_ID } from 'astro:env/server';
 import SEO, { type SeoProps } from '../components/SEO.astro';
 import { site } from '../config/site';
+import { googleTagManagerOnPath } from '../lib/gtm';
 
 interface Props extends Omit<SeoProps, 'canonicalPath'> {
   /** Site path of this page (from page()), used as the canonical path. */
@@ -39,6 +42,8 @@ const {
   ogEyebrow: _ogEyebrow,
   ...seo
 } = Astro.props;
+// The consent banner only where the tag loads: a build with PUBLIC_GTM_ID, outside /tools/.
+const showConsent = googleTagManagerOnPath(Astro.url.pathname, PUBLIC_GTM_ID) !== undefined;
 ---
 
 <!doctype html>
@@ -46,7 +51,7 @@ const {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <GoogleTagManager where="head" />
+    <GoogleTagManager />
     <script is:inline>
       // Before first paint: the visitor's theme choice, and a flag that JavaScript runs.
       document.documentElement.classList.add('js');
@@ -71,12 +76,12 @@ const {
     <slot name="head" />
   </head>
   <body>
-    <GoogleTagManager where="body" />
     <a class="skip-link" href="#main">Skip to content</a>
     <Header />
     <main id="main" tabindex="-1">
       <slot />
     </main>
     <Footer />
+    {showConsent && <ConsentBanner />}
   </body>
 </html>

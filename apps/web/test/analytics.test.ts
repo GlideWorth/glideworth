@@ -1,6 +1,9 @@
 import type { CaptureResult } from "posthog-js";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { scrubEvent, scrubUrl } from "../src/lib/analytics";
+
+const posthogMock = vi.hoisted(() => ({ __loaded: false, captureException: vi.fn() }));
+vi.mock("posthog-js", () => ({ default: posthogMock }));
 
 describe("scrubUrl", () => {
   it("drops the query string and fragment", () => {
@@ -54,5 +57,43 @@ describe("scrubEvent", () => {
 
   it("passes null through", () => {
     expect(scrubEvent(null)).toBeNull();
+  });
+});
+
+describe("reportError", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+    posthogMock.captureException.mockClear();
+    posthogMock.__loaded = false;
+  });
+
+  /** The module reads the PostHog env at import, so load a fresh copy after stubbing it. */
+  async function load(withPostHog: boolean) {
+    vi.resetModules();
+    vi.stubEnv("VITE_PUBLIC_POSTHOG_PROJECT_TOKEN", withPostHog ? "phc_test" : "");
+    vi.stubEnv("VITE_PUBLIC_POSTHOG_HOST", withPostHog ? "https://us.i.posthog.com" : "");
+    return (await import("../src/lib/analytics")).reportError;
+  }
+
+  it("sends a caught error to PostHog on the hosted build", async () => {
+    const reportError = await load(true);
+    posthogMock.__loaded = true;
+    const err = new Error("boom");
+    reportError(err);
+    expect(posthogMock.captureException).toHaveBeenCalledWith(err);
+  });
+
+  it("does nothing without PostHog (self-host and local builds)", async () => {
+    const reportError = await load(false);
+    posthogMock.__loaded = true;
+    reportError(new Error("boom"));
+    expect(posthogMock.captureException).not.toHaveBeenCalled();
+  });
+
+  it("does nothing before PostHog has started", async () => {
+    const reportError = await load(true);
+    reportError(new Error("boom"));
+    expect(posthogMock.captureException).not.toHaveBeenCalled();
   });
 });

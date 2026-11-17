@@ -148,6 +148,9 @@ export function createApp(opts: AppOptions) {
   app.use("*", async (c, next) => {
     await next();
     c.header("X-Content-Type-Options", "nosniff");
+    // The app host is never a search result, hosted or self-hosted: the SPA shell, JSON errors, /docs and
+    // /openapi.json included. The marketing site (apps/site) is served elsewhere and is indexable (issue #20).
+    c.header("X-Robots-Tag", "noindex, nofollow");
     // The OAuth consent page posts back to this origin. Under "no-referrer" Chrome sends `Origin: null` on that
     // form post, which the same-origin check must refuse, so consent could never be given.
     c.header("Referrer-Policy", c.req.path.startsWith("/oauth/") ? "same-origin" : "no-referrer");
@@ -259,6 +262,8 @@ export function createApp(opts: AppOptions) {
   opts.beforeRoutes?.(app);
 
   // ------------------------------------------------------------------------- public
+  // Disallow-all for crawlers. A route rather than a file in the web build, so an API-only process answers it too.
+  app.get("/robots.txt", (c) => c.text("User-agent: *\nDisallow: /\n"));
   app.get("/health", (c) =>
     c.json({ status: "ok", engineVersion: ENGINE_VERSION, schemaVersion: SCHEMA_VERSION }),
   );
@@ -334,6 +339,9 @@ export function createApp(opts: AppOptions) {
   });
   if (cloud) app.get("/docs", cloud.docs);
   else app.get("/docs", Scalar({ url: "/openapi.json", pageTitle: "Glideworth API" }));
+  // `/docs/` is not a page of its own: it fell through to the SPA shell, which the proxy then served with
+  // the docs-only CSP, so it rendered blank (issue #11). Send it to the real page, keeping the query.
+  app.get("/docs/", (c) => c.redirect(`/docs${new URL(c.req.url).search}`, 308));
 
   // ------------------------------------------------------------------------- auth + cross-cutting
   const limiter = rateLimit(

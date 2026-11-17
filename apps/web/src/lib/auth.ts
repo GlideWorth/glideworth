@@ -324,6 +324,7 @@ export const CLOUD_PUBLIC_PATHS = [
   "/signup/google",
   "/forgot-password",
   "/reset-password",
+  "/set-password",
   "/invite",
   "/confirm-email",
 ];

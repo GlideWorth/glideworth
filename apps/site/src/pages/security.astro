@@ -172,7 +172,7 @@ const trackerBody = googleTagManagerId(PUBLIC_GTM_ID)
   </Section>
 
   <Section id="self-hosted" eyebrow="Self-hosted" title="What the software does today." intro="Taken from the code and its tests, not from intentions." tone="raised">
-    <div class="tablewrap" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
+    <div class="table-scroll tablewrap" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
       <table>
         <caption class="visually-hidden">Security measures in the self-hosted software</caption>
         <thead><tr><th scope="col">Measure</th><th scope="col">What it means</th><th scope="col">Status</th></tr></thead>
@@ -211,7 +211,7 @@ const trackerBody = googleTagManagerId(PUBLIC_GTM_ID)
         </Callout>
       )
     }
-    <div class="tablewrap" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
+    <div class="table-scroll tablewrap" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
       <table>
         <caption class="visually-hidden">Security measures designed for the hosted service</caption>
         <thead><tr><th scope="col">Measure</th><th scope="col">The design</th><th scope="col">Status</th></tr></thead>
@@ -259,7 +259,7 @@ const trackerBody = googleTagManagerId(PUBLIC_GTM_ID)
       steps to reproduce with synthetic data, and what an attacker gains. Do not send real financial data or live
       credentials.
     </p>
-    <div class="tablewrap" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
+    <div class="table-scroll tablewrap" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
       <table>
         <caption>What to expect</caption>
         <tbody>
@@ -281,9 +281,11 @@ const trackerBody = googleTagManagerId(PUBLIC_GTM_ID)
 </PageLayout>
 
 <style>
+  /* Overflow and the scroll shadows come from the global .table-scroll. These cells are
+     sentences, so the tables wrap to the column rather than scroll at phone width. */
   .tablewrap {
-    overflow-x: auto;
     margin-block: var(--space-m);
+    --table-min-width: 100%;
   }
   table {
     width: 100%;
@@ -306,6 +308,15 @@ const trackerBody = googleTagManagerId(PUBLIC_GTM_ID)
   tbody th {
     font-weight: 620;
     min-width: 10rem;
+  }
+  @media (max-width: 40rem) {
+    tbody th {
+      min-width: 6rem;
+      hyphens: auto;
+    }
+    :is(th, td):last-child {
+      padding-right: 0;
+    }
   }
   thead th {
     font-weight: 650;

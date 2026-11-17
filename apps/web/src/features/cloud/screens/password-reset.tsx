@@ -1,6 +1,11 @@
 /**
  * Forgot password (always answers neutrally) and reset password (the token arrives in the URL fragment).
  * A reset signs the person in, except that an account with two-step sign-in still asks for the code.
+ *
+ * `/set-password` is the same form for an account that signed up with Google and has no password yet (the
+ * link from "Confirm it is you", reauth-dialog.tsx). It returns to the settings section the person started
+ * from, and when the server says the new session counts as re-authenticated it tells the tab that is still
+ * waiting (lib/reauth.ts `announceReauth`), so the change started there goes ahead.
  */
 import { Link, useNavigate } from "@tanstack/react-router";
 import { KeyRound, Loader2, Send } from "lucide-react";
@@ -8,6 +13,7 @@ import { type FormEvent, useState } from "react";
 import { PassField } from "../../../components/layout/auth-gate";
 import { Button } from "../../../components/ui/button";
 import { useSession } from "../../../lib/auth";
+import { announceReauth } from "../../../lib/reauth";
 import { cloudApi } from "../client";
 import { useFragmentToken } from "../fragment";
 import { PASSWORD_RULES, passwordProblem } from "../password-rules";
@@ -134,7 +140,11 @@ export function ForgotPasswordPage() {
   );
 }
 
-export function ResetPasswordPage() {
+export function SetPasswordPage() {
+  return <ResetPasswordPage setup />;
+}
+
+export function ResetPasswordPage({ setup = false }: { setup?: boolean }) {
   const token = useFragmentToken();
   const navigate = useNavigate();
   const finish = useFinishSignIn();
@@ -145,17 +155,23 @@ export function ResetPasswordPage() {
   const [dead, setDead] = useState(false);
   const [busy, setBusy] = useState(false);
   /** Set once the server accepted the new password: what the success screen's button does next. */
-  const [done, setDone] = useState<{ redirectTo?: string; twoStep: boolean } | null>(null);
+  const [done, setDone] = useState<{
+    redirectTo?: string;
+    twoStep: boolean;
+    recentAuth?: boolean;
+  } | null>(null);
   const { ref, failed } = useErrorFocus();
 
   if (done)
     return (
       <AuthLayout
-        title="Your password was reset"
+        title={setup ? "Your password is set" : "Your password was reset"}
         subtitle={
           done.twoStep
             ? "Next, enter the code from your authenticator app to sign in."
-            : "You are signed in. Other browsers were signed out."
+            : done.recentAuth
+              ? "You are signed in and can go on with the change you started. If you started it in another tab, it carries on there."
+              : "You are signed in. Other browsers were signed out."
         }
       >
         <div className={authCard}>
@@ -170,7 +186,9 @@ export function ResetPasswordPage() {
             // oxlint-disable-next-line jsx-a11y/no-autofocus -- the only action on a single-purpose screen
             autoFocus
             onClick={() =>
-              void (done.twoStep ? navigate({ to: "/signin/2fa" }) : finish(done.redirectTo, "/"))
+              void (done.twoStep
+                ? navigate({ to: "/signin/2fa" })
+                : finish(done.redirectTo, setup ? "/settings/security" : "/"))
             }
           >
             Continue
@@ -185,12 +203,20 @@ export function ResetPasswordPage() {
         title="This link will not work"
         subtitle={
           token
-            ? "The reset link has expired or was already used."
+            ? setup
+              ? "The link has expired or was already used."
+              : "The reset link has expired or was already used."
             : "This page needs the full link from your email. Open the link again, or ask for a new one."
         }
       >
         <Button variant="primary" size="lg" className="w-full" asChild>
-          <Link to="/forgot-password">Send a new reset link</Link>
+          {setup ? (
+            <Link to="/settings/$section" params={{ section: "security" }}>
+              Ask for a new link in Security settings
+            </Link>
+          ) : (
+            <Link to="/forgot-password">Send a new reset link</Link>
+          )}
         </Button>
       </AuthLayout>
     );
@@ -209,11 +235,22 @@ export function ResetPasswordPage() {
     try {
       const r = await cloudApi.resetPassword(token, password);
       if (r.status === "totp-required" && r.challenge) {
-        setChallenge({ token: r.challenge, next: "/" });
+        // The code step re-authenticates the new session; a waiting tab is told only when the server says this
+        // browser's session is the one that asked for the link.
+        setChallenge({
+          token: r.challenge,
+          next: r.redirectTo ?? "/",
+          announceReauth: setup && r.recentAuth === true,
+        });
         setDone({ twoStep: true });
         return;
       }
-      setDone({ twoStep: false, ...(r.redirectTo ? { redirectTo: r.redirectTo } : {}) });
+      if (r.recentAuth) announceReauth();
+      setDone({
+        twoStep: false,
+        ...(r.redirectTo ? { redirectTo: r.redirectTo } : {}),
+        ...(r.recentAuth ? { recentAuth: true } : {}),
+      });
     } catch (err) {
       if (isCode(err, "INVALID_TOKEN")) return setDead(true);
       if (isCode(err, "WEAK_PASSWORD")) setErrors({ password: describeError(err) });
@@ -225,12 +262,16 @@ export function ResetPasswordPage() {
 
   return (
     <AuthLayout
-      title="Choose a new password"
-      subtitle="You will be signed out everywhere else, and apps you connected by signing in (such as AI assistants) are disconnected; API keys keep working. If two-step sign-in is on, you will still need your code."
+      title={setup ? "Set a password" : "Choose a new password"}
+      subtitle={
+        setup
+          ? "Choose a password for your Glideworth account. You can still sign in with Google. Other browsers will be signed out, and apps you connected by signing in (such as AI assistants) are disconnected; API keys keep working. If two-step sign-in is on, you will still need your code."
+          : "You will be signed out everywhere else, and apps you connected by signing in (such as AI assistants) are disconnected; API keys keep working. If two-step sign-in is on, you will still need your code."
+      }
     >
       <form ref={ref} onSubmit={submit} className={authCard} noValidate>
         <PassField
-          label="New password"
+          label={setup ? "Password" : "New password"}
           noun="password"
           name="new-password"
           value={password}
@@ -243,7 +284,7 @@ export function ResetPasswordPage() {
         />
         <StrengthMeter password={password} />
         <PassField
-          label="Confirm new password"
+          label={setup ? "Confirm password" : "Confirm new password"}
           noun="password"
           name="confirm-password"
           value={confirm}
@@ -254,7 +295,7 @@ export function ResetPasswordPage() {
         {formError ? <FormAlert>{formError}</FormAlert> : null}
         <Button type="submit" variant="primary" size="lg" disabled={busy}>
           {busy ? <Loader2 className="animate-spin" /> : <KeyRound />}
-          Set password and sign in
+          {setup ? "Set password" : "Set password and sign in"}
         </Button>
       </form>
     </AuthLayout>

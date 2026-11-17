@@ -1,8 +1,9 @@
-import { existsSync, readFileSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import mdx from "@astrojs/mdx";
 import sitemap from "@astrojs/sitemap";
+import type { AstroIntegration } from "astro";
 import { defineConfig, envField } from "astro/config";
 import { defaultClientConditions, defaultServerConditions, type Plugin } from "vite";
 import { site } from "./src/config/site";
@@ -19,6 +20,26 @@ function isIndexable(page: string): boolean {
   const file = join(outDir, path, path.endsWith("/") ? "index.html" : "");
   if (!existsSync(file)) return true;
   return !/<meta name="robots" content="[^"]*noindex/.test(readFileSync(file, "utf8"));
+}
+
+/**
+ * Serves the sitemap index at the conventional /sitemap.xml too (issue #22): many crawlers and SEO tools
+ * only try that URL, and @astrojs/sitemap writes sitemap-index.xml. An Astro `redirects` entry would emit
+ * an HTML meta-refresh page, not an HTTP redirect, so a crawler would get HTML at sitemap.xml; a Caddy
+ * redirect would only reach production with the next app deploy, not with deploy-site.sh. A copy of the
+ * integration's own output ships with the site, is served as XML by any static host and cannot drift.
+ * It must come after sitemap() in `integrations`: their build:done hooks run in that order.
+ */
+function sitemapAlias(): AstroIntegration {
+  return {
+    name: "glideworth:sitemap-alias",
+    hooks: {
+      "astro:build:done": ({ dir }) => {
+        const out = fileURLToPath(dir);
+        copyFileSync(join(out, "sitemap-index.xml"), join(out, "sitemap.xml"));
+      },
+    },
+  };
 }
 
 /**
@@ -70,7 +91,7 @@ export default defineConfig({
   // No telemetry from the dev toolbar either; the scripts also set ASTRO_TELEMETRY_DISABLED.
   devToolbar: { enabled: false },
   prefetch: false,
-  integrations: [mdx(), sitemap({ filter: isIndexable })],
+  integrations: [mdx(), sitemap({ filter: isIndexable }), sitemapAlias()],
   markdown: {
     shikiConfig: {
       themes: { light: shikiLight, dark: shikiDark },

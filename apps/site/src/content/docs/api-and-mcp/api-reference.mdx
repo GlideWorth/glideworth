@@ -3,15 +3,18 @@ title: API reference
 description: Every Glideworth REST API operation by group, with method, path, summary, required key scope, parameters and the request and response schema names.
 section: API and MCP
 order: 18
-lastChecked: 2026-11-16
+lastChecked: 2026-11-17
 ---
 
 import ApiReference from '../../../components/ApiReference.astro';
 import Callout from '../../../components/Callout.astro';
+import { facts } from '../../../lib/facts';
 
 This page lists every operation in the OpenAPI 3.1 document that the Glideworth server generates from its own route
-definitions. It is plain HTML, so you can search all of it with your browser's find command. Conventions that apply to
-every call (units, errors, pagination, idempotency, concurrency) are on
+definitions for a self-hosted server: {facts.apiOperationsSelfHost} operations. The hosted service's document
+(`https://app.glideworth.com/openapi.json`) has {facts.apiOperations}: it replaces the self-hosted user and passphrase
+routes with account, workspace, billing and sign-in routes. This page is plain HTML, so you can search all of it with
+your browser's find command. Conventions that apply to every call (units, errors, pagination, idempotency, concurrency) are on
 [REST API overview and conventions](/docs/api-and-mcp/api-overview/); keys and scopes are on
 [API authentication, scopes and roles](/docs/api-and-mcp/api-authentication/).
 

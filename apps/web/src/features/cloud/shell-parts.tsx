@@ -3,6 +3,7 @@
  * `cloud`): the trial and read-only banners, the workspace switcher, the start-trial page, the
  * suspended-workspace page and the re-authentication prompt.
  */
+import { usePostHog } from "@posthog/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { CircleAlert, Clock, CreditCard, Loader2, Lock, LogOut } from "lucide-react";
@@ -216,11 +217,17 @@ export function StartTrialPage() {
     retry: false,
   });
   const [error, setError] = useState<string | null>(null);
+  const posthog = usePostHog();
   const checkout = useMutation({
     mutationFn: (lookupKey: string) => cloudApi.checkout(lookupKey),
     onMutate: () => setError(null),
-    onSuccess: (r) => {
-      if (!goToStripe(r.url)) setError("Checkout sent an address we did not recognise.");
+    onSuccess: (r, lookupKey) => {
+      if (goToStripe(r.url)) {
+        const interval = billing.data?.offered?.find((o) => o.lookupKey === lookupKey)?.interval;
+        posthog?.capture("billing_checkout_started", {
+          ...(interval ? { billing_interval: interval } : {}),
+        });
+      } else setError("Checkout sent an address we did not recognise.");
     },
     onError: (e) => {
       if (isCode(e, "ALREADY_SUBSCRIBED") || isCode(e, "CHECKOUT_IN_PROGRESS")) {

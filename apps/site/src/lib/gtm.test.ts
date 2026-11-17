@@ -88,12 +88,22 @@ describe("the tag is not hardcoded", () => {
       "utf8",
     );
     expect(loader).toContain("https://www.googletagmanager.com/gtm.js?id=");
-    expect(loader).toContain("https://www.googletagmanager.com/ns.html?id=");
+    // No noscript iframe: without JavaScript the consent banner cannot ask, so nothing loads from Google.
+    expect(loader).not.toContain("ns.html");
+    expect(loader).not.toContain("<noscript");
+    expect(loader).not.toContain('ad_storage: "granted"');
     expect(loader).toContain('gtag("consent", "default"');
     expect(loader).toContain('ad_storage: "denied"');
     expect(loader).toContain('ad_user_data: "denied"');
     expect(loader).toContain('ad_personalization: "denied"');
     expect(loader).toContain('analytics_storage: "denied"');
+    // gtm.js waits for the page's load event and an idle moment, so it stays off the critical path,
+    // and the consent defaults are pushed before it is ever requested.
+    expect(loader).toContain('window.addEventListener("load", whenIdle, { once: true })');
+    expect(loader).toContain("requestIdleCallback(loadTag");
+    expect(loader.indexOf('gtag("consent", "default"')).toBeLessThan(
+      loader.indexOf("function loadTag"),
+    );
     const web = walk(join(repo, "apps/web"))
       .filter((file) => /\.(ts|tsx|html)$/.test(file))
       .filter((file) => /googletagmanager|gtag\(/.test(readFileSync(file, "utf8")));

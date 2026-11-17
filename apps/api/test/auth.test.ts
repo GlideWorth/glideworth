@@ -409,6 +409,28 @@ describe("serving the built web app (one process, one port)", () => {
     expect(root.headers.get("x-content-type-options")).toBe("nosniff");
   });
 
+  it("keeps the app host out of search engines: disallow-all robots.txt and X-Robots-Tag everywhere (issue #20)", async () => {
+    h = setup({ appOptions: { webDist: distDir() } });
+    const robots = await h.call("/robots.txt", { key: null });
+    expect(robots.status).toBe(200);
+    expect(robots.headers.get("content-type")).toMatch(/^text\/plain/);
+    expect(robots.text).toBe("User-agent: *\nDisallow: /\n");
+    for (const p of [
+      "/",
+      "/signup",
+      "/settings/billing",
+      "/assets/app-abc123.js",
+      "/assets/missing.js",
+      "/health",
+      "/openapi.json",
+      "/docs",
+      "/robots.txt",
+    ]) {
+      const r = await h.call(p, { key: null });
+      expect(r.headers.get("x-robots-tag"), p).toBe("noindex, nofollow");
+    }
+  });
+
   it("answers conditional requests with 304 and 404s a missing asset instead of serving the shell", async () => {
     h = setup({ appOptions: { webDist: distDir() } });
     const first = await h.call("/assets/app-abc123.js", { key: null });
@@ -432,6 +454,16 @@ describe("serving the built web app (one process, one port)", () => {
     expect(unknownAuthed.status).toBe(404);
     expect(unknownAuthed.json.error.code).toBe("NOT_FOUND");
     expect((await h.call("/mcp", { key: null, method: "POST", body: {} })).status).toBe(401);
+  });
+
+  it("redirects /docs/ to /docs instead of serving the SPA shell (issue #11)", async () => {
+    h = setup({ appOptions: { webDist: distDir() } });
+    const slash = await h.call("/docs/", { key: null });
+    expect(slash.status).toBe(308);
+    expect(slash.headers.get("location")).toBe("/docs");
+    expect(slash.text).not.toContain('<div id="root">');
+    const withQuery = await h.call("/docs/?x=1", { key: null });
+    expect(withQuery.headers.get("location")).toBe("/docs?x=1");
   });
 
   it("cannot be tricked into reading files outside the web directory", async () => {

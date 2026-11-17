@@ -96,6 +96,7 @@ describe("self-host (no `mode` in the status answer)", () => {
     "/verify-email",
     "/forgot-password",
     "/reset-password",
+    "/set-password",
     "/invite",
     "/confirm-email",
     "/signin/2fa",
@@ -150,6 +151,26 @@ describe("cloud", () => {
     stubFetch({ mode: "cloud", authenticated: false });
     await open("/signup");
     expect(await screen.findByRole("heading", { name: "Create your account" })).toBeTruthy();
+  });
+
+  it.each(["/sign-up", "/register"])(
+    "%s goes to sign-up, keeping the query (issue #14)",
+    async (path) => {
+      stubFetch({ mode: "cloud", authenticated: false });
+      await open(`${path}?next=%2Finvite%3Ftoken%3Dabc&ref=docs`);
+      expect(await screen.findByRole("heading", { name: "Create your account" })).toBeTruthy();
+      expect(router.state.location.pathname).toBe("/signup");
+      expect(router.state.location.search).toEqual({ next: "/invite?token=abc", ref: "docs" });
+      expect(screen.queryByRole("heading", { name: "Welcome back" })).toBeNull();
+    },
+  );
+
+  it.each(["/sign-in", "/login"])("%s goes to sign-in, keeping the query", async (path) => {
+    stubFetch({ mode: "cloud", authenticated: false });
+    await open(`${path}?next=%2Fplans`);
+    expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeTruthy();
+    expect(router.state.location.pathname).toBe("/signin");
+    expect(router.state.location.search).toEqual({ next: "/plans" });
   });
 
   it("settings show Account, Security, Workspace, Members and Billing, and hide People & access", async () => {

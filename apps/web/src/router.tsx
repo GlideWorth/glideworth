@@ -2,10 +2,11 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  redirect,
   type RouterHistory,
 } from "@tanstack/react-router";
 import { AppShell } from "./components/layout/app-shell";
-import { Analytics } from "./lib/analytics";
+import { Analytics, reportError } from "./lib/analytics";
 import { NotFound, PagePending, RouteError } from "./components/layout/route-states";
 import { DashboardPage } from "./features/dashboard/dashboard-page";
 import { InsightsPage } from "./features/insights/insights-page";
@@ -35,6 +36,7 @@ import {
   PlanEditorPage,
   PlansPage,
   ResetPasswordPage,
+  SetPasswordPage,
   SettingsPage,
   SetupPage,
   SharedPlanPage,
@@ -199,6 +201,12 @@ const routeReset = createRoute({
   path: "/reset-password",
   component: cloudOnly(ResetPasswordPage),
 });
+// A first password for an account that signed up with Google (the emailed link from "Confirm it is you").
+const routeSetPassword = createRoute({
+  getParentRoute: () => root,
+  path: "/set-password",
+  component: cloudOnly(SetPasswordPage),
+});
 const routeInvite = createRoute({
   getParentRoute: () => root,
   path: "/invite",
@@ -229,6 +237,29 @@ const routeGoogleLink = createRoute({
   component: cloudOnly(GoogleLinkPage),
 });
 
+// Spellings people type or link to for the two auth pages. Each sends the browser on to the real page,
+// keeping the query (an invitation's `next`, `?deleted=1`) and hash, and replacing the alias in history.
+// Without these, a signed-out visitor on an unknown path is sent to sign-in, so `/sign-up` showed sign-in.
+const alias = (path: string, to: "/signup" | "/signin") =>
+  createRoute({
+    getParentRoute: () => root,
+    path,
+    beforeLoad: ({ location }) => {
+      throw redirect({
+        to,
+        search: location.search as Record<string, unknown>,
+        hash: location.hash,
+        replace: true,
+      });
+    },
+  });
+const authAliases = [
+  alias("/sign-up", "/signup"),
+  alias("/register", "/signup"),
+  alias("/sign-in", "/signin"),
+  alias("/login", "/signin"),
+];
+
 const routeTree = root.addChildren([
   route0,
   route1,
@@ -258,11 +289,13 @@ const routeTree = root.addChildren([
   routeTwoFactor,
   routeForgot,
   routeReset,
+  routeSetPassword,
   routeInvite,
   routeConfirmEmail,
   routeGoogleSignUp,
   routeGoogleExists,
   routeGoogleLink,
+  ...authAliases,
 ]);
 
 /** The app's router. `history` is only given by tests (a memory history); the app uses the browser's. */
@@ -273,6 +306,8 @@ export const createAppRouter = (history?: RouterHistory) =>
     defaultPreload: "intent",
     // (i) route-level error boundary, 404 and loading skeleton, rendered inside the app shell.
     defaultErrorComponent: RouteError,
+    // That boundary catches a page's errors before PostHog's (lib/analytics), so report them from here.
+    defaultOnCatch: reportError,
     defaultNotFoundComponent: NotFound,
     defaultPendingComponent: PagePending,
     defaultPendingMs: 150,

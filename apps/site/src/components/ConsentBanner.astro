@@ -1,0 +1,180 @@
+---
+/**
+ * The analytics consent banner. BaseLayout renders it only on pages that load Google Tag Manager (a build
+ * with PUBLIC_GTM_ID, outside `/tools/`), so a self-hosted build and the calculators never show it or load
+ * its script.
+ *
+ * It asks once, with "Accept analytics" and "Reject" given the same weight, and remembers the answer in
+ * local storage for CONSENT_MAX_AGE_DAYS (src/lib/consent.ts). Accepting grants Consent Mode's
+ * analytics_storage only; advertising storage stays denied. The "Cookie settings" button in the footer
+ * reopens it. It starts hidden, so without JavaScript (when nothing loads from Google) it never shows.
+ */
+---
+
+<section class="consent" data-consent-banner hidden aria-labelledby="consent-title">
+  <div class="consent-body">
+    <h2 id="consent-title" class="consent-title">Analytics cookies</h2>
+    <p>
+      We would like to use Google Analytics cookies to see which pages people visit. They are set only if you
+      accept. We never use advertising cookies, and the calculators and the app do not load Google at all.
+      <a href="/legal/cookies/">Cookie policy</a>.
+    </p>
+  </div>
+  <div class="consent-actions">
+    <button type="button" class="consent-btn" data-consent-choice="denied">Reject</button>
+    <button type="button" class="consent-btn" data-consent-choice="granted">Accept analytics</button>
+  </div>
+</section>
+
+<script>
+  import { CONSENT_KEY, readConsent, writeConsent, type AnalyticsChoice } from '../lib/consent';
+
+  const banner = document.querySelector<HTMLElement>('[data-consent-banner]');
+  if (banner) {
+    const w = window as unknown as { dataLayer?: unknown[] };
+    // Consent commands must be pushed as an arguments object, exactly as gtag() does.
+    function gtag(..._args: unknown[]) {
+      (w.dataLayer ??= []).push(arguments);
+    }
+
+    // While the banner shows, the page keeps a bottom padding as tall as the banner, so the end of
+    // every page can still be scrolled clear of it.
+    const root = document.documentElement;
+    const reserve = () => {
+      root.style.setProperty('--consent-space', banner.hidden ? '0px' : `${banner.offsetHeight}px`);
+    };
+    new ResizeObserver(reserve).observe(banner);
+    const show = () => {
+      banner.hidden = false;
+      reserve();
+    };
+    const hide = () => {
+      banner.hidden = true;
+      reserve();
+    };
+
+    let stored: string | null = null;
+    try {
+      stored = localStorage.getItem(CONSENT_KEY);
+    } catch {
+      // Storage blocked: ask on every page, and the answer lasts for this page only.
+    }
+    // The first show waits for the web fonts, so the banner's text does not rewrap (a layout shift)
+    // when Inter swaps in over the fallback font. A choice made meanwhile (through "Cookie settings")
+    // stands.
+    let answered = false;
+    if (!readConsent(stored, Date.now())) {
+      const ask = () => {
+        if (!answered) show();
+      };
+      if ('fonts' in document) document.fonts.ready.then(ask, ask);
+      else ask();
+    }
+
+    for (const button of banner.querySelectorAll<HTMLButtonElement>('[data-consent-choice]')) {
+      button.addEventListener('click', () => {
+        const choice = button.dataset.consentChoice as AnalyticsChoice;
+        try {
+          localStorage.setItem(CONSENT_KEY, writeConsent(choice, Date.now()));
+        } catch {
+          // See above.
+        }
+        gtag('consent', 'update', { analytics_storage: choice });
+        answered = true;
+        hide();
+      });
+    }
+
+    for (const open of document.querySelectorAll<HTMLButtonElement>('[data-consent-open]')) {
+      open.hidden = false;
+      open.addEventListener('click', () => {
+        show();
+        banner.querySelector<HTMLButtonElement>('[data-consent-choice]')?.focus();
+      });
+    }
+  }
+</script>
+
+<style>
+  /* A dock along the bottom edge, not a card over the page: one short row on wide screens, and on
+     phones a full-width bar low enough to leave the hero's call to action in view. */
+  :global(body) {
+    padding-block-end: var(--consent-space, 0px);
+  }
+  .consent {
+    position: fixed;
+    inset-inline: 0;
+    inset-block-end: 0;
+    z-index: 50;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2xs) var(--space-m);
+    max-block-size: 50vh;
+    overflow-y: auto;
+    padding: var(--space-xs) var(--gutter);
+    padding-block-end: max(var(--space-xs), env(safe-area-inset-bottom));
+    border-block-start: 1px solid var(--line-strong);
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: var(--shadow-2);
+    font-size: var(--text-xs);
+    line-height: 1.45;
+  }
+  .consent[hidden] {
+    display: none;
+  }
+  .consent-body {
+    flex: 1 1 22rem;
+    max-width: 52rem;
+  }
+  .consent-title {
+    display: inline;
+    margin: 0;
+    margin-inline-end: 0.4em;
+    font-family: var(--font-sans);
+    font-size: inherit;
+    font-weight: 600;
+  }
+  .consent-body p {
+    display: inline;
+    margin: 0;
+    color: var(--ink-2);
+  }
+  .consent-body a {
+    color: var(--accent-text);
+  }
+  .consent-actions {
+    display: flex;
+    flex: 0 0 auto;
+    gap: var(--space-xs);
+  }
+  .consent-btn {
+    min-height: 2.75rem;
+    padding: 0.45rem 1rem;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-m);
+    background: var(--surface-2);
+    color: var(--ink);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .consent-btn:hover {
+    border-color: var(--ink-3);
+  }
+  .consent-btn:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  @media (max-width: 40rem) {
+    .consent-actions {
+      flex: 1 1 100%;
+    }
+    .consent-btn {
+      flex: 1 1 0;
+    }
+  }
+</style>

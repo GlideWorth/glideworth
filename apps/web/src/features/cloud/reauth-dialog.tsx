@@ -3,25 +3,46 @@
  * (or authenticator code) check made within the last 10 minutes; once it passes, the action that was
  * refused runs again.
  *
- * A Google sign-in is not such a check (packages/cloud: Google cannot be asked to confirm a recent
- * sign-in). An account without a password confirms with an authenticator code when it has one; otherwise
- * it is offered the emailed link that sets a first password, which is itself a fresh check of the inbox.
+ * A Google sign-in is not such a check (packages/cloud: Google does not let us ask for a fresh sign-in or
+ * tell us when the last one happened). An account without a password confirms with an authenticator code
+ * when it has one; otherwise it is offered the emailed link that sets a first password. That link remembers
+ * this page's settings section and this session: finished in this browser, it counts as the check, and the
+ * set-password tab tells this one (lib/reauth.ts `onReauthAnnounced`), so the refused change runs again here
+ * without starting over.
  */
+import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Mail } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { PassField } from "../../components/layout/auth-gate";
 import { Button } from "../../components/ui/button";
 import { Dialog, DialogContent } from "../../components/ui/dialog";
-import { useCloudSession } from "../../lib/auth";
-import { settleReauth, useReauthOpen } from "../../lib/reauth";
+import { type SessionState, useCloudSession } from "../../lib/auth";
+import { onReauthAnnounced, settleReauth, useReauthOpen } from "../../lib/reauth";
 import { cloudApi } from "./client";
 import { describeError, Notice, TextField, useErrorFocus } from "./ui";
 
 export function ReauthHost() {
   const open = useReauthOpen();
+  const qc = useQueryClient();
   const user = useCloudSession()?.user;
   const password = user?.password !== false;
   const totp = user?.totp === true;
+  // Another tab finished the check (the emailed set-password link): run the refused change again, but only if
+  // this browser is still signed in as the same person (the message itself proves nothing). If the server
+  // disagrees about the check, the change fails with a message as usual.
+  const userId = user?.id;
+  useEffect(() => {
+    if (!open || !userId) return;
+    return onReauthAnnounced(() => {
+      void (async () => {
+        await qc.refetchQueries({ queryKey: ["session"] });
+        void qc.invalidateQueries({ queryKey: ["cloud", "profile"] });
+        const now = qc.getQueryData<SessionState>(["session"]);
+        const same = now?.kind === "authenticated" && now.cloud?.user.id === userId;
+        settleReauth(same);
+      })();
+    });
+  }, [open, userId, qc]);
   return (
     <Dialog open={open} onOpenChange={(o) => !o && settleReauth(false)}>
       {open ? (
@@ -32,7 +53,7 @@ export function ReauthHost() {
               ? "This change needs a recent check. Enter your password to continue."
               : totp
                 ? "This change needs a recent check. Enter the code from your authenticator app."
-                : "This change needs a recent check, and your account has no password yet."
+                : "This change needs a recent check. Your account signs in with Google and has no password yet."
           }
         >
           {password || totp ? <ReauthForm /> : <SetPasswordFirst email={user?.email ?? ""} />}
@@ -51,7 +72,8 @@ function SetPasswordFirst({ email }: { email: string }) {
     setBusy(true);
     setError(null);
     try {
-      await cloudApi.passwordSetup();
+      // Where to come back to; the server keeps only a settings section.
+      await cloudApi.passwordSetup(window.location.pathname);
       setSent(true);
     } catch (err) {
       setError(describeError(err));
@@ -61,11 +83,16 @@ function SetPasswordFirst({ email }: { email: string }) {
   return (
     <div className="flex flex-col gap-4">
       <p className="text-[13px] text-ink-2">
-        Signing in with Google does not count as this check. Set a password first: we email a link
-        to {email || "your address"}. After you choose the password, sign in again and repeat this
-        change.
+        To confirm it is you, set a password. We will email a link to {email || "your address"}.
+        Open it in this browser and choose a password. This change then goes ahead here, so keep
+        this tab open.
       </p>
-      {sent ? <Notice>Check your email for the link.</Notice> : null}
+      {sent ? (
+        <Notice>
+          Check your email for the link. It works for 30 minutes. This tab carries on once your
+          password is set.
+        </Notice>
+      ) : null}
       {error ? (
         <p role="alert" className="text-[12.5px] text-negative">
           {error}
@@ -73,7 +100,7 @@ function SetPasswordFirst({ email }: { email: string }) {
       ) : null}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" onClick={() => settleReauth(false)}>
-          {sent ? "Done" : "Cancel"}
+          Cancel
         </Button>
         {sent ? null : (
           <Button type="button" variant="primary" disabled={busy} onClick={() => void send()}>

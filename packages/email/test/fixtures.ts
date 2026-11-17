@@ -18,6 +18,7 @@ export const FIXTURES: { [K in TemplateId]: TemplateData[K] } = {
   "verify-email": { name: "Sam Example", url: U("verify"), expiresInHours: 24 },
   "signup-existing-account": { signInUrl: U("signin"), resetUrl: U("forgot") },
   "password-reset": { name: "Sam Example", url: U("reset"), expiresInMinutes: 30 },
+  "password-setup": { name: "Sam Example", url: U("set-password"), expiresInMinutes: 30 },
   "email-change-confirm": {
     name: "Sam Example",
     url: U("confirm-email"),
@@ -117,6 +118,7 @@ export const FIXTURES_ALT: { [K in TemplateId]: TemplateData[K] } = {
   "verify-email": { name: "Alex £48,000 (7.5%)", url: U("verify"), expiresInHours: 72 },
   "signup-existing-account": { signInUrl: U("signin"), resetUrl: U("forgot") },
   "password-reset": { name: "Alex £48,000 (7.5%)", url: U("reset"), expiresInMinutes: 5 },
+  "password-setup": { name: "Alex £48,000 (7.5%)", url: U("set-password"), expiresInMinutes: 5 },
   "email-change-confirm": {
     name: "Alex £48,000 (7.5%)",
     url: U("confirm-email"),

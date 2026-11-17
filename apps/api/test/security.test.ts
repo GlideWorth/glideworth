@@ -375,6 +375,21 @@ describe("CORS and response headers", () => {
     expect(r.headers.get("x-content-type-options")).toBe("nosniff");
     expect(r.headers.get("cache-control")).toBe("no-store");
   });
+
+  it("marks every response noindex and serves a disallow-all robots.txt without the web app (issue #20)", async () => {
+    h = setup();
+    for (const [p, key] of [
+      ["/api/v1/plans", undefined],
+      ["/api/v1/plans", null],
+      ["/no-such-route", null],
+    ] as const) {
+      const r = await h.call(p, { key });
+      expect(r.headers.get("x-robots-tag"), `${p} key=${key}`).toBe("noindex, nofollow");
+    }
+    const robots = await h.call("/robots.txt", { key: null });
+    expect(robots.status).toBe(200);
+    expect(robots.text).toBe("User-agent: *\nDisallow: /\n");
+  });
 });
 
 describe("bootstrap key", () => {

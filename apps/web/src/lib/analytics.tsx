@@ -6,7 +6,8 @@
  * images and local builds leave them empty, so they load no analytics at all.
  *
  * What is sent: page views, the named product events (see the capture calls), clicks with their text and
- * attributes masked, and uncaught errors. Session recording is off. URLs lose their query string and fragment
+ * attributes masked, uncaught errors, and errors a route's error boundary caught (`reportError`). Session
+ * recording is off. URLs lose their query string and fragment
  * (one-time tokens travel there) and share-link tokens are replaced, before anything leaves the browser.
  * Signed-in people are identified by their user id and email address. Storage: local storage only, no cookie.
  */
@@ -16,7 +17,7 @@ import {
   PostHogProvider,
   usePostHog,
 } from "@posthog/react";
-import type { CaptureResult } from "posthog-js";
+import posthog, { type CaptureResult } from "posthog-js";
 import { type ComponentType, type ReactNode, useEffect, useRef } from "react";
 import { useSession } from "./auth";
 
@@ -43,6 +44,14 @@ export function scrubEvent(event: CaptureResult | null): CaptureResult | null {
   scrubRecord(event.$set);
   scrubRecord(event.$set_once);
   return event;
+}
+
+/**
+ * Send an error the app caught itself (the router's per-route error boundary) to PostHog. Those never reach
+ * `PostHogErrorBoundary` or the window error handler, so they would go unreported. No-op without PostHog.
+ */
+export function reportError(error: unknown): void {
+  if (token && host && posthog.__loaded) posthog.captureException(error);
 }
 
 /** Follows the session: identify on sign-in (id and email only), reset on sign-out or a different user. */

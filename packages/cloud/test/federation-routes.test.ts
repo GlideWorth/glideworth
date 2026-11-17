@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   auditEvents,
   invitations,
+  memberships,
   oidcFlows,
   trialGrants,
   userIdentities,
@@ -502,11 +503,11 @@ describe("accounts without a password", () => {
         adultConfirmed: true,
       });
     await cloud.accounts.settled();
-    const before = cloud.mailer.to(g.email, "password-reset").length;
+    const before = cloud.mailer.to(g.email, "password-setup").length;
     const setup = await b.post("/api/v1/account/password/setup");
     expect(setup.status, setup.text).toBe(202);
     await cloud.accounts.settled();
-    expect(cloud.mailer.to(g.email, "password-reset")).toHaveLength(before + 1);
+    expect(cloud.mailer.to(g.email, "password-setup")).toHaveLength(before + 1);
   });
 
   it("sets a first password through the emailed link; then can unlink Google; unlinking without a password is refused", async () => {
@@ -519,7 +520,7 @@ describe("accounts without a password", () => {
     const setup = await b.post("/api/v1/account/password/setup");
     expect(setup.status).toBe(202);
     await cloud.accounts.settled();
-    const token = cloud.mailer.token(g.email, "password-reset");
+    const token = cloud.mailer.token(g.email, "password-setup");
     const password = strongPassword();
     const reset = await new Browser(cloud.app).post("/api/v1/auth/password/reset", {
       token,
@@ -580,6 +581,291 @@ describe("accounts without a password", () => {
     remember(u.browser.jar.get("__Host-gw_csrf") as string);
     expect((await u.browser.del("/api/v1/account")).status).toBe(204);
     expect(identities()).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------- the first-password link as a re-authentication
+describe("the first-password link answers a re-authentication prompt", () => {
+  const REAUTH_ACTION = "/api/v1/account/totp/begin";
+  const keep = (b: Browser) => {
+    remember(b.jar.get("__Host-gw_session") as string);
+    remember(b.jar.get("__Host-gw_csrf") as string);
+  };
+  /** A Google-only person, signed in, whose change was just refused (REAUTH_REQUIRED). */
+  async function refusedGooglePerson() {
+    const g = googleUser();
+    const b = new Browser(cloud.app);
+    await signUpWithGoogle(b, g);
+    const refused = await b.post(REAUTH_ACTION);
+    expect((refused.body.error as { code: string }).code).toBe("REAUTH_REQUIRED");
+    return { g, b };
+  }
+  async function askForLink(b: Browser, email: string, returnTo?: string): Promise<string> {
+    const q = returnTo === undefined ? "" : `?returnTo=${encodeURIComponent(returnTo)}`;
+    const r = await b.post(`/api/v1/account/password/setup${q}`);
+    expect(r.status, r.text).toBe(202);
+    await cloud.accounts.settled();
+    return cloud.mailer.token(email, "password-setup");
+  }
+
+  it("sends a set-a-password email (not reset wording) whose link opens /set-password", async () => {
+    const { g, b } = await refusedGooglePerson();
+    await askForLink(b, g.email, "/settings/keys");
+    const mail = cloud.mailer.last(g.email, "password-setup");
+    expect(String(mail?.data.url)).toMatch(/^https:\/\/[^/]+\/set-password#token=/);
+    expect(cloud.mailer.to(g.email, "password-reset")).toEqual([]);
+    // The return path is not in the link: it stays in the token's row on the server.
+    expect(String(mail?.data.url)).not.toContain("settings");
+  });
+
+  it("in the browser and session that asked: the new session counts as re-authenticated and returns to the section", async () => {
+    const { g, b } = await refusedGooglePerson();
+    const token = await askForLink(b, g.email, "/settings/keys");
+    const r = await b.post("/api/v1/auth/password/reset", { token, password: strongPassword() });
+    expect(r.status, r.text).toBe(200);
+    expect(r.body).toMatchObject({
+      status: "signed-in",
+      redirectTo: "/settings/keys",
+      recentAuth: true,
+    });
+    keep(b);
+    // The refused change now goes through without typing the new password.
+    const again = await b.post(REAUTH_ACTION);
+    expect(again.status, again.text).toBe(200);
+    remember(String(again.body.secret));
+    const ev = cloud.db.select().from(auditEvents).all();
+    expect(ev.findLast((e) => e.event === "user.reauthenticated")?.detail).toEqual({
+      method: "setup-link",
+    });
+    expect(ev.findLast((e) => e.event === "user.password_reset")?.detail).toEqual({
+      method: "setup-link",
+    });
+    expect(cloud.mailer.last(g.email, "security-change")?.data.change).toBe("password-set");
+  });
+
+  it("keeps the normal 10-minute window", async () => {
+    const { g, b } = await refusedGooglePerson();
+    const token = await askForLink(b, g.email, "/settings/keys");
+    const r = await b.post("/api/v1/auth/password/reset", { token, password: strongPassword() });
+    expect(r.body.recentAuth).toBe(true);
+    keep(b);
+    cloud.advance(10 * 60 * 1000 + 1000);
+    const late = await b.post(REAUTH_ACTION);
+    expect((late.body.error as { code: string }).code).toBe("REAUTH_REQUIRED");
+  });
+
+  it("in another browser: an ordinary reset, not a re-authentication; the asking browser is signed out", async () => {
+    const { g, b } = await refusedGooglePerson();
+    const token = await askForLink(b, g.email, "/settings/keys");
+    const other = new Browser(cloud.app);
+    const r = await other.post("/api/v1/auth/password/reset", {
+      token,
+      password: strongPassword(),
+    });
+    expect(r.status, r.text).toBe(200);
+    expect(r.body).toMatchObject({ redirectTo: "/settings/keys", recentAuth: false });
+    keep(other);
+    const refused = await other.post(REAUTH_ACTION);
+    expect((refused.body.error as { code: string }).code).toBe("REAUTH_REQUIRED");
+    expect((await status(b)).authenticated).toBe(false);
+    expect(
+      cloud.db
+        .select()
+        .from(auditEvents)
+        .all()
+        .some((e) => e.event === "user.reauthenticated"),
+    ).toBe(false);
+  });
+
+  it("in the same browser but a different session (signed in again since): not a re-authentication", async () => {
+    const { g, b } = await refusedGooglePerson();
+    const token = await askForLink(b, g.email, "/settings/keys");
+    // Signed out and in again with Google: a new session in the same browser.
+    await b.post("/api/v1/auth/signout");
+    await viaGoogle(b, g);
+    keep(b);
+    const r = await b.post("/api/v1/auth/password/reset", { token, password: strongPassword() });
+    expect(r.status, r.text).toBe(200);
+    expect(r.body.recentAuth).toBe(false);
+    keep(b);
+    const refused = await b.post(REAUTH_ACTION);
+    expect((refused.body.error as { code: string }).code).toBe("REAUTH_REQUIRED");
+  });
+
+  it("a cross-site request (no SameSite=Strict session cookie) gets no re-authentication", async () => {
+    const { g, b } = await refusedGooglePerson();
+    const token = await askForLink(b, g.email, "/settings/keys");
+    const r = await b.post(
+      "/api/v1/auth/password/reset",
+      { token, password: strongPassword() },
+      { crossSite: true },
+    );
+    expect(r.status, r.text).toBe(200);
+    expect(r.body.recentAuth).toBe(false);
+  });
+
+  it.each([
+    "https://evil.example/settings/keys",
+    "//evil.example/settings/keys",
+    "/\\evil.example",
+    "/settings/../../evil",
+    "/settings/keys?next=https://evil.example",
+    "/settings/keys#x",
+    "/settings/%2F%2Fevil.example",
+    "/plans/2",
+    "javascript:alert(1)",
+    "",
+  ])("the return path %j can only be a settings section (else Security settings)", async (bad) => {
+    const { g, b } = await refusedGooglePerson();
+    const token = await askForLink(b, g.email, bad);
+    const r = await b.post("/api/v1/auth/password/reset", { token, password: strongPassword() });
+    expect(r.status, r.text).toBe(200);
+    expect(r.body.redirectTo).toBe("/settings/security");
+  });
+
+  it("with no return path given, goes back to Security settings", async () => {
+    const { g, b } = await refusedGooglePerson();
+    const token = await askForLink(b, g.email);
+    const r = await b.post("/api/v1/auth/password/reset", { token, password: strongPassword() });
+    expect(r.body.redirectTo).toBe("/settings/security");
+  });
+
+  it("the link is single use", async () => {
+    const { g, b } = await refusedGooglePerson();
+    const token = await askForLink(b, g.email, "/settings/keys");
+    const first = await b.post("/api/v1/auth/password/reset", {
+      token,
+      password: strongPassword(),
+    });
+    expect(first.status).toBe(200);
+    keep(b);
+    const second = await b.post("/api/v1/auth/password/reset", {
+      token,
+      password: strongPassword(),
+    });
+    expect(second.status).toBe(400);
+    expect((second.body.error as { code: string }).code).toBe("INVALID_TOKEN");
+  });
+
+  it("with two-step sign-in on, the code is still required: no session until the second step", async () => {
+    // A linked account with TOTP whose password is dropped: the shape of a Google-only person with TOTP.
+    const u = await signedUpBrowser(cloud);
+    const g = googleUser({ email: u.email });
+    await link(u.browser, u.password, g);
+    const code = await enableTotp(u.browser, u.password);
+    cloud.db.update(users).set({ passwordHash: "" }).where(eq(users.email, u.email)).run();
+    cloud.advance(11 * 60 * 1000);
+    const b = u.browser;
+    const token = await askForLink(b, u.email, "/settings/keys");
+    const r = await b.post("/api/v1/auth/password/reset", { token, password: strongPassword() });
+    expect(r.status, r.text).toBe(200);
+    expect(r.body).toMatchObject({
+      status: "totp-required",
+      redirectTo: "/settings/keys",
+      // The code step will re-authenticate; this browser is the one that asked, so the waiting tab may retry.
+      recentAuth: true,
+    });
+    expect(cookieLine(r, "__Host-gw_session")).toBe("");
+    expect((await status(b)).authenticated).toBe(false);
+    const challenge = remember(String(r.body.challenge));
+    const wrong = await b.post("/api/v1/auth/signin/totp", { challenge, code: "000000" });
+    expect(wrong.status).toBe(401);
+    cloud.advance(31_000);
+    const ok = await b.post("/api/v1/auth/signin/totp", { challenge, code: code() });
+    expect(ok.status, ok.text).toBe(200);
+    keep(b);
+  });
+
+  it("the same session keeps the workspace it was in, so the change it retries runs there", async () => {
+    const { g, b } = await refusedGooglePerson();
+    const own = (await status(b)).workspace as { id: string };
+    // Also an editor in someone else's workspace, and working there when the change was refused.
+    const other = await signedUpBrowser(cloud);
+    const theirs = (await status(other.browser)).workspace as { id: string };
+    const me = userOf(g.email)!;
+    cloud.db
+      .insert(memberships)
+      .values({ accountId: theirs.id, userId: me.id, role: "editor", tenantUserId: "usr_test1" })
+      .run();
+    expect((await b.post(`/api/v1/workspaces/${theirs.id}/activate`)).status).toBe(204);
+    expect(((await status(b)).workspace as { id: string }).id).toBe(theirs.id);
+    expect(own.id).not.toBe(theirs.id);
+    const token = await askForLink(b, g.email, "/settings/keys");
+    const r = await b.post("/api/v1/auth/password/reset", { token, password: strongPassword() });
+    expect(r.body.recentAuth).toBe(true);
+    keep(b);
+    expect(((await status(b)).workspace as { id: string }).id).toBe(theirs.id);
+    // Another browser completing a link opens the default workspace, as any sign-in does.
+    cloud.db.update(users).set({ passwordHash: "" }).where(eq(users.id, me.id)).run();
+    const token2 = await askForLink(b, g.email, "/settings/keys");
+    const elsewhere = new Browser(cloud.app);
+    await elsewhere.post("/api/v1/auth/password/reset", {
+      token: token2,
+      password: strongPassword(),
+    });
+    keep(elsewhere);
+    expect(((await status(elsewhere)).workspace as { id: string }).id).toBe(own.id);
+  });
+
+  it("a request from another origin (even of the same site) is refused and leaves the link usable", async () => {
+    const { g, b } = await refusedGooglePerson();
+    const token = await askForLink(b, g.email, "/settings/keys");
+    const r = await b.post(
+      "/api/v1/auth/password/reset",
+      { token, password: strongPassword() },
+      { origin: "https://www.example.org" },
+    );
+    expect(r.status).toBe(403);
+    const ok = await b.post("/api/v1/auth/password/reset", { token, password: strongPassword() });
+    expect(ok.body.recentAuth).toBe(true);
+    keep(b);
+  });
+
+  it("forgot-password for an account with no password sends the set-a-password email, never a re-authentication", async () => {
+    const { g } = await refusedGooglePerson();
+    const f = await new Browser(cloud.app).post("/api/v1/auth/password/forgot", {
+      email: g.email,
+      captchaToken: "captcha-ok",
+    });
+    expect(f.status).toBe(202);
+    await cloud.accounts.settled();
+    expect(cloud.mailer.to(g.email, "password-reset")).toEqual([]);
+    expect(String(cloud.mailer.last(g.email, "password-setup")?.data.url)).toMatch(
+      /\/set-password#token=/,
+    );
+    const token = cloud.mailer.token(g.email, "password-setup");
+    const fresh = new Browser(cloud.app);
+    const r = await fresh.post("/api/v1/auth/password/reset", {
+      token,
+      password: strongPassword(),
+    });
+    expect(r.status, r.text).toBe(200);
+    expect(r.body).toMatchObject({ redirectTo: "/settings/security", recentAuth: false });
+  });
+
+  it("a forgot-password reset of an account with a password keeps reset wording and gets no re-authentication", async () => {
+    const u = await signedUpBrowser(cloud);
+    const f = await u.browser.post("/api/v1/auth/password/forgot", {
+      email: u.email,
+      captchaToken: "captcha-ok",
+    });
+    expect(f.status).toBe(202);
+    await cloud.accounts.settled();
+    expect(cloud.mailer.to(u.email, "password-setup")).toEqual([]);
+    const mail = cloud.mailer.last(u.email, "password-reset");
+    expect(String(mail?.data.url)).toMatch(/\/reset-password#token=/);
+    const token = cloud.mailer.token(u.email, "password-reset");
+    const r = await u.browser.post("/api/v1/auth/password/reset", {
+      token,
+      password: strongPassword(),
+    });
+    expect(r.status, r.text).toBe(200);
+    expect(r.body.recentAuth).toBeUndefined();
+    expect(r.body.redirectTo).toBe("/");
+    keep(u.browser);
+    const refused = await u.browser.post(REAUTH_ACTION);
+    expect((refused.body.error as { code: string }).code).toBe("REAUTH_REQUIRED");
+    expect(cloud.mailer.last(u.email, "security-change")?.data.change).toBe("password-reset");
   });
 });
 

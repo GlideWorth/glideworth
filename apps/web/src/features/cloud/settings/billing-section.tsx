@@ -70,13 +70,15 @@ export function BillingSection() {
   // Once Stripe's confirmation arrives, the shell (banner, start-trial page) follows the new access level.
   const qc = useQueryClient();
   const level = billing.data?.access.level;
+  const trialing = billing.data?.status === "trialing";
   const posthog = usePostHog();
   useEffect(() => {
     if (returned && level === "full") {
       posthog?.capture("billing_checkout_completed");
+      if (trialing) posthog?.capture("trial_started");
       void qc.invalidateQueries({ queryKey: ["session"] });
     }
-  }, [returned, level, qc, posthog]);
+  }, [returned, level, trialing, qc, posthog]);
 
   if (billing.isLoading) return <Loading what="billing" />;
   if (billing.isError || !billing.data)

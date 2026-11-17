@@ -28,6 +28,7 @@ import {
 const ALWAYS_ATTEMPT: ReadonlySet<TemplateId> = new Set<TemplateId>([
   "verify-email",
   "password-reset",
+  "password-setup",
 ]);
 const DEFAULT_RETRY_DELAYS_MS = [1000, 5000, 30000];
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));

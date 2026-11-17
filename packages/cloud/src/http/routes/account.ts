@@ -133,12 +133,15 @@ export function accountRoutes(k: RouteKit): void {
       path: "/api/v1/account/password/setup",
       tag,
       summary: "No password yet (Google sign-in): email a link that sets the first password",
+      description:
+        "`returnTo` is the settings section to come back to after the password is set (`/settings/<section>`; anything else means Security settings). Completing the link in this browser, while this session is still signed in, also counts as a re-authentication for the new session.",
       auth: "session",
       ok: 202,
       okSchema: z.object({ status: z.literal("check-email") }),
+      query: z.object({ returnTo: z.string().max(256).optional() }),
     },
-    (c) => {
-      d.accounts.requestPasswordSetup(k.session(c));
+    (c, { query }) => {
+      d.accounts.requestPasswordSetup(k.session(c), { returnTo: query.returnTo });
       return c.json({ status: "check-email" as const }, 202);
     },
   );

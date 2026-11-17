@@ -495,6 +495,12 @@ describe("the hosted API reference", () => {
     expect(r.text).toContain("/api/v1/plans/{id}");
   });
 
+  it("answers /docs/ with a redirect to /docs, not a page under the docs CSP (issue #11)", async () => {
+    const r = await new Client(cloud).get("/docs/");
+    expect(r.status).toBe(308);
+    expect(r.headers.get("location")).toBe("/docs");
+  });
+
   it("escapes everything it renders", () => {
     const html = renderApiReference({
       info: { title: "<img src=x onerror=alert(1)>", version: "1", description: "**b** `c`" },
@@ -503,6 +509,13 @@ describe("the hosted API reference", () => {
     expect(html).not.toContain("<img");
     expect(html).not.toContain("<script>");
     expect(html).toContain("<strong>b</strong>");
+  });
+
+  it("wraps long tokens and scrolls wide tables inside themselves on a phone", () => {
+    const html = renderApiReference({ info: { title: "T", version: "1" }, paths: {} });
+    // `gwk_<workspace>_<prefix>_<secret>` and header names otherwise widen the page past 390px.
+    expect(html).toMatch(/code,[^{]*\{overflow-wrap:anywhere\}/);
+    expect(html).toContain("table{display:block;max-width:100%;overflow-x:auto}");
   });
 });
 
@@ -562,6 +575,22 @@ describe("the cloud surface", () => {
     expect(page.status).toBe(200);
     expect(page.text).toContain(owner.accountId as string);
     expect(page.headers.get("content-security-policy")).toContain("default-src 'none'");
+  });
+
+  it("is kept out of search engines: disallow-all robots.txt and X-Robots-Tag on every response (issue #20)", async () => {
+    const anon = new Client(cloud);
+    const robots = await anon.get("/robots.txt");
+    expect(robots.status).toBe(200);
+    expect(robots.headers.get("content-type")).toMatch(/^text\/plain/);
+    expect(robots.text).toBe("User-agent: *\nDisallow: /\n");
+    for (const p of [
+      "/robots.txt",
+      "/health",
+      "/openapi.json",
+      "/api/v1/plans",
+      "/oauth/authorize",
+    ])
+      expect((await anon.get(p)).headers.get("x-robots-tag"), p).toBe("noindex, nofollow");
   });
 
   it("development builds expose fake checkout completion (loopback only; unknown session = 400)", async () => {

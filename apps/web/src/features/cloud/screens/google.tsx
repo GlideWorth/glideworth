@@ -12,6 +12,7 @@
  *   parks the Google account for this browser, and this page finishes the link with an ordinary same-origin
  *   POST (session and CSRF token), then returns to security settings with the answer.
  */
+import { usePostHog } from "@posthog/react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { KeyRound, Loader2, UserPlus } from "lucide-react";
@@ -40,6 +41,7 @@ export function GoogleSignUpPage() {
   const session = useSession().data;
   const navigate = useNavigate();
   const finish = useFinishSignIn();
+  const posthog = usePostHog();
   const termsVersion =
     (session?.kind === "cloud-signed-out" && session.termsVersion) || FALLBACK_TERMS_VERSION;
   const pending = useQuery({
@@ -59,6 +61,11 @@ export function GoogleSignUpPage() {
   useEffect(() => {
     if (session?.kind === "authenticated") void navigate({ to: "/", replace: true });
   }, [session, navigate]);
+  // Back from Google with a pending sign-up: the Google path's first step (the email path's is the form).
+  const hasPending = !!pending.data;
+  useEffect(() => {
+    if (hasPending) posthog?.capture("signup_started", { method: "google" });
+  }, [hasPending, posthog]);
 
   if (pending.isLoading)
     return (
@@ -100,6 +107,7 @@ export function GoogleSignUpPage() {
         termsVersion,
         adultConfirmed: true,
       });
+      posthog?.capture("account_created", { method: "google" });
       await finish(r.redirectTo, "/");
     } catch (err) {
       setBusy(false);

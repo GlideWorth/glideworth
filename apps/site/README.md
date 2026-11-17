@@ -58,10 +58,13 @@ The production deploy sets the variable. Staging does not. The signed-in app (`a
 and does not load the tag. Pages under `/tools/` do not load it either, so figures typed into a calculator
 stay in the browser.
 
-The loader is the Google Tag Manager snippet, including the noscript iframe. Before `gtm.js` runs, the page
-sets Google Consent Mode v2 defaults: advertising storage, ad user data, ad personalisation and analytics
-storage are denied. This repository has no cookie banner. One is appropriate for visitors in the UK and the
-EU before those storage flags are granted.
+The loader is the Google Tag Manager snippet, without the usual noscript iframe (it cannot respect consent).
+Before `gtm.js` runs, the page sets Google Consent Mode v2 defaults: advertising storage, ad user data, ad
+personalisation and analytics storage are denied. Pages that load the tag also show a consent banner
+(`src/components/ConsentBanner.astro`) with "Accept analytics" and "Reject" given equal weight. Accepting grants
+`analytics_storage` only; advertising storage is never granted. The answer is kept in local storage under
+`glideworth-consent` for 12 months (`src/lib/consent.ts`), applied before `gtm.js` loads on later visits, and
+"Cookie settings" in the footer reopens the banner. A build without `PUBLIC_GTM_ID` has no banner.
 
 ## Design system
 
@@ -83,13 +86,16 @@ check:contrast` verifies AA for every text pair in both themes.
 national tax model, the engine version, the count of written simplifications per tax model) so the site
 cannot drift from the code. The API and MCP counts are counted from the code, not copied from the docs:
 
-- `apiOperations` is the number of operations in the OpenAPI 3.1 document that `apps/api` generates
-  (`createApp(...).request('/openapi.json')`, as `apps/api/test/openapi.test.ts` loads it). The API reference
-  page checks it against the snapshot and fails the build if they differ.
+- `apiOperations` is the number of operations in the hosted service's OpenAPI 3.1 document
+  (`https://app.glideworth.com/openapi.json`: cloud mode with Google sign-in configured), which is what people
+  who sign up from this site use. It is typed into `facts.ts`; `apps/api/test/cloud-isolation.test.ts` boots
+  that configuration and fails when the number differs.
+- `apiOperationsSelfHost` is counted at build time from the self-host snapshot `src/data/openapi.json` (below);
+  `apps/api/test/openapi.test.ts` fails when the snapshot's count differs from the code's.
 - `mcpTools`, `mcpReadTools` and `mcpWriteTools` are what `apps/api/test/tool-count.test.ts` counts: the tools
   the MCP server registers with every scope and writes on, and how many of them carry the read-only hint.
 
-When the API or the tools change, take a new snapshot (below) and update `facts.ts`. In frontmatter, use
+When the API or the tools change, take a new snapshot (below) and update the typed numbers in `facts.ts`. In frontmatter, use
 `{{apiOperations}}`-style tokens (see CONTENT-GUIDE.md); the content schemas replace them.
 
 ## API reference
@@ -101,8 +107,7 @@ to another origin, and the browser's find command searches all of it.
 
 The snapshot is produced by `pnpm --filter @glideworth/site snapshot:openapi` (`scripts/snapshot-openapi.mjs`).
 The script runs the API app in memory under the API's own `tsx --conditions=@glideworth/source`, requests
-`/openapi.json`, writes it to `src/data/openapi.json` and prints the operation count, warning if
-`facts.apiOperations` is different. Commit the snapshot with the API change that caused it. The file is
+`/openapi.json`, writes it to `src/data/openapi.json` and prints the operation count. Commit the snapshot with the API change that caused it. The file is
 excluded from oxfmt and oxlint (`.prettierignore`, `.oxlintignore`) because it is generated.
 
 ## Running the engine in the browser

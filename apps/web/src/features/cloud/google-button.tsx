@@ -63,7 +63,7 @@ export function ContinueWithGoogle({ next }: { next: string }) {
   );
 }
 
-/** The "or" between the form and the Google button. */
+/** The "or" between the form and the Google button (after the form on sign-in, before it on sign-up). */
 export function OrDivider() {
   return (
     <div className="flex items-center gap-3 text-[12px] text-ink-3" role="separator">

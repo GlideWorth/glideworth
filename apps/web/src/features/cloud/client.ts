@@ -78,6 +78,8 @@ const SignedIn = z.object({
   expiresAt: z.string().optional(),
   redirectTo: z.string().optional(),
   csrfToken: z.string().optional(),
+  /** First-password link: the new session counts as re-authenticated (this browser asked for the link). */
+  recentAuth: z.boolean().optional(),
 });
 const Items = <T extends z.ZodType>(t: T) => z.object({ items: z.array(t) });
 
@@ -260,7 +262,13 @@ export const cloudApi = {
   regenerateRecoveryCodes: () => call("POST", "/api/v1/account/recovery-codes", Codes),
   personalData: () => call("GET", "/api/v1/account/personal-data", z.unknown()),
   deleteAccount: () => callVoid("DELETE", "/api/v1/account"),
-  passwordSetup: () => call("POST", "/api/v1/account/password/setup", CheckEmail),
+  /** `returnTo`: the settings section to come back to (the server keeps only `/settings/<section>`). */
+  passwordSetup: (returnTo?: string) =>
+    call(
+      "POST",
+      `/api/v1/account/password/setup${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`,
+      CheckEmail,
+    ),
   linkGoogle: () =>
     call("POST", "/api/v1/account/identities/google", z.object({ url: z.string() })),
   unlinkGoogle: () => callVoid("DELETE", "/api/v1/account/identities/google"),

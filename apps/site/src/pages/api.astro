@@ -14,6 +14,7 @@ import { facts } from '../lib/facts';
 import type { FaqItem } from '../lib/jsonld';
 
 const ops = facts.apiOperations;
+const selfHostOps = facts.apiOperationsSelfHost;
 const tools = facts.mcpTools;
 const readTools = facts.mcpReadTools;
 const writeTools = facts.mcpWriteTools;
@@ -264,12 +265,12 @@ curl -s -X POST $GLIDEWORTH/api/v1/change-sets/<id>/apply -H "Authorization: Bea
     </p>
   </Section>
 
-  <Section eyebrow="REST API" title="The same operations as plain HTTP." intro={`${ops} operations under /api/v1, described by an OpenAPI 3.1 document your tools can read.`} width="narrow">
+  <Section eyebrow="REST API" title="The same operations as plain HTTP." intro={`${ops} operations on the hosted service (${selfHostOps} on a self-hosted server), described by an OpenAPI 3.1 document your tools can read.`} width="narrow">
     <CodeBlock lang="bash" title="Terminal" code={rest} />
     <ul class="points">
       <li>
         <strong>The OpenAPI document</strong> is served by every running server at <code>/openapi.json</code>, generated from the same
-        schemas as the engine, and an interactive reference is at <code>/docs</code>. The same document is listed by tag, method and path in the <a href="/docs/api-and-mcp/api-reference/">API reference</a> on this site. That reference page loads its viewer script
+        schemas as the engine, and an interactive reference is at <code>/docs</code>. A self-hosted server&rsquo;s document is listed by tag, method and path in the <a href="/docs/api-and-mcp/api-reference/">API reference</a> on this site. That reference page loads its viewer script
         from a public CDN, so it needs internet access; the document and every API call work offline. Generate a typed client with
         a standard tool such as <code>openapi-typescript</code>.
       </li>

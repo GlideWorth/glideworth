@@ -457,7 +457,10 @@ describe("QR code (drawn locally)", () => {
 describe("formatting", () => {
   it("counts whole trial days left as Stripe does, and prices in minor units", () => {
     // A 30-day trial a few minutes after it started: Stripe Checkout says "29 days free".
-    expect(daysLeft("2026-12-17T05:41:00Z", new Date("2026-11-17T05:44:00Z"))).toBe(29);
+    expect(daysLeft("2026-12-17T05:41:00Z", new Date("2026-11-17T05:44:00Z"))).toBe(30);
+    // A 7-day trial that started a minute ago (seen on production as "6 days left").
+    expect(daysLeft("2026-11-24T12:57:59Z", new Date("2026-11-17T12:58:59Z"))).toBe(7);
+    expect(daysLeft("2026-11-24T12:57:59Z", new Date("2026-11-23T00:57:59Z"))).toBe(2);
     expect(daysLeft("2026-12-17T05:41:00Z", new Date("2026-11-17T05:41:00Z"))).toBe(30);
     expect(daysLeft("2026-11-17T01:00:00Z", new Date("2026-11-16T12:00:00Z"))).toBe(0);
     expect(daysLeft("2026-11-10T00:00:00Z", new Date("2026-11-16T12:00:00Z"))).toBe(0);

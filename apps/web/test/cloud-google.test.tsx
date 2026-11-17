@@ -19,7 +19,7 @@ import { SignInPage, TwoFactorPage } from "../src/features/cloud/screens/signin"
 import { SignUpPage } from "../src/features/cloud/screens/signup";
 import { setChallenge } from "../src/features/cloud/session-flow";
 import { SecuritySection } from "../src/features/cloud/settings/security-section";
-import { withReauth } from "../src/lib/reauth";
+import { announceReauth, withReauth } from "../src/lib/reauth";
 import {
   apiError,
   mockFetch,
@@ -84,9 +84,18 @@ describe("the button", () => {
     expect(googleLink().getAttribute("href")).toBe("/api/v1/auth/google/start");
   });
 
-  it("on sign-up too", () => {
+  it("on sign-up: first, above an 'or' divider and the email form, so it is in view without scrolling", () => {
     renderWithClient(<SignUpPage />, signedOut({ googleSignIn: true }));
-    expect(googleLink().getAttribute("href")).toBe("/api/v1/auth/google/start");
+    const a = googleLink();
+    expect(a.getAttribute("href")).toBe("/api/v1/auth/google/start");
+    // Order: Google, then the divider, then the form's first field and its button.
+    const divider = screen.getByRole("separator");
+    expect(divider.textContent).toBe("or");
+    expect(a.compareDocumentPosition(divider) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const name = screen.getByLabelText("Your name");
+    expect(divider.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const create = screen.getByRole("button", { name: "Create account" });
+    expect(a.compareDocumentPosition(create) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("explains a failed Google round trip on the sign-in page", () => {
@@ -418,21 +427,89 @@ describe("re-authentication without a password", () => {
     expect(api.last("POST /api/v1/auth/reauth")!.body).toEqual({ totpCode: "123456" });
   });
 
-  it("without an authenticator: offers the emailed link that sets a password", async () => {
+  it("without an authenticator: offers the emailed link that sets a password, naming this section to come back to", async () => {
+    window.history.replaceState(null, "", "/settings/keys");
+    let setupUrl = "";
     const api = mockFetch({
-      "POST /api/v1/account/password/setup": () =>
-        new Response(JSON.stringify({ status: "check-email" }), { status: 202 }),
+      "POST /api/v1/account/password/setup": ({ url }: { url: string }) => {
+        setupUrl = url;
+        return new Response(JSON.stringify({ status: "check-email" }), { status: 202 });
+      },
     });
     renderWithClient(<ReauthHost />, signedIn("owner", undefined, { password: false }));
     const done = withReauth(async () => {
       throw new (await import("../src/lib/api-error")).ApiRequestError(403, "REAUTH_REQUIRED", "x");
     }).catch((e: unknown) => e);
     const dialog = await screen.findByRole("dialog", { name: "Confirm it is you" });
-    expect(within(dialog).getByText(/Signing in with Google does not count/)).toBeTruthy();
+    expect(within(dialog).getByText(/To confirm it is you, set a password\./)).toBeTruthy();
+    expect(within(dialog).queryByText(/does not count/)).toBeNull();
     fireEvent.click(within(dialog).getByRole("button", { name: /Email me the link/ }));
-    expect(await within(dialog).findByText("Check your email for the link.")).toBeTruthy();
+    expect(await within(dialog).findByText(/Check your email for the link\./)).toBeTruthy();
     expect(api.last("POST /api/v1/account/password/setup")).toBeTruthy();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Done" }));
+    expect(new URL(setupUrl).searchParams.get("returnTo")).toBe("/settings/keys");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
     expect((await done) as Error).toBeInstanceOf(Error);
+  });
+
+  it("when the set-password tab announces the check passed, the refused change runs again here", async () => {
+    mockFetch({
+      "POST /api/v1/account/password/setup": () =>
+        new Response(JSON.stringify({ status: "check-email" }), { status: 202 }),
+      "GET /api/v1/auth/status": {
+        mode: "cloud",
+        authenticated: true,
+        user: { id: "u1", email: "ada@example.com", name: "Ada", password: true },
+      },
+      "GET /api/v1/account/profile": {},
+    });
+    renderWithClient(<ReauthHost />, signedIn("owner", undefined, { password: false }));
+    let attempt = 0;
+    const done = withReauth(async () => {
+      if (++attempt === 1)
+        throw new (await import("../src/lib/api-error")).ApiRequestError(
+          403,
+          "REAUTH_REQUIRED",
+          "x",
+        );
+      return "created";
+    });
+    const dialog = await screen.findByRole("dialog", { name: "Confirm it is you" });
+    fireEvent.click(within(dialog).getByRole("button", { name: /Email me the link/ }));
+    await within(dialog).findByText(/Check your email for the link\./);
+    // What the other tab does after the server answered `recentAuth: true`.
+    announceReauth();
+    expect(await done).toBe("created");
+    expect(attempt).toBe(2);
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("an announcement while this browser is now signed in as someone else does not run the change", async () => {
+    mockFetch({
+      "POST /api/v1/account/password/setup": () =>
+        new Response(JSON.stringify({ status: "check-email" }), { status: 202 }),
+      "GET /api/v1/auth/status": {
+        mode: "cloud",
+        authenticated: true,
+        user: { id: "u2", email: "someone@example.com", name: "Someone" },
+      },
+      "GET /api/v1/account/profile": {},
+    });
+    renderWithClient(<ReauthHost />, signedIn("owner", undefined, { password: false }));
+    let attempt = 0;
+    const done = withReauth(async () => {
+      if (++attempt === 1)
+        throw new (await import("../src/lib/api-error")).ApiRequestError(
+          403,
+          "REAUTH_REQUIRED",
+          "x",
+        );
+      return "created";
+    }).catch((e: unknown) => e);
+    const dialog = await screen.findByRole("dialog", { name: "Confirm it is you" });
+    fireEvent.click(within(dialog).getByRole("button", { name: /Email me the link/ }));
+    await within(dialog).findByText(/Check your email for the link\./);
+    announceReauth();
+    expect(((await done) as Error).name).toBe("ReauthCancelled");
+    expect(attempt).toBe(1);
   });
 });

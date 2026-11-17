@@ -13,7 +13,8 @@
  *    contains the loader (a build with PUBLIC_GTM_ID set). A default build has no such page.
  *  - HYPERLINKS (<a href>): internal ones resolve and end with a slash; external ones may point at any
  *    https origin but must carry rel="noopener noreferrer"; plain http: links are errors
- *  - the sitemap lists every indexable page and no noindex page; robots.txt points at it; rss.xml lists
+ *  - the sitemap lists every indexable page and no noindex page; sitemap.xml is a byte-for-byte copy of
+ *    sitemap-index.xml; robots.txt points at both; rss.xml lists
  *    every published post; XML is well-formed (when xmllint is available)
  *
  * Warnings (listed, exit 0): titles over 60 characters, descriptions over 160 or under 50.
@@ -359,13 +360,22 @@ for (const p of noindex) if (listed.has(p)) fail("sitemap", `noindex page listed
 for (const p of listed)
   if (!indexable.has(p)) fail("sitemap", `listed URL has no built page: ${p}`);
 
+// sitemap.xml: the conventional URL serves the same index (issue #22).
+const indexFile = join(dist, "sitemap-index.xml");
+const aliasFile = join(dist, "sitemap.xml");
+if (!existsSync(indexFile)) fail("sitemap-index.xml", "missing");
+else if (!existsSync(aliasFile)) fail("sitemap.xml", "missing");
+else if (!readFileSync(aliasFile).equals(readFileSync(indexFile)))
+  fail("sitemap.xml", "differs from sitemap-index.xml");
+
 // robots.txt
 const robotsFile = join(dist, "robots.txt");
 if (!existsSync(robotsFile)) fail("robots.txt", "missing");
 else {
   const robots = readFileSync(robotsFile, "utf8");
-  if (!robots.includes(`Sitemap: ${SITE}/sitemap-index.xml`))
-    fail("robots.txt", `does not point at ${SITE}/sitemap-index.xml`);
+  for (const name of ["sitemap-index.xml", "sitemap.xml"])
+    if (!robots.split("\n").includes(`Sitemap: ${SITE}/${name}`))
+      fail("robots.txt", `does not point at ${SITE}/${name}`);
   if (/^Disallow:\s*\/\s*$/m.test(robots)) fail("robots.txt", "disallows the whole site");
 }
 

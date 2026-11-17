@@ -6,6 +6,7 @@
 import { PUBLIC_GTM_ID } from "astro:env/server";
 import { googleTagManagerId } from "../lib/gtm";
 import Callout from "./Callout.astro";
+import MdxTable from "./MdxTable.astro";
 
 interface Props {
   part: "cookies-callout" | "cookies-site" | "cookies-analytics" | "cookies-consent" | "privacy";
@@ -22,12 +23,12 @@ const appAnalytics =
     (hosted ? (
       <Callout type="note" title="The short version">
         <p>
-          This website loads Google Tag Manager on marketing pages so we can see which pages people
-          visit. Advertising storage, ad user data, ad personalisation and analytics storage all start{" "}
-          <strong>denied</strong>, so those cookies are not written. There is no consent banner yet. The
-          signed-in app does not load the tag, and the free calculators do not either. The hosted app
-          uses PostHog for product analytics and error reports (section 3). A self-hosted copy
-          of this website leaves the setting empty and loads nothing from Google.
+          This website loads Google Tag Manager on marketing pages. It sets{" "}
+          <strong>Google Analytics cookies only if you accept them</strong> in the banner, and{" "}
+          <strong>never advertising cookies</strong>. You can change your answer with "Cookie settings" at
+          the foot of any page. The signed-in app and the free calculators do not load the tag. The hosted
+          app uses PostHog for product analytics and error reports (section 3). A self-hosted copy of this
+          website leaves the setting empty and loads nothing from Google.
         </p>
       </Callout>
     ) : (
@@ -45,14 +46,44 @@ const appAnalytics =
 {
   part === "cookies-site" &&
     (hosted ? (
+      <>
       <p>
         The pages also load Google Tag Manager from <code>www.googletagmanager.com</code>. The official
         hosted website is built with a container id; a self-hosted copy is not, unless you set one
-        yourself. The container may measure page views with Google Analytics. With storage denied, Google
-        is instructed not to write an analytics cookie or an advertising cookie. Loading the script still
-        sends your IP address and the page address to Google. The calculator pages, where you type
+        yourself. The container measures page views with Google Analytics. Until you accept in the banner,
+        Google is instructed not to write any analytics or advertising cookie, though loading the script
+        still sends your IP address and the page address to Google. The calculator pages, where you type
         figures, do not load the tag, and the signed-in app does not either.
       </p>
+      <MdxTable>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Purpose</th>
+            <th>Lifetime</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <code>glideworth-consent</code>
+            </td>
+            <td>Local storage (not a cookie)</td>
+            <td>Remembers whether you accepted or rejected analytics cookies, so the banner does not ask again.</td>
+            <td>12 months, then the banner asks again</td>
+          </tr>
+          <tr>
+            <td>
+              <code>_ga</code>, <code>_ga_*</code>
+            </td>
+            <td>Cookie (Google Analytics)</td>
+            <td>Counts visits and pages viewed. Set only after you accept analytics cookies.</td>
+            <td>2 years</td>
+          </tr>
+        </tbody>
+      </MdxTable>
+      </>
     ) : (
       <p>
         That is all. The site has no analytics, no advertising, no embedded third-party content, no social
@@ -66,8 +97,9 @@ const appAnalytics =
   part === "cookies-analytics" &&
     (hosted ? (
       <p>
-        The marketing website loads Google Tag Manager for page measurement (section 1). Advertising and
-        analytics storage start denied, so it sets no analytics or advertising cookies. {appAnalytics}
+        The marketing website uses Google Analytics, through Google Tag Manager, to count visits (section
+        1). Its cookies are set only if you accept them in the banner. It sets no advertising cookies.{" "}
+        {appAnalytics}
       </p>
     ) : (
       <p>
@@ -85,11 +117,11 @@ const appAnalytics =
         something you asked for. The sign-in and anti-forgery cookies are strictly necessary, and so are
         the Google sign-in cookies, which exist only while a sign-in you started is in progress. The
         device and sign-up cookies and the bot check exist only to keep your account secure. The remaining storage
-        keeps your own settings and drafts, and the website's theme choice is set by you. Advertising and
-        analytics storage for the marketing-site tag stay denied, so those cookies are not written.
-        Loading the tag still contacts Google. A banner that lets you accept or refuse that, and that
-        turns analytics storage on only after you accept, is appropriate for visitors in the UK and the
-        EU. Until that banner is here, storage stays denied. The hosted app's PostHog identifier (section 3)
+        keeps your own settings and drafts, and the website's theme choice is set by you. Google Analytics
+        cookies on the marketing website are not strictly necessary, so the website asks first: they are
+        set only after you press "Accept analytics", and "Reject" is just as easy. Advertising storage is
+        never granted. You can change your answer at any time with "Cookie settings" at the foot of any
+        page, and the website asks again after 12 months. The hosted app's PostHog identifier (section 3)
         is analytics storage too, and there is no consent prompt for it yet.
       </p>
     ) : (
@@ -111,12 +143,11 @@ const appAnalytics =
     (hosted ? (
       <p>
         See the <a href="/legal/cookies/">cookie policy</a>. The official hosted marketing site loads
-        Google Tag Manager for page measurement. Advertising and analytics storage are denied by default,
-        so those cookies are not written. The script does send your IP address and the page address to
-        Google. The signed-in app does not load the tag, and the free calculators do not either. A
-        website you build yourself does not load it when the container id is left unset, which is the
-        default. There is no consent banner yet. For visitors in the UK and the EU, one should be in
-        place before analytics storage is turned on.
+        Google Tag Manager and measures page views with Google Analytics. Analytics cookies are set only
+        if you accept them in the cookie banner, and advertising cookies never are. Loading the script
+        does send your IP address and the page address to Google, also before you choose. The signed-in
+        app does not load the tag, and the free calculators do not either. A website you build yourself
+        does not load it when the container id is left unset, which is the default.
       </p>
     ) : (
       <p>

@@ -9,9 +9,10 @@ anything else here.
    `docs/STATUS.md`, `docs/PARITY.md`, `docs/API.md`, `docs/MCP.md` and the code. If you cannot point to
    where something is true, do not write it.
 2. **Numbers come from `src/lib/facts.ts`**, not from memory or from the docs: `facts.taxCountryCount` (read
-   from the engine), `facts.apiOperations` (counted from the generated OpenAPI document; the API reference page
-   fails the build if it disagrees with the snapshot), `facts.mcpTools` with `mcpReadTools` and `mcpWriteTools`
-   (counted as `apps/api/test/tool-count.test.ts` does). Never type one of these numbers into a page. In MDX
+   from the engine), `facts.apiOperations` (the hosted service's OpenAPI document; a cloud-mode API test
+   fails if it is wrong) with `facts.apiOperationsSelfHost` (counted from the self-host snapshot),
+   `facts.mcpTools` with `mcpReadTools` and `mcpWriteTools` (counted as `apps/api/test/tool-count.test.ts`
+   does). Never type one of these numbers into a page. In MDX
    bodies, import it: `import { facts } from '../../lib/facts';` then `{facts.taxCountryCount}`. In frontmatter
    (`title`, `description`, `ogTitle`, `summary`) write a token, `{{taxCountryCount}}` or `{{mcpTools}}`, and
    quote the value in YAML if it contains a colon. When the API or the MCP tools change, run

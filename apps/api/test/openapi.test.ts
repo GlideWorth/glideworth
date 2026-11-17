@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type Harness, READ_KEY, SIM_KEY, setup, WRITE_KEY } from "./helpers.js";
 
@@ -42,6 +44,23 @@ describe("OpenAPI 3.1 document", () => {
     expect(doc.info.title).toBe("Glideworth API");
     expect(doc.components.securitySchemes.bearer).toMatchObject({ type: "http", scheme: "bearer" });
     expect(operations().length).toBeGreaterThan(150);
+  });
+
+  it("has as many operations as the site's snapshot (apps/site/src/data/openapi.json)", () => {
+    const snapshot = JSON.parse(
+      readFileSync(
+        resolve(import.meta.dirname, "..", "..", "site", "src", "data", "openapi.json"),
+        "utf8",
+      ),
+    ) as Doc;
+    const count = (d: Doc) =>
+      Object.values(d.paths).reduce(
+        (n, item) => n + Object.keys(item).filter((m) => METHODS.includes(m)).length,
+        0,
+      );
+    expect(count(snapshot), "run `pnpm --filter @glideworth/site snapshot:openapi`").toBe(
+      allOperations().length,
+    );
   });
 
   it("every $ref resolves", () => {

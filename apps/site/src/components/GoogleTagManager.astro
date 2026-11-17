@@ -1,28 +1,36 @@
 ---
 /**
- * Google Tag Manager, marketing site only.
+ * Google Tag Manager, marketing site only. Rendered in <head> from BaseLayout.
  *
- * Rendered from BaseLayout. Nothing is emitted unless PUBLIC_GTM_ID is a container id and this
- * page is not a calculator (`/tools/`). The snippet is the GTM loader (not the GA4 gtag.js
- * snippet): consent defaults run first, then gtm.js, and the noscript iframe follows <body>.
- * Consent Mode v2 starts denied for advertising and analytics storage. There is no banner here
- * to update that choice. The noscript iframe is the standard install for browsers without
- * JavaScript; it cannot apply those consent defaults.
+ * Nothing is emitted unless PUBLIC_GTM_ID is a container id and this page is not a calculator
+ * (`/tools/`). The snippet is the GTM loader (not the GA4 gtag.js snippet). Consent Mode v2 defaults run
+ * first, with every storage type denied except security. If the visitor already accepted analytics in
+ * the consent banner (ConsentBanner.astro) and the choice has not expired, analytics storage is granted
+ * before gtm.js loads. Advertising storage is never granted.
+ *
+ * The consent state is set at once, but gtm.js itself (about 180 KB) is fetched only after the page has
+ * loaded and the browser is idle, so it never competes with the page's own text, styles and fonts. A
+ * choice made in the banner before then is queued in dataLayer and applies when the tag starts.
+ *
+ * There is no noscript iframe: without JavaScript the banner cannot ask, and the iframe cannot apply
+ * consent, so browsers without JavaScript load nothing from Google.
  */
 import { PUBLIC_GTM_ID } from "astro:env/server";
+import { CONSENT_KEY, CONSENT_MAX_AGE_DAYS, CONSENT_VERSION } from "../lib/consent";
 import { googleTagManagerOnPath } from "../lib/gtm";
 
-interface Props {
-  where: "head" | "body";
-}
-
-const { where } = Astro.props;
 const containerId = googleTagManagerOnPath(Astro.url.pathname, PUBLIC_GTM_ID);
+const consentKey = CONSENT_KEY;
+const consentVersion = CONSENT_VERSION;
+const consentMaxAgeMs = CONSENT_MAX_AGE_DAYS * 86_400_000;
 ---
 
 {
-  containerId && where === "head" && (
-    <script is:inline define:vars={{ containerId }}>
+  containerId && (
+    <script
+      is:inline
+      define:vars={{ containerId, consentKey, consentVersion, consentMaxAgeMs }}
+    >
       window.dataLayer = window.dataLayer || [];
       function gtag() {
         window.dataLayer.push(arguments);
@@ -35,35 +43,42 @@ const containerId = googleTagManagerOnPath(Astro.url.pathname, PUBLIC_GTM_ID);
         functionality_storage: "denied",
         personalization_storage: "denied",
         security_storage: "granted",
-        wait_for_update: 500,
       });
       gtag("set", "ads_data_redaction", true);
       gtag("set", "url_passthrough", false);
-      (function (w, d, s, l, i) {
-        w[l] = w[l] || [];
-        w[l].push({ "gtm.start": new Date().getTime(), event: "gtm.js" });
-        var f = d.getElementsByTagName(s)[0];
-        var j = d.createElement(s);
-        var dl = l !== "dataLayer" ? "&l=" + l : "";
-        j.async = true;
-        j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl;
-        if (f && f.parentNode) f.parentNode.insertBefore(j, f);
-        else d.head.appendChild(j);
-      })(window, document, "script", "dataLayer", containerId);
+      try {
+        var stored = JSON.parse(localStorage.getItem(consentKey) || "null");
+        var now = Date.now();
+        if (
+          stored &&
+          stored.v === consentVersion &&
+          stored.analytics === "granted" &&
+          typeof stored.at === "number" &&
+          stored.at <= now &&
+          now - stored.at <= consentMaxAgeMs
+        ) {
+          gtag("consent", "update", { analytics_storage: "granted" });
+        }
+      } catch (e) {}
+      function loadTag() {
+        (function (w, d, s, l, i) {
+          w[l] = w[l] || [];
+          w[l].push({ "gtm.start": new Date().getTime(), event: "gtm.js" });
+          var f = d.getElementsByTagName(s)[0];
+          var j = d.createElement(s);
+          var dl = l !== "dataLayer" ? "&l=" + l : "";
+          j.async = true;
+          j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl;
+          if (f && f.parentNode) f.parentNode.insertBefore(j, f);
+          else d.head.appendChild(j);
+        })(window, document, "script", "dataLayer", containerId);
+      }
+      function whenIdle() {
+        if ("requestIdleCallback" in window) window.requestIdleCallback(loadTag, { timeout: 2000 });
+        else setTimeout(loadTag, 200);
+      }
+      if (document.readyState === "complete") whenIdle();
+      else window.addEventListener("load", whenIdle, { once: true });
     </script>
-  )
-}
-
-{
-  containerId && where === "body" && (
-    <noscript>
-      <iframe
-        src={`https://www.googletagmanager.com/ns.html?id=${containerId}`}
-        height="0"
-        width="0"
-        style="display:none;visibility:hidden"
-        title="Google Tag Manager"
-      />
-    </noscript>
   )
 }

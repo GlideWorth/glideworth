@@ -3,9 +3,11 @@
  * Site footer: the full site map (src/config/nav.ts plus every published legal document), the
  * "not financial advice" line, licence and contact.
  */
+import { PUBLIC_GTM_ID } from 'astro:env/server';
 import { getCollection } from 'astro:content';
 import { footerNav } from '../config/nav';
 import { site } from '../config/site';
+import { googleTagManagerOnPath } from '../lib/gtm';
 import { externalLinkProps } from '../lib/links';
 import Logo from './Logo.astro';
 
@@ -13,6 +15,8 @@ const legal = (await getCollection('legal'))
   .sort((a, b) => (a.data.order ?? 99) - (b.data.order ?? 99))
   .map((e) => ({ label: e.data.title, href: `/legal/${e.id}/` }));
 const year = new Date().getFullYear();
+// Pages that load Google Tag Manager get a way back to the consent banner (ConsentBanner.astro unhides it).
+const consentSettings = googleTagManagerOnPath(Astro.url.pathname, PUBLIC_GTM_ID) !== undefined;
 ---
 
 <footer class="site-footer" data-site-footer>
@@ -65,6 +69,13 @@ const year = new Date().getFullYear();
         © {year} Glideworth. The application is open source under the
         <a href={`${site.repoUrl}/blob/main/LICENSE`} {...externalLinkProps(site.repoUrl)}>{site.license}</a> licence.
         <a href={`mailto:${site.contact.hello}`}>{site.contact.hello}</a>
+        {
+          consentSettings && (
+            <button type="button" class="consent-settings" data-consent-open hidden>
+              Cookie settings
+            </button>
+          )
+        }
       </p>
     </div>
   </div>
@@ -154,5 +165,17 @@ const year = new Date().getFullYear();
   }
   .fineprint a {
     color: var(--ink-2);
+  }
+  .consent-settings {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ink-2);
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .consent-settings[hidden] {
+    display: none;
   }
 </style>

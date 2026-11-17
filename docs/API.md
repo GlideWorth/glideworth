@@ -10,8 +10,8 @@ are thin adapters over `apps/api/src/services.ts`, so they behave identically.
   page needs internet access, while `/openapi.json` and every API call work fully offline; the hosted service
   serves a server-rendered page with no script and nothing from another origin). Machine-readable:
   `GET /openapi.json` (OpenAPI 3.1, generated from the same Zod schemas as the engine, so request and
-  response shapes cannot drift). It has 265 operations in self-host mode and 302 in cloud mode (see
-  [Cloud mode](#cloud-mode-the-hosted-service)), each with a unique `operationId`, tags, a scope
+  response shapes cannot drift). It has 265 operations in self-host mode, 306 in cloud mode and 313 in cloud mode with
+  "Sign in with Google" configured, as the hosted service is (see [Cloud mode](#cloud-mode-the-hosted-service)), each with a unique `operationId`, tags, a scope
   (`x-required-scope`) and an explicit `security` declaration (`[]` for the public auth routes). It passes
   Redocly and swagger-parser validation, and `npx openapi-typescript http://localhost:8787/openapi.json -o glideworth.d.ts`
   generates a complete TypeScript client; a test (`test/openapi-quality.test.ts`) keeps all of that true.

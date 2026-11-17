@@ -12,6 +12,7 @@ import { PassField } from "../../../components/layout/auth-gate";
 import { Button } from "../../../components/ui/button";
 import { ApiRequestError } from "../../../lib/api-error";
 import { useSession } from "../../../lib/auth";
+import { announceReauth } from "../../../lib/reauth";
 import { cloudApi } from "../client";
 import { useFragmentToken } from "../fragment";
 import { ContinueWithGoogle, googleProblem, OrDivider } from "../google-button";
@@ -260,6 +261,8 @@ export function TwoFactorPage() {
       posthog?.capture("two_factor_sign_in_completed", {
         authentication_method: recovery ? "recovery_code" : "authenticator_code",
       });
+      // A second-factor sign-in counts as re-authenticated (packages/cloud completeSecondFactor).
+      if ("announceReauth" in pending && pending.announceReauth) announceReauth();
       await finish(r.redirectTo, pending.next);
     } catch (err) {
       if (isCode(err, "INVALID_TOKEN") || (err instanceof ApiRequestError && err.status === 410)) {

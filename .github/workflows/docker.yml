@@ -1,11 +1,18 @@
 # Docker image.
-#   - Pull requests: build the image and smoke-test it. Nothing is pushed.
+#   - Pull requests that change more than documentation: build the image and smoke-test it. Nothing is pushed.
 #   - Version tags (v*) and manual runs: build for amd64 and arm64 and push to GHCR with provenance.
 #   - Ordinary pushes to main or any other branch do not trigger this workflow at all.
 name: Docker
 
 on:
+  # Same documentation paths as CI's change detection (ci.yml, "changes"): they never reach the image.
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+      - "LICENSE"
+      - "packages/importers/LICENSE"
+      - ".github/ISSUE_TEMPLATE/**"
   push:
     tags: ["v*"]
   workflow_dispatch:

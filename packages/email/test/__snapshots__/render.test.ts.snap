@@ -219,6 +219,29 @@ This is a service email about your account, so you cannot unsubscribe from it.
 "
 `;
 
+exports[`templates > password-setup > text snapshot 1`] = `
+"Subject: Set a password for your Glideworth account
+
+Glideworth
+
+Set a password for your Glideworth account
+
+Hello Sam Example,
+
+You asked to set a password for your Glideworth account. You sign in with Google today; with a password you can also confirm changes that need a recent check, such as creating an API key.
+
+Set your password:
+https://app.example.test/set-password?t=sample-token
+
+This link works for 30 minutes and can be used once. If you did not ask for this, ignore this email and nothing will change.
+
+--
+Glideworth
+Questions? Write to support@example.test.
+This is a service email about your account, so you cannot unsubscribe from it.
+"
+`;
+
 exports[`templates > payment-problem > text snapshot 1`] = `
 "Subject: Action needed: your Glideworth payment did not go through
 

@@ -6,13 +6,15 @@ import { SignInPage, TwoFactorPage } from "../src/features/cloud/screens/signin"
 import {
   ForgotPasswordPage,
   ResetPasswordPage,
+  SetPasswordPage,
 } from "../src/features/cloud/screens/password-reset";
 import {
   ConfirmEmailPage,
   InvitePage,
   VerifyEmailPage,
 } from "../src/features/cloud/screens/link-pages";
-import { setChallenge } from "../src/features/cloud/session-flow";
+import { getChallenge, setChallenge } from "../src/features/cloud/session-flow";
+import { onReauthAnnounced } from "../src/lib/reauth";
 import {
   apiError,
   mockFetch,
@@ -459,6 +461,97 @@ describe("password reset", () => {
     submit("Set password and sign in");
     expect(await screen.findByText("The passwords do not match.")).toBeTruthy();
     expect(api.calls).toHaveLength(0);
+  });
+
+  it("/set-password: set-a-password wording, back to the section it was asked from, and tells the waiting tab", async () => {
+    window.history.replaceState(null, "", "/set-password#token=setup-tok-1");
+    mockFetch({
+      "POST /api/v1/auth/password/reset": {
+        status: "signed-in",
+        csrfToken: "t",
+        redirectTo: "/settings/keys",
+        recentAuth: true,
+      },
+      "GET /api/v1/auth/status": { mode: "cloud", authenticated: false },
+    });
+    const heard = vi.fn();
+    const stop = onReauthAnnounced(heard);
+    renderWithClient(<SetPasswordPage />, signedIn("owner"));
+    expect(screen.getByRole("heading", { name: "Set a password" })).toBeTruthy();
+    expect(screen.queryByText(/reset/i)).toBeNull();
+    type("Password", STRONG);
+    type("Confirm password", STRONG);
+    submit("Set password");
+    expect(await screen.findByRole("heading", { name: "Your password is set" })).toBeTruthy();
+    expect(
+      screen.getByText(/If you started it in another tab, it carries on there\./),
+    ).toBeTruthy();
+    await waitFor(() => expect(heard).toHaveBeenCalledTimes(1));
+    stop();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await waitFor(() =>
+      expect(navigateSpy).toHaveBeenCalledWith(expect.objectContaining({ to: "/settings/keys" })),
+    );
+  });
+
+  it("/set-password finished elsewhere (no recent check): says nothing about another tab and tells no one", async () => {
+    window.history.replaceState(null, "", "/set-password#token=setup-tok-2");
+    mockFetch({
+      "POST /api/v1/auth/password/reset": {
+        status: "signed-in",
+        csrfToken: "t",
+        redirectTo: "/settings/keys",
+        recentAuth: false,
+      },
+    });
+    const heard = vi.fn();
+    const stop = onReauthAnnounced(heard);
+    renderWithClient(<SetPasswordPage />, signedOut());
+    type("Password", STRONG);
+    type("Confirm password", STRONG);
+    submit("Set password");
+    expect(await screen.findByText(/Other browsers were signed out\./)).toBeTruthy();
+    await new Promise((r) => setTimeout(r, 20));
+    expect(heard).not.toHaveBeenCalled();
+    stop();
+  });
+
+  it("/set-password with two-step sign-in: the code step comes next and then returns to the section", async () => {
+    window.history.replaceState(null, "", "/set-password#token=setup-tok-3");
+    mockFetch({
+      "POST /api/v1/auth/password/reset": {
+        status: "totp-required",
+        challenge: "c3",
+        redirectTo: "/settings/keys",
+        recentAuth: true,
+      },
+    });
+    renderWithClient(<SetPasswordPage />, signedIn("owner"));
+    type("Password", STRONG);
+    type("Confirm password", STRONG);
+    submit("Set password");
+    expect(
+      await screen.findByText(/Next, enter the code from your authenticator app/),
+    ).toBeTruthy();
+    expect(getChallenge()).toEqual({ token: "c3", next: "/settings/keys", announceReauth: true });
+  });
+
+  it("/set-password with two-step sign-in in a browser that did not ask: the code step will tell no one", async () => {
+    window.history.replaceState(null, "", "/set-password#token=setup-tok-4");
+    mockFetch({
+      "POST /api/v1/auth/password/reset": {
+        status: "totp-required",
+        challenge: "c4",
+        redirectTo: "/settings/keys",
+        recentAuth: false,
+      },
+    });
+    renderWithClient(<SetPasswordPage />, signedOut());
+    type("Password", STRONG);
+    type("Confirm password", STRONG);
+    submit("Set password");
+    await screen.findByText(/Next, enter the code from your authenticator app/);
+    expect(getChallenge()).toEqual({ token: "c4", next: "/settings/keys", announceReauth: false });
   });
 
   it("says so when the link has no token or the token is spent", async () => {

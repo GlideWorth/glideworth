@@ -8,11 +8,11 @@
  *
  * Run it when the API changes and commit the result. The script starts the API app in memory with
  * `tsx --conditions=@glideworth/source` (tsx is a dependency of apps/api), asks it for /openapi.json and
- * writes the document. It also checks the operation count against facts.apiOperations in src/lib/facts.ts
- * and tells you when they differ.
+ * writes the document. src/lib/facts.ts counts the self-host operations from this file, so there is no
+ * number to copy by hand; apps/api/test/openapi.test.ts fails when the snapshot's count is out of date.
  */
 import { spawnSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -66,11 +66,3 @@ writeFileSync(out, `${JSON.stringify(doc, null, 1)}\n`);
 console.log(
   `Wrote ${out}: OpenAPI ${doc.openapi}, ${operations} operations, ${Object.keys(doc.paths).length} paths.`,
 );
-
-const facts = readFileSync(join(siteRoot, "src", "lib", "facts.ts"), "utf8");
-const stated = Number(facts.match(/apiOperations:\s*(\d+)/)?.[1]);
-if (stated !== operations) {
-  console.warn(
-    `facts.apiOperations in src/lib/facts.ts says ${stated}; update it to ${operations}.`,
-  );
-}

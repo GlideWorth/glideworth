@@ -68,7 +68,7 @@ export async function seedWorkspace(
   const owner = await signUp(cloud, { name: `${marker} Owner` });
   const accountId = owner.accountId as string;
   const b: Client = owner.browser;
-  ok(await b.post("/api/v1/import", { data: markedSample(marker, amount) }), "import");
+  ok(await b.post("/api/v1/import", { data: fewTrials(markedSample(marker, amount)) }), "import");
   const editor = await addMember(cloud, b, accountId, "editor", `${marker} Editor`);
   const viewer = await addMember(cloud, b, accountId, "viewer", `${marker} Viewer`);
   const ownerKey = await apiKey(b);
@@ -226,4 +226,25 @@ export async function dumpTenant(cloud: Cloud, accountId: string): Promise<strin
       tables.map((t) => [t.name, raw.prepare(`SELECT * FROM "${t.name}" ORDER BY rowid`).all()]),
     );
   });
+}
+
+/**
+ * Monte Carlo trials in the seeded plans. The isolation sweep calls every operation and MCP tool, and the
+ * analysis ones run for real on the caller's own plan; at the default 1000 trials that simulating took about
+ * 90% of cloud-isolation.test.ts (157 s against 15 s). Isolation does not depend on the trial count.
+ */
+const SEED_TRIALS = 50;
+
+/** Sets every Monte Carlo `trials` in the document to SEED_TRIALS. */
+function fewTrials<T>(doc: T): T {
+  const walk = (v: unknown): void => {
+    if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === "object") {
+      const o = v as Record<string, unknown>;
+      if (typeof o.trials === "number") o.trials = SEED_TRIALS;
+      Object.values(o).forEach(walk);
+    }
+  };
+  walk(doc);
+  return doc;
 }

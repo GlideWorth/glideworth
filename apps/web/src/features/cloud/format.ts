@@ -3,13 +3,15 @@
 const DAY = 86_400_000;
 
 /**
- * Whole days from `now` until `iso`, rounded down, as Stripe Checkout counts a trial ("29 days free" for a trial
- * that ends in 29 days and 23 hours); 0 when less than a day is left or it is past.
+ * Days from `now` until `iso`, rounded up, so a 7-day trial that started a minute ago shows 7 days left, as the
+ * site and Checkout say; 0 when less than a day is left or it is past.
  */
 export function daysLeft(iso: string | null | undefined, now: Date = new Date()): number {
   if (!iso) return 0;
   const t = Date.parse(iso);
-  return Number.isNaN(t) ? 0 : Math.max(0, Math.floor((t - now.getTime()) / DAY));
+  if (Number.isNaN(t)) return 0;
+  const ms = t - now.getTime();
+  return ms < DAY ? 0 : Math.ceil(ms / DAY);
 }
 
 /** "12 days", "1 day", or "less than a day" (for a count from `daysLeft`). */

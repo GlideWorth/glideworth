@@ -74,6 +74,8 @@ const SignedIn = z
     expiresAt: z.string().optional(),
     redirectTo: z.string().optional(),
     csrfToken: z.string().optional(),
+    /** First-password link only: the new session counts as re-authenticated (accounts/service.ts). */
+    recentAuth: z.boolean().optional(),
   })
   .openapi("SignInResult");
 
@@ -383,6 +385,8 @@ export function authRoutes(k: RouteKit): void {
       path: "/api/v1/auth/password/reset",
       tag: "Cloud auth",
       summary: "Set a new password with a reset token (signs out everywhere; 2FA still applies)",
+      description:
+        "For a first-password link (`/set-password`), `redirectTo` is the settings section it was asked from, and `recentAuth` is true when this browser's session is the one that asked for the link: the new session then counts as re-authenticated. With two-step sign-in on, the answer is `totp-required` (with `redirectTo`) either way.",
       auth: "none",
       ok: 200,
       okSchema: SignedIn,
@@ -391,8 +395,37 @@ export function authRoutes(k: RouteKit): void {
     async (c, { body }) => {
       k.floodLimit(c, "auth");
       const b = body as { token: string; password: string };
-      const r = await d.accounts.resetPassword(b.token, b.password, k.meta(c));
-      return signInResult(c, r);
+      // The session cookie is SameSite=Strict, so it is here only on a same-site POST; SameSite is per site, not
+      // per origin, so the session counts only when the request also comes from the app's own origin.
+      const current =
+        c.req.header("origin") === k.publicOrigin
+          ? d.accounts.resolveSession(sessionCookie(c))
+          : null;
+      const r = await d.accounts.resetPassword(b.token, b.password, k.meta(c), current);
+      if (r.next === undefined) return signInResult(c, r);
+      const redirectTo = safeNext(r.next, k.publicOrigin);
+      if (r.kind !== "signed-in")
+        return c.json(
+          {
+            status: "totp-required" as const,
+            next: "totp",
+            challenge: r.challenge,
+            expiresAt: r.expiresAt.toISOString(),
+            redirectTo,
+            recentAuth: r.recentAuth === true,
+          },
+          200,
+        );
+      setSessionCookies(c, r.session);
+      return c.json(
+        {
+          status: "signed-in" as const,
+          redirectTo,
+          csrfToken: r.session.csrf,
+          recentAuth: r.recentAuth === true,
+        },
+        200,
+      );
     },
   );
 

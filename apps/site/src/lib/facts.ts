@@ -8,6 +8,7 @@ import {
   NATIONAL_JURISDICTION_BY_COUNTRY,
   TAX_SIMPLIFICATIONS,
 } from "@glideworth/core";
+import openapiSnapshot from "../data/openapi.json?raw";
 
 /** Display names for the country codes the engine has a national tax model for. */
 const COUNTRY_NAMES: Record<string, string> = {
@@ -27,6 +28,12 @@ const COUNTRY_NAMES: Record<string, string> = {
 
 const codes = Object.keys(NATIONAL_JURISDICTION_BY_COUNTRY);
 
+const METHODS = ["get", "post", "put", "patch", "delete"];
+/** Operations in the committed self-host OpenAPI snapshot (src/data/openapi.json). */
+const selfHostOperations = Object.values(
+  (JSON.parse(openapiSnapshot) as { paths: Record<string, Record<string, unknown>> }).paths,
+).reduce((n, item) => n + Object.keys(item).filter((m) => METHODS.includes(m)).length, 0);
+
 export const facts = {
   /** Countries with a national tax model in the engine (read from @glideworth/core). */
   taxCountryCount: codes.length,
@@ -37,14 +44,19 @@ export const facts = {
   simplificationCount: (jurisdictionId: string) => TAX_SIMPLIFICATIONS[jurisdictionId]?.length ?? 0,
 
   /**
-   * Counted from the code on 2026-11-16 (README, docs/API.md, docs/STATUS.md, docs/MCP.md and docs/PARITY.md agree). The hosted service's own OpenAPI document has 302 operations (cloud mode swaps 12 self-host sign-in operations for 49 account, workspace, billing and email ones); the site states the self-host figure.
-   * apiOperations: operations in the generated OpenAPI 3.1 document, which is exactly what
-   * `pnpm --filter @glideworth/site snapshot:openapi` writes to src/data/openapi.json (257 carry a required
-   * scope; 8 are browser sign-in and share-link routes). The site's API reference page asserts this number
-   * against the snapshot at build time. mcpTools: the registry as apps/api/test/tool-count.test.ts counts it
-   * (all scopes, writes on); mcpReadTools are the tools marked read-only, mcpWriteTools the rest.
+   * apiOperations: operations in the hosted service's OpenAPI 3.1 document (app.glideworth.com/openapi.json:
+   * cloud mode with "Sign in with Google" configured), which is what people who sign up on this site use.
+   * Cloud mode swaps the 12 self-host user and passphrase operations for 53 account, workspace, billing and
+   * email ones, plus 7 Google sign-in ones. apps/api/test/cloud-isolation.test.ts boots that configuration and
+   * fails when this number differs, so update it with the API change.
+   * apiOperationsSelfHost: operations in a self-hosted server's document, counted from the snapshot that
+   * `pnpm --filter @glideworth/site snapshot:openapi` writes to src/data/openapi.json (the API reference page
+   * lists it). apps/api/test/openapi.test.ts fails when the snapshot's count differs from the code's.
+   * mcpTools: the registry as apps/api/test/tool-count.test.ts counts it (all scopes, writes on); mcpReadTools
+   * are the tools marked read-only, mcpWriteTools the rest.
    */
-  apiOperations: 265,
+  apiOperations: 313,
+  apiOperationsSelfHost: selfHostOperations,
   mcpTools: 75,
   mcpReadTools: 54,
   mcpWriteTools: 21,

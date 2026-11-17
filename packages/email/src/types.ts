@@ -7,6 +7,7 @@ export type TemplateId =
   | "verify-email"
   | "signup-existing-account"
   | "password-reset"
+  | "password-setup"
   | "email-change-confirm"
   | "email-change-requested"
   | "signin-alert"
@@ -27,6 +28,8 @@ export type TemplateId =
 export type SecurityChange =
   | "password-changed"
   | "password-reset"
+  /** A first password set from the emailed link (an account that signed up with Google). */
+  | "password-set"
   /** Sent to the old address once the change (to `newEmail`) is confirmed. */
   | "email-changed"
   | "totp-enabled"
@@ -46,6 +49,8 @@ export interface TemplateData {
   "verify-email": { name: string; url: string; expiresInHours: number };
   "signup-existing-account": { signInUrl: string; resetUrl: string };
   "password-reset": { name: string; url: string; expiresInMinutes: number };
+  /** A signed-in person with no password yet (signed up with Google) asked for a link to set one. */
+  "password-setup": { name: string; url: string; expiresInMinutes: number };
   "email-change-confirm": { name: string; url: string; newEmail: string; expiresInHours: number };
   /** Sent to the current address when a change to `newEmail` is requested; nothing has changed yet. */
   "email-change-requested": {
@@ -111,6 +116,7 @@ export const TEMPLATE_CATEGORY: Readonly<Record<TemplateId, EmailCategory>> = Ob
   "verify-email": "essential",
   "signup-existing-account": "essential",
   "password-reset": "essential",
+  "password-setup": "essential",
   "email-change-confirm": "essential",
   "email-change-requested": "essential",
   "signin-alert": "essential",

@@ -8,6 +8,7 @@ import { exportReady } from "./export-ready.js";
 import { invitation } from "./invitation.js";
 import { memberRemoved } from "./member-removed.js";
 import { passwordReset } from "./password-reset.js";
+import { passwordSetup } from "./password-setup.js";
 import { paymentProblem } from "./payment-problem.js";
 import { paymentReceipt } from "./payment-receipt.js";
 import { secondFactorFailures } from "./second-factor-failures.js";
@@ -29,6 +30,7 @@ export const TEMPLATES: { readonly [K in TemplateId]: TemplateFn<K> } = {
   "verify-email": verifyEmail,
   "signup-existing-account": signupExistingAccount,
   "password-reset": passwordReset,
+  "password-setup": passwordSetup,
   "email-change-confirm": emailChangeConfirm,
   "email-change-requested": emailChangeRequested,
   "signin-alert": signinAlert,

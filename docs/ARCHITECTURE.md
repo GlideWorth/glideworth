@@ -629,8 +629,9 @@ Self-host auth is single-household. Two ways in, which never interfere (full det
 
 ## 6. API surface (v1)
 
-OpenAPI 3.1 is served at `/openapi.json` (265 operations in self-host mode, 302 in cloud mode: the 12
-passphrase and instance-user operations are replaced by 49 account, workspace, billing and email ones), with a
+OpenAPI 3.1 is served at `/openapi.json` (265 operations in self-host mode, 306 in cloud mode: the 12
+passphrase and instance-user operations are replaced by 53 account, workspace, billing and email ones; 313 with
+the 7 "Sign in with Google" operations, which exist only when it is configured, as on the hosted service), with a
 Scalar docs UI at `/docs` (cloud: a server-rendered page without third-party script). The route
 groups are: households and people, accounts/assets/debts, plans and their collections and singletons,
 history and undo, branches, change sets, simulation and jobs (Monte Carlo, historical, solvers, SSE),

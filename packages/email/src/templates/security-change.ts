@@ -6,6 +6,8 @@ const CHANGE_TEXT: Readonly<Record<SecurityChange, string>> = {
   "password-changed": "Your password was changed.",
   "password-reset":
     "Your password was reset using an email link. Apps connected to your account were disconnected; your API keys still work.",
+  "password-set":
+    "A password was set for your account using an email link. Apps connected to your account were disconnected; your API keys still work.",
   "email-changed": "The email address on your account was changed.",
   "totp-enabled": "Two-factor authentication was switched on.",
   "totp-disabled": "Two-factor authentication was switched off.",

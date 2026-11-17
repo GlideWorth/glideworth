@@ -79,6 +79,10 @@ export const ResetPasswordPage = lazyRouteComponent(
   () => import("../features/cloud/screens/password-reset"),
   "ResetPasswordPage",
 );
+export const SetPasswordPage = lazyRouteComponent(
+  () => import("../features/cloud/screens/password-reset"),
+  "SetPasswordPage",
+);
 export const VerifyEmailPage = lazyRouteComponent(
   () => import("../features/cloud/screens/link-pages"),
   "VerifyEmailPage",

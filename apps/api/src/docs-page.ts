@@ -41,7 +41,11 @@ const anchor = (method: string, path: string) =>
 export const DOCS_CSP =
   "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 
-const CSS = `body{font:15px/1.55 system-ui,sans-serif;margin:0;background:#f6f5f2;color:#1d2420}
+// Phone widths: long tokens (`gwk_<workspace>_<prefix>_<secret>`, header names, paths) break anywhere rather
+// than widen the page, and a parameter table that is still too wide scrolls inside itself.
+const CSS = `body{font:15px/1.55 system-ui,sans-serif;margin:0;background:#f6f5f2;color:#1d2420;overflow-wrap:break-word}
+code,h1,h3,td,th{overflow-wrap:anywhere}pre{max-width:100%;overflow-x:auto}pre code{overflow-wrap:normal}
+table{display:block;max-width:100%;overflow-x:auto}
 header{padding:1.25rem 1.5rem;background:#1d2420;color:#f6f5f2}header a{color:#cfe3d6}
 main{max-width:64rem;margin:0 auto;padding:1rem 1.5rem 4rem}nav{columns:3 14rem;font-size:.92rem}
 h2{margin-top:2.2rem;border-bottom:1px solid #ccc}h3{font-size:1rem;margin:1.4rem 0 .3rem;font-family:ui-monospace,monospace}

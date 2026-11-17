@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import mdx from "@astrojs/mdx";
 import sitemap from "@astrojs/sitemap";
-import { defineConfig } from "astro/config";
+import { defineConfig, envField } from "astro/config";
 import { defaultClientConditions, defaultServerConditions, type Plugin } from "vite";
 import { site } from "./src/config/site";
 import { shikiDark, shikiLight } from "./src/lib/shiki-theme";
@@ -46,6 +46,18 @@ function workspaceSource(): Plugin {
 export default defineConfig({
   site: site.url,
   output: "static",
+  // PUBLIC_GTM_ID is optional and empty unless the official production build sets it.
+  // A missing or blank value must still build: self-hosted copies never load the tag.
+  env: {
+    schema: {
+      PUBLIC_GTM_ID: envField.string({
+        context: "server",
+        access: "public",
+        optional: true,
+        default: "",
+      }),
+    },
+  },
   trailingSlash: "always",
   build: { format: "directory" },
   // Off: compression drops the space between text and an inline element that a line break separates

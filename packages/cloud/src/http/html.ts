@@ -73,7 +73,9 @@ export function securityHeaders(c: Context): void {
   c.header("Content-Security-Policy", CSP);
   c.header("X-Frame-Options", "DENY");
   c.header("X-Content-Type-Options", "nosniff");
-  c.header("Referrer-Policy", "no-referrer");
+  // "same-origin", not "no-referrer": under "no-referrer" browsers send `Origin: null` on these pages' form posts
+  // and the same-origin check refuses them. Other sites still get no referrer.
+  c.header("Referrer-Policy", "same-origin");
   c.header("Cache-Control", "no-store");
   c.header("Cross-Origin-Opener-Policy", "same-origin");
   c.header("Cross-Origin-Resource-Policy", "same-origin");
@@ -90,7 +92,7 @@ export function page(
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
-        <meta name="referrer" content="no-referrer" />
+        <meta name="referrer" content="same-origin" />
         <title>${title}</title>
         <style>
           ${raw(STYLE)}

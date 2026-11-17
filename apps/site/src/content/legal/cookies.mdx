@@ -1,19 +1,15 @@
 ---
 title: Cookie policy
-description: Exactly which cookies and browser storage the Glideworth website and app use. There are no advertising or analytics cookies, so there is no consent banner.
+description: Exactly which cookies and browser storage the Glideworth website and app use, what each one is for, and how long it is kept.
 lastUpdated: 2026-11-17
 draft: false
 order: 3
 ---
 
+import MarketingAnalyticsNote from '../../components/MarketingAnalyticsNote.astro';
 import { site } from '../../config/site';
 
-<Callout type="note" title="The short version">
-  This website sets **no cookies**. The app sets **sign-in and security cookies** that it cannot work without,
-  and keeps some settings and unsaved drafts in your browser's local storage. There are **no advertising cookies
-  and no analytics cookies**, so we do not show a cookie consent banner. If that ever changes, we will ask for your
-  consent first, before anything is set.
-</Callout>
+<MarketingAnalyticsNote part="cookies-callout" />
 
 This list was made by reading the code and checked in a browser on 17 November 2026. If we add anything, we will
 update this page first.
@@ -24,8 +20,7 @@ update this page first.
 |---|---|---|---|
 | `theme` | Local storage (not a cookie) | Remembers whether you picked light or dark. Written only when you press the theme button. | Until you clear your browser data |
 
-That is all. The site has no analytics, no advertising, no embedded third-party content, no social media
-buttons, and no fonts or scripts loaded from other companies. The pages themselves make no third-party requests.
+<MarketingAnalyticsNote part="cookies-site" />
 
 ## 2. The hosted app (app.glideworth.com)
 
@@ -54,7 +49,7 @@ the button is a plain link.
 
 ### Local storage
 
-The app stores these on your device. None of them is sent to a third party. Some hold the figures you typed.
+The app stores these on your device. Apart from the PostHog identifier, none of them is sent to a third party. Some hold the figures you typed.
 
 | Key | What it holds |
 |---|---|
@@ -64,6 +59,7 @@ The app stores these on your device. None of them is sent to a third party. Some
 | `glideworth:drafts:v1:` followed by a household id | Unsaved edits to a plan, kept so you do not lose them if the page reloads or you go offline. This can contain figures you entered |
 | `glideworth:chart-views:v1:` followed by a plan id | Chart views you saved |
 | `glideworth:sample-doc:v1` | The sample household, if you used it |
+| `ph_` followed by the PostHog project key | Hosted app only: PostHog's random identifier for your browser and its analytics settings, sent to PostHog with each analytics event (section 3) |
 | `glideworth.handoff.v1` | Only if you came from one of the calculators on this website: the numbers you entered there, so the app can offer to start your plan with them. Removed once you use or decline them, and ignored after 7 days |
 
 Older versions used the same keys starting with `cairn` (`cairn-ui`, `cairn:drafts:v1:` and so on). When the app
@@ -91,9 +87,7 @@ finish.
 
 ## 3. Analytics and advertising
 
-We use none. There are no analytics, advertising, session-recording or social media tools on the website or in
-the app. If we add one, we will list it in this section first, say what it sets and why, and ask for your consent
-before it sets anything that needs consent.
+<MarketingAnalyticsNote part="cookies-analytics" />
 
 ## 4. If you run Glideworth yourself
 
@@ -103,15 +97,9 @@ replaces), and it does not set the device, sign-up or Google cookies. It has no 
 reference at `/docs` loads its viewer from the jsDelivr content delivery network, so jsDelivr sees your IP address
 when you open that page. The hosted service's API reference does not.
 
-## 5. Why there is no consent banner
+## 5. Consent
 
-The UK and EU rules on cookies and similar technologies (PECR and the ePrivacy Directive) require consent for
-storage on your device unless it is strictly necessary to give you something you asked for. The sign-in and
-anti-forgery cookies are strictly necessary, and so are the Google sign-in cookies, which exist only while a
-sign-in you started is in progress. The device and sign-up cookies and the bot check exist only to keep your
-account secure. The remaining storage keeps your own settings and drafts for you, and the website's theme choice
-is set by you. We use no advertising or analytics technology. So we do not show a banner. If we ever add anything
-that needs consent, we will ask for it before it is set, and you will be able to refuse.
+<MarketingAnalyticsNote part="cookies-consent" />
 
 ## 6. Your choices
 

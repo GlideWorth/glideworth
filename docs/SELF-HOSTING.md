@@ -8,7 +8,9 @@ and no feature that only the hosted service has. It has **no telemetry**: it doe
 errors, version checks or analytics to anyone. The only outbound connections the server makes are the
 webhooks you configure yourself. (In the browser, the optional API reference page at `/docs` loads its
 viewer script from the jsDelivr CDN; nothing else in the app contacts a third party. The hosted service's
-`/docs` is a server-rendered page with no third-party script.) The same image also runs the hosted service
+`/docs` is a server-rendered page with no third-party script.) The marketing website (`apps/site`) is not
+part of this container. If you build it yourself, leave `PUBLIC_GTM_ID` unset: it is optional, off by
+default, and only the official hosted website sets it. The app never loads that tag. The same image also runs the hosted service
 (`GLIDEWORTH_MODE=cloud`); a self-hosted instance never loads that code. The software is
 licensed under AGPL-3.0-only; see [`LICENSING.md`](../LICENSING.md).
 

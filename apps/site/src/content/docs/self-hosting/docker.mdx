@@ -12,7 +12,9 @@ import { site } from '../../../config/site';
 The self-hosted build is the whole product. It has every feature, no licence key and no paywall, and it has **no
 telemetry**: it reports no usage, errors, version checks or analytics to anyone. The only outbound connections the server
 makes are webhooks you configure yourself. In the browser, the API reference page at `/docs` loads its viewer script from
-a public CDN; nothing else in the app contacts a third party. The software is AGPL-3.0-only.
+a public CDN; nothing else in the app contacts a third party. The marketing website is a separate build. Leave
+`PUBLIC_GTM_ID` unset if you build it: the variable is optional, off by default, and only the official hosted
+website sets it. The app never loads that tag. The software is AGPL-3.0-only.
 
 Glideworth runs as one container: the web app, the REST API, the MCP server and the API reference are all served on one
 port, with the data in a single SQLite file on a volume.

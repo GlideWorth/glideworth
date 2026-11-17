@@ -47,6 +47,22 @@ src/config/related.ts    clusters of related pages (every page in a cluster link
 public/                  favicons and app icons (generated from /brand)
 ```
 
+## Analytics (optional, off by default)
+
+The site can load Google Tag Manager. It does so only when `PUBLIC_GTM_ID` is set, at **build** time, to a
+container id (`GTM-` and then letters and digits). [`.env.example`](./.env.example) leaves it unset. Leave it
+unset for any build that is not the official hosted website, including a self-hosted copy: those pages then
+never contact Google.
+
+The production deploy sets the variable. Staging does not. The signed-in app (`apps/web`) does not read it
+and does not load the tag. Pages under `/tools/` do not load it either, so figures typed into a calculator
+stay in the browser.
+
+The loader is the Google Tag Manager snippet, including the noscript iframe. Before `gtm.js` runs, the page
+sets Google Consent Mode v2 defaults: advertising storage, ad user data, ad personalisation and analytics
+storage are denied. This repository has no cookie banner. One is appropriate for visitors in the UK and the
+EU before those storage flags are granted.
+
 ## Design system
 
 - **Colour.** Warm paper neutrals, spruce accent (`--accent`), ochre emphasis (`--ochre`), terracotta for

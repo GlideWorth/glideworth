@@ -15,7 +15,7 @@ import { cn } from "../../lib/cn";
 import { relativeTime } from "../../lib/format";
 import { ReauthCancelled, withReauth } from "../../lib/reauth";
 import { useFormat } from "../../lib/workspace";
-import { SectionIntro, SettingsGroup } from "./settings-ui";
+import { LoadErrorText, SectionIntro, SettingsGroup } from "./settings-ui";
 
 export const SCOPE_INFO: Record<ApiScope, { label: string; description: string }> = {
   read: {
@@ -131,9 +131,11 @@ export function KeysSection() {
           </div>
         ) : keys.isError ? (
           <EmptyState icon={TriangleAlert} title="Keys are unavailable" compact>
-            {keys.error instanceof ApiRequestError && keys.error.status === 403
-              ? "Managing keys needs a key or session with write access."
-              : "The Glideworth server is not reachable."}
+            <LoadErrorText
+              error={keys.error}
+              use="use API keys"
+              forbidden="Managing keys needs a key or session with write access."
+            />
           </EmptyState>
         ) : active.length === 0 ? (
           <EmptyState icon={KeyRound} title="No active keys" compact>

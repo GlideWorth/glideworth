@@ -4,6 +4,7 @@
  */
 
 import type { Plan } from "@glideworth/core";
+import { usePostHog } from "@posthog/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
@@ -433,6 +434,7 @@ function NewPlanDialog({
   const qc = useQueryClient();
   const navigate = useNavigate();
   const setActive = useUi((s) => s.setActivePlan);
+  const posthog = usePostHog();
   const [source, setSource] = useState<"template" | "copy">("template");
   const [template, setTemplate] = useState("work-save-retire");
   const [copyFrom, setCopyFrom] = useState<string | undefined>(undefined);
@@ -471,6 +473,11 @@ function NewPlanDialog({
     });
     setBusy(false);
     if (created) {
+      posthog?.capture("plan_created", {
+        creation_source: source,
+        ...(source === "template" ? { template_id: template } : {}),
+        starting_conditions: fixed ? "fixed" : "live",
+      });
       onOpenChange(false);
       setName("");
       setActive(created.id);

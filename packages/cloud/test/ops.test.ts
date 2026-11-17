@@ -293,6 +293,9 @@ describe("pages and actions", () => {
       expect(r.headers.get("content-security-policy")).not.toMatch(/script-src/);
       expect(r.headers.get("x-frame-options")).toBe("DENY");
       expect(r.headers.get("cache-control")).toBe("no-store");
+      // Under "no-referrer" browsers post the forms with `Origin: null`, which the CSRF check refuses.
+      expect(r.headers.get("referrer-policy")).toBe("same-origin");
+      expect(r.text).not.toContain('content="no-referrer"');
     }
     expect(
       (await c.get(`/workspaces?q=${encodeURIComponent("<script>x</script>")}`)).text,

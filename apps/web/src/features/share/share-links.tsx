@@ -2,6 +2,7 @@
  * Share links: create, list, refresh and revoke read-only links to a plan's results. The token is
  * shown once, at creation; the server stores only its hash.
  */
+import { usePostHog } from "@posthog/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link2, Loader2, Plus, RefreshCw, Share2, TriangleAlert } from "lucide-react";
 import { type FormEvent, useState } from "react";
@@ -252,6 +253,7 @@ function CreateShareDialog({
   const [days, setDays] = useState("30");
   const [success, setSuccess] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const posthog = usePostHog();
   const create = useMutation({
     mutationFn: () =>
       api.createShareLink(planId, {
@@ -262,6 +264,12 @@ function CreateShareDialog({
         includeSuccessRate: success,
       }),
     onSuccess: (r) => {
+      posthog?.capture("share_link_created", {
+        amounts_visibility: privacy,
+        money_basis: basis,
+        expires_in_days: Number(days),
+        includes_success_rate: success,
+      });
       onOpenChange(false);
       setLabel("");
       onCreated(shareUrl(r.path));

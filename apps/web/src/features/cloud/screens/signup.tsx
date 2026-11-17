@@ -7,6 +7,7 @@
  * the verification link, and confirming the address opens the invitation. Such a person joins a workspace
  * and does not start a trial, so the copy says so.
  */
+import { usePostHog } from "@posthog/react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Loader2, MailCheck, UserPlus } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
@@ -42,6 +43,7 @@ type Errors = Partial<Record<"name" | "email" | "password" | "adult" | "captcha"
 export function SignUpPage() {
   const session = useSession().data;
   const navigate = useNavigate();
+  const posthog = usePostHog();
   const siteKey = session?.kind === "cloud-signed-out" ? session.captchaSiteKey : undefined;
   const termsVersion =
     (session?.kind === "cloud-signed-out" && session.termsVersion) || FALLBACK_TERMS_VERSION;
@@ -96,6 +98,9 @@ export function SignUpPage() {
         adultConfirmed: true,
         ...(token ? { captchaToken: token } : {}),
         ...(invitation ? { invitation: invitation.token } : {}),
+      });
+      posthog?.capture("account_sign_up_submitted", {
+        source: handoff?.tool ?? "direct",
       });
       pendingEmail = email.trim();
       await navigate({ to: "/check-email" });

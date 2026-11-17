@@ -192,10 +192,12 @@ scrollable, focusable box automatically (`MdxTable`); wrap a hand-written table 
 - **noindex** (page prop, frontmatter field, or `placeholder`) also removes the page from the sitemap.
 - **RSS** at `/rss.xml` lists published, indexable blog posts.
 - Site-wide values (domain, app URL, repository, contact addresses) are in `src/config/site.ts`.
-- The site makes **no third-party requests**: no external fonts, scripts, analytics or embeds. Images
-  and fonts live in the repository. Links to other sites are fine. `pnpm check:dist` enforces both halves:
-  anything a page _loads_ (scripts, styles, images, fonts, iframes, preloads, `srcset`, CSS `url()` and
-  `@import`) must be same-origin with no exceptions; hyperlinks may point at any https origin.
+- The site makes **no third-party requests** in a default build: no external fonts, scripts, analytics or
+  embeds. Images and fonts live in the repository. Links to other sites are fine. `pnpm check:dist` enforces
+  both halves: anything a page _loads_ (scripts, styles, images, fonts, iframes, preloads, `srcset`, CSS
+  `url()` and `@import`) must be same-origin, except the Google Tag Manager origins on a page whose HTML
+  contains the loader (only when `PUBLIC_GTM_ID` was set for that build). Hyperlinks may point at any https
+  origin.
 
 ## 6. Checking your work
 

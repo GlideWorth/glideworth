@@ -1,7 +1,9 @@
 /** Building blocks shared by the settings sections: a titled group and a label/control row. */
 import { Cloud, Laptop } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { type ReactNode, useId } from "react";
 import { Tooltip } from "../../components/ui/tooltip";
+import { describeLoadError } from "../../lib/api-problems";
 import { useMode } from "../../lib/auth";
 import { cn } from "../../lib/cn";
 
@@ -117,5 +119,37 @@ export function CodeBlock({ children, label }: { children: string; label?: strin
     >
       {children}
     </pre>
+  );
+}
+
+/** The copy for a failed settings list (lib/api-problems.ts describeLoadError), with a billing link on a 402. */
+export function LoadErrorText({
+  error,
+  use,
+  forbidden,
+  missing,
+}: {
+  error: unknown;
+  use: string;
+  forbidden?: string;
+  missing?: string;
+}) {
+  const { text, billing } = describeLoadError(error, { use, forbidden, missing });
+  return (
+    <>
+      {text}
+      {billing ? (
+        <>
+          {" "}
+          <Link
+            to="/settings/$section"
+            params={{ section: "billing" }}
+            className="font-medium text-accent underline underline-offset-2"
+          >
+            Open billing settings
+          </Link>
+        </>
+      ) : null}
+    </>
   );
 }

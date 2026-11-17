@@ -46,6 +46,12 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
 
 # ---------------------------------------------------------------------------------------- build
 FROM deps AS build
+# Hosted-service analytics (apps/web/src/lib/analytics.tsx). Only the production image workflow
+# (deploy.yml, image-artifact.yml) passes these; self-host images leave them empty and ship no analytics.
+ARG VITE_PUBLIC_POSTHOG_PROJECT_TOKEN=""
+ARG VITE_PUBLIC_POSTHOG_HOST=""
+ENV VITE_PUBLIC_POSTHOG_PROJECT_TOKEN=$VITE_PUBLIC_POSTHOG_PROJECT_TOKEN \
+    VITE_PUBLIC_POSTHOG_HOST=$VITE_PUBLIC_POSTHOG_HOST
 COPY tsconfig.base.json ./
 # apps/web imports brand/logo.svg?raw (the build failed without it).
 COPY brand brand
@@ -55,7 +61,8 @@ COPY apps apps
 # the web app is CI's job (`pnpm typecheck`); the image build only needs the bundle.
 RUN pnpm --filter @glideworth/core --filter @glideworth/importers --filter @glideworth/email \
       --filter @glideworth/billing --filter @glideworth/cloud --filter @glideworth/api build \
- && pnpm --filter @glideworth/web exec vite build
+ && pnpm --filter @glideworth/web exec vite build \
+ && printf '%s' "$VITE_PUBLIC_POSTHOG_HOST" > /repo/posthog-host
 # A self-contained production tree for the API: compiled code, migrations and prod dependencies only
 # (including the compiled workspace packages).
 RUN pnpm --filter @glideworth/api deploy --prod --legacy /deploy
@@ -77,6 +84,8 @@ ENV NODE_ENV=production \
 WORKDIR /app
 COPY --from=build --chown=node:node /deploy /app
 COPY --from=build --chown=node:node /repo/apps/web/dist /app/web
+# The PostHog host the bundle was built with (empty for self-host images); infra/scripts/gen-csp.sh reads it.
+COPY --from=build --chown=node:node /repo/posthog-host /app/posthog-host
 RUN mkdir -p /data && chown node:node /data
 USER node
 VOLUME ["/data"]

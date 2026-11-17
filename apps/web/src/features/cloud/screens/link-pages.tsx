@@ -7,6 +7,7 @@
  * answers `PASSWORD_REQUIRED` and the page asks for the password chosen at sign-up, so a sign-up somebody
  * else made with the person's address cannot hand them an account with that somebody's password.
  */
+import { usePostHog } from "@posthog/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { CheckCircle2, Loader2, LockKeyhole, MailCheck, UsersRound } from "lucide-react";
@@ -55,6 +56,7 @@ function useOnce(token: string | null, action: (token: string) => Promise<Phase>
 export function VerifyEmailPage() {
   const token = useFragmentToken();
   const finish = useFinishSignIn();
+  const posthog = usePostHog();
   const [email, setEmail] = useState("");
   const [resent, setResent] = useState(false);
   const [resendError, setResendError] = useState<string | null>(null);
@@ -63,6 +65,7 @@ export function VerifyEmailPage() {
   const first = useOnce(token, async (t) => {
     try {
       const r = await cloudApi.verifyEmail(t);
+      posthog?.capture("email_verified");
       await finish(r.redirectTo, "/");
       return { kind: "done" };
     } catch (e) {
@@ -115,6 +118,7 @@ export function VerifyEmailPage() {
       <VerifyWithPassword
         token={token}
         onSignedIn={async (redirectTo) => {
+          posthog?.capture("email_verified");
           setAfter({ kind: "done" });
           await finish(redirectTo, "/");
         }}

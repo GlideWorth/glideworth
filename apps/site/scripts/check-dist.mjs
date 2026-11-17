@@ -9,7 +9,8 @@
  *  - every JSON-LD block parses; posts carry Article, nested pages BreadcrumbList, FAQ blocks FAQPage
  *  - every image has an alt attribute (alt="" is fine for decoration)
  *  - RESOURCES THE PAGE LOADS (script, style, image, font, iframe, preload, srcset, CSS url(), @import) stay
- *    on this origin, with no exceptions, and exist
+ *    on this origin and exist. The one exception is Google Tag Manager, and only on a page whose HTML
+ *    contains the loader (a build with PUBLIC_GTM_ID set). A default build has no such page.
  *  - HYPERLINKS (<a href>): internal ones resolve and end with a slash; external ones may point at any
  *    https origin but must carry rel="noopener noreferrer"; plain http: links are errors
  *  - the sitemap lists every indexable page and no noindex page; robots.txt points at it; rss.xml lists
@@ -93,10 +94,34 @@ const noindex = new Set();
 const posts = new Set();
 const redirects = [];
 
+/**
+ * Hosts the GTM loader is allowed to contact. Permitted only when this page's HTML contains the loader,
+ * so a default build (no PUBLIC_GTM_ID) still rejects every third-party URL.
+ */
+function allowedTagOrigin(url, raw) {
+  if (!raw.includes("https://www.googletagmanager.com/gtm.js")) return false;
+  let host;
+  try {
+    host = new URL(url, SITE).hostname;
+  } catch {
+    return false;
+  }
+  return (
+    host === "www.googletagmanager.com" ||
+    host === "www.google-analytics.com" ||
+    host === "ssl.google-analytics.com" ||
+    host === "www.google.com" ||
+    host.endsWith(".google-analytics.com") ||
+    host.endsWith(".analytics.google.com") ||
+    host.endsWith(".googletagmanager.com")
+  );
+}
+
 /** A resource the page loads: same origin only, and it must exist. */
-function checkLoad(rel, sitePath, what, url) {
+function checkLoad(rel, sitePath, what, url, raw) {
   if (!url || url.startsWith("data:") || url.startsWith("#")) return;
   if (isAbsolute(url) && !isSameSite(url)) {
+    if (allowedTagOrigin(url, raw)) return;
     fail(rel, `loads from another origin: ${what} ${url}`);
     return;
   }
@@ -106,12 +131,13 @@ function checkLoad(rel, sitePath, what, url) {
 }
 
 /** CSS text: url() and @import must be same-origin (and local files must exist). */
-function checkCss(rel, sheetPath, text, what) {
+function checkCss(rel, sheetPath, text, what, raw) {
   for (const m of text.matchAll(/url\(\s*(['"]?)([^)'"]+)\1\s*\)/g)) {
     const u = decode(m[2].trim());
     if (u.startsWith("data:") || u.startsWith("#")) continue;
-    if (isAbsolute(u) && !isSameSite(u)) fail(rel, `${what} loads from another origin: url(${u})`);
-    else if (u.startsWith("/") && !exists(u)) fail(rel, `${what} references missing file: ${u}`);
+    if (isAbsolute(u) && !isSameSite(u)) {
+      if (!allowedTagOrigin(u, raw)) fail(rel, `${what} loads from another origin: url(${u})`);
+    } else if (u.startsWith("/") && !exists(u)) fail(rel, `${what} references missing file: ${u}`);
     else if (!u.startsWith("/") && !isAbsolute(u) && sheetPath) {
       const resolved = posix.join(posix.dirname(sheetPath), u.split(/[?#]/)[0]);
       if (!exists(resolved)) fail(rel, `${what} references missing file: ${u}`);
@@ -233,33 +259,33 @@ for (const file of html) {
     const a = attrsOf(m[2]);
     switch (name) {
       case "script":
-        checkLoad(rel, sitePath, "<script src>", a.src);
+        checkLoad(rel, sitePath, "<script src>", a.src, raw);
         break;
       case "img":
-        checkLoad(rel, sitePath, "<img src>", a.src);
-        for (const u of urlsIn(a.srcset ?? "")) checkLoad(rel, sitePath, "<img srcset>", u);
+        checkLoad(rel, sitePath, "<img src>", a.src, raw);
+        for (const u of urlsIn(a.srcset ?? "")) checkLoad(rel, sitePath, "<img srcset>", u, raw);
         if (!("alt" in a)) fail(rel, `<img> without alt: ${a.src ?? "(no src)"}`);
         break;
       case "source":
-        checkLoad(rel, sitePath, "<source src>", a.src);
-        for (const u of urlsIn(a.srcset ?? "")) checkLoad(rel, sitePath, "<source srcset>", u);
+        checkLoad(rel, sitePath, "<source src>", a.src, raw);
+        for (const u of urlsIn(a.srcset ?? "")) checkLoad(rel, sitePath, "<source srcset>", u, raw);
         break;
       case "iframe":
       case "audio":
       case "track":
       case "embed":
       case "frame":
-        checkLoad(rel, sitePath, `<${name} src>`, a.src);
+        checkLoad(rel, sitePath, `<${name} src>`, a.src, raw);
         break;
       case "video":
-        checkLoad(rel, sitePath, "<video src>", a.src);
-        checkLoad(rel, sitePath, "<video poster>", a.poster);
+        checkLoad(rel, sitePath, "<video src>", a.src, raw);
+        checkLoad(rel, sitePath, "<video poster>", a.poster, raw);
         break;
       case "object":
-        checkLoad(rel, sitePath, "<object data>", a.data);
+        checkLoad(rel, sitePath, "<object data>", a.data, raw);
         break;
       case "input":
-        if (a.type === "image") checkLoad(rel, sitePath, "<input src>", a.src);
+        if (a.type === "image") checkLoad(rel, sitePath, "<input src>", a.src, raw);
         break;
       case "link": {
         const kind = (a.rel ?? "").toLowerCase();
@@ -268,9 +294,9 @@ for (const file of html) {
             fail(rel, `missing <link rel="${kind}">: ${a.href}`);
           break;
         }
-        checkLoad(rel, sitePath, `<link rel="${kind}">`, a.href);
+        checkLoad(rel, sitePath, `<link rel="${kind}">`, a.href, raw);
         for (const u of urlsIn(a.imagesrcset ?? ""))
-          checkLoad(rel, sitePath, "<link imagesrcset>", u);
+          checkLoad(rel, sitePath, "<link imagesrcset>", u, raw);
         break;
       }
       case "a": {
@@ -279,9 +305,9 @@ for (const file of html) {
       }
       default:
     }
-    if (a.style) checkCss(rel, null, a.style, "inline style");
+    if (a.style) checkCss(rel, null, a.style, "inline style", raw);
   }
-  for (const text of inlineStyles) checkCss(rel, null, text, "<style>");
+  for (const text of inlineStyles) checkCss(rel, null, text, "<style>", raw);
 }
 
 /** A hyperlink: internal ones resolve and end with a slash; external ones carry rel="noopener noreferrer". */

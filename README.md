@@ -184,7 +184,9 @@ Glideworth is self-hosted and local-first. Your data lives in one SQLite file on
 volume). Nothing is sent anywhere: no telemetry, no analytics, no hosted AI, no account linking. The only
 network calls the server makes are webhooks you configure (blocked for private addresses unless you allow
 them). The browser needs the internet for one optional thing: the `/docs` page loads its viewer script from
-the jsDelivr CDN. An AI assistant sees only what its tools return, with the scopes you gave its key, and a
+the jsDelivr CDN. The marketing website is a separate static build. It loads Google Tag Manager only when
+`PUBLIC_GTM_ID` is set at build time. That variable is unset in this repository and in a self-hosted build.
+The official hosted website is the only place that sets it, and the app never loads the tag. An AI assistant sees only what its tools return, with the scopes you gave its key, and a
 model provider that you connect sees that data too: use a local model if that matters. Passphrases are
 hashed with scrypt, API keys and sessions are stored as hashes, and a local `private/` folder (gitignored, for
 your own files) is never read by the app.

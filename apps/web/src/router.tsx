@@ -5,6 +5,7 @@ import {
   type RouterHistory,
 } from "@tanstack/react-router";
 import { AppShell } from "./components/layout/app-shell";
+import { Analytics } from "./lib/analytics";
 import { NotFound, PagePending, RouteError } from "./components/layout/route-states";
 import { DashboardPage } from "./features/dashboard/dashboard-page";
 import { InsightsPage } from "./features/insights/insights-page";
@@ -49,7 +50,15 @@ import { cloudOnly, selfHostOnly } from "./routes/mode-gate";
  * Code-based route tree. Each feature workstream owns its page module under src/features/<area>;
  * only this file maps paths to pages (append-only edits to avoid conflicts).
  */
-const root = createRootRoute({ component: AppShell });
+function RootComponent() {
+  return (
+    <Analytics fallback={RouteError}>
+      <AppShell />
+    </Analytics>
+  );
+}
+
+const root = createRootRoute({ component: RootComponent });
 const route0 = createRoute({ getParentRoute: () => root, path: "/", component: DashboardPage });
 const route1 = createRoute({
   getParentRoute: () => root,

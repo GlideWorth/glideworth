@@ -13,7 +13,7 @@ import { api, type WebhookInfo } from "../../lib/api";
 import { cn } from "../../lib/cn";
 import { useFormat } from "../../lib/workspace";
 import { CopyButton, relativeTime } from "./keys-section";
-import { CodeBlock, SectionIntro, SettingsGroup } from "./settings-ui";
+import { CodeBlock, LoadErrorText, SectionIntro, SettingsGroup } from "./settings-ui";
 
 export const WEBHOOK_EVENTS = [
   {
@@ -76,7 +76,11 @@ export function WebhooksSection() {
           </div>
         ) : hooks.isError ? (
           <EmptyState icon={TriangleAlert} title="Webhooks are unavailable" compact>
-            The Glideworth server is not reachable, or this session lacks write access.
+            <LoadErrorText
+              error={hooks.error}
+              use="use webhooks"
+              forbidden="Managing webhooks needs a key or session with write access."
+            />
           </EmptyState>
         ) : items.length === 0 ? (
           <EmptyState icon={Webhook} title="No endpoints yet" compact>

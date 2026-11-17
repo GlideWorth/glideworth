@@ -4,6 +4,7 @@
  * wrong password get the same sentence. A Google sign-in that needs the second step arrives at
  * `/signin/2fa#challenge=…&next=…` (fragment: never sent to a server).
  */
+import { usePostHog } from "@posthog/react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Loader2, LockKeyhole, ShieldCheck } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
@@ -31,6 +32,7 @@ import {
 export function SignInPage() {
   const session = useSession().data;
   const navigate = useNavigate();
+  const posthog = usePostHog();
   const go = useGoTo();
   const finish = useFinishSignIn();
   const next = nextFromLocation();
@@ -93,6 +95,7 @@ export function SignInPage() {
         await navigate({ to: "/signin/2fa" });
         return;
       }
+      posthog?.capture("sign_in_completed");
       await finish(r.redirectTo, next);
     } catch (err) {
       if (isCode(err, "EMAIL_NOT_VERIFIED")) {
@@ -209,6 +212,7 @@ export function SignInPage() {
 
 export function TwoFactorPage() {
   const navigate = useNavigate();
+  const posthog = usePostHog();
   const finish = useFinishSignIn();
   // From the password step (memory), or from a Google sign-in's redirect (the URL fragment, then cleared).
   const fragmentChallenge = useFragmentToken("challenge");
@@ -252,6 +256,9 @@ export function TwoFactorPage() {
         challenge: pending.token,
         ...(recovery ? { recoveryCode: value } : { code: value }),
         ...(pending.next !== "/" ? { next: pending.next } : {}),
+      });
+      posthog?.capture("two_factor_sign_in_completed", {
+        authentication_method: recovery ? "recovery_code" : "authenticator_code",
       });
       await finish(r.redirectTo, pending.next);
     } catch (err) {

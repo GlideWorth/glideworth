@@ -43,3 +43,7 @@ server's own.
 
 Running from source, `pnpm dev` starts the API on port 8787 and the web app on 5173, and `pnpm start` (after `pnpm build`)
 serves everything on one port. In development the dev server adds the API key for the browser, so no sign-in is needed.
+
+The marketing website is not configured here. It has one optional build-time variable, `PUBLIC_GTM_ID` (a Google
+Tag Manager container id). Leave it unset, as `apps/site/.env.example` does. The app does not read it, and a
+self-hosted build of the website then loads no tag. Only the official hosted website sets it.

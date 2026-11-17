@@ -67,7 +67,7 @@ export const pages = {
   "/security/": {
     title: "Security and privacy",
     description:
-      "How Glideworth handles your financial data: no telemetry, no bank connections, hashed passphrases and API keys, scoped keys for AI assistants, and self-hosting.",
+      "How Glideworth handles your financial data: no bank connections, hashed passphrases and API keys, scoped keys for AI assistants, and self-hosting.",
     ogEyebrow: "Security and privacy",
   },
   "/about/": {

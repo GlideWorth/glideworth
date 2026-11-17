@@ -16,6 +16,7 @@ import '../styles/global.css';
 import frauncesUrl from '@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2?url';
 import interUrl from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
 import Footer from '../components/Footer.astro';
+import GoogleTagManager from '../components/GoogleTagManager.astro';
 import Header from '../components/Header.astro';
 import SEO, { type SeoProps } from '../components/SEO.astro';
 import { site } from '../config/site';
@@ -45,6 +46,7 @@ const {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <GoogleTagManager where="head" />
     <script is:inline>
       // Before first paint: the visitor's theme choice, and a flag that JavaScript runs.
       document.documentElement.classList.add('js');
@@ -69,6 +71,7 @@ const {
     <slot name="head" />
   </head>
   <body>
+    <GoogleTagManager where="body" />
     <a class="skip-link" href="#main">Skip to content</a>
     <Header />
     <main id="main" tabindex="-1">

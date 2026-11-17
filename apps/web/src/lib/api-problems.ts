@@ -70,3 +70,37 @@ export function describeQuota(p: Extract<ApiProblem, { kind: "quota" }>, locale?
     : " It resets daily.";
   return `You have used today's limit${limit} for ${what}.${when}`;
 }
+
+export type LoadErrorCopy = { text: string; billing: boolean };
+
+/**
+ * What a settings screen says when its list query failed. A 402 means the server answered: the
+ * workspace has not started its trial (no_subscription, which the shell shows no banner for) or is
+ * read-only. "Not reachable" is only for a request that got no HTTP answer at all: the cloud client
+ * reports that as status 0 / NETWORK, the self-host client lets fetch's TypeError through.
+ * `billing` asks the caller to link to the billing section.
+ */
+export function describeLoadError(
+  error: unknown,
+  opts: { use: string; forbidden?: string; missing?: string },
+): LoadErrorCopy {
+  const { status, code, details } = (error && typeof error === "object" ? error : {}) as {
+    status?: unknown;
+    code?: unknown;
+    details?: unknown;
+  };
+  if (status === 402 && code === "ACCOUNT_READ_ONLY") {
+    return rec(details).reason === "no_subscription"
+      ? { text: `Start your free trial to ${opts.use}.`, billing: true }
+      : {
+          text: "This workspace is read-only. The owner can subscribe in billing settings.",
+          billing: true,
+        };
+  }
+  if (status === 403 && opts.forbidden) return { text: opts.forbidden, billing: false };
+  if ((status === 404 || status === 501) && opts.missing)
+    return { text: opts.missing, billing: false };
+  if (status === 0 || code === "NETWORK" || error instanceof TypeError)
+    return { text: "The Glideworth server is not reachable.", billing: false };
+  return { text: "Glideworth could not load this. Try again in a moment.", billing: false };
+}

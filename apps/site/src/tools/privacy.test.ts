@@ -59,6 +59,7 @@ describe("no data leaves the browser", () => {
         for (const m of html.matchAll(/<script[^>]+src="\/_astro\/(ToolPage[^"]+\.js)"/g))
           queue.push(m[1]!);
         expect(html, page).not.toMatch(/<script[^>]+src="https?:/);
+        expect(html, page).not.toMatch(/googletagmanager|google-analytics|gtag\(/);
       }
       const seen = new Set<string>();
       while (queue.length) {

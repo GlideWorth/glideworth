@@ -1,4 +1,5 @@
 ---
+import { PUBLIC_GTM_ID } from 'astro:env/server';
 import Button from '../components/Button.astro';
 import Card from '../components/Card.astro';
 import CTABand from '../components/CTABand.astro';
@@ -13,9 +14,14 @@ import { formatPrice, priceSentence, pricing, trialTerms } from '../config/prici
 import { site, trialCta } from '../config/site';
 import PageLayout from '../layouts/PageLayout.astro';
 import { facts } from '../lib/facts';
+import { googleTagManagerId } from '../lib/gtm';
 import { organization, softwareApplication, website } from '../lib/jsonld';
 
 const n = facts.taxCountryCount;
+// The official hosted build loads Google Tag Manager on marketing pages (not the calculators or the app).
+const trackerNote = googleTagManagerId(PUBLIC_GTM_ID)
+  ? 'The free calculators load no trackers. The hosted app uses PostHog for product analytics.'
+  : 'This website and the free calculators load no trackers. The hosted app uses PostHog for product analytics.';
 
 const differences: FeatureItem[] = [
   {
@@ -232,7 +238,7 @@ const proof = [
         </div>
         <div>
           <dt>No telemetry</dt>
-          <dd>A self-hosted server makes no network calls except the webhooks you set up. This website loads no trackers.</dd>
+          <dd>A self-hosted server makes no network calls except the webhooks you set up. {trackerNote}</dd>
         </div>
         <div>
           <dt>Everything exports</dt>

@@ -30,7 +30,7 @@ import { useMode } from "../../lib/auth";
 import { useFormat } from "../../lib/workspace";
 import { acceptLink } from "../share/accept-page";
 import { CopyButton, relativeTime } from "./keys-section";
-import { SectionIntro, SettingsGroup } from "./settings-ui";
+import { LoadErrorText, SectionIntro, SettingsGroup } from "./settings-ui";
 
 const errText = (e: unknown) =>
   e instanceof ApiRequestError
@@ -47,19 +47,18 @@ const errText = (e: unknown) =>
 
 function Unavailable({ error, what }: { error: unknown; what: string }) {
   const forbidden = error instanceof ApiRequestError && error.status === 403;
-  const missing =
-    error instanceof ApiRequestError && (error.status === 404 || error.status === 501);
   return (
     <EmptyState
       icon={forbidden ? ShieldAlert : TriangleAlert}
       title={`${what} unavailable`}
       compact
     >
-      {forbidden
-        ? "Only the owner of this Glideworth can see this."
-        : missing
-          ? "This server does not offer it yet. Update Glideworth to use it."
-          : "The Glideworth server is not reachable."}
+      <LoadErrorText
+        error={error}
+        use="see this"
+        forbidden="Only the owner of this Glideworth can see this."
+        missing="This server does not offer it yet. Update Glideworth to use it."
+      />
     </EmptyState>
   );
 }

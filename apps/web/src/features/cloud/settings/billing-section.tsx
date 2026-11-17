@@ -3,6 +3,7 @@
  * Stripe Checkout for a monthly or yearly plan, the Stripe customer portal, and the cancellation and
  * refund terms (legal-decisions.md section 3). Only the workspace owner gets buttons.
  */
+import { usePostHog } from "@posthog/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, CreditCard, ExternalLink, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -69,9 +70,13 @@ export function BillingSection() {
   // Once Stripe's confirmation arrives, the shell (banner, start-trial page) follows the new access level.
   const qc = useQueryClient();
   const level = billing.data?.access.level;
+  const posthog = usePostHog();
   useEffect(() => {
-    if (returned && level === "full") void qc.invalidateQueries({ queryKey: ["session"] });
-  }, [returned, level, qc]);
+    if (returned && level === "full") {
+      posthog?.capture("billing_checkout_completed");
+      void qc.invalidateQueries({ queryKey: ["session"] });
+    }
+  }, [returned, level, qc, posthog]);
 
   if (billing.isLoading) return <Loading what="billing" />;
   if (billing.isError || !billing.data)
@@ -86,6 +91,7 @@ function BillingBody({ b, returned }: { b: BillingInfo; returned: boolean }) {
   const view = billingView(b, new Date(), locale);
   const owner = b.role === "owner";
   const [error, setError] = useState<string | null>(null);
+  const posthog = usePostHog();
 
   const portal = useMutation({
     mutationFn: cloudApi.portal,
@@ -98,8 +104,13 @@ function BillingBody({ b, returned }: { b: BillingInfo; returned: boolean }) {
   const checkout = useMutation({
     mutationFn: (lookupKey: string) => cloudApi.checkout(lookupKey),
     onMutate: () => setError(null),
-    onSuccess: (r) => {
-      if (!goToStripe(r.url)) setError("Checkout sent an address we did not recognise.");
+    onSuccess: (r, lookupKey) => {
+      if (goToStripe(r.url)) {
+        const interval = b.offered?.find((offer) => offer.lookupKey === lookupKey)?.interval;
+        posthog?.capture("billing_checkout_started", {
+          ...(interval ? { billing_interval: interval } : {}),
+        });
+      } else setError("Checkout sent an address we did not recognise.");
     },
     onError: (e) => {
       if (isCode(e, "ALREADY_SUBSCRIBED"))

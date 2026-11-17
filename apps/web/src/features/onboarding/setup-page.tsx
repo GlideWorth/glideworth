@@ -4,6 +4,7 @@
  */
 
 import { ACCOUNT_TYPE_INFO, type AccountType } from "@glideworth/core";
+import { usePostHog } from "@posthog/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, Loader2, Plus, Trash2, X } from "lucide-react";
@@ -84,6 +85,7 @@ export function SetupPage() {
   const [busy, setBusy] = useState(false);
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const posthog = usePostHog();
   const { data: ws } = useWorkspace();
   const prefs = usePrefs();
   const errors = validateAnswers(a, now);
@@ -144,6 +146,7 @@ export function SetupPage() {
       );
       const out = await persistWorkspace(qc, doc);
       clearHandoff();
+      posthog?.capture("onboarding_plan_created");
       prefs.set({ tour: "welcome" });
       toast({
         title: `“${doc.plans[0]!.name}” is ready`,

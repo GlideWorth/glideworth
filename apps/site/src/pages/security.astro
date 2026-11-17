@@ -1,10 +1,12 @@
 ---
+import { PUBLIC_GTM_ID } from 'astro:env/server';
 import Callout from '../components/Callout.astro';
 import CTABand from '../components/CTABand.astro';
 import FeatureGrid from '../components/FeatureGrid.astro';
 import Section from '../components/Section.astro';
 import { page } from '../config/pages';
 import { site } from '../config/site';
+import { googleTagManagerId } from '../lib/gtm';
 import PageLayout from '../layouts/PageLayout.astro';
 
 type Status = 'Available' | 'Planned';
@@ -145,6 +147,10 @@ const reportRows = [
   ['Fix or mitigation for critical and high severity', 'aim for 30 days from confirmation'],
   ['Public advisory', 'after a fix, normally within 90 days of the report, coordinated with you'],
 ];
+
+const trackerBody = googleTagManagerId(PUBLIC_GTM_ID)
+  ? 'The hosted app sends product analytics and error reports to PostHog, with no session recording and no planning figures. This marketing site loads Google Tag Manager for page measurement, with advertising and analytics storage denied until a visitor consents. The free calculators load neither.'
+  : 'This website loads no analytics, advertising or third-party scripts. The hosted app sends product analytics and error reports to PostHog, with no session recording and no planning figures.';
 ---
 
 <PageLayout
@@ -236,7 +242,7 @@ const reportRows = [
       items={[
         { glyph: 'plug', title: 'No bank connections', body: 'No aggregation, no stored bank credentials, no account linking. You enter balances or import files.' },
         { glyph: 'lock', title: 'No selling or sharing your data', body: 'Your plans are not sold, rented or used to build profiles. They are not shared except through links and keys that you create.' },
-        { glyph: 'code', title: 'No advertising trackers', body: 'This website loads no analytics, advertising or third-party scripts, and the app has no telemetry.' },
+        { glyph: 'code', title: 'No advertising trackers', body: trackerBody },
         { glyph: 'solver', title: 'No AI run on your data by Glideworth', body: 'There is no model in the server, and no hosted AI chat. An assistant you choose can connect through MCP, under a key you control.' },
         { glyph: 'ledger', title: 'No certifications claimed', body: 'Glideworth holds no security certification and makes no claim of an independent audit. Tests and a published design are what we can point to.' },
         { glyph: 'people', title: 'No end-to-end encryption claim', body: 'Even in the design, servers can read your plans. Self-hosting keeps them on a machine you control.' },

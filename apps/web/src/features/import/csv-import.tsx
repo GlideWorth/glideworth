@@ -4,6 +4,7 @@
  * preview of exactly what would change, all computed in this browser before anything is saved.
  */
 import type { ExpenseEvent, GlideworthDocument } from "@glideworth/core";
+import { usePostHog } from "@posthog/react";
 import {
   type CsvImportOutcome,
   type CsvKind,
@@ -154,6 +155,7 @@ function CsvWorkbench({
   const f = useFormat();
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const posthog = usePostHog();
   const doc = ws?.doc;
   const [preset, setPreset] = useState<string>(AUTO);
   const [locale, setLocale] = useState<"auto" | "en-GB" | "en-US">("auto");
@@ -276,6 +278,7 @@ function CsvWorkbench({
       }
       await qc.invalidateQueries({ queryKey: ["workspace"] });
       await qc.invalidateQueries({ queryKey: ["snapshots"] });
+      posthog?.capture("csv_import_completed", { import_kind: kind });
       toast({
         title: "CSV imported",
         description: summary,

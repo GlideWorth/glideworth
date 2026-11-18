@@ -89,8 +89,13 @@ export interface Logger<F extends string = LogField> {
   child(f: LogFields<F>): Logger<F>;
 }
 
+/**
+ * Error tracking (design 6.4), fed only by `describeErrorForLog` output and allowlisted tags. `capture` never
+ * blocks or throws; `flush` waits (at most `timeoutMs`) for reports still being sent. See `./error-reporter.ts`.
+ */
 export interface ErrorReporter {
-  capture(err: unknown, tags: LogFields): void;
+  capture(err: unknown, tags?: LogFields, event?: string): void;
+  flush(timeoutMs?: number): Promise<void>;
 }
 
 const LEVELS: Record<LogLevel, number> = { debug: 10, info: 20, warn: 30, error: 40 };
@@ -106,7 +111,8 @@ const TOKEN_LIKE =
 const PROSE_LIKE = /\S+\s+\S+\s+\S+/;
 const MAX_STRING = 200;
 
-function scrubValue(field: string, v: LogValue): LogValue {
+/** The value scrub every log line gets (also applied to error report tags). */
+export function scrubLogValue(field: string, v: LogValue): LogValue {
   if (typeof v !== "string") {
     if (typeof v === "number" && !Number.isFinite(v)) return null;
     return v;
@@ -190,7 +196,7 @@ export function createLogger<X extends string = never>(o: {
           dropped++;
           return;
         }
-        line[k] = scrubValue(k, v as LogValue);
+        line[k] = scrubLogValue(k, v as LogValue);
       };
       for (const [k, v] of Object.entries(base)) put(k, v);
       if (fields) {

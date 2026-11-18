@@ -417,6 +417,7 @@ export async function makeCloud(
         }
       : null,
     heartbeats: { backup: null, restoreTest: null, liveness: null },
+    errorReports: null,
   };
   const federation = o.google
     ? new FederationService({

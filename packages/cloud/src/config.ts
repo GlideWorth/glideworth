@@ -22,6 +22,16 @@ export interface CloudConfig {
   google: GoogleConfig | null;
   /** Not in spec 1: optional dead-man's-switch ping URLs (heartbeat.ts). */
   heartbeats: HeartbeatConfig;
+  /**
+   * Not in spec 1: server error reports to PostHog Error Tracking (log/error-reporter.ts). Null, and nothing is
+   * sent, unless both `GLIDEWORTH_POSTHOG_PROJECT_TOKEN` and `GLIDEWORTH_POSTHOG_HOST` are set.
+   */
+  errorReports: {
+    token: string;
+    host: string;
+    /** `GLIDEWORTH_RELEASE` (compose sets the image tag), so a report maps to a deploy. */
+    release: string | null;
+  } | null;
 }
 
 export interface GoogleConfig {
@@ -139,6 +149,7 @@ export function loadCloudConfig(env: NodeJS.ProcessEnv): CloudConfig {
 
   const google = loadGoogle(env, publicUrl, production, problems);
   const heartbeats = loadHeartbeats(env, problems);
+  const errorReports = loadErrorReports(env, production, problems);
 
   if (problems.length) throw new CloudConfigError(problems);
   return {
@@ -153,7 +164,46 @@ export function loadCloudConfig(env: NodeJS.ProcessEnv): CloudConfig {
     production,
     google,
     heartbeats,
+    errorReports,
   };
+}
+
+/**
+ * The PostHog project token and ingestion host the web app is built with, given to the server at run time. Both
+ * set: server errors are reported. Either one empty: off (a self-host image is built without them, and an
+ * operator turns reporting off by setting the token to an empty value).
+ */
+function loadErrorReports(
+  env: NodeJS.ProcessEnv,
+  production: boolean,
+  problems: string[],
+): CloudConfig["errorReports"] {
+  const token = env.GLIDEWORTH_POSTHOG_PROJECT_TOKEN?.trim() ?? "";
+  const rawHost = env.GLIDEWORTH_POSTHOG_HOST?.trim() ?? "";
+  if (!token || !rawHost) return null;
+  if (!/^[A-Za-z0-9_-]{8,128}$/.test(token)) {
+    problems.push("GLIDEWORTH_POSTHOG_PROJECT_TOKEN is not a valid project token");
+    return null;
+  }
+  try {
+    const u = new URL(rawHost);
+    const loopback = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(u.hostname);
+    if (u.protocol !== "https:" && !(u.protocol === "http:" && loopback && !production))
+      problems.push("GLIDEWORTH_POSTHOG_HOST must be an https URL");
+    else if (u.username || u.password || u.search || u.hash)
+      problems.push("GLIDEWORTH_POSTHOG_HOST must be a plain URL");
+    else {
+      const release = env.GLIDEWORTH_RELEASE?.trim() ?? "";
+      return {
+        token,
+        host: `${u.origin}${u.pathname.replace(/\/+$/, "")}`,
+        release: /^[A-Za-z0-9._-]{1,128}$/.test(release) ? release : null,
+      };
+    }
+  } catch {
+    problems.push("GLIDEWORTH_POSTHOG_HOST must be an absolute URL");
+  }
+  return null;
 }
 
 /**

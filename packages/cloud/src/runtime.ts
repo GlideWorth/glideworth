@@ -45,7 +45,8 @@ import { createEntitlements } from "./entitlements.js";
 import { CloudError } from "./errors.js";
 import type { CloudHttpDeps, SupportView } from "./http/kit.js";
 import { fairThreadGate } from "./jobs/fair-gate.js";
-import { createLogger, type Logger, type LogLevel } from "./log/index.js";
+import { createPostHogErrorReporter, reportingLogger } from "./log/error-reporter.js";
+import { createLogger, type ErrorReporter, type Logger, type LogLevel } from "./log/index.js";
 import { createTenantPolicy, type TenantPolicy } from "./policy.js";
 import { QuotaService } from "./quotas.js";
 import { CloudScheduler } from "./scheduler.js";
@@ -86,13 +87,18 @@ export interface CloudRuntimeOptions<R extends TenantRuntimeBase> {
     captcha?: CaptchaVerifier;
     /** The HTTP client "Sign in with Google" uses (tests: an in-process fake OpenID provider). */
     oidcFetch?: typeof fetch;
+    /** The HTTP client server error reports use (tests: a capturing fake PostHog). */
+    errorReportFetch?: typeof fetch;
   };
 }
 
 export interface CloudRuntime<R extends TenantRuntimeBase> {
   config: CloudConfig;
   pricing: PricingConfig;
+  /** Every `error` line with an `err` is also sent to `errorReporter`, when one is configured. */
   log: Logger;
+  /** Server error reports (PostHog), or null when `config.errorReports` is not set. */
+  errorReporter: ErrorReporter | null;
   db: ControlDb;
   closeDb(): void;
   keys: Keyring;
@@ -170,7 +176,15 @@ export async function createCloudRuntime<R extends TenantRuntimeBase>(
   const env = o.env;
   const config = loadCloudConfig(env);
   const level = (env.GLIDEWORTH_LOG_LEVEL ?? "info") as LogLevel;
-  const log = o.log ?? createLogger({ level: LEVELS.includes(level) ? level : "info" });
+  const baseLog = o.log ?? createLogger({ level: LEVELS.includes(level) ? level : "info" });
+  const errorReporter = config.errorReports
+    ? createPostHogErrorReporter({
+        ...config.errorReports,
+        log: baseLog,
+        ...(o.overrides?.errorReportFetch ? { fetch: o.overrides.errorReportFetch } : {}),
+      })
+    : null;
+  const log = errorReporter ? reportingLogger(baseLog, errorReporter) : baseLog;
   const pricing = loadPricingConfig(config.pricingFile);
   for (const sub of ["control", "tenants", "exports", "staging"])
     mkdirSync(resolve(config.dataDir, sub), { recursive: true, mode: 0o700 });
@@ -393,6 +407,7 @@ export async function createCloudRuntime<R extends TenantRuntimeBase>(
     config,
     pricing,
     log,
+    errorReporter,
     db,
     closeDb: control.close,
     keys,

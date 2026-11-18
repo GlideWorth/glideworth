@@ -1,7 +1,7 @@
 ---
 title: Privacy policy
 description: What personal data the Glideworth hosted service collects, why, where it is stored, who processes it, how long it is kept, and your rights wherever you live.
-lastUpdated: 2026-11-17
+lastUpdated: 2026-11-18
 draft: false
 order: 1
 ---
@@ -52,7 +52,7 @@ or the United Kingdom. Write to the address above, or complain to your local dat
 | Google sign-in, only if you use it | The identifier Google gives your Google account (a number that does not change), the email address on that Google account, whether Google has verified that address, and the name on the account (we only suggest it as your name when you sign up; you can change it). We record which Google account is linked to your Glideworth account, when it was linked and when it was last used. We do not receive your Google password. Google's answer also includes a link to your profile picture: we ignore it and never fetch or store the picture. We do not ask for access to your contacts, files or any other Google service, and we do not store any token Google gives us | Google, when you choose "Continue with Google" (section 5.1) |
 | Planning data | Everything you enter or import: households, people, ages, accounts and balances, income, spending, assumptions, plans, scenarios, results, notes, share-link snapshots, check-in settings, API keys (stored as hashes) | You, or files you import |
 | Billing data | Name, billing address, tax number if you give one, the card or payment method, invoices and payment status. **Our payment provider holds this**, not us. We keep your plan, subscription status, billing dates and a payment provider customer reference | You, through the payment provider |
-| Technical logs | IP address, time, route and status code of each request, error names and codes. Never financial values (see section 3.1) | Your browser and our servers |
+| Technical logs and server error reports | IP address, time, route and status code of each request, error names and codes. Server errors are also reported to PostHog (section 5) with the error's name, code, code location, route and your workspace's account id, without your IP address. Never financial values or error messages (see section 3.1) | Your browser and our servers |
 | Product analytics | Pages you open (without query strings or fragments), actions such as "plan created" or "checkout started", masked clicks, browser and device details, IP address, and browser errors, linked to your account id and email address once you sign in. Never planning figures | Your browser, through PostHog (section 5) |
 | Email events | That we sent you a message, which kind, and whether it was delivered or bounced. We do not store the body | Our email provider |
 | Sign-up checks | Your IP address and browser signals, checked by a bot-protection service when you sign up, reset a password, or fail several sign-ins | Your browser |
@@ -164,7 +164,8 @@ for a description of the safeguards at the contact address above.
 | The temporary record of a Google sign-in in progress (held in encrypted form while you are at Google or confirming your details) | 10 to 15 minutes, then deleted within a day |
 | The inside-workspace audit log (data changes) | While the workspace exists, covering the latest 400 days |
 | Web server access logs (include IP address) | Up to 30 days |
-| Application logs and error reports | Up to 30 days. They contain no financial values and no IP address |
+| Application logs | Up to 30 days. They contain no financial values and no IP address |
+| Error reports sent to PostHog (browser and server errors) | Kept by PostHog for the retention period of our PostHog plan, then deleted. Server error reports contain no financial values and no IP address |
 | Email delivery records (no message body) | 90 days |
 | Essential emails we must make sure reach you (billing, export and deletion notices): your address and the details the message contains, kept so a failed send can be retried | Deleted 30 days after the email is sent |
 | Anti-abuse record (keyed hash of your email) | 12 months after the end of the trial it relates to |

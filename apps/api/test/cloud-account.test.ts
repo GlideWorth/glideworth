@@ -8,6 +8,7 @@
  */
 import { existsSync } from "node:fs";
 import { controlSchema } from "@glideworth/cloud";
+import { SECURITY_TXT } from "@glideworth/cloud/security-txt";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { checkinEmailData } from "../src/cloud-host.js";
@@ -591,6 +592,24 @@ describe("the cloud surface", () => {
       "/oauth/authorize",
     ])
       expect((await anon.get(p)).headers.get("x-robots-tag"), p).toBe("noindex, nofollow");
+  });
+
+  it("serves the RFC 9116 security.txt with this host's Canonical and the shared fields", async () => {
+    const r = await new Client(cloud).get("/.well-known/security.txt");
+    expect(r.status).toBe(200);
+    expect(r.headers.get("content-type")).toMatch(/^text\/plain/);
+    const lines = r.text.split("\n");
+    expect(lines).toContain("Contact: mailto:security@glideworth.com");
+    expect(lines).toContain(
+      "Contact: https://github.com/GlideWorth/glideworth/security/advisories/new",
+    );
+    expect(lines).toContain(`Expires: ${SECURITY_TXT.expires}`);
+    expect(lines).toContain("Preferred-Languages: en");
+    expect(lines).toContain(
+      `Canonical: ${PUBLIC_URL.replace(/\/+$/, "")}/.well-known/security.txt`,
+    );
+    expect(lines).toContain("Policy: https://glideworth.com/security/");
+    expect(r.text).not.toContain("PGP SIGNED");
   });
 
   it("development builds expose fake checkout completion (loopback only; unknown session = 400)", async () => {

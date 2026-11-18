@@ -42,5 +42,5 @@ jobs:
           branch: cla-signatures
           # Comma-separated GitHub logins that need not sign: the owner and bots.
           # Maintainers who have signed outside this workflow are added here by login.
-          allowlist: dependabot[bot],github-actions[bot]
+          allowlist: zubhav,dependabot[bot],github-actions[bot]
           lock-pullrequest-aftermerge: true

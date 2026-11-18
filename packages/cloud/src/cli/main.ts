@@ -283,6 +283,7 @@ async function delegated(
   } finally {
     await rt.registry.shutdown();
     rt.closeDb();
+    await rt.errorReporter?.flush();
   }
 }
 

@@ -390,6 +390,13 @@ describe("CORS and response headers", () => {
     expect(robots.status).toBe(200);
     expect(robots.text).toBe("User-agent: *\nDisallow: /\n");
   });
+
+  it("has no security.txt: the hosted service's contact is not this instance's operator", async () => {
+    h = setup();
+    const r = await h.call("/.well-known/security.txt", { key: null });
+    expect(r.status).toBe(404);
+    expect(r.text).not.toContain("security@glideworth.com");
+  });
 });
 
 describe("bootstrap key", () => {

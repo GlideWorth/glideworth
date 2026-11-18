@@ -153,7 +153,10 @@ export function toErrorResponse(err: unknown, c: Context) {
       { error: { code: "VALIDATION", message: "request body is not valid JSON" } },
       400,
     );
-  log.error("http.unhandled", { route: c.req.routePath, method: c.req.method, err });
+  // Cloud mode: the workspace the request ran in (the error report's distinct id). Self-host has no tenant.
+  const tenant = (c.var as { tenant?: { accountId?: unknown } }).tenant;
+  const accountId = typeof tenant?.accountId === "string" ? tenant.accountId : undefined;
+  log.error("http.unhandled", { route: c.req.routePath, method: c.req.method, accountId, err });
   return c.json({ error: { code: "INTERNAL", message: "internal error" } }, 500);
 }
 

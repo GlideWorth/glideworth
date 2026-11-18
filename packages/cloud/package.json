@@ -28,6 +28,11 @@
       "@glideworth/source": "./src/log/index.ts",
       "types": "./dist/log/index.d.ts",
       "default": "./dist/log/index.js"
+    },
+    "./security-txt": {
+      "@glideworth/source": "./src/security-txt.ts",
+      "types": "./dist/security-txt.d.ts",
+      "default": "./dist/security-txt.js"
     }
   },
   "scripts": {

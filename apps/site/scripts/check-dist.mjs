@@ -14,7 +14,8 @@
  *  - HYPERLINKS (<a href>): internal ones resolve and end with a slash; external ones may point at any
  *    https origin but must carry rel="noopener noreferrer"; plain http: links are errors
  *  - the sitemap lists every indexable page and no noindex page; sitemap.xml is a byte-for-byte copy of
- *    sitemap-index.xml; robots.txt points at both; rss.xml lists
+ *    sitemap-index.xml; robots.txt points at both; .well-known/security.txt has a Contact, this site's
+ *    Canonical and an Expires at least 30 days away; rss.xml lists
  *    every published post; XML is well-formed (when xmllint is available)
  *
  * Warnings (listed, exit 0): titles over 60 characters, descriptions over 160 or under 50.
@@ -377,6 +378,23 @@ else {
     if (!robots.split("\n").includes(`Sitemap: ${SITE}/${name}`))
       fail("robots.txt", `does not point at ${SITE}/${name}`);
   if (/^Disallow:\s*\/\s*$/m.test(robots)) fail("robots.txt", "disallows the whole site");
+}
+
+// security.txt (RFC 9116): present under the dot directory, with Contact, this site's Canonical, and an
+// Expires at least 30 days away (renew it in packages/cloud/src/security-txt.ts).
+const securityFile = join(dist, ".well-known", "security.txt");
+if (!existsSync(securityFile)) fail(".well-known/security.txt", "missing");
+else {
+  const lines = readFileSync(securityFile, "utf8").split("\n");
+  const field = (name) => lines.find((l) => l.startsWith(`${name}: `))?.slice(name.length + 2);
+  if (!field("Contact")?.startsWith("mailto:"))
+    fail(".well-known/security.txt", "no mailto: Contact");
+  if (field("Canonical") !== `${SITE}/.well-known/security.txt`)
+    fail(".well-known/security.txt", `Canonical is not ${SITE}/.well-known/security.txt`);
+  const expires = Date.parse(field("Expires") ?? "");
+  if (Number.isNaN(expires)) fail(".well-known/security.txt", "no valid Expires");
+  else if (expires - Date.now() < 30 * 24 * 60 * 60 * 1000)
+    fail(".well-known/security.txt", `expires ${field("Expires")}: renew it`);
 }
 
 // RSS: every published, indexable post.

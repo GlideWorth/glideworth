@@ -59,6 +59,11 @@ export interface CloudSurface {
   oauth: CloudOAuth;
   /** The API reference page (no third-party script). */
   docs: (c: Context) => Response | Promise<Response>;
+  /**
+   * RFC 9116 body for `/.well-known/security.txt` (`@glideworth/cloud/security-txt`). Cloud only: it names
+   * the Glideworth team, which is the wrong contact for a self-hosted instance, so self-host answers 404.
+   */
+  securityTxt?: string;
 }
 
 export interface AppOptions {
@@ -264,6 +269,8 @@ export function createApp(opts: AppOptions) {
   // ------------------------------------------------------------------------- public
   // Disallow-all for crawlers. A route rather than a file in the web build, so an API-only process answers it too.
   app.get("/robots.txt", (c) => c.text("User-agent: *\nDisallow: /\n"));
+  const securityTxt = cloud?.securityTxt;
+  if (securityTxt) app.get("/.well-known/security.txt", (c) => c.text(securityTxt));
   app.get("/health", (c) =>
     c.json({ status: "ok", engineVersion: ENGINE_VERSION, schemaVersion: SCHEMA_VERSION }),
   );

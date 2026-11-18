@@ -75,11 +75,19 @@ FROM node:${NODE_VERSION}-bookworm-slim AS runtime
 # /data/cairn.db), cloud keeps its control plane and workspaces under /data and refuses GLIDEWORTH_DB_PATH.
 # PATH: the operator CLI `glideworth-cloud` (packages/cloud's bin, linked by the deploy tree).
 # GLIDEWORTH_TENANT_RUNTIME_MODULE: what that CLI loads to open workspaces while the server is stopped.
+# GLIDEWORTH_POSTHOG_*: server error reports to PostHog in cloud mode (packages/cloud/src/log/error-reporter.ts),
+# from the same build arguments as the web app's analytics. Self-host images are built without them, so they
+# are empty and nothing is sent; self-host mode never loads the reporter in any case. In cloud mode an empty
+# GLIDEWORTH_POSTHOG_PROJECT_TOKEN in .env.production turns reporting off.
+ARG VITE_PUBLIC_POSTHOG_PROJECT_TOKEN=""
+ARG VITE_PUBLIC_POSTHOG_HOST=""
 ENV NODE_ENV=production \
     GLIDEWORTH_DATA_DIR=/data \
     GLIDEWORTH_WEB_DIST=/app/web \
     GLIDEWORTH_SEED_SAMPLE=false \
     GLIDEWORTH_TENANT_RUNTIME_MODULE=/app/dist/cloud-host.js \
+    GLIDEWORTH_POSTHOG_PROJECT_TOKEN=$VITE_PUBLIC_POSTHOG_PROJECT_TOKEN \
+    GLIDEWORTH_POSTHOG_HOST=$VITE_PUBLIC_POSTHOG_HOST \
     PATH=/app/node_modules/.bin:$PATH
 WORKDIR /app
 COPY --from=build --chown=node:node /deploy /app

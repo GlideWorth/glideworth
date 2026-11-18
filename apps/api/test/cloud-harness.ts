@@ -68,6 +68,8 @@ export interface BootOptions {
   fetch?: typeof fetch;
   /** "Sign in with Google": the HTTP client the OpenID client uses (an in-process fake; never Google). */
   oidcFetch?: typeof fetch;
+  /** Server error reports: the HTTP client the PostHog reporter uses (only with GLIDEWORTH_POSTHOG_* set). */
+  errorReportFetch?: typeof fetch;
 }
 
 export async function bootCloud(o: BootOptions = {}) {
@@ -115,6 +117,7 @@ export async function bootCloud(o: BootOptions = {}) {
       store: memoryObjectStore(),
       captcha: staticCaptcha(CAPTCHA),
       ...(o.oidcFetch ? { oidcFetch: o.oidcFetch } : {}),
+      ...(o.errorReportFetch ? { errorReportFetch: o.errorReportFetch } : {}),
     },
     log,
   });

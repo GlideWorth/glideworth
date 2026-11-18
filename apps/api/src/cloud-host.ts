@@ -23,6 +23,7 @@ import {
   SESSION_COOKIE,
   safeNext,
 } from "@glideworth/cloud";
+import { securityTxt } from "@glideworth/cloud/security-txt";
 import type { CloudAppContext, CloudHost, CloudRuntime } from "@glideworth/cloud/server";
 import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import type { OpenAPIHono } from "@hono/zod-openapi";
@@ -391,6 +392,7 @@ function createCloudApp(
       c.header("X-Frame-Options", "DENY");
       return c.html(docsHtml);
     },
+    securityTxt: securityTxt(`${publicUrl.replace(/\/+$/, "")}/.well-known/security.txt`),
   };
 
   const here = dirname(fileURLToPath(import.meta.url));

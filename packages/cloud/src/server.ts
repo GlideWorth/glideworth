@@ -302,11 +302,24 @@ export async function start<R extends TenantRuntimeBase, P>(o: {
     await runtime.registry.shutdown();
     clearBeat(runtime.db);
     runtime.closeDb();
+    await runtime.errorReporter?.flush();
   };
-  if (o.handleSignals !== false)
+  if (o.handleSignals !== false) {
     for (const sig of ["SIGINT", "SIGTERM"] as const)
       process.once(sig, () => {
         void close().finally(() => process.exit(0));
       });
+    // Without these Node prints the error (message included) and exits 1. Same exit, but the error is logged
+    // and reported through describeErrorForLog, and the report is given two seconds to leave.
+    let crashing = false;
+    const crash = (kind: string) => (err: unknown) => {
+      if (crashing) return;
+      crashing = true;
+      log.error("process.crashed", { kind, err });
+      void Promise.resolve(runtime.errorReporter?.flush(2_000)).finally(() => process.exit(1));
+    };
+    process.on("uncaughtException", crash("uncaught_exception"));
+    process.on("unhandledRejection", crash("unhandled_rejection"));
+  }
   return { runtime, publicAddress: pub.address, opsAddress: ops.address, close };
 }

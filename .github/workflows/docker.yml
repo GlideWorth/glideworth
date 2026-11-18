@@ -1,18 +1,13 @@
 # Docker image.
-#   - Pull requests that change more than documentation: build the image and smoke-test it. Nothing is pushed.
-#   - Version tags (v*) and manual runs: build for amd64 and arm64 and push to GHCR with provenance.
-#   - Ordinary pushes to main or any other branch do not trigger this workflow at all.
+#   - Version tags (v*) and manual runs: build and smoke-test the image, then build for amd64 and arm64 and push
+#     to GHCR with provenance.
+#   - Pull requests and ordinary branch pushes do not trigger this workflow (it used to build and smoke-test
+#     every pull request; that was a tenth of the Actions minutes). The internal repository's Deploy workflow
+#     builds and smoke-tests the image before production, so a Dockerfile break shows up there, after the merge,
+#     and never ships. A manual run here publishes to GHCR, so do not use it as a pull request check.
 name: Docker
 
 on:
-  # Same documentation paths as CI's change detection (ci.yml, "changes"): they never reach the image.
-  pull_request:
-    paths-ignore:
-      - "docs/**"
-      - "**/*.md"
-      - "LICENSE"
-      - "packages/importers/LICENSE"
-      - ".github/ISSUE_TEMPLATE/**"
   push:
     tags: ["v*"]
   workflow_dispatch:
@@ -21,8 +16,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   REGISTRY: ghcr.io
@@ -82,7 +77,7 @@ jobs:
   publish:
     name: Publish to GHCR
     needs: build-and-smoke
-    # Only a version tag or a manual run publishes. Never a pull request or a plain branch push.
+    # Only a version tag or a manual run publishes (the only events that start this workflow).
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-latest
     timeout-minutes: 90

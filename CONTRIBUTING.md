@@ -44,7 +44,9 @@ Day-to-day commands:
 
 ## Quality gates
 
-Every pull request must pass all of these, and CI runs them:
+Every pull request must pass all of these, and CI runs them. CI does not run on draft pull requests (their
+`CI gate` check fails until you mark the pull request ready for review), and a pull request must be up to date
+with `main` before it merges:
 
 ```bash
 pnpm typecheck

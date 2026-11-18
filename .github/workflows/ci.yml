@@ -1,21 +1,27 @@
-# Quality gates on every pull request and every push to main: lint (oxlint), format check (oxfmt),
-# typecheck, tests, build, and secret scanning. Change detection skips the heavy jobs when a
-# change touches documentation only; the "CI gate" job is the single, stable required check.
+# Quality gates on every pull request: lint (oxlint), format check (oxfmt), typecheck, tests, build, and
+# secret scanning. Change detection skips the heavy jobs when a change touches documentation only; the
+# "CI gate" job is the single, stable required check.
+#
+# CI does not run on pushes to main. The repository ruleset on main requires "CI gate" with "require branches
+# to be up to date before merging", so the pull request's merge commit CI tested is exactly what lands on main.
+# The internal repository's Deploy workflow runs on the push to main itself. A push that bypasses the ruleset
+# (repository admins can) is not tested by CI.
+#
+# Draft pull requests run nothing but the gate, which fails on purpose ("draft pull request"), so a draft never
+# shows a green required check. Marking it ready for review ("ready_for_review") starts the full run.
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
 
-# A newer push to a pull request replaces the run in progress.
+# A newer push to a pull request (or marking it ready for review) replaces the run in progress.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  # Pushes to main are never cancelled, so every commit on main keeps a result.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: true
 
 jobs:
   # ─── Change detection ───────────────────────────────────────────────────────
@@ -23,6 +29,8 @@ jobs:
   # (Markdown outside the site content, docs/, issue templates, licence texts) does not pay for them.
   changes:
     name: Detect changed paths
+    # Drafts skip every job but the gate (see the header).
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -31,8 +39,8 @@ jobs:
       code: ${{ steps.filter.outputs.code }}
     steps:
       # Full history, so the diff below needs no further network access: the credentials the checkout
-      # used are not persisted (and are not needed afterwards). On a pull request this is the merge
-      # commit, whose history holds both the base and the head.
+      # used are not persisted (and are not needed afterwards). This is the pull request's merge commit,
+      # whose history holds both the base and the head.
       - name: Check out (full history)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -40,14 +48,12 @@ jobs:
           persist-credentials: false
 
       # A file counts as code unless it is documentation: docs/, any Markdown file, the licence texts or
-      # the issue templates. Whenever the changed files cannot be determined (first push, a force push
-      # whose old tip is gone, a missing commit, a git error) the answer is "code", so everything runs.
+      # the issue templates (the internal Deploy workflow skips documentation-only pushes by the same list:
+      # change both together). Whenever the changed files cannot be determined (a missing commit, a git
+      # error) the answer is "code", so everything runs.
       - name: Filter changed paths
         id: filter
         env:
-          EVENT: ${{ github.event_name }}
-          BEFORE: ${{ github.event.before }}
-          AFTER: ${{ github.sha }}
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
@@ -55,17 +61,9 @@ jobs:
 
           # Prints the revision range to diff, or fails when there is none.
           range() {
-            if [ "$EVENT" = "pull_request" ]; then
-              git cat-file -e "${PR_BASE}^{commit}" && git cat-file -e "${PR_HEAD}^{commit}" || return 1
-              # Three dots: the changes of the pull request itself, not of the base branch since it forked.
-              echo "${PR_BASE}...${PR_HEAD}"
-            else
-              case "$BEFORE" in ""|0000000000000000000000000000000000000000) return 1 ;; esac
-              git cat-file -e "${BEFORE}^{commit}" || return 1
-              # A force push: the old tip is not an ancestor of the new one, so a plain diff is not "what this push added".
-              git merge-base --is-ancestor "$BEFORE" "$AFTER" || return 1
-              echo "${BEFORE}..${AFTER}"
-            fi
+            git cat-file -e "${PR_BASE}^{commit}" && git cat-file -e "${PR_HEAD}^{commit}" || return 1
+            # Three dots: the changes of the pull request itself, not of the base branch since it forked.
+            echo "${PR_BASE}...${PR_HEAD}"
           }
 
           detect() {
@@ -146,8 +144,7 @@ jobs:
 
   # ─── Typecheck and build (one runner, only when code changed) ───────────────
   # Neither is on the critical path (the tests take longer), so sharing a runner saves the second setup
-  # and a rounded-up minute without slowing the run down. Deploy (deploy.yml) reads this job's name to
-  # recognise a documentation-only push: rename both together.
+  # and a rounded-up minute without slowing the run down.
   typecheck-build:
     name: Typecheck and build
     needs: changes
@@ -217,8 +214,9 @@ jobs:
         run: pnpm test --shard=${{ matrix.shard }}/3
 
   # ─── Aggregator (the one required status check) ─────────────────────────────
-  # Branch protection should require only "CI gate". Skipped jobs are fine when no code changed; when
-  # code did change, every job must have succeeded.
+  # The ruleset on main requires only "CI gate" (its name is the check name: rename both together). It
+  # always runs, so the required check never waits on a job that path or draft filtering skipped. Skipped
+  # jobs are fine when no code changed; when code did change, every job must have succeeded.
   gate:
     name: CI gate
     needs: [changes, quick, typecheck-build, test]
@@ -226,6 +224,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
+      # A skipped gate would count as passing for the required check, so on a draft it fails instead.
+      - name: Refuse drafts
+        if: github.event.pull_request.draft == true
+        run: |
+          echo "::error::draft pull request: CI did not run. Mark it ready for review to run CI."
+          exit 1
+
       - name: Check results
         env:
           CODE_CHANGED: ${{ needs.changes.outputs.code }}

@@ -1,6 +1,13 @@
 import type { CaptureResult } from "posthog-js";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { scrubEvent, scrubUrl } from "../src/lib/analytics";
+import type { CapturedNetworkRequest } from "posthog-js";
+import {
+  isSharePath,
+  scrubEvent,
+  scrubNetworkRequest,
+  scrubUrl,
+  uiHostFor,
+} from "../src/lib/analytics";
 
 const posthogMock = vi.hoisted(() => ({ __loaded: false, captureException: vi.fn() }));
 vi.mock("posthog-js", () => ({ default: posthogMock }));
@@ -55,8 +62,94 @@ describe("scrubEvent", () => {
     expect(out.$set_once).toEqual({ $initial_current_url: "https://app.glideworth.com/accept" });
   });
 
+  it("scrubs nested URLs: web vitals and autocapture elements", () => {
+    const event = {
+      uuid: "2",
+      event: "$web_vitals",
+      properties: {
+        $web_vitals_LCP_event: {
+          value: 1200,
+          $current_url: "https://app.glideworth.com/share/tok#x",
+          attribution: { url: "https://app.glideworth.com/verify-email?token=t" },
+        },
+        $elements: [{ tag_name: "a", href: "/share/tok" }],
+      },
+    } as unknown as CaptureResult;
+    const props = scrubEvent(event)!.properties as {
+      $web_vitals_LCP_event: { value: number; $current_url: string; attribution: { url: string } };
+      $elements: { href: string }[];
+    };
+    expect(props.$web_vitals_LCP_event.$current_url).toBe(
+      "https://app.glideworth.com/share/:token",
+    );
+    expect(props.$web_vitals_LCP_event.attribution.url).toBe(
+      "https://app.glideworth.com/verify-email",
+    );
+    expect(props.$web_vitals_LCP_event.value).toBe(1200);
+    expect(props.$elements[0]!.href).toBe("/share/:token");
+  });
+
+  it("re-keys heatmap data by the scrubbed URL, merging points", () => {
+    const event = {
+      uuid: "3",
+      event: "$$heatmap",
+      properties: {
+        $heatmap_data: {
+          "https://app.glideworth.com/share/a?x=1": [{ x: 1 }],
+          "https://app.glideworth.com/share/b": [{ x: 2 }],
+          "https://app.glideworth.com/plans": [{ x: 3 }],
+        },
+      },
+    } as unknown as CaptureResult;
+    expect(scrubEvent(event)!.properties.$heatmap_data).toEqual({
+      "https://app.glideworth.com/share/:token": [{ x: 1 }, { x: 2 }],
+      "https://app.glideworth.com/plans": [{ x: 3 }],
+    });
+  });
+
+  it("leaves recording data alone", () => {
+    const data = [{ type: 4, data: { href: "https://app.glideworth.com/plans?x=1" } }];
+    const event = {
+      uuid: "4",
+      event: "$snapshot",
+      properties: { $snapshot_data: data },
+    } as unknown as CaptureResult;
+    expect(scrubEvent(event)!.properties.$snapshot_data).toBe(data);
+    expect(data[0]!.data.href).toBe("https://app.glideworth.com/plans?x=1");
+  });
+
   it("passes null through", () => {
     expect(scrubEvent(null)).toBeNull();
+  });
+});
+
+describe("scrubNetworkRequest", () => {
+  it("scrubs the URL the recorder passes for pages and network requests", () => {
+    const req = {
+      name: "https://app.glideworth.com/share/tok?a=1",
+      isInitial: true,
+    } as CapturedNetworkRequest;
+    expect(scrubNetworkRequest(req)).toEqual({
+      name: "https://app.glideworth.com/share/:token",
+      isInitial: true,
+    });
+  });
+});
+
+describe("isSharePath", () => {
+  it("matches shared-plan pages only", () => {
+    expect(isSharePath("/share/tok")).toBe(true);
+    expect(isSharePath("/share")).toBe(true);
+    expect(isSharePath("/shared-things")).toBe(false);
+    expect(isSharePath("/plans")).toBe(false);
+  });
+});
+
+describe("uiHostFor", () => {
+  it("maps the ingestion host to the PostHog app", () => {
+    expect(uiHostFor("https://us.i.posthog.com")).toBe("https://us.posthog.com");
+    expect(uiHostFor("https://eu.i.posthog.com")).toBe("https://eu.posthog.com");
+    expect(uiHostFor("https://ph.example.com")).toBe("https://ph.example.com");
   });
 });
 

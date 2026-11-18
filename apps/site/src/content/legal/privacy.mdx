@@ -30,12 +30,14 @@ or the United Kingdom. Write to the address above, or complain to your local dat
 ## 2. The short version
 
 - We hold the plans and figures you enter so that we can show you projections. We do not use them for anything
-  else.
+  else. The hosted app's session recordings show the figures on your screen; we watch them only to improve the
+  app and fix faults.
 - We do not sell personal data. We do not use advertising trackers. We do not connect to your banks.
 - The official marketing website can load Google Tag Manager for page measurement, and only that website's production build does. It sets analytics cookies only if you accept them, and never advertising cookies. The app, the free calculators and a self-hosted copy do not load it.
-- The hosted app sends product analytics and error reports to PostHog: which pages and features you use, linked
-  to your account id and email address. No planning figures and no session recordings. Self-hosted copies send
-  nothing.
+- The hosted app sends product analytics, session recordings and error reports to PostHog: which pages and
+  features you use, and recordings of what the app shows and how you move through it, linked to your account id,
+  email address and name. Recordings include the figures on screen; what you type into form fields is masked.
+  Self-hosted copies send nothing.
 - Your data is encrypted in transit and at rest. It is **not end-to-end encrypted**: our servers can read your
   plans. That is what lets scheduled check-ins and AI assistants you connect work.
 - Glideworth runs no AI on your data. If you connect your own AI assistant, that assistant's provider receives
@@ -53,7 +55,8 @@ or the United Kingdom. Write to the address above, or complain to your local dat
 | Planning data | Everything you enter or import: households, people, ages, accounts and balances, income, spending, assumptions, plans, scenarios, results, notes, share-link snapshots, check-in settings, API keys (stored as hashes) | You, or files you import |
 | Billing data | Name, billing address, tax number if you give one, the card or payment method, invoices and payment status. **Our payment provider holds this**, not us. We keep your plan, subscription status, billing dates and a payment provider customer reference | You, through the payment provider |
 | Technical logs and server error reports | IP address, time, route and status code of each request, error names and codes. Server errors are also reported to PostHog (section 5) with the error's name, code, code location, route and your workspace's account id, without your IP address. Never financial values or error messages (see section 3.1) | Your browser and our servers |
-| Product analytics | Pages you open (without query strings or fragments), actions such as "plan created" or "checkout started", masked clicks, browser and device details, IP address, and browser errors, linked to your account id and email address once you sign in. Never planning figures | Your browser, through PostHog (section 5) |
+| Product analytics | Pages you open and leave (without query strings or fragments), actions such as "plan created" or "checkout started", what you click (its text, with element attributes masked) and where on the page, clicks that do nothing, page load and network timings, browser and device details, IP address, and browser errors, linked to your account id, email address and name once you sign in, together with your workspace's plan status and your role in it | Your browser, through PostHog (section 5) |
+| Session recordings | A recording of what the hosted app shows and how you use it (pages, clicks, scrolling, network timings), including the planning figures on screen. Everything you type into form fields is masked before it leaves your browser, and page addresses lose their query strings, fragments and share-link tokens. Not recorded on shared-plan pages | Your browser, through PostHog (section 5) |
 | Email events | That we sent you a message, which kind, and whether it was delivered or bounced. We do not store the body | Our email provider |
 | Sign-up checks | Your IP address and browser signals, checked by a bot-protection service when you sign up, reset a password, or fail several sign-ins | Your browser |
 | Anti-abuse record | A keyed hash of your email address, kept so that one address cannot start a free trial again and again | Derived from your email |
@@ -85,7 +88,7 @@ reason for each use and the legal basis for it under those laws.
 | Send optional check-in summary emails (never with figures) | Account | Contract. You can turn them off in settings or with the link in the email |
 | Run the service: backups, monitoring, error reports, fixing faults | Logs, planning (in encrypted backups only) | Contract |
 | Answer your support requests, including through a support grant you create | Account, what you tell us, planning (only if you create a grant) | Contract |
-| Understand which pages and features are used, find where people get stuck, and fix errors in the app | Product analytics | Legitimate interests (Article 6(1)(f)). Our interest is improving the service. You can object (section 11) |
+| Understand which pages and features are used, find where people get stuck, and fix errors in the app | Product analytics, session recordings | Legitimate interests (Article 6(1)(f)). Our interest is improving the service. You can object (section 11) |
 | Keep tax and accounting records, and respond to legal requests we are bound by | Billing, tombstone record | Legal obligation (Article 6(1)(c)) |
 | Keep the service secure and stop abuse: sign-in throttling and alerts, bot checks, audit trail of security events, sign-up limits, one trial per person | Account, logs, sign-up checks, anti-abuse record | Legitimate interests (Article 6(1)(f)), only for security and abuse prevention. Our interest is protecting the service and its users. You can object (section 11) |
 
@@ -165,6 +168,7 @@ for a description of the safeguards at the contact address above.
 | The inside-workspace audit log (data changes) | While the workspace exists, covering the latest 400 days |
 | Web server access logs (include IP address) | Up to 30 days |
 | Application logs | Up to 30 days. They contain no financial values and no IP address |
+| Session recordings sent to PostHog | Kept by PostHog for the recording retention period of our PostHog plan, then deleted |
 | Error reports sent to PostHog (browser and server errors) | Kept by PostHog for the retention period of our PostHog plan, then deleted. Server error reports contain no financial values and no IP address |
 | Email delivery records (no message body) | 90 days |
 | Essential emails we must make sure reach you (billing, export and deletion notices): your address and the details the message contains, kept so a failed send can be retried | Deleted 30 days after the email is sent |

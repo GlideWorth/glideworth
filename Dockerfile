@@ -63,6 +63,22 @@ RUN pnpm --filter @glideworth/core --filter @glideworth/importers --filter @glid
       --filter @glideworth/billing --filter @glideworth/cloud --filter @glideworth/api build \
  && pnpm --filter @glideworth/web exec vite build \
  && printf '%s' "$VITE_PUBLIC_POSTHOG_HOST" > /repo/posthog-host
+# Hosted image only: upload the web bundle's source maps to PostHog Error Tracking, so browser stack traces show
+# the original code. `sourcemap process` writes a chunk id into each JS file (posthog-js reports it with an
+# error) and uploads the maps under that id. Runs only with the posthog_cli_api_key build secret (a personal API
+# key with error tracking write access) and POSTHOG_PROJECT_ID, which deploy.yml and image-artifact.yml pass;
+# self-host and local builds skip it. A failed upload does not fail the build: stack traces just stay minified.
+ARG POSTHOG_PROJECT_ID=""
+ARG POSTHOG_RELEASE=""
+RUN --mount=type=secret,id=posthog_cli_api_key \
+    if [ -s /run/secrets/posthog_cli_api_key ] && [ -n "$POSTHOG_PROJECT_ID" ] && [ -n "$VITE_PUBLIC_POSTHOG_HOST" ]; then \
+      POSTHOG_CLI_API_KEY="$(cat /run/secrets/posthog_cli_api_key)" \
+      POSTHOG_CLI_PROJECT_ID="$POSTHOG_PROJECT_ID" \
+      POSTHOG_CLI_HOST="$(printf '%s' "$VITE_PUBLIC_POSTHOG_HOST" | sed -E 's#^(https://[a-z]+)\.i\.posthog\.com#\1.posthog.com#')" \
+      npm exec --yes --package=@posthog/cli@0.19.0 -- posthog-cli sourcemap process \
+        --directory apps/web/dist --release-name glideworth-web --release-version "${POSTHOG_RELEASE:-unknown}" \
+      || echo "warning: source map upload to PostHog failed; stack traces in PostHog stay minified"; \
+    else echo "PostHog source map upload skipped (no posthog_cli_api_key secret or POSTHOG_PROJECT_ID)"; fi
 # A self-contained production tree for the API: compiled code, migrations and prod dependencies only
 # (including the compiled workspace packages).
 RUN pnpm --filter @glideworth/api deploy --prod --legacy /deploy

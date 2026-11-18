@@ -15,7 +15,7 @@ interface Props {
 const { part } = Astro.props;
 const hosted = googleTagManagerId(PUBLIC_GTM_ID) !== undefined;
 const appAnalytics =
-  "The hosted app (app.glideworth.com) uses PostHog for product analytics and error reports: which pages and features are used, and errors in the app. It keeps a random identifier in local storage under a key starting with ph_, sets no cookie, records no sessions and masks the text of what you click. Signed-in users are linked to their account id and email address. The free calculators and a self-hosted copy load no analytics, advertising or session-recording tools.";
+  "The hosted app (app.glideworth.com) uses PostHog for product analytics, session recordings and error reports: which pages and features are used, recordings of what the app shows and how it is used (form fields masked), and errors in the app. It keeps a random identifier in local storage under a key starting with ph_ and sets no cookie. Signed-in users are linked to their account id, email address and name. The free calculators and a self-hosted copy load no analytics, advertising or session-recording tools.";
 ---
 
 {

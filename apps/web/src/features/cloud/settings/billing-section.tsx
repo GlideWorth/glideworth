@@ -57,28 +57,25 @@ export function BillingSection() {
     queryKey: ["cloud", "billing"],
     queryFn: cloudApi.billing,
     retry: false,
-    // After paying, the subscription arrives by webhook a moment later: look again for up to a minute.
+    // After paying, the subscription arrives by webhook a moment later: look again for up to a minute. During
+    // the free trial access is already full, so wait for a Stripe status rather than for full access.
     refetchInterval: (q) =>
-      returned &&
-      q.state.data &&
-      q.state.data.access.level !== "full" &&
-      Date.now() - started < 60_000
+      returned && q.state.data && !subscribed(q.state.data) && Date.now() - started < 60_000
         ? 2000
         : false,
   });
 
-  // Once Stripe's confirmation arrives, the shell (banner, start-trial page) follows the new access level.
+  // Once Stripe's confirmation arrives, the shell (banner, read-only notices) follows the new access level.
   const qc = useQueryClient();
-  const level = billing.data?.access.level;
-  const trialing = billing.data?.status === "trialing";
+  const confirmed = billing.data ? subscribed(billing.data) : false;
+  const duringTrial = billing.data?.status === "trialing";
   const posthog = usePostHog();
   useEffect(() => {
-    if (returned && level === "full") {
-      posthog?.capture("billing_checkout_completed");
-      if (trialing) posthog?.capture("trial_started");
+    if (returned && confirmed) {
+      posthog?.capture("billing_checkout_completed", { during_trial: duringTrial });
       void qc.invalidateQueries({ queryKey: ["session"] });
     }
-  }, [returned, level, trialing, qc, posthog]);
+  }, [returned, confirmed, duringTrial, qc, posthog]);
 
   if (billing.isLoading) return <Loading what="billing" />;
   if (billing.isError || !billing.data)
@@ -86,6 +83,11 @@ export function BillingSection() {
       <LoadError error={billing.error} what="Billing" onRetry={() => void billing.refetch()} />
     );
   return <BillingBody b={billing.data} returned={returned} />;
+}
+
+/** A Stripe subscription is stored and gives full access (not the local no-card trial, `trialing_local`). */
+function subscribed(b: BillingInfo): boolean {
+  return b.access.level === "full" && b.status !== null && b.status !== "trialing_local";
 }
 
 function BillingBody({ b, returned }: { b: BillingInfo; returned: boolean }) {
@@ -135,20 +137,19 @@ function BillingBody({ b, returned }: { b: BillingInfo; returned: boolean }) {
   return (
     <>
       <SectionIntro title="Billing">
-        Your workspace&rsquo;s plan. Glideworth Cloud starts with a 7-day free trial: you add a card
-        at the start and are charged on day 8 unless you cancel before then. After that it is a
-        monthly or yearly subscription. If it lapses, your workspace becomes read-only; it is never
-        locked or deleted without warning.
+        Your workspace&rsquo;s plan. Glideworth Cloud starts with a free trial and no card. When it
+        ends, your workspace becomes read-only until you subscribe, monthly or yearly. Nothing is
+        deleted without warning, and you can always export your data.
       </SectionIntro>
 
       {returned ? (
         <div role="status" aria-live="polite">
-          <Notice tone={b.access.level === "full" ? "positive" : "neutral"}>
-            {b.access.reason === "trial"
-              ? "Thank you. Your free trial has started."
-              : b.access.level === "full"
-                ? "Thank you. Your subscription is active."
-                : "Thank you. We are waiting for Stripe to confirm; this page updates by itself."}
+          <Notice tone={subscribed(b) ? "positive" : "neutral"}>
+            {!subscribed(b)
+              ? "Thank you. We are waiting for Stripe to confirm; this page updates by itself."
+              : b.status === "trialing"
+                ? "Thank you. You are subscribed; your card is first charged when the free trial ends."
+                : "Thank you. Your subscription is active."}
           </Notice>
         </div>
       ) : null}
@@ -190,12 +191,8 @@ function BillingBody({ b, returned }: { b: BillingInfo; returned: boolean }) {
 
       {showPlans ? (
         <SettingsGroup
-          title={view.trialDays ? `Start your ${view.trialDays}-day free trial` : "Choose a plan"}
-          description={
-            view.trialDays
-              ? "Full access to every feature. Pick how you want to pay after the trial; you are not charged until it ends."
-              : "Full access to every feature. Cancel any time; it ends at the end of the period you paid for."
-          }
+          title="Choose a plan"
+          description="Full access to every feature. Cancel any time; it ends at the end of the period you paid for."
         >
           <div className="grid gap-3 px-5 py-4 sm:grid-cols-2">
             {offered.length === 0 ? (
@@ -211,7 +208,6 @@ function BillingBody({ b, returned }: { b: BillingInfo; returned: boolean }) {
                   locale={locale}
                   busy={checkout.isPending && checkout.variables === o.lookupKey}
                   disabled={checkout.isPending}
-                  trial={Boolean(view.trialDays)}
                   onChoose={() => checkout.mutate(o.lookupKey)}
                 />
               ))
@@ -230,7 +226,7 @@ function BillingBody({ b, returned }: { b: BillingInfo; returned: boolean }) {
           <p>
             <span className="font-medium text-ink">Cancel any time</span> in the billing portal. It
             takes effect at the end of the period you have paid for, and you keep full access until
-            then. Cancel during the free trial and you are never charged.
+            then. The free trial needs no card, so it never turns into a charge by itself.
           </p>
           <p>
             <span className="font-medium text-ink">14-day refund.</span> Ask within 14 days of any
@@ -265,7 +261,6 @@ function PlanCard({
   locale,
   busy,
   disabled,
-  trial,
   onChoose,
 }: {
   offer: OfferedPrice;
@@ -273,8 +268,6 @@ function PlanCard({
   locale: string;
   busy: boolean;
   disabled: boolean;
-  /** The Checkout starts a free trial: the button says so. */
-  trial: boolean;
   onChoose: () => void;
 }) {
   const yearly = offer.interval === "year";
@@ -308,12 +301,9 @@ function PlanCard({
         variant="primary"
         disabled={disabled}
         onClick={onChoose}
-        aria-label={
-          trial ? `Start free trial, ${name.toLowerCase()}` : `Subscribe ${name.toLowerCase()}`
-        }
+        aria-label={`Subscribe ${name.toLowerCase()}`}
       >
-        {busy ? <Loader2 className="animate-spin" /> : null}{" "}
-        {trial ? `Start trial, ${name.toLowerCase()}` : `Subscribe ${name.toLowerCase()}`}
+        {busy ? <Loader2 className="animate-spin" /> : null} {`Subscribe ${name.toLowerCase()}`}
       </Button>
     </div>
   );

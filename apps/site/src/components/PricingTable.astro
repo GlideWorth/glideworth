@@ -4,7 +4,7 @@
  *   <PricingTable />
  * The monthly / yearly switch is two radio buttons and CSS (:has), so it works without JavaScript.
  */
-import { firstChargeDay, formatPrice, pricing, yearlySaving } from '../config/pricing';
+import { formatPrice, pricing, yearlySaving } from '../config/pricing';
 import { site } from '../config/site';
 import Button from './Button.astro';
 
@@ -67,7 +67,7 @@ const selfHosted = [
 
     <p class="trial">
       <strong>{`${pricing.trialDays}-day free trial.`}</strong>{' '}
-      {`You add a card to start it and are charged on day ${firstChargeDay()} unless you cancel before then. `}
+      {'No card needed. When it ends, your workspace becomes read-only until you subscribe; nothing is deleted. '}
       {site.cloudLaunched ? '' : 'Planned: sign-up and billing are not built yet. '}Prices in {pricing.currency}.
     </p>
 

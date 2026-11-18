@@ -447,11 +447,34 @@ Your free trial ends soon
 
 Hello Sam Example,
 
-Your free trial of Glideworth Cloud ends on 23 November 2026. On that day we will charge $9.00 USD a month, plus any tax that applies, to the card you gave when you started the trial. The subscription then renews until you cancel it.
+Your free trial of Glideworth Cloud ends on 23 November 2026. We do not have a card for you, so nothing will be charged.
 
-If you do not want to continue, cancel before 23 November 2026 on your billing page (Manage billing, then Cancel subscription). You will not be charged, and you keep full access until the trial ends.
+After that your workspace becomes read-only: you can still open your plans and export your data, but you cannot change them. Nothing is deleted. Subscribe at any time to keep editing.
 
-Open your billing page:
+Subscribe to keep editing:
+https://app.example.test/billing?t=sample-token
+
+--
+Glideworth
+Questions? Write to support@example.test.
+This is a service email about your account, so you cannot unsubscribe from it.
+"
+`;
+
+exports[`templates > trial-expired > text snapshot 1`] = `
+"Subject: Your Glideworth trial has ended
+
+Glideworth
+
+Your free trial has ended
+
+Hello Sam Example,
+
+Your free trial of Glideworth Cloud has ended, so your workspace is now read-only. You can still open your plans and export your data. Nothing has been deleted.
+
+Subscribe at any time to pick up where you left off. If you do not subscribe, the workspace is deleted 12 months after the trial ended, and we email you before that happens.
+
+Subscribe to keep editing:
 https://app.example.test/billing?t=sample-token
 
 --

@@ -5,7 +5,7 @@ import FAQ from '../components/FAQ.astro';
 import PricingTable from '../components/PricingTable.astro';
 import Section from '../components/Section.astro';
 import { page } from '../config/pages';
-import { firstChargeDay, formatPrice, pricing, yearlySaving } from '../config/pricing';
+import { formatPrice, pricing, yearlySaving } from '../config/pricing';
 import { site } from '../config/site';
 import PageLayout from '../layouts/PageLayout.astro';
 import { facts } from '../lib/facts';
@@ -23,7 +23,7 @@ const faq: FaqItem[] = [
   },
   {
     q: 'Do I need a card for the free trial?',
-    a: `<p>Yes. You add a card on Stripe's secure page when you start the trial; Glideworth never sees the card number. Nothing is charged during the ${pricing.trialDays} days. On day ${firstChargeDay()} the card is charged for the plan you chose (${m} a month or ${y} a year, in ${pricing.currency}, plus any tax that applies), unless you cancel before then in Billing. We email you a few days before the first charge with the date and the amount. There is one free trial per person.</p>`,
+    a: `<p>No. The trial starts as soon as you confirm your email, with every feature, and we never ask for a card during it. When you want to keep going, you subscribe in Billing (${m} a month or ${y} a year, in ${pricing.currency}, plus any tax that applies) and enter a card on Stripe's secure page; Glideworth never sees the card number. Subscribe with more than two days of the trial left and you keep those days: the first charge falls on the day the trial would have ended. There is one free trial per person.</p>`,
   },
   {
     q: 'What is the difference between the hosted and the self-hosted versions?',
@@ -39,7 +39,7 @@ const faq: FaqItem[] = [
   },
   {
     q: 'What happens when the trial ends?',
-    a: `<p>If you do nothing, your subscription starts: the card is charged on day ${firstChargeDay()} and then every month or year until you cancel. If you cancel during the trial, you are not charged; you keep full access until the trial ends, and then the workspace becomes read-only. Whatever you decide, you can export your data as JSON, CSV tables or a printable report and import it into a self-hosted copy.</p>`,
+    a: `<p>Nothing is charged, because we do not have your card. Your workspace becomes read-only: your plans stay there, and you can still open them, run simulations and export your data, but you cannot change them. Subscribe at any time and editing comes back at once. We email you a few days before the trial ends and again when it has ended. A workspace that stays without a subscription is deleted 12 months after the trial ended, with warning emails 30 and 7 days before. Whatever you decide, you can export your data as JSON, CSV tables or a printable report and import it into a self-hosted copy.</p>`,
   },
   {
     q: 'Can I move between the hosted service and self-hosting?',
@@ -68,7 +68,7 @@ const faq: FaqItem[] = [
   {...page('/pricing/')}
   heading="One plan, every feature. Or run it yourself, free."
   eyebrow="Pricing"
-  lede={`${pricing.planName} is ${m} a month or ${y} a year after a ${pricing.trialDays}-day free trial. You add a card to start it and are charged on day ${firstChargeDay()} unless you cancel. Self-hosting is free, with nothing held back.`}
+  lede={`${pricing.planName} is ${m} a month or ${y} a year after a ${pricing.trialDays}-day free trial with no card. Self-hosting is free, with nothing held back.`}
   crumbs={[{ label: 'Pricing', href: '/pricing/' }]}
   jsonLd={[softwareApplication()]}
 >

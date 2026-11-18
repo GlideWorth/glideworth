@@ -292,7 +292,10 @@ export const subscriptions = sqliteTable(
     productId: text("product_id").notNull(),
     priceLookupKey: text("price_lookup_key"),
     trialEndsAt: text("trial_ends_at"),
-    /** The next Checkout starts a free trial (one per address and per workspace; cleared by any Stripe subscription). */
+    /**
+     * Unused since the trial became a no-card local trial again (the trial end is `trial_ends_at`). Kept so the
+     * schema matches migration 0007; migration 0008 reads it once to start the trials that were never started.
+     */
     trialAvailable: integer("trial_available", { mode: "boolean" }).notNull().default(false),
     stripeCustomerId: text("stripe_customer_id"),
     stripeSubscriptionId: text("stripe_subscription_id"),

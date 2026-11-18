@@ -16,6 +16,7 @@ export type TemplateId =
   | "invitation"
   | "member-removed"
   | "trial-ending"
+  | "trial-expired"
   | "renewal-reminder"
   | "payment-receipt"
   | "payment-problem"
@@ -80,8 +81,18 @@ export interface TemplateData {
   };
   /** To a person the owner removed from a workspace. Names the workspace only; nothing from inside it. */
   "member-removed": { name: string; workspaceName: string };
-  /** A few days before a Stripe trial converts: the date, the first charge and how to cancel. */
-  "trial-ending": { name: string; trialEndsOn: string; amountText: string; billingUrl: string };
+  /**
+   * A few days before the free trial ends. `amountText` null: the no-card trial, which ends in read-only.
+   * Otherwise the owner subscribed during the trial and the card is charged that amount when it ends.
+   */
+  "trial-ending": {
+    name: string;
+    trialEndsOn: string;
+    amountText: string | null;
+    billingUrl: string;
+  };
+  /** The day after a no-card trial ended without a subscription: the workspace is read-only, nothing deleted. */
+  "trial-expired": { name: string; billingUrl: string };
   /** Annual renewals only. No amount: the date and a link to the billing page. */
   "renewal-reminder": { name: string; renewsOn: string; billingUrl: string };
   "payment-receipt": { name: string; amountText: string; invoiceUrl: string };
@@ -125,6 +136,7 @@ export const TEMPLATE_CATEGORY: Readonly<Record<TemplateId, EmailCategory>> = Ob
   invitation: "essential",
   "member-removed": "essential",
   "trial-ending": "essential",
+  "trial-expired": "essential",
   "renewal-reminder": "essential",
   "payment-receipt": "essential",
   "payment-problem": "essential",

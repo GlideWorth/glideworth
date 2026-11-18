@@ -18,6 +18,7 @@ import { signinAlert } from "./signin-alert.js";
 import { signupExistingAccount } from "./signup-existing-account.js";
 import { subscriptionCanceled } from "./subscription-canceled.js";
 import { trialEnding } from "./trial-ending.js";
+import { trialExpired } from "./trial-expired.js";
 import { userAccountDeleted } from "./user-account-deleted.js";
 import { verifyEmail } from "./verify-email.js";
 
@@ -39,6 +40,7 @@ export const TEMPLATES: { readonly [K in TemplateId]: TemplateFn<K> } = {
   invitation,
   "member-removed": memberRemoved,
   "trial-ending": trialEnding,
+  "trial-expired": trialExpired,
   "renewal-reminder": renewalReminder,
   "payment-receipt": paymentReceipt,
   "payment-problem": paymentProblem,

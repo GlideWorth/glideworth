@@ -222,11 +222,10 @@ describe("cloud", () => {
     },
   };
   const notStartedBilling =
-    (trialDays: number | null, role = "owner") =>
+    (role = "owner") =>
     () =>
       json({
-        status: "trialing_local",
-        trialDays,
+        status: null,
         trialEndsAt: null,
         access: { level: "read_only", reason: "no_subscription", changesAt: null },
         role,
@@ -248,55 +247,59 @@ describe("cloud", () => {
         ],
       });
 
-  it("a new owner sees only the start-trial page: the price, the first charge date and the two plans", async () => {
+  it("a new owner goes straight into the planner on the no-card trial: a countdown banner, no checkout first", async () => {
     vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-11-17T10:00:00Z") });
     try {
-      const checkout = vi.fn(() =>
-        json({ url: "https://checkout.stripe.com/c/pay/cs_1", reused: false }),
-      );
-      const go = vi.spyOn(nav, "go").mockImplementation(() => undefined);
-      stubFetch(NOT_STARTED, {
-        "GET /api/v1/billing": notStartedBilling(7),
-        "POST /api/v1/billing/checkout": checkout,
+      stubFetch({
+        ...CLOUD_SIGNED_IN,
+        workspace: {
+          ...CLOUD_SIGNED_IN.workspace,
+          trialEndsAt: "2026-12-01T10:00:00Z",
+          access: { level: "full", reason: "trial", changesAt: "2026-12-01T10:00:00Z" },
+        },
       });
       await open("/plans");
-      expect(
-        await screen.findByRole("heading", { name: "Start your 7-day free trial" }),
-      ).toBeTruthy();
-      const page = document.querySelector("main")?.textContent ?? "";
-      expect(page).toMatch(/\$9 a month or \$90 a year, charged in USD/);
-      expect(page).toMatch(
-        /You will not be charged until Nov 24, 2026\. Cancel any time before then in Billing\./,
-      );
-      expect(screen.queryByRole("alert")).toBeNull(); // no read-only banner on top
-      expect(screen.getByRole("link", { name: "Account settings" })).toBeTruthy();
-      expect(screen.getByRole("button", { name: /Sign out/ })).toBeTruthy();
-      screen.getByRole("button", { name: "Start trial, $90 a year" }).click();
-      await waitFor(() => expect(checkout).toHaveBeenCalled());
       await waitFor(() =>
-        expect(go).toHaveBeenCalledWith("https://checkout.stripe.com/c/pay/cs_1"),
+        expect(screen.getByRole("status").textContent).toMatch(
+          /Free trial: 14 days left, no card needed\. Subscribe to keep editing after it ends\./,
+        ),
       );
-      go.mockRestore();
+      expect(screen.getByRole("link", { name: "Subscribe" })).toBeTruthy();
+      expect(screen.queryByRole("heading", { name: "Choose a plan" })).toBeNull();
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it("a person who already had a trial is told the card is charged at once; members wait for the owner", async () => {
-    stubFetch(NOT_STARTED, { "GET /api/v1/billing": notStartedBilling(null) });
+  it("a workspace with no subscription record sees only the subscribe page; members wait for the owner", async () => {
+    const checkout = vi.fn(() =>
+      json({ url: "https://checkout.stripe.com/c/pay/cs_1", reused: false }),
+    );
+    const go = vi.spyOn(nav, "go").mockImplementation(() => undefined);
+    stubFetch(NOT_STARTED, {
+      "GET /api/v1/billing": notStartedBilling(),
+      "POST /api/v1/billing/checkout": checkout,
+    });
     await open("/");
     expect(await screen.findByRole("heading", { name: "Choose a plan" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Subscribe, $9 a month" })).toBeTruthy();
+    const page = document.querySelector("main")?.textContent ?? "";
+    expect(page).toMatch(/\$9 a month or \$90 a year, charged in USD/);
+    expect(screen.queryByRole("alert")).toBeNull(); // no read-only banner on top
+    expect(screen.getByRole("link", { name: "Account settings" })).toBeTruthy();
+    screen.getByRole("button", { name: "Subscribe, $90 a year" }).click();
+    await waitFor(() => expect(checkout).toHaveBeenCalled());
+    await waitFor(() => expect(go).toHaveBeenCalledWith("https://checkout.stripe.com/c/pay/cs_1"));
+    go.mockRestore();
     cleanup();
     stubFetch(
       { ...NOT_STARTED, workspace: { ...NOT_STARTED.workspace, role: "editor" } },
-      { "GET /api/v1/billing": notStartedBilling(7, "editor") },
+      { "GET /api/v1/billing": notStartedBilling("editor") },
     );
     await open("/");
     expect(
       await screen.findByRole("heading", { name: "This workspace has not started yet" }),
     ).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Start trial/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Subscribe,/ })).toBeNull();
   });
 
   it("a suspended workspace shows the suspended page instead of the app", async () => {

@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
+import { sql } from "drizzle-orm";
 import { getTableConfig, type SQLiteTable } from "drizzle-orm/sqlite-core";
 import { afterEach, describe, expect, it } from "vitest";
 import { controlBillingStore } from "../src/control/billing-store.js";
@@ -170,8 +171,7 @@ describe("controlBillingStore", () => {
     status: "trialing_local",
     productId: "gw_cloud",
     priceLookupKey: null,
-    trialEndsAt: null,
-    trialAvailable: true,
+    trialEndsAt: "2026-12-16T00:00:00.000Z",
     stripeCustomerId: null,
     stripeSubscriptionId: null,
     currentPeriodEnd: null,
@@ -228,17 +228,6 @@ describe("controlBillingStore", () => {
     expect(store.claimNotice("taaaaaaaaaaaaaaa", "trial-ending", "2026-12-16")).toBe(false);
     expect(store.claimNotice("taaaaaaaaaaaaaaa", "trial-ending", "2027-01-16")).toBe(true);
 
-    // Only a Stripe trial counts (a workspace that never started one has no trial end).
-    expect(store.accountsWithTrialEndingBefore("2026-12-17T00:00:00.000Z")).toEqual([]);
-    store.saveSubscription(
-      rec({
-        status: "trialing",
-        trialEndsAt: "2026-12-16T00:00:00.000Z",
-        stripeCustomerId: "cus_t",
-        stripeSubscriptionId: "sub_t",
-        stripeUpdated: 1,
-      }),
-    );
     expect(store.accountsWithTrialEndingBefore("2026-12-17T00:00:00.000Z")).toEqual([
       "taaaaaaaaaaaaaaa",
     ]);
@@ -281,6 +270,84 @@ describe("controlEmailStores", () => {
     expect(Object.keys(rows[0] as object).sort()).toEqual(
       ["category", "createdAt", "id", "providerMessageId", "status", "template", "userId"].sort(),
     );
+    close();
+  });
+});
+
+describe("migration 0008: start the no-card trials that were never started", () => {
+  it("gives 14 days from now only to unstarted workspaces still owed a trial", () => {
+    const { db, close } = openControlDb(":memory:");
+    db.insert(users)
+      .values({
+        id: "u_o",
+        email: "o@example.org",
+        emailNormalized: "o@example.org",
+        name: "O",
+        passwordHash: "h",
+        termsVersion: "1",
+      })
+      .run();
+    const base = {
+      status: "trialing_local",
+      productId: "gw_cloud",
+      priceLookupKey: null,
+      trialEndsAt: null,
+      trialAvailable: false,
+      stripeCustomerId: null,
+      stripeSubscriptionId: null,
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+      canceledAt: null,
+      pastDueSince: null,
+      compedUntil: null,
+      stripeUpdated: null,
+      updatedAt: "2026-11-17T00:00:00.000Z",
+      version: 0,
+    } as const;
+    const rows = {
+      owed: { trialAvailable: true },
+      noTrial: { trialAvailable: false },
+      stripeTrial: {
+        trialAvailable: false,
+        status: "trialing",
+        stripeSubscriptionId: "sub_1",
+        trialEndsAt: "2026-11-24T00:00:00.000Z",
+      },
+    } as const;
+    const ids = {
+      owed: "taaaaaaaaaaaaaa1",
+      noTrial: "taaaaaaaaaaaaaa2",
+      stripeTrial: "taaaaaaaaaaaaaa3",
+    };
+    for (const [k, over] of Object.entries(rows) as [
+      keyof typeof rows,
+      (typeof rows)[keyof typeof rows],
+    ][]) {
+      db.insert(accounts).values({ id: ids[k], name: k, ownerUserId: "u_o" }).run();
+      db.insert(subscriptions)
+        .values({ ...base, ...over, accountId: ids[k] })
+        .run();
+    }
+    const before = Date.now();
+    db.run(
+      sql.raw(
+        readFileSync(new URL("../drizzle/0008_start_no_card_trials.sql", import.meta.url), "utf8"),
+      ),
+    );
+    const get = (id: string) =>
+      db
+        .select()
+        .from(subscriptions)
+        .all()
+        .find((r) => r.accountId === id);
+    const owed = get(ids.owed);
+    const end = Date.parse(owed?.trialEndsAt ?? "");
+    expect(owed?.trialEndsAt).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/);
+    expect(end - before).toBeGreaterThan(14 * 86_400_000 - 60_000);
+    expect(end - before).toBeLessThan(14 * 86_400_000 + 60_000);
+    expect(owed?.version).toBe(1);
+    expect(get(ids.noTrial)?.trialEndsAt).toBeNull();
+    expect(get(ids.stripeTrial)?.trialEndsAt).toBe("2026-11-24T00:00:00.000Z");
     close();
   });
 });

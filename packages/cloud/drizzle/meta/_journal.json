@@ -57,6 +57,13 @@
       "when": 1794903005469,
       "tag": "0007_trial_available",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1795022313492,
+      "tag": "0008_start_no_card_trials",
+      "breakpoints": true
     }
   ]
 }

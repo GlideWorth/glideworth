@@ -359,52 +359,71 @@ describe("billing", () => {
     return api;
   };
 
-  it("Stripe trial: days left, the first charge and its date, cancel in the portal", async () => {
+  it("no-card trial: days left, no card needed, the plans to subscribe and keep the days left", async () => {
+    const end = new Date(Date.now() + 13 * 86400_000 + 3600_000).toISOString();
+    await show(
+      owner({
+        status: "trialing_local",
+        lookupKey: null,
+        interval: null,
+        plan: null,
+        currentPeriodEnd: null,
+        access: { level: "full", reason: "trial", changesAt: end },
+        trialEndsAt: end,
+      }),
+    );
+    // 13 days and an hour: rounded up, so the trial does not look a day shorter than it is.
+    expect(screen.getByText("Free trial: 14 days left")).toBeTruthy();
+    expect(screen.getByText(/No card is needed and nothing is charged/)).toBeTruthy();
+    expect(screen.getByText(/Subscribe now and you keep the rest of your trial/)).toBeTruthy();
+    expect(screen.getByText("Choose a plan")).toBeTruthy();
+    expect(screen.getByText("Save 17%")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Subscribe monthly" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Subscribe yearly" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Manage billing" })).toBeNull();
+  });
+
+  it("subscribed during the trial: the first charge and its date, cancel in the portal", async () => {
     const end = new Date(Date.now() + 6 * 86400_000 + 3600_000).toISOString();
     await show(
       owner({
         status: "trialing",
         lookupKey: "cloud_monthly_v1",
-        access: { level: "full", reason: "trial", changesAt: null },
+        access: { level: "full", reason: "active", changesAt: null },
         trialEndsAt: end,
         currentPeriodEnd: end,
       }),
     );
-    // 6 days and an hour: rounded up, so the trial does not look a day shorter than it is.
-    expect(screen.getByText("Free trial: 7 days left")).toBeTruthy();
     expect(
-      screen.getByText(/Your card will be charged \$9 plus any tax on .*, and then every month/),
+      screen.getByText(/Your card will be charged \$9 plus any tax then, and then every month/),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Manage billing" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Subscribe|Start free trial/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Subscribe/ })).toBeNull();
   });
 
-  it("not started: the 7-day trial offer, monthly or yearly with prices from the API", async () => {
+  it("trial ended: read-only, monthly or yearly with prices from the API", async () => {
     await show(
       owner({
         status: "trialing_local",
-        trialDays: 7,
-        access: { level: "read_only", reason: "no_subscription", changesAt: null },
+        access: { level: "read_only", reason: "trial_expired", changesAt: null },
         interval: null,
         plan: null,
         currentPeriodEnd: null,
       }),
     );
-    expect(screen.getAllByText("Start your 7-day free trial").length).toBeGreaterThan(0);
-    expect(screen.getByText(/You will not be charged until/)).toBeTruthy();
+    expect(screen.getByText("This workspace is read-only")).toBeTruthy();
+    expect(screen.getByText(/The free trial has ended/)).toBeTruthy();
     expect(screen.getByText("$9")).toBeTruthy();
     expect(screen.getByText("$90")).toBeTruthy();
-    expect(screen.getByText("Save 17%")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Start free trial, monthly" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Start free trial, yearly" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Subscribe monthly" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Subscribe yearly" })).toBeTruthy();
   });
 
   it("shows whatever prices the API sends, with whether tax is added or included", async () => {
     await show(
       owner({
         status: "trialing_local",
-        trialDays: 7,
-        access: { level: "read_only", reason: "no_subscription", changesAt: null },
+        access: { level: "read_only", reason: "trial_expired", changesAt: null },
         offered: [
           {
             lookupKey: "m",
@@ -502,7 +521,6 @@ describe("billing", () => {
     await show(
       owner({
         status: "canceled",
-        trialDays: null,
         access: { level: "read_only", reason: "canceled", changesAt: null },
         interval: null,
         plan: null,
@@ -880,17 +898,16 @@ describe("workspace", () => {
 });
 
 describe("shell: banners, switcher, suspended page", () => {
-  it("trial banner counts the days for the owner, says when the card is charged, links to Billing", () => {
+  it("trial banner counts the days for the owner, says no card is needed, links to subscribe", () => {
     const end = new Date(Date.now() + 9 * 86400_000 + 3600_000).toISOString();
     renderWithClient(
       <CloudBanners />,
-      signedIn("owner", { level: "full", reason: "trial" }, { trialEndsAt: end }),
+      signedIn("owner", { level: "full", reason: "trial", changesAt: end }, { trialEndsAt: end }),
     );
     const banner = screen.getByRole("status");
-    expect(banner.textContent).toMatch(/Free trial: 10 days left/);
-    expect(banner.textContent).toMatch(/Your card is charged on .* unless you cancel in Billing/);
+    expect(banner.textContent).toMatch(/Free trial: 10 days left, no card needed/);
     expect(
-      (within(banner).getByRole("link", { name: "Billing" }) as HTMLAnchorElement).getAttribute(
+      (within(banner).getByRole("link", { name: "Subscribe" }) as HTMLAnchorElement).getAttribute(
         "href",
       ),
     ).toBe("/settings/$section");

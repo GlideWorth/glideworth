@@ -27,6 +27,7 @@ const FREE_TEXT_FIELDS: Record<string, string[]> = {
   invitation: ["inviterName", "workspaceName"],
   "member-removed": ["name", "workspaceName"],
   "trial-ending": ["name", "trialEndsOn", "amountText"],
+  "trial-expired": ["name"],
   "renewal-reminder": ["name", "renewsOn"],
   "payment-receipt": ["name", "amountText"],
   "payment-problem": ["name", "readOnlyFrom"],

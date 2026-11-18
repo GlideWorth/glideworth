@@ -25,8 +25,6 @@ export interface BillingView {
   body: string[];
   /** What the owner can do next; members never get a button. */
   action: "subscribe" | "portal" | "none";
-  /** The free trial a Checkout starts now (days), or null when it charges at once. */
-  trialDays?: number | null;
   /** Whole days of trial left (trialing only). */
   trialDaysLeft?: number;
 }
@@ -35,6 +33,7 @@ const DELETION =
   "If a workspace stays without a subscription, it is deleted 12 months after the trial ended or the last paid period ended. We email the owner 30 days and 7 days before. Subscribing restores access and starts the clock again; signing in does not.";
 
 const READ_ONLY_WHY: Record<string, string> = {
+  trial_expired: "The free trial has ended.",
   canceled: "The subscription has ended.",
   past_due: "The last payment did not go through and the grace period is over.",
   unpaid: "Payment failed and could not be collected.",
@@ -42,9 +41,14 @@ const READ_ONLY_WHY: Record<string, string> = {
   incomplete: "The first payment was not completed.",
 };
 
-/** The date the first charge would fall on if a trial of `days` started now. */
-export function firstChargeDate(days: number, now: Date = new Date()): Date {
-  return new Date(now.getTime() + days * 86_400_000);
+/**
+ * Subscribing during the free trial keeps the days left only with more than 48 hours to go (Stripe's minimum
+ * trial; `TRIAL_CARRY_OVER_MIN_MS` in packages/billing adds 10 minutes). Otherwise the first charge is at once.
+ */
+const CARRY_OVER_MS = (48 * 60 + 10) * 60_000;
+function keepsTrialDays(trialEndsAt: string | null | undefined, now: Date): boolean {
+  const end = trialEndsAt ? Date.parse(trialEndsAt) : Number.NaN;
+  return Number.isFinite(end) && end - now.getTime() > CARRY_OVER_MS;
 }
 
 /** "$9 a month or $90 a year, charged in USD" from the offered prices (monthly first). */
@@ -81,72 +85,65 @@ export function billingView(b: BillingInfo, now: Date = new Date(), locale?: str
     };
 
   if (level === "read_only" && reason === "no_subscription") {
-    const trialDays = b.trialDays ?? null;
     const prices = priceLine(b.offered, locale);
-    const owner = b.role === "owner";
-    if (!owner)
+    if (b.role !== "owner")
       return {
         state: "not-started",
         label: "Not started",
         headline: "This workspace has not started yet",
         body: [
-          "The workspace owner has not started the subscription yet, so its plans cannot be opened. Ask them to start it in Billing.",
+          "The workspace owner has not subscribed yet, so its plans cannot be opened. Ask them to subscribe in Billing.",
         ],
         action: "subscribe",
-        trialDays,
       };
-    return trialDays
-      ? {
-          state: "not-started",
-          label: "Not started",
-          headline: `Start your ${trialDays}-day free trial`,
-          body: [
-            `Glideworth Cloud is ${prices || "a monthly or yearly subscription"}. Add a card on Stripe's secure page to start the trial.`,
-            `You will not be charged until ${fmtDate(firstChargeDate(trialDays, now).toISOString(), locale)}. Cancel any time before then in Billing.`,
-          ],
-          action: "subscribe",
-          trialDays,
-        }
-      : {
-          state: "not-started",
-          label: "Not started",
-          headline: "Choose a plan",
-          body: [
-            `Glideworth Cloud is ${prices || "a monthly or yearly subscription"}. You have already had a free trial, so your card is charged when you subscribe.`,
-          ],
-          action: "subscribe",
-          trialDays,
-        };
+    return {
+      state: "not-started",
+      label: "Not started",
+      headline: "Choose a plan",
+      body: [
+        `Glideworth Cloud is ${prices || "a monthly or yearly subscription"}. You have already had a free trial, so your card is charged when you subscribe.`,
+      ],
+      action: "subscribe",
+    };
   }
 
   if (level === "full") {
     if (reason === "trial") {
-      const left = daysLeft(b.trialEndsAt, now);
-      const ends = fmtDate(b.trialEndsAt, locale) || "the end of the trial";
-      const offer = b.offered?.find((o) => o.lookupKey === b.lookupKey);
-      const charge = offer
-        ? `${fmtPrice(offer.unitAmount, offer.currency, locale)}${offer.taxBehavior === "exclusive" ? " plus any tax" : ""}`
-        : "the plan price";
-      if (b.cancelAtPeriodEnd)
-        return {
-          state: "cancelling",
-          label: "Ending",
-          trialDaysLeft: left,
-          headline: `Your free trial ends on ${ends}`,
-          body: [
-            "You cancelled during the free trial, so you will not be charged. You keep full access until then.",
-            "After that the workspace becomes read-only (you can still look, simulate and export). You can resume in the billing portal before the trial ends, or subscribe again later.",
-          ],
-          action: "portal",
-        };
+      // The no-card free trial: full access until it ends, then read-only until the owner subscribes.
+      const left = daysLeft(b.trialEndsAt ?? changesAt, now);
+      const ends = fmtDate(b.trialEndsAt ?? changesAt, locale) || "the end of the trial";
+      const owner = b.role === "owner";
       return {
         state: "trialing",
         label: "Free trial",
         trialDaysLeft: left,
         headline: `Free trial: ${daysText(left)} left`,
         body: [
-          `You have full access. Your card will be charged ${charge} on ${ends}, and then ${b.interval === "year" ? "every year" : "every month"}, unless you cancel before then.`,
-          "To cancel, open Manage billing and cancel the subscription. You will not be charged, and you keep access until the trial ends.",
+          `You have full access until ${ends}. No card is needed and nothing is charged.`,
+          "After that the workspace becomes read-only: you can still look, simulate and export, and nothing is deleted. Subscribe to keep editing.",
+          owner
+            ? keepsTrialDays(b.trialEndsAt ?? changesAt, now)
+              ? `Subscribe now and you keep the rest of your trial: your card is first charged on ${ends}.`
+              : "Subscribing now charges your card at once."
+            : "The workspace owner can subscribe in Billing.",
+        ],
+        action: owner ? "subscribe" : "none",
+      };
+    }
+    if (b.status === "trialing" && !b.cancelAtPeriodEnd) {
+      // Subscribed during the free trial: the rest of the trial carried over into Stripe; the card is charged at its end.
+      const ends = fmtDate(b.trialEndsAt ?? b.currentPeriodEnd, locale) || "the end of the trial";
+      const offer = b.offered?.find((o) => o.lookupKey === b.lookupKey);
+      const charge = offer
+        ? `${fmtPrice(offer.unitAmount, offer.currency, locale)}${offer.taxBehavior === "exclusive" ? " plus any tax" : ""}`
+        : "the plan price";
+      return {
+        state: "active",
+        label: "Subscribed",
+        headline: `Subscribed: ${plan}`,
+        body: [
+          `Your free trial runs until ${ends}. Your card will be charged ${charge} then, and then ${b.interval === "year" ? "every year" : "every month"}.`,
+          "To cancel, open Manage billing and cancel the subscription before then. You will not be charged, and you keep access until the trial ends.",
         ],
         action: "portal",
       };
@@ -223,19 +220,15 @@ export function bannerFor(
   if (!access || access.level === "suspended") return null;
   if (access.level === "full") {
     if (access.reason === "trial") {
+      // The no-card free trial; it ends in read-only, never in a charge.
       const left = daysLeft(trialEndsAt ?? access.changesAt, now);
       const days = daysText(left);
-      const on = fmtDate(trialEndsAt ?? access.changesAt);
-      // Cancelled during the trial (changesAt set): access ends with the trial and nothing is charged.
-      const ending = access.changesAt !== null;
       return {
         tone: left <= 2 ? "warning" : "info",
-        text: ending
-          ? `Free trial: ${days} left. It was cancelled, so nothing will be charged.`
-          : owner
-            ? `Free trial: ${days} left. Your card is charged${on ? ` on ${on}` : " when it ends"} unless you cancel in Billing.`
-            : `Free trial: ${days} left.`,
-        cta: owner ? "Billing" : null,
+        text: owner
+          ? `Free trial: ${days} left, no card needed. Subscribe to keep editing after it ends.`
+          : `Free trial: ${days} left.`,
+        cta: owner ? "Subscribe" : null,
       };
     }
     if (access.reason === "past_due_grace")
@@ -254,9 +247,11 @@ export function bannerFor(
   const text =
     access.reason === "canceled"
       ? "The subscription has ended, so this workspace is read-only."
-      : payment
-        ? "Payment failed, so this workspace is read-only."
-        : "This workspace is read-only.";
+      : access.reason === "trial_expired"
+        ? "Your free trial has ended, so this workspace is read-only."
+        : payment
+          ? "Payment failed, so this workspace is read-only."
+          : "This workspace is read-only.";
   return owner
     ? {
         tone: "danger",

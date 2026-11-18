@@ -646,8 +646,8 @@ const WorkspaceSwitcher = lazy(() =>
 const SuspendedPage = lazy(() =>
   import("../../features/cloud/shell-parts").then((m) => ({ default: m.SuspendedPage })),
 );
-const StartTrialPage = lazy(() =>
-  import("../../features/cloud/shell-parts").then((m) => ({ default: m.StartTrialPage })),
+const SubscribePage = lazy(() =>
+  import("../../features/cloud/shell-parts").then((m) => ({ default: m.SubscribePage })),
 );
 
 /** Cmd/Ctrl+K anywhere toggles the palette; its code is fetched on first use. */
@@ -695,7 +695,7 @@ function Frame() {
   const mode = useMode();
   const access = useCloudSession()?.workspace?.access;
   const suspended = access?.level === "suspended";
-  // Never subscribed: no access until the owner starts the free trial in Checkout.
+  // No subscription record at all (rare: new workspaces start the no-card trial): no access until the owner subscribes.
   const notStarted = access?.level === "read_only" && access.reason === "no_subscription";
   // A suspended or not-started workspace has no data to show; only the settings stay reachable.
   const blocked = (suspended || notStarted) && !path.startsWith("/settings");
@@ -735,7 +735,7 @@ function Frame() {
           {path === "/" && !blocked ? <NextSteps /> : null}
           {blocked ? (
             <Suspense fallback={null}>
-              {notStarted ? <StartTrialPage /> : <SuspendedPage />}
+              {notStarted ? <SubscribePage /> : <SuspendedPage />}
             </Suspense>
           ) : (
             <Outlet />

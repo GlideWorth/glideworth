@@ -127,7 +127,7 @@ export function GoogleSignUpPage() {
       subtitle={
         pending.data.invitedTo
           ? `Confirm a few details to create your Glideworth account. Then we take you back to the invitation to join ${pending.data.invitedTo}.`
-          : "Confirm a few details to create your Glideworth account. Then you can start a 7-day free trial."
+          : "Confirm a few details to create your Glideworth account. Your 14-day free trial starts straight away, with no card needed."
       }
       footer={
         <Link to="/signin" className="text-accent underline underline-offset-2">

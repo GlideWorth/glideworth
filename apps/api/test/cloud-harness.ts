@@ -249,33 +249,8 @@ export const uniqueEmail = (tag: string) =>
   `${tag}.${++seq}.${Date.now().toString(36)}@example.org`;
 export const PASSWORD = "correct horse battery staple 42";
 
-/**
- * The owner starts the free trial as in production: Checkout through the API, completed in the fake Stripe (card
- * given), and Stripe's events delivered to the signed webhook. Afterwards the workspace is `trialing`.
- */
-export async function startTrial(cloud: Cloud, owner: Client, lookupKey = "cloud_monthly_v1") {
-  const r = await owner.post("/api/v1/billing/checkout", { lookupKey });
-  if (r.status !== 200) throw new Error(`checkout ${r.status} ${r.text}`);
-  const sessionId = String(r.json.url).split("/").at(-1) as string;
-  for (const ev of cloud.gateway.completeCheckout(sessionId)) {
-    const { body, header } = cloud.gateway.sign(ev, WEBHOOK_SECRET);
-    const w = await fetch(`${cloud.base}/stripe/webhook`, {
-      method: "POST",
-      headers: { "stripe-signature": header, "content-type": "application/json" },
-      body,
-    });
-    if (w.status !== 200) throw new Error(`webhook ${w.status} ${await w.text()}`);
-  }
-}
-
-/**
- * Sign up, verify from the email, end signed in. Returns the browser, its user and workspace. An owner then starts
- * the free trial (`startTrial`), since a workspace has no access before Checkout; `trial: false` stops before it.
- */
-export async function signUp(
-  cloud: Cloud,
-  o: { name?: string; email?: string; trial?: boolean } = {},
-) {
+/** Sign up, verify from the email, end signed in. Returns the browser, its user and workspace. */
+export async function signUp(cloud: Cloud, o: { name?: string; email?: string } = {}) {
   const b = new Client(cloud);
   const email = o.email ?? uniqueEmail("owner");
   const r = await b.post("/api/v1/auth/signup", {
@@ -293,13 +268,11 @@ export async function signUp(
   const v = await b.post("/api/v1/auth/verify", { token: tokenIn(mail.text) });
   if (v.status !== 200) throw new Error(`verify ${v.status} ${v.text}`);
   const s = await b.get("/api/v1/auth/status");
-  const accountId = (s.json.workspace?.id ?? null) as string | null;
-  if (accountId && o.trial !== false) await startTrial(cloud, b);
   return {
     browser: b,
     email,
     userId: s.json.user.id as string,
-    accountId,
+    accountId: (s.json.workspace?.id ?? null) as string | null,
   };
 }
 

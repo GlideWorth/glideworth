@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { accessFor } from "../src/access.js";
-import { applyComp, applyStripeSubscription, isLive, newAccountRecord } from "../src/state.js";
+import { applyComp, applyStripeSubscription, isLive, newTrialRecord } from "../src/state.js";
 import type {
   StripeSubscriptionStatus,
   StripeSubscriptionView,
@@ -20,7 +20,7 @@ function view(patch: Partial<StripeSubscriptionView> = {}): StripeSubscriptionVi
     status: "active",
     priceLookupKey: "cloud_monthly_v1",
     productId: "gw_cloud",
-    currentPeriodEnd: sec(T0 + 30 * DAY),
+    currentPeriodEnd: sec(T0 + 14 * DAY),
     cancelAtPeriodEnd: false,
     canceledAt: null,
     trialEnd: null,
@@ -40,37 +40,31 @@ function applied(
   return out.record;
 }
 
-describe("newAccountRecord", () => {
-  it("has no access and no Stripe objects; the first Checkout may start a trial", () => {
-    const r = newAccountRecord("tacct1", now, cfg, true);
+describe("newTrialRecord", () => {
+  it("starts a 14-day local trial with the trial product and no Stripe objects", () => {
+    const r = newTrialRecord("tacct1", now, cfg, true);
     expect(r).toMatchObject({
       status: "trialing_local",
       productId: "gw_cloud",
-      trialEndsAt: null,
-      trialAvailable: true,
+      trialEndsAt: iso(T0 + 14 * DAY),
       stripeCustomerId: null,
       stripeSubscriptionId: null,
       stripeUpdated: null,
     });
-    expect(accessFor(r, now, cfg)).toMatchObject({ level: "read_only", reason: "no_subscription" });
   });
 
-  it("without a trial (address already used one) the record says so", () => {
-    expect(newAccountRecord("tacct1", now, cfg, false).trialAvailable).toBe(false);
-  });
-
-  it("trialDays 0 means no trial at all", () => {
-    expect(newAccountRecord("tacct1", now, { ...cfg, trialDays: 0 }, true).trialAvailable).toBe(
-      false,
-    );
+  it("without a trial (address already used one) the account is read-only trial_expired at once", () => {
+    const r = newTrialRecord("tacct1", now, cfg, false);
+    expect(r.trialEndsAt).toBeNull();
+    expect(accessFor(r, now, cfg)).toMatchObject({ level: "read_only", reason: "trial_expired" });
   });
 });
 
 describe("transition table: any stored state x fetched Stripe status", () => {
   const stored: Array<[string, SubscriptionRecord | null]> = [
     ["none", null],
-    ["trialing_local (trial available)", newAccountRecord("tacct1", now, cfg, true)],
-    ["trialing_local (no trial)", newAccountRecord("tacct1", now, cfg, false)],
+    ["trialing_local (running)", newTrialRecord("tacct1", now, cfg, true)],
+    ["trialing_local (expired)", newTrialRecord("tacct1", new Date(T0 - 40 * DAY), cfg, true)],
     ["active sub_1", applied(null, view())],
     [
       "past_due sub_1",
@@ -91,7 +85,7 @@ describe("transition table: any stored state x fetched Stripe status", () => {
   const expectedReason: Record<StripeSubscriptionStatus, string> = {
     incomplete: "incomplete",
     incomplete_expired: "incomplete",
-    trialing: "trial",
+    trialing: "active",
     active: "active",
     past_due: "past_due_grace",
     unpaid: "unpaid",
@@ -111,11 +105,14 @@ describe("transition table: any stored state x fetched Stripe status", () => {
         expect(r.stripeSubscriptionId).toBe("sub_1");
         expect(r.stripeCustomerId).toBe("cus_1");
         expect(r.stripeUpdated).toBe(Math.max(prev?.stripeUpdated ?? 0, sec(T0) + 10));
-        expect(r.trialAvailable).toBe(false);
         const a = accessFor(r, now, cfg);
-        const reason = expectedReason[status];
+        const localTrialRunning = label === "trialing_local (running)";
+        const reason =
+          (status === "incomplete" || status === "incomplete_expired") && localTrialRunning
+            ? "trial"
+            : expectedReason[status];
         expect(a.reason).toBe(reason);
-        // The only states with full access: paying, in grace, or in a Stripe trial.
+        // The only states with full access: paying, in grace, or in a (local or Stripe) trial.
         expect(a.level).toBe(
           ["active", "past_due_grace", "trial"].includes(reason) ? "full" : "read_only",
         );
@@ -125,13 +122,12 @@ describe("transition table: any stored state x fetched Stripe status", () => {
 });
 
 describe("field rules", () => {
-  it("takes the trial end from Stripe and uses up the workspace's trial", () => {
-    const fresh = newAccountRecord("tacct1", now, cfg, true);
-    const trialing = applied(fresh, view({ status: "trialing", trialEnd: sec(T0 + 7 * DAY) }));
-    expect(trialing.trialEndsAt).toBe(iso(sec(T0 + 7 * DAY) * 1000));
-    expect(trialing.trialAvailable).toBe(false);
-    // Even a subscription that never started (abandoned first payment) uses it up.
-    expect(applied(fresh, view({ status: "incomplete" })).trialAvailable).toBe(false);
+  it("keeps the local trial end when Stripe has no trial, takes Stripe trial_end when it has one", () => {
+    const trial = newTrialRecord("tacct1", now, cfg, true);
+    expect(applied(trial, view({ status: "incomplete" })).trialEndsAt).toBe(trial.trialEndsAt);
+    expect(
+      applied(trial, view({ status: "trialing", trialEnd: sec(T0 + 5 * DAY) })).trialEndsAt,
+    ).toBe(iso(sec(T0 + 5 * DAY) * 1000));
   });
 
   it("past_due: pastDueSince is set on entry, kept while past_due, cleared when paid", () => {

@@ -55,7 +55,7 @@ const sortNotices = (ns: BillingNotice[]) => ns.map((n) => JSON.stringify(n)).so
 /** A realistic lifecycle: subscribe, renewal fails, card updated and paid, then cancel at period end. */
 async function lifecycle() {
   const h = await harness();
-  h.service.openAccount("tacct1", false);
+  h.service.startTrial("tacct1", false);
   const { subscriptionId, events: checkout } = await h.subscribe("tacct1");
   // The store as it is after checkout created the customer, before any webhook arrived.
   const initial = cloneStore(h.store);

@@ -195,9 +195,19 @@ describe("workspace deletion", () => {
   });
 
   it("a subscribed workspace is canceled at Stripe immediately, without proration", async () => {
-    // The owner starts the trial with a card (signedUpBrowser): a live Stripe subscription.
     const owner = await signedUpBrowser(cloud);
     const id = owner.accountId as string;
+    const r = await owner.browser.post("/api/v1/billing/checkout", {
+      lookupKey: "cloud_monthly_v1",
+    });
+    for (const ev of cloud.fake.completeCheckout(String(r.body.url).split("/").at(-1) as string)) {
+      const signed = cloud.fake.sign(ev, "whsec_test_cloud_fixture_secret");
+      await cloud.app.request("/stripe/webhook", {
+        method: "POST",
+        headers: { "stripe-signature": signed.header },
+        body: signed.body,
+      });
+    }
     await owner.browser.post("/api/v1/auth/reauth", { password: owner.password });
     expect(
       (await owner.browser.del("/api/v1/workspace", { confirmName: "My workspace" })).status,

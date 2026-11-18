@@ -319,7 +319,7 @@ describe("pages and actions", () => {
     expect((await owner.browser.get("/api/v1/whoami")).status).toBe(403);
     await c.get(`/workspaces/${id}`);
     expect((await c.post(`/workspaces/${id}/unsuspend`)).status).toBe(303);
-    expect((await c.post(`/workspaces/${id}/extend-trial`, { days: "7" })).status).toBe(404);
+    expect((await c.post(`/workspaces/${id}/extend-trial`, { days: "7" })).status).toBe(303);
     expect((await c.post(`/workspaces/${id}/comp`, { until: "2027-01-01" })).status).toBe(303);
     const events = cloud.db
       .select()
@@ -333,6 +333,7 @@ describe("pages and actions", () => {
         ["workspace.suspended", null],
         ["operator.action", "suspend"],
         ["operator.action", "unsuspend"],
+        ["operator.action", "extend_trial"],
         ["operator.action", "comp"],
       ]),
     );

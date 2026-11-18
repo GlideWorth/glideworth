@@ -40,45 +40,6 @@ function isResourceMissing(err: unknown): boolean {
 const chunk = <T>(xs: T[], n: number): T[][] =>
   Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n));
 
-/**
- * The Checkout Session for a new subscription. A card is always collected, also for a free trial
- * (`payment_method_collection: "always"`); a trial that somehow ends without a payment method is cancelled rather
- * than left unpaid. Without `trialPeriodDays` the first period is charged at once.
- */
-export function checkoutSessionParams(
-  p: Parameters<StripeGateway["createCheckoutSession"]>[0],
-): Stripe.Checkout.SessionCreateParams {
-  return {
-    mode: "subscription",
-    customer: p.customerId,
-    client_reference_id: p.accountId,
-    line_items: [{ price: p.priceId, quantity: 1 }],
-    // One currency for everyone: no local-currency conversion (Adaptive Pricing showed AED in the UAE).
-    currency: p.currency,
-    adaptive_pricing: { enabled: false },
-    payment_method_collection: "always",
-    subscription_data: {
-      metadata: { account_id: p.accountId },
-      ...(p.trialPeriodDays !== null
-        ? {
-            trial_period_days: p.trialPeriodDays,
-            trial_settings: { end_behavior: { missing_payment_method: "cancel" } },
-          }
-        : {}),
-    },
-    metadata: { account_id: p.accountId },
-    automatic_tax: { enabled: true },
-    // Required with an existing customer: Stripe Tax needs the address, tax id collection needs the name.
-    customer_update: { address: "auto", name: "auto" },
-    tax_id_collection: { enabled: p.collectTaxIds },
-    billing_address_collection: "auto",
-    allow_promotion_codes: p.allowPromotionCodes,
-    success_url: p.successUrl,
-    cancel_url: p.cancelUrl,
-    ...(p.expiresAt !== undefined ? { expires_at: p.expiresAt } : {}),
-  };
-}
-
 /** Portal configuration (design 4.1): payment method, invoices, cancel at period end, interval switch, tax id. */
 export function portalConfigurationParams(p: {
   prices: Array<{ productId: string; priceIds: string[] }>;
@@ -212,9 +173,32 @@ export function stripeGateway(client: Stripe): StripeGateway & WebhookEndpointAd
     },
 
     async createCheckoutSession(p, idempotencyKey) {
-      const session = await client.checkout.sessions.create(checkoutSessionParams(p), {
-        idempotencyKey,
-      });
+      const session = await client.checkout.sessions.create(
+        {
+          mode: "subscription",
+          customer: p.customerId,
+          client_reference_id: p.accountId,
+          line_items: [{ price: p.priceId, quantity: 1 }],
+          // One currency for everyone: no local-currency conversion (Adaptive Pricing showed AED in the UAE).
+          currency: p.currency,
+          adaptive_pricing: { enabled: false },
+          subscription_data: {
+            metadata: { account_id: p.accountId },
+            ...(p.trialEnd !== null ? { trial_end: p.trialEnd } : {}),
+          },
+          metadata: { account_id: p.accountId },
+          automatic_tax: { enabled: true },
+          // Required with an existing customer: Stripe Tax needs the address, tax id collection needs the name.
+          customer_update: { address: "auto", name: "auto" },
+          tax_id_collection: { enabled: p.collectTaxIds },
+          billing_address_collection: "auto",
+          allow_promotion_codes: p.allowPromotionCodes,
+          success_url: p.successUrl,
+          cancel_url: p.cancelUrl,
+          ...(p.expiresAt !== undefined ? { expires_at: p.expiresAt } : {}),
+        },
+        { idempotencyKey },
+      );
       if (!session.url) throw new BillingError("STRIPE_UNAVAILABLE", "Checkout session has no URL");
       return { id: session.id, url: session.url };
     },

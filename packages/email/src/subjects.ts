@@ -17,6 +17,7 @@ export const SUBJECTS: Readonly<Record<TemplateId, string>> = Object.freeze({
   invitation: "You have been invited to a Glideworth workspace",
   "member-removed": "You have been removed from a Glideworth workspace",
   "trial-ending": "Your Glideworth trial ends soon",
+  "trial-expired": "Your Glideworth trial has ended",
   "renewal-reminder": "Your Glideworth subscription renews soon",
   "payment-receipt": "Your Glideworth receipt",
   "payment-problem": "Action needed: your Glideworth payment did not go through",

@@ -17,7 +17,7 @@ function snapshot(store: MemoryBillingStore) {
 
 async function subscribed() {
   const h = await harness();
-  h.service.openAccount("tacct1", false);
+  h.service.startTrial("tacct1", false);
   const { subscriptionId, events } = await h.subscribe("tacct1");
   await h.deliverAll(events);
   h.notices.length = 0;
@@ -135,7 +135,7 @@ describe("T-BILL: state comes from the fetched subscription, never from the even
 
   it("subscription metadata naming another account than the customer mapping is orphaned", async () => {
     const h = await subscribed();
-    h.service.openAccount("tacct2", true);
+    h.service.startTrial("tacct2", true);
     const event = h.fake.setSubscription(h.subscriptionId, { metadata: { account_id: "tacct2" } });
     expect((await h.deliver(event)).result).toBe("orphaned");
     expect(h.store.getSubscription("tacct2")?.stripeSubscriptionId).toBeNull();
@@ -161,7 +161,7 @@ describe("T-BILL: unknown customers are orphaned", () => {
         customerId,
         priceId,
         accountId: "tnobody",
-        trialPeriodDays: null,
+        trialEnd: null,
         successUrl: "https://x/s",
         cancelUrl: "https://x/c",
         allowPromotionCodes: false,
@@ -215,7 +215,7 @@ describe("T-BILL: unknown customers are orphaned", () => {
 describe("T-BILL: idempotency and failure handling", () => {
   it("duplicate deliveries are processed once", async () => {
     const h = await harness();
-    h.service.openAccount("tacct1", true);
+    h.service.startTrial("tacct1", true);
     const { events } = await h.subscribe("tacct1");
     for (let round = 0; round < 3; round++) await h.deliverAll(events);
     const rows = [...h.store.events.values()];
@@ -288,7 +288,7 @@ describe("T-BILL: idempotency and failure handling", () => {
 describe("every handled event type", () => {
   it("checkout.session.completed / customer.subscription.created / invoice.paid", async () => {
     const h = await harness();
-    h.service.openAccount("tacct1", false);
+    h.service.startTrial("tacct1", false);
     const { events } = await h.subscribe("tacct1");
     const outcomes = await h.deliverAll(events);
     expect(events.map((e) => e.type)).toEqual([
@@ -314,23 +314,18 @@ describe("every handled event type", () => {
 
   it("customer.subscription.updated / paused / resumed / deleted / trial_will_end", async () => {
     const h = await harness();
-    h.service.openAccount("tacct1", true);
+    h.service.startTrial("tacct1", true);
     const { subscriptionId, events } = await h.subscribe("tacct1");
     await h.deliverAll(events);
     expect(h.store.getSubscription("tacct1")?.status).toBe("trialing");
 
     await h.deliverAll(h.fake.trialWillEnd(subscriptionId));
-    expect(h.notices.filter((n) => n.kind === "trial-ending")).toEqual([
-      {
-        kind: "trial-ending",
-        accountId: "tacct1",
-        trialEndsAt: h.store.getSubscription("tacct1")?.trialEndsAt,
-        charge: { unitAmount: 900, currency: "usd", interval: "month" },
-      },
-    ]);
-    // The sweep's reminder for the same trial end is the same notice: one email.
-    await h.service.sweep();
-    expect(h.notices.filter((n) => n.kind === "trial-ending")).toHaveLength(1);
+    const ending = h.notices.filter((n) => n.kind === "trial-ending");
+    expect(ending).toHaveLength(1);
+    // Subscribed during the free trial: the reminder names the first charge, not read-only.
+    expect(ending[0]).toMatchObject({
+      charge: { unitAmount: expect.any(Number), interval: expect.stringMatching(/^(month|year)$/) },
+    });
 
     await h.deliverAll(h.fake.pause(subscriptionId));
     expect(h.service.status("tacct1").access.reason).toBe("paused");

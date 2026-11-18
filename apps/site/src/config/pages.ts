@@ -39,8 +39,8 @@ export const pages = {
     title: "Pricing",
     // Follows site.cloudLaunched, like the pricing page body, so the snippet never contradicts the page.
     description: site.cloudLaunched
-      ? `Self-hosting is free with every feature. ${pricing.planName} is open now: a ${pricing.trialDays}-day free trial${pricing.trialNeedsCard ? " with a card" : ""}, then ${formatPrice(pricing.monthly)} a month or ${formatPrice(pricing.yearly)} a year.`
-      : `Self-hosting is free with every feature. The hosted plan, ${pricing.planName}, opens later at ${formatPrice(pricing.monthly)} a month or ${formatPrice(pricing.yearly)} a year after a ${pricing.trialDays}-day free trial${pricing.trialNeedsCard ? " with a card" : ""}.`,
+      ? `Self-hosting is free with every feature. ${pricing.planName} is open now: a ${pricing.trialDays}-day free trial${pricing.trialNeedsCard ? " with a card" : " with no card"}, then ${formatPrice(pricing.monthly)} a month or ${formatPrice(pricing.yearly)} a year.`
+      : `Self-hosting is free with every feature. The hosted plan, ${pricing.planName}, opens later at ${formatPrice(pricing.monthly)} a month or ${formatPrice(pricing.yearly)} a year after a ${pricing.trialDays}-day free trial${pricing.trialNeedsCard ? " with a card" : " with no card"}.`,
     ogTitle: "One plan. Or run it yourself, free.",
     ogEyebrow: "Pricing",
   },

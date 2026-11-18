@@ -57,27 +57,18 @@ export type Scope = "read" | "simulate" | "write";
 export const READ_ONLY_SCOPES: readonly Scope[] = ["read", "simulate"];
 
 /**
- * A workspace that has never had a subscription: no access at all until the owner starts the trial (or
- * subscribes) in Stripe Checkout. Account settings, billing, invitations and deletion are control-plane routes and
- * stay open.
- */
-export const notStarted = (e: Pick<Entitlements, "level" | "reason">): boolean =>
-  e.level === "read_only" && e.reason === "no_subscription";
-
-/**
  * Cap a principal's scopes by entitlement. Hosts call this from `CredentialVerifiers.cap` and set
  * `limitedBy: 'entitlement'` when `limited` is true, so `requireScope` answers 402 `ACCOUNT_READ_ONLY`.
- * A suspended workspace, and one that never subscribed, keeps nothing.
+ * A suspended workspace keeps nothing.
  */
 export function capScopes<S extends string>(
   scopes: readonly S[],
   e: Entitlements,
 ): { scopes: S[]; limited: boolean } {
   if (e.level === "full") return { scopes: [...scopes], limited: false };
-  const none = e.level === "suspended" || notStarted(e);
-  const allowed: readonly string[] = none ? [] : READ_ONLY_SCOPES;
+  const allowed: readonly string[] = e.level === "suspended" ? [] : READ_ONLY_SCOPES;
   const capped = scopes.filter((s) => allowed.includes(s));
-  return { scopes: capped, limited: capped.length !== scopes.length || none };
+  return { scopes: capped, limited: capped.length !== scopes.length || e.level === "suspended" };
 }
 
 /** The 402 error for a refused write (`requireScope`, MCP job tools, job admission). */
@@ -89,9 +80,7 @@ export function readOnlyError(e: Entitlements, billingUrl: string): CloudError {
   return new CloudError(
     402,
     "ACCOUNT_READ_ONLY",
-    notStarted(e)
-      ? "the workspace has no subscription yet; the owner can start the free trial in billing settings"
-      : "the workspace is read-only; the owner can subscribe in billing settings",
+    "the workspace is read-only; the owner can subscribe in billing settings",
     { reason: e.reason, billingUrl },
   );
 }

@@ -483,7 +483,6 @@ export function createOpsApp(d: CloudHttpDeps, o: OpsAppOptions): Hono<OpsEnv> {
       ["Access", `${e.level} (${e.reason})${e.changesAt ? ` until ${e.changesAt}` : ""}`],
       ["Subscription", sub ? `${sub.status} ${sub.priceLookupKey ?? ""}` : "none"],
       ["Trial ends", sub?.trialEndsAt ?? null],
-      ["Trial available", sub ? String(sub.trialAvailable) : null],
       ["Period ends", sub?.currentPeriodEnd ?? null],
       ["Cancel at period end", sub ? String(sub.cancelAtPeriodEnd) : null],
       ["Comped until", sub?.compedUntil ?? null],
@@ -552,6 +551,7 @@ export function createOpsApp(d: CloudHttpDeps, o: OpsAppOptions): Hono<OpsEnv> {
         }
         <h2>Actions</h2>
         <div class="box">
+          ${action(op, `/workspaces/${id}/extend-trial`, "Extend trial", html`<input name="days" type="number" min="1" max="90" value="7" /> `)}
           ${action(op, `/workspaces/${id}/comp`, "Comp until", html`<input name="until" type="date" required /> `)}
           ${a.status === "suspended" ? action(op, `/workspaces/${id}/unsuspend`, "Unsuspend") : action(op, `/workspaces/${id}/suspend`, "Suspend")}
           ${admin ? action(op, `/workspaces/${id}/restore`, "Restore from backup", html`<input name="at" placeholder="ISO time (empty = latest)" /> `) : ""}
@@ -586,6 +586,27 @@ export function createOpsApp(d: CloudHttpDeps, o: OpsAppOptions): Hono<OpsEnv> {
       throw new CloudError(404, "NOT_FOUND", "no such workspace");
     return id;
   };
+
+  app.post("/workspaces/:id/extend-trial", async (c) => {
+    const op = c.get("op");
+    const id = accountParam(c);
+    const days = Number(fields(c).days);
+    if (!Number.isInteger(days) || days < 1 || days > 90)
+      throw new CloudError(400, "VALIDATION", "days must be 1-90");
+    await withWriterLock(d.db, `billing:${id}`, async () => {
+      const rec = store.getSubscription(id);
+      if (rec?.status !== "trialing_local")
+        throw new CloudError(409, "CONFLICT", "only a local trial can be extended");
+      const base = Math.max(now().getTime(), rec.trialEndsAt ? Date.parse(rec.trialEndsAt) : 0);
+      store.saveSubscription({
+        ...rec,
+        trialEndsAt: new Date(base + days * 86_400_000).toISOString(),
+        updatedAt: now().toISOString(),
+      });
+    });
+    audit(op, "operator.action", id, { action: "extend_trial", days });
+    return done(c, `/workspaces/${id}`);
+  });
 
   app.post("/workspaces/:id/comp", async (c) => {
     const op = c.get("op");

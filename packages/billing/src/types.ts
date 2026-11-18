@@ -1,10 +1,5 @@
 import type { PriceConfig } from "./pricing.js";
 
-/**
- * `trialing_local` is the state of a workspace that has never had a Stripe subscription: no access until the owner
- * starts the trial (or subscribes) through Checkout. The name is kept from the retired no-card local trial so stored
- * rows need no migration.
- */
 export type SubscriptionStatus =
   | "trialing_local"
   | "incomplete"
@@ -24,13 +19,7 @@ export interface SubscriptionRecord {
   status: SubscriptionStatus;
   productId: string;
   priceLookupKey: string | null;
-  /** End of the Stripe trial (from the subscription's `trial_end`), else null. */
   trialEndsAt: string | null;
-  /**
-   * The next Checkout may start a free trial: set when the workspace is created by an address that never had a
-   * trial, cleared as soon as any Stripe subscription is stored. One trial per person and per workspace.
-   */
-  trialAvailable: boolean;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
   currentPeriodEnd: string | null;
@@ -48,6 +37,7 @@ export type AccessReason =
   | "active"
   | "past_due_grace"
   | "comped"
+  | "trial_expired"
   | "past_due"
   | "unpaid"
   | "canceled"
@@ -124,8 +114,7 @@ export interface StripeGateway {
       customerId: string;
       priceId: string;
       accountId: string;
-      /** Free trial days (`subscription_data.trial_period_days`), or null to charge at once. */
-      trialPeriodDays: number | null;
+      trialEnd: number | null;
       successUrl: string;
       cancelUrl: string;
       allowPromotionCodes: boolean;
@@ -203,9 +192,13 @@ export type BillingNotice =
       kind: "trial-ending";
       accountId: string;
       trialEndsAt: string;
-      /** What the first charge will be (the subscription's price), or null when the price is not configured. */
+      /**
+       * The first charge when the owner subscribed during the free trial (a Stripe trial carried over from the
+       * local one, so the card is charged at its end); null for the no-card trial, which ends in read-only.
+       */
       charge: { unitAmount: number; currency: string; interval: "month" | "year" } | null;
     }
+  | { kind: "trial-expired"; accountId: string }
   | { kind: "payment-problem"; accountId: string; readOnlyFrom: string }
   | { kind: "payment-succeeded"; accountId: string; invoiceUrl: string | null }
   | { kind: "subscription-activated"; accountId: string }
@@ -236,7 +229,6 @@ export interface BillingStore {
   failedEvents(limit: number): Array<{ id: string; attempts: number }>;
   /** True exactly once per (accountId, kind, dedupeKey). */
   claimNotice(accountId: string, kind: BillingNotice["kind"], dedupeKey: string): boolean;
-  /** Accounts whose Stripe subscription is `trialing` with `trialEndsAt` before `iso` (active accounts only). */
   accountsWithTrialEndingBefore(iso: string): string[];
   ownerContact(accountId: string): { email: string; name: string } | null;
 }

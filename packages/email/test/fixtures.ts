@@ -62,9 +62,10 @@ export const FIXTURES: { [K in TemplateId]: TemplateData[K] } = {
   "trial-ending": {
     name: "Sam Example",
     trialEndsOn: "23 November 2026",
-    amountText: "$9.00 USD a month",
+    amountText: null,
     billingUrl: U("billing"),
   },
+  "trial-expired": { name: "Sam Example", billingUrl: U("billing") },
   "renewal-reminder": {
     name: "Sam Example",
     renewsOn: "30 November 2026",
@@ -165,9 +166,10 @@ export const FIXTURES_ALT: { [K in TemplateId]: TemplateData[K] } = {
   "trial-ending": {
     name: "Alex £48,000 (7.5%)",
     trialEndsOn: "£99 on 1 January",
-    amountText: "£48,000 (7.5%)",
+    amountText: "£99 <b>a</b> year",
     billingUrl: U("billing"),
   },
+  "trial-expired": { name: "Alex £48,000 (7.5%)", billingUrl: U("billing") },
   "renewal-reminder": {
     name: "Alex £48,000 (7.5%)",
     renewsOn: "£99 on 1 January",

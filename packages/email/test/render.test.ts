@@ -13,8 +13,8 @@ const ctxFor = (id: (typeof TEMPLATE_IDS)[number]) =>
   TEMPLATE_CATEGORY[id] === "checkin" ? CHECKIN_CTX : CTX;
 
 describe("templates", () => {
-  it("covers every template in the spec (17, less the retired trial-expired), the account deletion, email change request and removal notices, the two-step guessing alert and the first-password link", () => {
-    expect(TEMPLATE_IDS).toHaveLength(21);
+  it("covers every template in the spec (17), the account deletion, email change request and removal notices, the two-step guessing alert and the first-password link", () => {
+    expect(TEMPLATE_IDS).toHaveLength(22);
     expect(Object.keys(FIXTURES).sort()).toEqual([...TEMPLATE_IDS].sort());
   });
 
@@ -299,5 +299,25 @@ describe("removal from a workspace", () => {
       'The owner of the Glideworth workspace "Sample household" has removed you',
     );
     expect(r.text).toContain("Your own Glideworth account is not affected");
+  });
+});
+
+describe("trial-ending", () => {
+  it("without a card says nothing is charged and the workspace becomes read-only", () => {
+    const r = render("trial-ending", FIXTURES["trial-ending"], CTX);
+    expect(r.text).toContain("nothing will be charged");
+    expect(r.text).toContain("read-only");
+    expect(r.text).not.toContain("Cancel subscription");
+  });
+
+  it("after subscribing during the trial names the first charge and how to cancel", () => {
+    const r = render(
+      "trial-ending",
+      { ...FIXTURES["trial-ending"], amountText: "$90.00 USD a year" },
+      CTX,
+    );
+    expect(r.text).toContain("we will charge $90.00 USD a year");
+    expect(r.text).toContain("Cancel subscription");
+    expect(r.text).not.toContain("read-only");
   });
 });

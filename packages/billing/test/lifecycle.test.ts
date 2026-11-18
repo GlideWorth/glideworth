@@ -3,30 +3,30 @@ import { BillingError } from "../src/errors.js";
 import { DAY, HOUR, harness } from "./helpers.js";
 
 describe("lifecycle through the service with the fake gateway", () => {
-  it("new workspace: no access -> Checkout with a card -> 7-day Stripe trial -> charged on day 8 -> active", async () => {
+  it("local trial (no card) -> expired read-only -> subscribe -> active", async () => {
     const h = await harness();
-    const rec = h.service.openAccount("tacct1", true);
-    expect(h.service.openAccount("tacct1", true)).toEqual(rec);
+    const rec = h.service.startTrial("tacct1", true);
+    expect(h.service.startTrial("tacct1", true)).toEqual(rec);
     expect(h.fake.calls).toEqual([]);
-    expect(h.service.status("tacct1")).toMatchObject({
-      access: { level: "read_only", reason: "no_subscription", changesAt: null },
-      trialDays: 7,
+    const trialEnd = Date.parse(rec.trialEndsAt ?? "");
+    h.clock.set(trialEnd - 1);
+    expect(h.service.status("tacct1").access).toEqual({
+      level: "full",
+      reason: "trial",
+      changesAt: rec.trialEndsAt,
     });
-    const { subscriptionId, events } = await h.subscribe("tacct1");
+    h.clock.set(trialEnd);
+    expect(h.service.status("tacct1").access).toEqual({
+      level: "read_only",
+      reason: "trial_expired",
+      changesAt: null,
+    });
+    const { events } = await h.subscribe("tacct1");
     await h.deliverAll(events);
-    const trialEndsAt = h.store.getSubscription("tacct1")?.trialEndsAt ?? "";
-    expect(Date.parse(trialEndsAt) - h.clock.t).toBeGreaterThan(7 * DAY - 1000);
     expect(h.service.status("tacct1")).toMatchObject({
-      record: { status: "trialing", priceLookupKey: "cloud_monthly_v1", productId: "gw_cloud" },
-      access: { level: "full", reason: "trial" },
-      trialDays: null,
-      limits: { editors: 2 },
-    });
-    h.clock.set(Date.parse(trialEndsAt));
-    await h.deliverAll(h.fake.renew(subscriptionId));
-    expect(h.service.status("tacct1")).toMatchObject({
-      record: { status: "active" },
+      record: { status: "active", priceLookupKey: "cloud_monthly_v1", productId: "gw_cloud" },
       access: { level: "full", reason: "active" },
+      limits: { editors: 2 },
     });
   });
 
@@ -181,7 +181,7 @@ describe("lifecycle through the service with the fake gateway", () => {
 
   it("comp: full access over any state until the date; removing it restores the Stripe state", async () => {
     const h = await harness();
-    h.service.openAccount("tacct1", false);
+    h.service.startTrial("tacct1", false);
     const until = new Date(h.clock.t + 10 * DAY).toISOString();
     h.service.comp("tacct1", until);
     expect(h.service.status("tacct1").access).toEqual({
@@ -190,44 +190,42 @@ describe("lifecycle through the service with the fake gateway", () => {
       changesAt: until,
     });
     h.service.comp("tacct1", null);
-    expect(h.service.status("tacct1").access.reason).toBe("no_subscription");
+    expect(h.service.status("tacct1").access.reason).toBe("trial_expired");
     h.service.comp("tnew", until);
     expect(h.service.status("tnew").access.reason).toBe("comped");
     expect(() => h.service.comp("tacct1", "not a date")).toThrow(RangeError);
   });
 
-  it("sweep: one trial-ending reminder per Stripe trial, 3 days before the charge; none without a trial", async () => {
+  it("sweep: trial-ending once inside the notice window, trial-expired once after; no trial, no email", async () => {
     const h = await harness({ accounts: ["tacct1", "tacct2", "tacct3"] });
-    h.service.openAccount("tacct1", true);
-    h.service.openAccount("tacct2", false);
-    h.service.openAccount("tacct3", true);
-    const one = await h.subscribe("tacct1");
-    await h.deliverAll(one.events);
-    const two = await h.subscribe("tacct2");
-    await h.deliverAll(two.events);
+    h.service.startTrial("tacct1", true);
+    h.service.startTrial("tacct2", false);
     h.clock.advance(HOUR);
-    const three = await h.subscribe("tacct3");
-    await h.deliverAll(three.events);
+    h.service.startTrial("tacct3", true);
     expect(await h.service.sweep()).toEqual({ retried: 0, noticesSent: 0 });
 
-    h.clock.advance(4 * DAY - 30 * 60_000); // 3 days minus 30 min before tacct1's trial end
+    h.clock.advance(11 * DAY); // 3 days minus 1 h before tacct1's trial end
     expect((await h.service.sweep()).noticesSent).toBe(1);
-    expect(h.notices.filter((n) => n.kind === "trial-ending")).toEqual([
+    expect(h.notices).toEqual([
       {
         kind: "trial-ending",
         accountId: "tacct1",
         trialEndsAt: h.store.getSubscription("tacct1")?.trialEndsAt,
-        charge: { unitAmount: 900, currency: "usd", interval: "month" },
+        charge: null,
       },
     ]);
     h.clock.advance(HOUR);
     expect((await h.service.sweep()).noticesSent).toBe(1); // tacct3 enters its window
     expect((await h.service.sweep()).noticesSent).toBe(0);
+
     h.clock.advance(3 * DAY);
+    expect((await h.service.sweep()).noticesSent).toBe(2);
+    expect(h.notices.filter((n) => n.kind === "trial-expired").map((n) => n.accountId)).toEqual([
+      "tacct1",
+      "tacct3",
+    ]);
     expect((await h.service.sweep()).noticesSent).toBe(0);
-    expect(h.notices.some((n) => n.accountId === "tacct2" && n.kind === "trial-ending")).toBe(
-      false,
-    );
+    expect(h.notices.some((n) => n.accountId === "tacct2")).toBe(false);
   });
 
   it("sweep: a failing notifier is logged and does not stop the other notices", async () => {
@@ -235,32 +233,29 @@ describe("lifecycle through the service with the fake gateway", () => {
     const h = await harness({
       accounts: ["tacct1", "tacct2"],
       deps: {
-        notify: async (n) => {
-          if (n.kind !== "trial-ending") return;
+        notify: async () => {
           calls++;
           if (calls === 1) throw new Error("smtp down");
         },
       },
     });
-    for (const a of ["tacct1", "tacct2"]) {
-      h.service.openAccount(a, true);
-      await h.deliverAll((await h.subscribe(a)).events);
-    }
-    h.clock.advance(5 * DAY);
+    h.service.startTrial("tacct1", true);
+    h.service.startTrial("tacct2", true);
+    h.clock.advance(31 * DAY);
     expect((await h.service.sweep()).noticesSent).toBe(1);
     expect(h.logs.some((l) => l.event === "billing.notice_failed")).toBe(true);
   });
 
-  it("a trial cancelled in the portal gets no reminder", async () => {
+  it("subscribed users are not sent local trial emails", async () => {
     const h = await harness();
-    h.service.openAccount("tacct1", true);
-    const { subscriptionId, events } = await h.subscribe("tacct1");
+    h.service.startTrial("tacct1", true);
+    const { events } = await h.subscribe("tacct1");
     await h.deliverAll(events);
-    await h.deliverAll(h.fake.cancelAtPeriodEnd(subscriptionId));
-    h.clock.advance(5 * DAY);
+    h.clock.advance(31 * DAY);
     await h.service.sweep();
-    await h.deliverAll(h.fake.trialWillEnd(subscriptionId));
-    expect(h.notices.filter((n) => n.kind === "trial-ending")).toEqual([]);
+    expect(
+      h.notices.filter((n) => n.kind === "trial-expired" || n.kind === "trial-ending"),
+    ).toEqual([]);
   });
 
   it("createCheckout errors are BillingErrors with stable codes", async () => {

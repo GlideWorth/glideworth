@@ -238,72 +238,78 @@ describe("billing wording for every state", () => {
       taxBehavior: "exclusive",
     },
   ];
-  it("trialing (Stripe trial with a card): days left, the first charge and how to cancel", () => {
+  it("no-card trial: days left, nothing charged, read-only after; subscribing keeps the days left", () => {
+    const trial: BillingInfo = {
+      ...base,
+      status: "trialing_local",
+      offered,
+      access: { level: "full", reason: "trial", changesAt: "2026-11-30T12:00:00Z" },
+      trialEndsAt: "2026-11-30T12:00:00Z",
+    };
+    const v = billingView(trial, now, "en-GB");
+    expect(v).toMatchObject({ state: "trialing", trialDaysLeft: 14, action: "subscribe" });
+    expect(v.headline).toBe("Free trial: 14 days left");
+    expect(v.body[0]).toBe(
+      "You have full access until 30 Nov 2026. No card is needed and nothing is charged.",
+    );
+    expect(v.body[1]).toMatch(/read-only/);
+    expect(v.body[2]).toBe(
+      "Subscribe now and you keep the rest of your trial: your card is first charged on 30 Nov 2026.",
+    );
+    // Within 48 hours (+10 minutes) of the end Stripe cannot carry the trial over: the charge is at once.
+    const late = billingView(trial, new Date("2026-11-28T13:00:00Z"), "en-GB");
+    expect(late.body[2]).toBe("Subscribing now charges your card at once.");
+    // Members see the trial but have nothing to do.
+    const member = billingView({ ...trial, role: "editor" }, now, "en-GB");
+    expect(member.action).toBe("none");
+    expect(member.body[2]).toMatch(/owner can subscribe/);
+  });
+  it("subscribed during the trial: the first charge, its date and how to cancel", () => {
     const v = billingView(
       {
         ...base,
         status: "trialing",
         lookupKey: "cloud_monthly_v1",
         offered,
-        access: { level: "full", reason: "trial", changesAt: null },
+        access: { level: "full", reason: "active", changesAt: null },
         trialEndsAt: "2026-11-23T12:00:00Z",
       },
       now,
       "en-GB",
     );
-    expect(v).toMatchObject({ state: "trialing", trialDaysLeft: 7, action: "portal" });
-    expect(v.headline).toBe("Free trial: 7 days left");
-    expect(v.body.join(" ")).toMatch(
-      /charged US\$9 plus any tax on 23 Nov 2026, and then every month/,
-    );
+    expect(v).toMatchObject({ state: "active", label: "Subscribed", action: "portal" });
+    expect(v.body[0]).toMatch(/runs until 23 Nov 2026/);
+    expect(v.body[0]).toMatch(/charged US\$9 plus any tax then, and then every month/);
     expect(v.body.join(" ")).toMatch(/Manage billing/);
   });
-  it("a trial cancelled before it ends: never charged, access until the trial end", () => {
-    const v = billingView(
-      {
-        ...base,
-        status: "trialing",
-        cancelAtPeriodEnd: true,
-        access: { level: "full", reason: "trial", changesAt: "2026-11-23T12:00:00Z" },
-        trialEndsAt: "2026-11-23T12:00:00Z",
-      },
-      now,
-      "en-GB",
-    );
-    expect(v).toMatchObject({ state: "cancelling", action: "portal" });
-    expect(v.body[0]).toMatch(/will not be charged/);
-  });
-  it("not started, trial available: the 7-day offer, the price in USD and the first charge date", () => {
+  it("trial ended without a subscription: read-only, subscribe to edit again, nothing deleted yet", () => {
     const v = billingView(
       {
         ...base,
         status: "trialing_local",
-        offered,
-        trialDays: 7,
-        access: { level: "read_only", reason: "no_subscription", changesAt: null },
+        access: { level: "read_only", reason: "trial_expired", changesAt: null },
       },
       now,
       "en-GB",
     );
-    expect(v).toMatchObject({ state: "not-started", action: "subscribe", trialDays: 7 });
-    expect(v.headline).toBe("Start your 7-day free trial");
-    expect(v.body[0]).toMatch(/US\$9 a month or US\$90 a year, charged in USD/);
-    expect(v.body[1]).toBe(
-      "You will not be charged until 23 Nov 2026. Cancel any time before then in Billing.",
-    );
+    expect(v).toMatchObject({ state: "read-only", action: "subscribe" });
+    expect(v.body[0]).toMatch(/free trial has ended/);
+    expect(v.body.join(" ")).toMatch(/12 months/);
   });
-  it("not started, trial already used: charged when subscribing; members are told to ask the owner", () => {
+  it("no subscription record: charged when subscribing; members are told to ask the owner", () => {
     const info: BillingInfo = {
       ...base,
-      status: "trialing_local",
+      status: null,
       offered,
-      trialDays: null,
       access: { level: "read_only", reason: "no_subscription", changesAt: null },
     };
     const v = billingView(info, now, "en-GB");
+    expect(v).toMatchObject({ state: "not-started", action: "subscribe" });
     expect(v.headline).toBe("Choose a plan");
-    expect(v.body[0]).toMatch(/already had a free trial/);
-    expect(billingView({ ...info, role: "editor" }, now).body[0]).toMatch(/owner has not started/);
+    expect(v.body[0]).toMatch(/US\$9 a month or US\$90 a year, charged in USD/);
+    expect(billingView({ ...info, role: "editor" }, now).body[0]).toMatch(
+      /owner has not subscribed/,
+    );
   });
   it("active: renews, manage in the portal", () => {
     const v = billingView(base, now, "en-GB");
@@ -363,19 +369,23 @@ describe("billing wording for every state", () => {
     expect(v.body.join(" ")).toMatch(/support@glideworth.com/);
   });
   it("banners: owner and member get different calls to action", () => {
-    const trial = { level: "full", reason: "trial", changesAt: null };
+    const trial = { level: "full", reason: "trial", changesAt: "2026-11-18T12:00:00Z" };
     expect(bannerFor(trial, "2026-11-18T12:00:00Z", true, now)).toMatchObject({
       tone: "warning",
-      cta: "Billing",
+      cta: "Subscribe",
     });
-    expect(bannerFor(trial, "2026-11-18T12:00:00Z", true, now)?.text).toMatch(
-      /card is charged on .* unless you cancel in Billing/,
+    expect(bannerFor(trial, "2026-11-18T12:00:00Z", true, now)?.text).toBe(
+      "Free trial: 2 days left, no card needed. Subscribe to keep editing after it ends.",
     );
+    expect(bannerFor(trial, "2026-11-30T12:00:00Z", true, now)?.tone).toBe("info");
+    expect(
+      bannerFor({ level: "read_only", reason: "trial_expired", changesAt: null }, null, true)?.text,
+    ).toMatch(/^Your free trial has ended, so this workspace is read-only\./);
     expect(bannerFor(trial, "2026-11-19T12:00:00Z", false, now)?.cta).toBeNull();
     expect(
       bannerFor({ level: "read_only", reason: "canceled", changesAt: null }, null, true),
     ).toMatchObject({ tone: "danger", cta: "Subscribe" });
-    // Not started: the start-trial page says it all, no banner.
+    // No subscription record: the subscribe page says it all, no banner.
     expect(
       bannerFor({ level: "read_only", reason: "no_subscription", changesAt: null }, null, true),
     ).toBeNull();

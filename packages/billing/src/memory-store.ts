@@ -117,7 +117,9 @@ export class MemoryBillingStore implements BillingStore {
     return [...this.subscriptions.values()]
       .filter(
         (s) =>
-          s.status === "trialing" && s.trialEndsAt !== null && Date.parse(s.trialEndsAt) < limit,
+          s.status === "trialing_local" &&
+          s.trialEndsAt !== null &&
+          Date.parse(s.trialEndsAt) < limit,
       )
       .map((s) => s.accountId)
       .sort();

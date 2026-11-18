@@ -15,7 +15,7 @@ import {
   applyStripeSubscription,
   BLOCKS_NEW_CHECKOUT,
   LIVE_STRIPE_STATUSES,
-  newAccountRecord,
+  newTrialRecord,
 } from "./state.js";
 import type {
   Access,
@@ -32,6 +32,9 @@ import type {
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
 
+/** Design 4.2: carry the local trial into Stripe only with more than 48 h left. Stripe requires `trial_end` at
+ * least 48 h after session creation; the extra 10 minutes absorb clock skew and request latency. */
+export const TRIAL_CARRY_OVER_MIN_MS = 48 * HOUR_MS + 10 * MINUTE_MS;
 /**
  * How long a Checkout Session stays payable (Stripe allows 30 minutes to 24 hours; its default is 24 hours). Short,
  * so an abandoned session does not linger; the session's `expires_at` is 60 to 70 minutes after creation, fixed per
@@ -181,45 +184,31 @@ export class BillingService {
     return true;
   }
 
-  // --- account record, status
+  // --- trial, status
 
-  /**
-   * Creates the account's record (no access until Checkout). `trialAllowed`: the address never had a trial, so
-   * the first Checkout starts one. Idempotent: an existing record is returned unchanged.
-   */
-  openAccount(accountId: string, trialAllowed: boolean): SubscriptionRecord {
+  /** Creates the account's record on email verification. Idempotent: an existing record is returned unchanged. */
+  startTrial(accountId: string, trialAllowed: boolean): SubscriptionRecord {
     const existing = this.d.store.getSubscription(accountId);
     if (existing) return existing;
-    const record = newAccountRecord(accountId, this.now(), this.d.pricing, trialAllowed);
+    const record = newTrialRecord(accountId, this.now(), this.d.pricing, trialAllowed);
     this.d.store.saveSubscription(record);
     return record;
   }
 
-  /** `trialDays`: the free trial the next Checkout would start, or null when it would charge at once. */
   status(accountId: string): {
     record: SubscriptionRecord | null;
     access: Access;
     limits: PlanLimits;
-    trialDays: number | null;
   } {
     const record = this.d.store.getSubscription(accountId);
     return {
       record,
       access: accessFor(record, this.now(), this.d.pricing),
       limits: limitsFor(this.d.pricing, record?.productId),
-      trialDays: this.trialDaysFor(record),
     };
   }
 
-  /** One trial per workspace and per person: only a workspace that never had a Stripe subscription, and only when
-   * the record says the owner's address had no trial before. */
-  private trialDaysFor(record: SubscriptionRecord | null): number | null {
-    return record?.trialAvailable && !record.stripeSubscriptionId && this.d.pricing.trialDays > 0
-      ? this.d.pricing.trialDays
-      : null;
-  }
-
-  /** The first charge after a trial, for the reminder email. */
+  /** What the first charge after a carried-over trial will be (the subscription's price), or null. */
   private chargeOf(record: SubscriptionRecord): {
     unitAmount: number;
     currency: string;
@@ -298,7 +287,11 @@ export class BillingService {
         record = applyCustomer(record, i.accountId, customerId, now, this.d.pricing);
         this.d.store.saveSubscription(record);
       }
-      const trialPeriodDays = this.trialDaysFor(record);
+      const trialEndMs = record?.trialEndsAt ? Date.parse(record.trialEndsAt) : Number.NaN;
+      const trialEnd =
+        Number.isFinite(trialEndMs) && trialEndMs - now.getTime() > TRIAL_CARRY_OVER_MIN_MS
+          ? Math.floor(trialEndMs / 1000)
+          : null;
       const priceId = await this.stripePriceId(found.product.id, found.price, now);
       const window = Math.floor(now.getTime() / (10 * MINUTE_MS));
       const expiresAt = Math.floor(
@@ -311,7 +304,7 @@ export class BillingService {
             customerId: checkoutCustomerId,
             priceId,
             accountId: i.accountId,
-            trialPeriodDays,
+            trialEnd,
             successUrl: `${this.billingUrl}?checkout=success`,
             cancelUrl: this.billingUrl,
             allowPromotionCodes: this.d.pricing.checkout.allowPromotionCodes,
@@ -321,7 +314,7 @@ export class BillingService {
           },
           // A double click within the same 10-minute window gets the same session back, not a second one. A session
           // that replaces an expired one gets a new key, or Stripe would hand the expired session back.
-          `checkout:${i.accountId}:${i.lookupKey}:${trialPeriodDays === null ? "now" : `trial${trialPeriodDays}`}:${window}${i.replaces ? `:after:${i.replaces}` : ""}`,
+          `checkout:${i.accountId}:${i.lookupKey}:${trialEnd ?? "now"}:${window}${i.replaces ? `:after:${i.replaces}` : ""}`,
         ),
       );
       this.log("info", "billing.checkout_started", {
@@ -549,7 +542,7 @@ export class BillingService {
               trialEndsAt: rec.trialEndsAt,
               charge: this.chargeOf(rec),
             },
-            `trial:${rec.trialEndsAt}`,
+            `trial-charge:${rec.trialEndsAt}`,
           );
         }
         return out.result;
@@ -734,7 +727,7 @@ export class BillingService {
 
   // --- sweep, operator actions
 
-  /** Every five minutes: re-run failed events (if the gateway can fetch them) and send trial-ending reminders. */
+  /** Every five minutes: re-run failed events (if the gateway can fetch them) and run the local trial clock. */
   async sweep(): Promise<{ retried: number; noticesSent: number }> {
     let retried = 0;
     let noticesSent = 0;
@@ -755,27 +748,17 @@ export class BillingService {
       }
     }
 
-    // The trial-ending reminder, `trialEndingNoticeDays` before the first charge. Stripe's `trial_will_end` (three
-    // days before) sends the same notice; the shared dedupe key means the owner gets one email.
     const now = this.now();
     const horizon = new Date(
       now.getTime() + this.d.pricing.trialEndingNoticeDays * DAY_MS,
     ).toISOString();
     for (const accountId of this.d.store.accountsWithTrialEndingBefore(horizon)) {
       const rec = this.d.store.getSubscription(accountId);
-      if (
-        rec?.status !== "trialing" ||
-        !rec.trialEndsAt ||
-        rec.cancelAtPeriodEnd ||
-        Date.parse(rec.trialEndsAt) <= now.getTime()
-      )
-        continue;
-      const notice: BillingNotice = {
-        kind: "trial-ending",
-        accountId,
-        trialEndsAt: rec.trialEndsAt,
-        charge: this.chargeOf(rec),
-      };
+      if (rec?.status !== "trialing_local" || !rec.trialEndsAt) continue;
+      const notice: BillingNotice =
+        Date.parse(rec.trialEndsAt) > now.getTime()
+          ? { kind: "trial-ending", accountId, trialEndsAt: rec.trialEndsAt, charge: null }
+          : { kind: "trial-expired", accountId };
       try {
         if (await this.sendNotice(notice, `trial:${rec.trialEndsAt}`)) noticesSent++;
       } catch (err) {

@@ -932,12 +932,14 @@ is its own SQLite database, and a credential only ever opens the workspace it be
 | Limits              | `GLIDEWORTH_RATE_LIMIT_PER_MIN` per key                  | per key 600/min (key `<workspace>:<credential>`), per workspace 1,200/min and 100,000/day, jobs (1 running + 10 queued, 300/day, worker time, trials), webhooks, share reads, API keys, storage: the plan |
 | Not registered      |                                                          | `/api/v1/users*`, `/api/v1/auth/{setup,login,logout,logout-all,change-passphrase,accept}`, `/oauth/login`                                                                                                 |
 
-**Before the trial starts.** A new workspace has no access until its owner starts the free trial (or subscribes)
-in Stripe Checkout: every tenant route, reads included, answers **`402 ACCOUNT_READ_ONLY`** with
-`details.reason: "no_subscription"`. The cloud routes (auth, account, billing, workspace, invitations) work.
+**The free trial.** A new workspace starts a no-card free trial with full access (`access.reason: "trial"`,
+`changesAt` = the trial end). When it ends without a subscription the workspace becomes read-only with
+`details.reason: "trial_expired"`. A workspace with no subscription record at all (`no_subscription`, rare) has
+no access: every tenant route, reads included, answers **`402 ACCOUNT_READ_ONLY`**. The cloud routes (auth,
+account, billing, workspace, invitations) always work.
 
-**Read-only workspaces.** When a payment lapses past its grace period or a subscription (or a free trial) is
-cancelled, the workspace becomes read-only and nothing is deleted at that point: every route declared with
+**Read-only workspaces.** When a free trial ends without a subscription, a payment lapses past its grace period
+or a subscription is cancelled, the workspace becomes read-only and nothing is deleted at that point: every route declared with
 scope `write` answers **`402 ACCOUNT_READ_ONLY`** with `details.reason` and `details.billingUrl`, except the
 routes marked `x-allow-when-read-only` (revoking keys, share links and webhooks, marking notifications read).
 New async jobs are refused (a cached result is still served), MCP write tools are not offered, scheduled

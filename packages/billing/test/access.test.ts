@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { accessFor, entitlementFor } from "../src/access.js";
-import { newAccountRecord } from "../src/state.js";
+import { newTrialRecord } from "../src/state.js";
 import type { AccessReason, SubscriptionRecord, SubscriptionStatus } from "../src/types.js";
 import { DAY, pricing, T0 } from "./helpers.js";
 
@@ -15,10 +15,9 @@ function rec(patch: Partial<SubscriptionRecord>): SubscriptionRecord {
     productId: "gw_cloud",
     priceLookupKey: "cloud_monthly_v1",
     trialEndsAt: null,
-    trialAvailable: false,
     stripeCustomerId: "cus_1",
     stripeSubscriptionId: "sub_1",
-    currentPeriodEnd: iso(T0 + 30 * DAY),
+    currentPeriodEnd: iso(T0 + 14 * DAY),
     cancelAtPeriodEnd: false,
     canceledAt: null,
     pastDueSince: null,
@@ -32,10 +31,17 @@ function rec(patch: Partial<SubscriptionRecord>): SubscriptionRecord {
 const TRIAL_END = T0 + 10 * DAY;
 const PAST_DUE_SINCE = T0;
 const GRACE_END = PAST_DUE_SINCE + 14 * DAY;
-const PERIOD_END = T0 + 30 * DAY;
+const PERIOD_END = T0 + 14 * DAY;
 
 /** [label, record, boundary, reason just before, reason at and after] */
 const boundaries: Array<[string, SubscriptionRecord, number, AccessReason, AccessReason]> = [
+  [
+    "local trial",
+    rec({ status: "trialing_local", trialEndsAt: iso(TRIAL_END), stripeSubscriptionId: null }),
+    TRIAL_END,
+    "trial",
+    "trial_expired",
+  ],
   [
     "past_due grace",
     rec({ status: "past_due", pastDueSince: iso(PAST_DUE_SINCE) }),
@@ -59,8 +65,22 @@ const boundaries: Array<[string, SubscriptionRecord, number, AccessReason, Acces
       currentPeriodEnd: iso(PERIOD_END),
     }),
     PERIOD_END,
-    "trial",
+    "active",
     "canceled",
+  ],
+  [
+    "incomplete during local trial",
+    rec({ status: "incomplete", trialEndsAt: iso(TRIAL_END) }),
+    TRIAL_END,
+    "trial",
+    "incomplete",
+  ],
+  [
+    "incomplete_expired during local trial",
+    rec({ status: "incomplete_expired", trialEndsAt: iso(TRIAL_END) }),
+    TRIAL_END,
+    "trial",
+    "incomplete",
   ],
   [
     "comp over a canceled subscription",
@@ -70,11 +90,11 @@ const boundaries: Array<[string, SubscriptionRecord, number, AccessReason, Acces
     "canceled",
   ],
   [
-    "comp over a workspace that never subscribed",
-    rec({ status: "trialing_local", stripeSubscriptionId: null, compedUntil: iso(TRIAL_END) }),
+    "comp over an expired trial",
+    rec({ status: "trialing_local", trialEndsAt: iso(T0 - DAY), compedUntil: iso(TRIAL_END) }),
     TRIAL_END,
     "comped",
-    "no_subscription",
+    "trial_expired",
   ],
 ];
 
@@ -98,16 +118,16 @@ describe("accessFor: every status, long before and long after", () => {
   const table: Array<
     [SubscriptionStatus, Partial<SubscriptionRecord>, "full" | "read_only", AccessReason]
   > = [
-    ["trialing_local", { trialAvailable: true }, "read_only", "no_subscription"],
-    ["trialing_local", { trialAvailable: false }, "read_only", "no_subscription"],
-    ["trialing", { trialEndsAt: iso(TRIAL_END) }, "full", "trial"],
+    ["trialing_local", { trialEndsAt: iso(TRIAL_END) }, "full", "trial"],
+    ["trialing_local", { trialEndsAt: null }, "read_only", "trial_expired"],
+    ["trialing", {}, "full", "active"],
     ["active", {}, "full", "active"],
     ["past_due", { pastDueSince: iso(PAST_DUE_SINCE) }, "full", "past_due_grace"],
     ["unpaid", {}, "read_only", "unpaid"],
     ["canceled", {}, "read_only", "canceled"],
     ["paused", {}, "read_only", "paused"],
-    ["incomplete", {}, "read_only", "incomplete"],
-    ["incomplete_expired", {}, "read_only", "incomplete"],
+    ["incomplete", { trialEndsAt: null }, "read_only", "incomplete"],
+    ["incomplete_expired", { trialEndsAt: null }, "read_only", "incomplete"],
   ];
   for (const [status, patch, level, reason] of table) {
     it(`${status} ${JSON.stringify(patch)} -> ${level} (${reason}) at T0`, () => {
@@ -121,15 +141,6 @@ describe("accessFor: every status, long before and long after", () => {
     expect(accessFor(null, at(T0), cfg)).toEqual({
       level: "read_only",
       reason: "no_subscription",
-      changesAt: null,
-    });
-  });
-
-  it("a Stripe trial without cancel does not lapse at the trial end (Stripe charges the card)", () => {
-    const r = rec({ status: "trialing", trialEndsAt: iso(T0), currentPeriodEnd: iso(T0) });
-    expect(accessFor(r, at(T0 + DAY), cfg)).toEqual({
-      level: "full",
-      reason: "trial",
       changesAt: null,
     });
   });
@@ -179,34 +190,21 @@ describe("accessFor: every status, long before and long after", () => {
 
 describe("entitlementFor (design 6.1)", () => {
   const p = pricing();
-  it("a new workspace has no access until Checkout, whether or not a trial is available", () => {
-    for (const trial of [true, false]) {
-      const sub = newAccountRecord("tacct1", at(T0), p, trial);
-      const e = entitlementFor({
-        accountStatus: "active",
-        subscription: sub,
-        now: at(T0),
-        pricing: p,
-      });
-      expect(e).toMatchObject({
-        level: "read_only",
-        reason: "no_subscription",
-        trialEndsAt: null,
-        changesAt: null,
-      });
-      expect(e.limits.editors).toBe(2);
-    }
-  });
-
-  it("a Stripe trial: full access with the trial end", () => {
-    const sub = rec({ status: "trialing", trialEndsAt: iso(T0 + 7 * DAY) });
+  it("active account: the access decision plus plan limits", () => {
+    const sub = newTrialRecord("tacct1", at(T0), p, true);
     const e = entitlementFor({
       accountStatus: "active",
       subscription: sub,
       now: at(T0),
       pricing: p,
     });
-    expect(e).toMatchObject({ level: "full", reason: "trial", trialEndsAt: iso(T0 + 7 * DAY) });
+    expect(e).toMatchObject({
+      level: "full",
+      reason: "trial",
+      trialEndsAt: iso(T0 + 14 * DAY),
+      changesAt: iso(T0 + 14 * DAY),
+    });
+    expect(e.limits.editors).toBe(2);
   });
 
   it("suspended (and any non-active account status) overrides even full paid access", () => {
@@ -218,15 +216,15 @@ describe("entitlementFor (design 6.1)", () => {
     }
   });
 
-  it("a trial cancelled in Stripe: read-only, limits still known, nothing deleted", () => {
-    const sub = rec({ status: "canceled", trialEndsAt: iso(T0), canceledAt: iso(T0) });
+  it("expired trial: read-only, limits still known, nothing deleted", () => {
+    const sub = newTrialRecord("tacct1", at(T0), p, true);
     const e = entitlementFor({
       accountStatus: "active",
       subscription: sub,
-      now: at(T0 + DAY),
+      now: at(T0 + 14 * DAY),
       pricing: p,
     });
-    expect(e).toMatchObject({ level: "read_only", reason: "canceled", changesAt: null });
+    expect(e).toMatchObject({ level: "read_only", reason: "trial_expired", changesAt: null });
     expect(e.limits.storageMb).toBe(200);
   });
 });

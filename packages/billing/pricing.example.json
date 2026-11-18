@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "trialDays": 7,
+  "trialDays": 14,
   "pastDueGraceDays": 14,
   "trialEndingNoticeDays": 3,
   "trialProductId": "gw_cloud",

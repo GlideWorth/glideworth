@@ -367,9 +367,7 @@ function entitlementRefusal(p: Principal, need: Requirement): ApiError | null {
     : new ApiError(
         402,
         "ACCOUNT_READ_ONLY",
-        p.entitlement.reason === "no_subscription"
-          ? "the workspace has no subscription yet; the owner can start the free trial in billing settings"
-          : "the workspace is read-only; the owner can subscribe in billing settings",
+        "the workspace is read-only; the owner can subscribe in billing settings",
         { reason: p.entitlement.reason, billingUrl: p.entitlement.billingUrl },
       );
 }

@@ -75,8 +75,8 @@ export type LoadErrorCopy = { text: string; billing: boolean };
 
 /**
  * What a settings screen says when its list query failed. A 402 means the server answered: the
- * workspace has not started its trial (no_subscription, which the shell shows no banner for) or is
- * read-only. "Not reachable" is only for a request that got no HTTP answer at all: the cloud client
+ * workspace has never had a trial or subscription (no_subscription, which the shell shows no banner for)
+ * or is read-only. "Not reachable" is only for a request that got no HTTP answer at all: the cloud client
  * reports that as status 0 / NETWORK, the self-host client lets fetch's TypeError through.
  * `billing` asks the caller to link to the billing section.
  */
@@ -91,7 +91,7 @@ export function describeLoadError(
   };
   if (status === 402 && code === "ACCOUNT_READ_ONLY") {
     return rec(details).reason === "no_subscription"
-      ? { text: `Start your free trial to ${opts.use}.`, billing: true }
+      ? { text: `Subscribe to ${opts.use}.`, billing: true }
       : {
           text: "This workspace is read-only. The owner can subscribe in billing settings.",
           billing: true,

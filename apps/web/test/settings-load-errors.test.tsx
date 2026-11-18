@@ -48,10 +48,10 @@ describe.each(SECTIONS)("$name section load errors", ({ path, ui, trial }) => {
     [p]: { items: [] },
   });
 
-  it("no_subscription: asks to start the trial and links to billing", async () => {
+  it("no_subscription: asks to subscribe and links to billing", async () => {
     mockFetch({ ...extra(path), [path]: NO_SUB });
     renderWithClient(ui, signedIn("owner"));
-    await screen.findByText(`Start your free trial to ${trial}.`);
+    await screen.findByText(`Subscribe to ${trial}.`);
     expect(screen.getByRole("link", { name: "Open billing settings" })).toBeTruthy();
     expect(screen.queryByText(/not reachable/)).toBeNull();
   });
@@ -84,7 +84,7 @@ describe("keys section", () => {
   it("keeps New key disabled after a 402", async () => {
     mockFetch({ "GET /api/v1/keys": NO_SUB });
     renderWithClient(<KeysSection />, signedIn("owner"));
-    await screen.findByText("Start your free trial to use API keys.");
+    await screen.findByText("Subscribe to use API keys.");
     await waitFor(() =>
       expect((screen.getByRole("button", { name: /New key/ }) as HTMLButtonElement).disabled).toBe(
         true,

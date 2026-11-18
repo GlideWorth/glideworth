@@ -139,7 +139,9 @@ describe("sign-up from an invitation", () => {
         new Response(JSON.stringify({ status: "check-email" }), { status: 202 }),
     });
     renderWithClient(<SignUpPage />, signedOut());
-    expect(screen.getByText(/7-day free trial.*charged on day 8 unless you cancel/)).toBeTruthy();
+    expect(
+      screen.getByText(/14-day free trial starts when you confirm your email\. No card needed/),
+    ).toBeTruthy();
     fill();
     fireEvent.click(screen.getByRole("button", { name: "Create account" }));
     await waitFor(() => expect(navigateSpy).toHaveBeenCalled());

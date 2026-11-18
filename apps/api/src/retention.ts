@@ -1,8 +1,8 @@
 /**
  * Cloud mode: the retention rule of the terms of service (docs/launch/legal-decisions.md section 3 item 1).
  *
- * A workspace whose subscription was cancelled (a free trial cancelled before its first charge included) is
- * deleted 12 months after the trial end or the end of the last paid period, with warning emails to the owner 30 days and
+ * A workspace whose trial ended without a subscription, or whose subscription was cancelled, is deleted 12
+ * months after the trial end or the end of the last paid period, with warning emails to the owner 30 days and
  * 7 days before. Subscribing again restores access and stops the clock (a workspace at full access is never
  * touched; a later lapse starts a new 12 months from its own date). Signing in does not extend it.
  *
@@ -11,7 +11,6 @@
  * is recorded once in the control plane's `billing_notices` (permanent, `sent_at`) and mailed through the
  * outbox; the deletion itself is the cloud package's resumable workspace deletion (backups crypto-shredded).
  * Suspended workspaces and any other lapse (`past_due`, `unpaid`, `paused`) are left alone: they need a person.
- * A workspace that never started its trial holds no plans (it has no access at all) and is not touched either.
  */
 import { controlSchema } from "@glideworth/cloud";
 import type { CloudRuntime } from "@glideworth/cloud/server";
@@ -40,8 +39,14 @@ export function twelveMonthsAfter(iso: string): Date {
 type Sub = typeof controlSchema.subscriptions.$inferSelect;
 
 /** When the 12 months started, or null when the rule does not apply to this subscription. */
-function lapseStart(sub: Sub, now: Date): { since: string; why: "canceled" } | null {
-  // A trial cancelled before its end is `canceled` with the period end at the trial end: the same rule.
+function lapseStart(sub: Sub, now: Date): { since: string; why: "trial" | "canceled" } | null {
+  if (
+    sub.status === "trialing_local" &&
+    !sub.stripeSubscriptionId &&
+    sub.trialEndsAt &&
+    Date.parse(sub.trialEndsAt) <= now.getTime()
+  )
+    return { since: sub.trialEndsAt, why: "trial" };
   if (sub.status === "canceled") {
     const since = sub.currentPeriodEnd ?? sub.canceledAt;
     if (since && Date.parse(since) <= now.getTime()) return { since, why: "canceled" };

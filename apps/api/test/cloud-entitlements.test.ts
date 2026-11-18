@@ -1,7 +1,7 @@
 /**
  * T-AUTH / T-BILL at the app level (design section 10): what the cloud package's own tests cannot reach.
  *
- * A read-only workspace (free trial cancelled, never paid): every write route enumerated from `/openapi.json`
+ * A read-only workspace (trial ended unpaid): every write route enumerated from `/openapi.json`
  * (`x-required-scope: write`) answers 402 ACCOUNT_READ_ONLY with the billing URL, except the routes declared
  * `x-allow-when-read-only`; MCP write tools are absent and job tools refuse; async jobs are refused while cached
  * results are still served; the scheduler skips the workspace; webhooks stay silent; reads and exports work;
@@ -17,12 +17,7 @@ import {
   type Cloud,
   PUBLIC_URL,
   reauth,
-  signUp,
-  startTrial,
-  uniqueEmail,
   WEBHOOK_SECRET,
-  lastMail,
-  tokenIn,
 } from "./cloud-harness.js";
 import { seedWorkspace, type Workspace } from "./cloud-workspaces.js";
 
@@ -92,21 +87,12 @@ const counts = async (accountId: string) =>
     { allowSuspended: true },
   );
 
-/** The owner cancels the free trial in Stripe before its first charge (delivered through the signed webhook). */
-const cancelTrial = async () => {
-  const subId = cloud.rt.db
-    .select({ id: controlSchema.subscriptions.stripeSubscriptionId })
-    .from(controlSchema.subscriptions)
+const setTrialEnd = (iso: string) =>
+  cloud.rt.db
+    .update(controlSchema.subscriptions)
+    .set({ trialEndsAt: iso })
     .where(eq(controlSchema.subscriptions.accountId, W.accountId))
-    .get()?.id as string;
-  const ev = cloud.gateway.setSubscription(subId, { status: "canceled" });
-  const signed = cloud.gateway.sign(ev, WEBHOOK_SECRET);
-  const r = await new Client(cloud).req("POST", "/stripe/webhook", {
-    raw: signed.body,
-    headers: { "stripe-signature": signed.header, "content-type": "application/json" },
-  });
-  expect(r.status, r.text).toBe(200);
-};
+    .run();
 
 describe("a viewer", () => {
   it("cannot reach any write route (enumerated from OpenAPI x-required-scope)", async () => {
@@ -124,72 +110,7 @@ describe("a viewer", () => {
   });
 });
 
-describe("before the trial starts (no card yet)", () => {
-  it("a new owner has no access to plans, only to billing, account and invitations, until Checkout", async () => {
-    const me = await signUp(cloud, { name: "Not Started", trial: false });
-    const b = me.browser;
-    const st = await b.get("/api/v1/auth/status");
-    expect(st.json.workspace.access).toMatchObject({
-      level: "read_only",
-      reason: "no_subscription",
-    });
-    for (const path of ["/api/v1/households", "/api/v1/plans"]) {
-      const r = await b.get(path);
-      expect(r.status, path).toBe(402);
-      expect(r.json.error).toMatchObject({
-        code: "ACCOUNT_READ_ONLY",
-        details: { reason: "no_subscription", billingUrl: `${PUBLIC_URL}/settings/billing` },
-      });
-    }
-    const billing = await b.get("/api/v1/billing");
-    expect(billing.status).toBe(200);
-    expect(billing.json).toMatchObject({ trialDays: 7, status: "trialing_local" });
-
-    // Invited elsewhere meanwhile: accepting needs no card, and the inviting workspace is fully usable.
-    const inv = await W.owner.browser.post("/api/v1/workspace/invitations", {
-      email: me.email,
-      role: "editor",
-    });
-    expect([200, 201]).toContain(inv.status);
-    await cloud.rt.outbox.drain();
-    const mail = lastMail(cloud, me.email, "invitation");
-    const acc = await b.post("/api/v1/workspace/invitations/accept", {
-      token: tokenIn(mail?.text ?? ""),
-    });
-    expect(acc.status, acc.text).toBe(200);
-    expect((await b.post(`/api/v1/workspaces/${W.accountId}/activate`, {})).status).toBeLessThan(
-      300,
-    );
-    expect((await b.get("/api/v1/households")).status).toBe(200);
-    // Back in their own workspace: still nothing until they start its own trial.
-    expect((await b.post(`/api/v1/workspaces/${me.accountId}/activate`, {})).status).toBeLessThan(
-      300,
-    );
-    expect((await b.get("/api/v1/households")).status).toBe(402);
-    await startTrial(cloud, b);
-    expect((await b.get("/api/v1/households")).status).toBe(200);
-    const trial = await b.get("/api/v1/billing");
-    expect(trial.json).toMatchObject({
-      status: "trialing",
-      trialDays: null,
-      access: { level: "full", reason: "trial" },
-    });
-  });
-
-  it("an invitee who signs up from the invitation joins the workspace and never sees a trial", async () => {
-    // seedWorkspace's editor and viewer signed up from invitations: no workspace of their own, full access here.
-    const st = await W.editor.browser.get("/api/v1/auth/status");
-    expect(st.json.workspace).toMatchObject({ id: W.accountId, access: { level: "full" } });
-    expect(st.json.workspaces).toHaveLength(1);
-    expect((await W.editor.browser.get("/api/v1/households")).status).toBe(200);
-    const fresh = uniqueEmail("invitee");
-    await W.owner.browser.post("/api/v1/workspace/invitations", { email: fresh, role: "viewer" });
-    const joined = await signUp(cloud, { email: fresh });
-    expect(joined.accountId).toBeNull(); // no workspace, no Checkout
-  });
-});
-
-describe("a read-only workspace (trial cancelled, never paid)", () => {
+describe("a read-only workspace (trial ended, never paid)", () => {
   let cachedBody = "";
   beforeAll(async () => {
     // A cached Monte Carlo result from while the workspace was at full access.
@@ -200,7 +121,7 @@ describe("a read-only workspace (trial cancelled, never paid)", () => {
       JSON.parse(cachedBody),
     );
     expect(first.json.status).toBe("succeeded");
-    await cancelTrial();
+    setTrialEnd("2020-01-01T00:00:00.000Z");
     const st = await W.owner.browser.get("/api/v1/auth/status");
     expect(st.json.workspace.access.level).toBe("read_only");
   });
@@ -225,7 +146,7 @@ describe("a read-only workspace (trial cancelled, never paid)", () => {
         expect(r.status, `${o.method} ${o.path}: ${r.text.slice(0, 160)}`).toBe(402);
         expect(r.json.error.code).toBe("ACCOUNT_READ_ONLY");
         expect(r.json.error.details.billingUrl).toBe(`${PUBLIC_URL}/settings/billing`);
-        expect(r.json.error.details.reason).toBe("canceled");
+        expect(r.json.error.details.reason).toBe("trial_expired");
       }
     expect(allowed).toBe(8); // 4 routes x 2 credentials
     // Nothing deleted, nothing written.
@@ -307,8 +228,6 @@ describe("a read-only workspace (trial cancelled, never paid)", () => {
     const co = await b.post("/api/v1/billing/checkout", { lookupKey: "cloud_monthly_v1" });
     expect(co.status, co.text).toBe(200);
     const sessionId = String(co.json.url).split("/").at(-1) as string;
-    // The trial is used up: this Checkout charges at once.
-    expect(cloud.gateway.sessions.get(sessionId)?.params).toMatchObject({ trialPeriodDays: null });
     for (const ev of cloud.gateway.completeCheckout(sessionId)) {
       const signed = cloud.gateway.sign(ev, WEBHOOK_SECRET);
       const r = await new Client(cloud).req("POST", "/stripe/webhook", {

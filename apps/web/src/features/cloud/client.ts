@@ -169,8 +169,6 @@ const Billing = z.object({
   lookupKey: z.string().nullish(),
   interval: z.enum(["month", "year"]).nullish(),
   trialEndsAt: z.string().nullish(),
-  /** The free trial the next Checkout starts (days), or null when it charges at once. */
-  trialDays: z.number().nullish(),
   currentPeriodEnd: z.string().nullish(),
   cancelAtPeriodEnd: z.boolean().optional(),
   access: z.object({

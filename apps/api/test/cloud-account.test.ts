@@ -287,7 +287,7 @@ describe("API keys from a browser session", () => {
   });
 });
 
-describe("retention (terms: deleted 12 months after a cancelled trial or subscription ends)", () => {
+describe("retention (terms: deleted 12 months after an unpaid trial or a cancellation)", () => {
   const sub = (
     accountId: string,
     patch: Partial<typeof controlSchema.subscriptions.$inferInsert>,
@@ -308,9 +308,7 @@ describe("retention (terms: deleted 12 months after a cancelled trial or subscri
   it("warns 30 and 7 days before, never earlier than promised, then deletes", async () => {
     const owner = await signUp(cloud, { name: "Lapsed Owner" });
     const id = owner.accountId as string;
-    // The free trial was cancelled before its first charge and ended on 1 January 2025.
-    const ended = "2025-01-01T00:00:00.000Z";
-    sub(id, { status: "canceled", trialEndsAt: ended, currentPeriodEnd: ended, canceledAt: ended });
+    sub(id, { trialEndsAt: "2025-01-01T00:00:00.000Z" });
     expect(twelveMonthsAfter("2025-01-01T00:00:00.000Z").toISOString()).toBe(
       "2026-01-01T00:00:00.000Z",
     );
@@ -348,8 +346,7 @@ describe("retention (terms: deleted 12 months after a cancelled trial or subscri
   it("a first sweep long after the date still warns first (never deletes without both warnings)", async () => {
     const owner = await signUp(cloud, { name: "Old Lapsed" });
     const id = owner.accountId as string;
-    const ended = "2020-01-01T00:00:00.000Z";
-    sub(id, { status: "canceled", trialEndsAt: ended, currentPeriodEnd: ended, canceledAt: ended });
+    sub(id, { trialEndsAt: "2020-01-01T00:00:00.000Z" });
     await retentionSweep(cloud.rt, at("2026-06-01T00:00:00Z"));
     expect(status(id)).toBe("active");
     await retentionSweep(cloud.rt, at("2026-06-20T00:00:00Z"));

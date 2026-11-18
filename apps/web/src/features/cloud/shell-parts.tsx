@@ -1,6 +1,6 @@
 /**
  * The hosted-mode parts of the app shell, in one lazy chunk (fetched only after the server announces
- * `cloud`): the trial and read-only banners, the workspace switcher, the start-trial page, the
+ * `cloud`): the trial and read-only banners, the workspace switcher, the subscribe page, the
  * suspended-workspace page and the re-authentication prompt.
  */
 import { usePostHog } from "@posthog/react";
@@ -204,11 +204,12 @@ export function SuspendedPage() {
 }
 
 /**
- * A workspace that has not started yet (no subscription, so no access): the whole screen until the owner starts
- * the free trial in Stripe Checkout with a card (or subscribes, when the trial was used). Settings stay reachable
- * through the navigation (account, sign out, deletion), and invitations through their links.
+ * A workspace with no subscription record at all (`no_subscription`; a new workspace starts the no-card trial, and
+ * one whose owner already had a trial is read-only `trial_expired`, so this is rare): the whole screen until the
+ * owner subscribes in Stripe Checkout. Settings stay reachable through the navigation (account, sign out, deletion),
+ * and invitations through their links.
  */
-export function StartTrialPage() {
+export function SubscribePage() {
   const ws = useCloudSession()?.workspace;
   const qc = useQueryClient();
   const billing = useQuery({
@@ -287,7 +288,7 @@ export function StartTrialPage() {
                 {checkout.isPending && checkout.variables === o.lookupKey ? (
                   <Loader2 className="animate-spin" />
                 ) : null}
-                {view.trialDays ? `Start trial, ${price}` : `Subscribe, ${price}`}
+                {`Subscribe, ${price}`}
               </Button>
             );
           })}

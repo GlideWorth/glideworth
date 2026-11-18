@@ -127,7 +127,7 @@ export function SignUpPage() {
       subtitle={
         invitation
           ? `Use the email address the invitation was sent to. After you confirm it, we take you back to the invitation to join ${invitedTo ?? "the workspace"}.`
-          : "Create your account, then start a 7-day free trial. You add a card to start it and are charged on day 8 unless you cancel."
+          : "Create your account and your 14-day free trial starts when you confirm your email. No card needed: when the trial ends your workspace becomes read-only until you subscribe."
       }
       footer={
         <>

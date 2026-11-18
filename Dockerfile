@@ -26,10 +26,11 @@ WORKDIR /repo
 
 # ---------------------------------------------------------------------------------------- deps
 # Dependencies only (cached until a manifest or the lockfile changes). Needs a toolchain in case
-# better-sqlite3 has no prebuilt binary for this platform.
+# better-sqlite3 has no prebuilt binary for this platform. ca-certificates: the source map upload in the build
+# stage runs posthog-cli, a Rust binary that reads the system CA store (node carries its own, the slim image has none).
 FROM base AS deps
 RUN apt-get update \
- && apt-get install -y --no-install-recommends python3 make g++ \
+ && apt-get install -y --no-install-recommends python3 make g++ ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # The root `prepare` script (git hooks) runs on install; it exits at once because CI=true above.

@@ -26,6 +26,8 @@ export function Switch({
       aria-label={ariaLabel}
       className={cn(
         "relative inline-flex shrink-0 items-center rounded-full border border-transparent transition-colors",
+        // Touch: a 44px hit area around the small track, without changing its size.
+        "pointer-coarse:after:absolute pointer-coarse:after:top-1/2 pointer-coarse:after:left-1/2 pointer-coarse:after:size-11 pointer-coarse:after:-translate-1/2 pointer-coarse:after:content-['']",
         "bg-surface-3 data-[state=checked]:bg-accent disabled:opacity-50",
         size === "sm" ? "h-4 w-7" : "h-5 w-9",
       )}

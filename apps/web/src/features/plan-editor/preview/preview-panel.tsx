@@ -313,7 +313,7 @@ export function PreviewPanel({ plan, className }: { plan: Plan | undefined; clas
         <div className="rounded-lg border border-border">
           <button
             type="button"
-            className="flex w-full items-center justify-between px-3 py-2 text-left text-[12px] text-ink-2 hover:bg-surface-2/60"
+            className="flex w-full items-center justify-between px-3 py-2 text-left text-[12px] pointer-coarse:min-h-11 text-ink-2 hover:bg-surface-2/60"
             aria-expanded={showWarnings}
             onClick={() => setShowWarnings((v) => !v)}
           >

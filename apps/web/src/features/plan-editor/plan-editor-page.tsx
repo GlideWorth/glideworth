@@ -264,7 +264,7 @@ function PlanEditorBody({ plan }: { plan: PlanT }) {
                 <T.Trigger
                   key={s.id}
                   value={s.id}
-                  className="shrink-0 rounded-md px-2.5 py-1.5 text-left text-[13px] font-medium whitespace-nowrap text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card"
+                  className="shrink-0 rounded-md px-2.5 py-1.5 text-left text-[13px] font-medium whitespace-nowrap pointer-coarse:min-h-11 text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink data-[state=active]:bg-surface data-[state=active]:text-ink data-[state=active]:shadow-card"
                 >
                   <span className="flex items-center justify-between gap-2">
                     {s.label}

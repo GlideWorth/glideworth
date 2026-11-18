@@ -124,7 +124,7 @@ export function SortableList<T>({
               onKeyDown={(e) => key(i, e)}
               aria-label={`Reorder ${getLabel(item)} (position ${i + 1} of ${items.length})`}
               aria-describedby={hintId}
-              className="flex h-8 w-6 shrink-0 cursor-grab touch-none items-center justify-center rounded text-ink-3 hover:bg-surface-2 hover:text-ink active:cursor-grabbing"
+              className="flex h-8 w-6 shrink-0 cursor-grab touch-none pointer-coarse:size-11 items-center justify-center rounded text-ink-3 hover:bg-surface-2 hover:text-ink active:cursor-grabbing"
             >
               <GripVertical className="size-4" />
             </button>

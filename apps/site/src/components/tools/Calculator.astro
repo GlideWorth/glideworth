@@ -82,8 +82,18 @@ const simulation = spec.mode === 'simulation';
       grid-template-columns: minmax(0, 21rem) minmax(0, 1fr);
     }
   }
+  /*
+   One column. Without an explicit track, the implicit `auto` column sizes to the items'
+   min-content, and grid items default to min-width: auto. A text input's min-content is its
+   intrinsic width (the default size of 20), so the column resolves to that width plus the
+   widest nowrap suffix ("years old", about 346px; about 320px where no field says "years old")
+   and never shrinks. The input's own min-width: 0 only applies once this box has a definite
+   width, so the suffix stays whole and the number takes the squeeze.
+  */
   .tool-form {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
     gap: var(--space-s);
     padding: var(--space-m);
     background: var(--surface);
@@ -98,10 +108,13 @@ const simulation = spec.mode === 'simulation';
   }
   .tool-fields {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
     gap: var(--space-s);
   }
   .tool-field {
     display: grid;
+    min-width: 0;
     gap: 0.3rem;
   }
   .tool-field[hidden] {
@@ -114,6 +127,7 @@ const simulation = spec.mode === 'simulation';
   .tool-input {
     display: flex;
     align-items: center;
+    min-width: 0;
     border: 1px solid var(--line-strong);
     border-radius: var(--radius-s);
     background: var(--bg);
@@ -123,7 +137,9 @@ const simulation = spec.mode === 'simulation';
     outline-offset: 2px;
   }
   .tool-input input {
-    flex: 1;
+    /* width: 0 drops the input's intrinsic size, so it shrinks with the column and the affix stays visible. */
+    flex: 1 1 auto;
+    width: 0;
     min-width: 0;
     border: 0;
     background: transparent;
@@ -217,6 +233,18 @@ const simulation = spec.mode === 'simulation';
   }
   .tool-btn[hidden] {
     display: none;
+  }
+  /* Touch screens: fields, buttons and disclosures at least 44px tall. */
+  @media (pointer: coarse) {
+    .tool-input input,
+    .tool-field select,
+    .tool-btn {
+      min-height: 2.75rem;
+    }
+    .tool-more > summary,
+    .tool-details > summary {
+      padding-block: 0.625rem;
+    }
   }
 
   .tool-output {

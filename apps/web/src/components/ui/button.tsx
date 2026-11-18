@@ -15,11 +15,13 @@ export const buttonVariants = cva(
         subtle: "bg-accent-soft text-accent hover:brightness-95",
         danger: "bg-negative text-white hover:brightness-95",
       },
+      // On touch screens every size is at least 44px tall (and icons 44px wide); desktop keeps the
+      // compact sizes.
       size: {
-        sm: "h-7 px-2.5 text-[12.5px]",
-        md: "h-8 px-3 text-[13px]",
-        lg: "h-10 px-4 text-sm",
-        icon: "size-8",
+        sm: "h-7 px-2.5 text-[12.5px] pointer-coarse:min-h-11",
+        md: "h-8 px-3 text-[13px] pointer-coarse:min-h-11",
+        lg: "h-10 px-4 text-sm pointer-coarse:min-h-11",
+        icon: "size-8 pointer-coarse:min-h-11 pointer-coarse:min-w-11",
       },
     },
     defaultVariants: { variant: "secondary", size: "md" },

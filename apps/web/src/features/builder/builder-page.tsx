@@ -77,13 +77,13 @@ function Picker({
             open={!!q || g === "Metrics"}
             className="border-b border-border last:border-0"
           >
-            <summary className="cursor-pointer bg-surface-2/60 px-3 py-1.5 text-[12px] font-semibold">
+            <summary className="cursor-pointer bg-surface-2/60 px-3 py-1.5 text-[12px] font-semibold pointer-coarse:py-3">
               {g} <span className="font-normal text-ink-3">({items.length})</span>
             </summary>
             <ul>
               {items.map((c) => (
                 <li key={c.ref}>
-                  <label className="flex cursor-pointer items-center gap-2 px-3 py-1 text-[12.5px] hover:bg-surface-2/60">
+                  <label className="flex cursor-pointer items-center gap-2 px-3 py-1 text-[12.5px] hover:bg-surface-2/60 pointer-coarse:min-h-11">
                     <input
                       type="checkbox"
                       checked={selected.has(c.ref)}

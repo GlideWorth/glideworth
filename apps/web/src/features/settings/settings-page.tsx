@@ -126,7 +126,7 @@ export function SettingsPage() {
                         params={{ section: s.id }}
                         aria-current={active ? "page" : undefined}
                         className={cn(
-                          "flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] font-medium transition-colors",
+                          "flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] font-medium transition-colors pointer-coarse:h-11",
                           active
                             ? "bg-surface text-ink shadow-card"
                             : "text-ink-2 hover:bg-surface-2 hover:text-ink",

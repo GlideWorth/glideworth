@@ -74,6 +74,15 @@ const classes = ['btn', `btn-${variant}`, `btn-${size}`, className];
       color 160ms var(--ease),
       transform 160ms var(--ease);
   }
+  /* On a phone a long label wraps inside the button instead of widening its column past the screen. */
+  @media (max-width: 30rem) {
+    .btn {
+      max-width: 100%;
+      white-space: normal;
+      text-align: center;
+      text-wrap: balance;
+    }
+  }
   .btn:hover {
     text-decoration: none;
   }

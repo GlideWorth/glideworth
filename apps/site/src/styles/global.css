@@ -290,6 +290,9 @@ table {
   border-radius: var(--radius-s);
   background: var(--ink);
   color: var(--bg);
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
   padding: 0.55rem 0.9rem;
   font-weight: 600;
   font-size: var(--text-sm);

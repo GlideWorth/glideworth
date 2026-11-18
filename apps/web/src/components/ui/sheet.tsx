@@ -44,7 +44,7 @@ export function SheetContent({
           className,
         )}
       >
-        <header className="flex items-start justify-between gap-3 border-b border-border px-5 pt-4 pb-3">
+        <header className="flex items-start justify-between gap-3 border-b border-border px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-3">
           <div className="min-w-0">
             {eyebrow ? <div className="eyebrow">{eyebrow}</div> : null}
             <D.Title className="display truncate text-[19px] font-semibold leading-tight">
@@ -59,13 +59,13 @@ export function SheetContent({
             )}
           </div>
           <D.Close
-            className="-mr-1 rounded-md p-1.5 text-ink-3 hover:bg-surface-2 hover:text-ink"
+            className="-mr-1 flex shrink-0 items-center justify-center rounded-md p-1.5 text-ink-3 hover:bg-surface-2 hover:text-ink pointer-coarse:-my-2 pointer-coarse:-mr-3 pointer-coarse:size-11"
             aria-label="Close"
           >
             <X className="size-4" />
           </D.Close>
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4">
           {readOnly ? (
             <p className="mb-3 rounded-md bg-surface-2 px-3 py-2 text-[12px] text-ink-2">
               View only: you can look at everything here but not change it.
@@ -77,7 +77,7 @@ export function SheetContent({
           </fieldset>
         </div>
         {footer ? (
-          <footer className="flex items-center gap-2 border-t border-border bg-surface px-5 py-3">
+          <footer className="flex flex-wrap items-center gap-2 border-t border-border bg-surface px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             {footer}
           </footer>
         ) : null}

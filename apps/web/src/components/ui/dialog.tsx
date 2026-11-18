@@ -26,18 +26,21 @@ export function DialogContent({
       <D.Content
         {...restoreFocus}
         className={cn(
-          "fixed left-1/2 top-1/2 z-50 w-[min(92vw,520px)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-surface p-5 shadow-pop",
+          "fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[min(92vw,520px)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-xl border border-border bg-surface p-5 shadow-pop",
           className,
         )}
       >
         <div className="mb-4 flex items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <D.Title className="display text-[19px] font-semibold">{title}</D.Title>
             {description ? (
               <D.Description className="mt-1 text-ink-2">{description}</D.Description>
             ) : null}
           </div>
-          <D.Close className="rounded-md p-1 text-ink-3 hover:bg-surface-2" aria-label="Close">
+          <D.Close
+            className="flex shrink-0 items-center justify-center rounded-md p-1 text-ink-3 hover:bg-surface-2 pointer-coarse:-m-2 pointer-coarse:size-11"
+            aria-label="Close"
+          >
             <X className="size-4" />
           </D.Close>
         </div>

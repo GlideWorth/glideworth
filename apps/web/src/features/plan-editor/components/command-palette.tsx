@@ -357,7 +357,7 @@ export function CommandPalette() {
         <D.Content
           {...restoreFocus}
           aria-describedby={undefined}
-          className="fixed left-1/2 top-[12vh] z-[56] flex max-h-[70vh] w-[min(94vw,600px)] -translate-x-1/2 flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-pop"
+          className="fixed left-1/2 top-[max(0.75rem,env(safe-area-inset-top))] z-[56] flex max-h-[min(70dvh,calc(100dvh-1.5rem))] w-[min(94vw,600px)] sm:top-[12dvh] -translate-x-1/2 flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-pop"
         >
           <D.Title className="sr-only">Command palette</D.Title>
           <div className="flex items-center gap-2 border-b border-border px-3.5">

@@ -296,7 +296,7 @@ function NetWorthCard() {
               id="fin-asof"
               disabled={readOnly}
               type="month"
-              className="h-7 w-[140px] text-[12px]"
+              className="h-7 w-[140px] text-[12px] pointer-coarse:w-[184px]"
               value={doc.finances.asOf}
               onChange={(e) =>
                 e.target.value &&
@@ -601,7 +601,7 @@ function AccountRow({
       <button
         type="button"
         onClick={onOpen}
-        className="min-w-0 flex-1 rounded text-left outline-offset-2"
+        className="min-w-0 flex-1 rounded text-left outline-offset-2 pointer-coarse:min-h-11"
       >
         <div className="truncate text-[13px] font-medium text-ink group-hover:text-accent">
           {a.name}
@@ -822,7 +822,7 @@ function AssetsCard({
               <button
                 type="button"
                 onClick={() => onOpen(a.id)}
-                className="min-w-0 flex-1 text-left"
+                className="min-w-0 flex-1 text-left pointer-coarse:min-h-11"
               >
                 <div className="truncate text-[13px] font-medium group-hover:text-accent">
                   {a.name}
@@ -1021,7 +1021,7 @@ function DebtsCard({
                 <button
                   type="button"
                   onClick={() => onOpen(d.id)}
-                  className="min-w-0 flex-1 text-left"
+                  className="min-w-0 flex-1 text-left pointer-coarse:min-h-11"
                 >
                   <div className="truncate text-[13px] font-medium group-hover:text-accent">
                     {d.name}

@@ -189,14 +189,14 @@ function Stepper({ step, onStep }: { step: Step; onStep: (s: Step) => void }) {
     <ol className="flex items-center gap-2 text-[12.5px]" aria-label="Import steps">
       {STEPS.map((s, i) => (
         <li key={s.id} className="flex items-center gap-2">
-          {i > 0 ? <span className="h-px w-6 bg-border-strong sm:w-10" aria-hidden /> : null}
+          {i > 0 ? <span className="h-px w-3 bg-border-strong sm:w-10" aria-hidden /> : null}
           <button
             type="button"
             disabled={i > at}
             onClick={() => onStep(s.id)}
             aria-current={i === at ? "step" : undefined}
             className={cn(
-              "flex items-center gap-1.5 rounded-full px-1 py-0.5 font-medium",
+              "flex items-center gap-1.5 rounded-full px-1 py-0.5 font-medium pointer-coarse:min-h-11",
               i === at ? "text-ink" : i < at ? "text-accent hover:underline" : "text-ink-3",
             )}
           >

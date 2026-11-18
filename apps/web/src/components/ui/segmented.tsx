@@ -28,7 +28,7 @@ export function Segmented<V extends string>({
           title={o.title}
           onClick={() => onChange(o.value)}
           className={cn(
-            "rounded-[5px] font-medium transition-colors",
+            "shrink-0 rounded-[5px] font-medium transition-colors pointer-coarse:min-h-11 pointer-coarse:min-w-11",
             size === "sm" ? "px-2 py-0.5 text-[11.5px]" : "px-2.5 py-1 text-[12.5px]",
             value === o.value ? "bg-surface text-ink shadow-card" : "text-ink-3 hover:text-ink",
           )}

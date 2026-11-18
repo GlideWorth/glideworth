@@ -4,3 +4,8 @@ packages:
 onlyBuiltDependencies:
   - better-sqlite3
   - esbuild
+# Security floors for transitive dependencies whose parents pin vulnerable ranges (Dependabot cannot
+# raise them on its own): fflate via satori (site build), esbuild via drizzle-kit and @esbuild-kit.
+overrides:
+  "fflate@>=0.7.0 <0.7.5": 0.7.5
+  "esbuild@<0.28.1": 0.28.2

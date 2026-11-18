@@ -75,7 +75,7 @@ export function DateRefPicker({
           aria-label={`${label}: month`}
           value={value.date}
           onChange={(e) => onChange({ ...value, date: e.target.value })}
-          className="w-[150px]"
+          className="w-[150px] pointer-coarse:w-[184px]"
         />
       ) : null}
       {value.kind === "age" ? (

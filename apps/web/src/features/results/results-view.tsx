@@ -66,7 +66,7 @@ export function ChartControls({ people }: { people: { id: string; name: string }
         className="w-[170px]"
       />
       <label
-        className="flex cursor-pointer items-center gap-1.5 text-[12px] text-ink-2"
+        className="flex cursor-pointer items-center gap-1.5 text-[12px] text-ink-2 pointer-coarse:min-h-11"
         title="Add patterns to filled areas (colour-blind / print friendly)"
       >
         <input

@@ -341,7 +341,7 @@ export function CompareView() {
                         {i > 0 ? (
                           <button
                             type="button"
-                            className="mt-0.5 text-[10.5px] font-medium tracking-normal text-ink-3 normal-case underline hover:text-ink"
+                            className="mt-0.5 text-[10.5px] font-medium tracking-normal text-ink-3 normal-case underline hover:text-ink pointer-coarse:-my-4 pointer-coarse:py-4"
                             onClick={() => makeBaseline(c.id)}
                           >
                             Make baseline

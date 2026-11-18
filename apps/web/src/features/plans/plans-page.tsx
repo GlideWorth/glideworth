@@ -240,7 +240,7 @@ function PlanCard({
             to="/plans/$planId"
             params={{ planId: p.id }}
             onClick={() => setActive(p.id)}
-            className="display block truncate text-[17px] leading-tight font-semibold hover:text-accent"
+            className="display block truncate text-[17px] leading-tight font-semibold hover:text-accent pointer-coarse:-my-3 pointer-coarse:py-3"
           >
             {p.name}
           </Link>

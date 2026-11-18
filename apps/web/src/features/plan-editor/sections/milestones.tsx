@@ -188,7 +188,7 @@ export function MilestonesSection({ onOpen }: { onOpen: (id: string) => void }) 
                 />
                 <button
                   type="button"
-                  className="min-w-0 flex-1 text-left"
+                  className="min-w-0 flex-1 text-left pointer-coarse:min-h-11"
                   onClick={() => onOpen(m.id)}
                 >
                   <div className="flex items-center gap-1.5">
@@ -725,7 +725,7 @@ function CriterionEditor({
           <Input
             type="month"
             aria-label="Month"
-            className="w-[150px]"
+            className="w-[150px] pointer-coarse:w-[184px]"
             value={c.date}
             onChange={(e) => onChange({ ...c, date: e.target.value }, "date")}
           />

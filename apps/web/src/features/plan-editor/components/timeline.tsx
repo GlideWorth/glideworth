@@ -245,7 +245,7 @@ export function Timeline({
           type="button"
           onClick={onToggle}
           aria-expanded={!collapsed}
-          className="flex items-center gap-1.5 text-[13.5px] font-semibold"
+          className="flex items-center gap-1.5 text-[13.5px] font-semibold pointer-coarse:min-h-11"
         >
           {collapsed ? (
             <ChevronRight className="size-4 text-ink-3" />

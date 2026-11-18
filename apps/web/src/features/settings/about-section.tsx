@@ -69,7 +69,7 @@ export function AboutSection() {
         <SettingRow label="Guided tour" hint="A one-minute tour of the main areas.">
           <button
             type="button"
-            className="text-[12.5px] font-medium text-accent underline underline-offset-2"
+            className="text-[12.5px] font-medium text-accent underline underline-offset-2 pointer-coarse:-my-3.5 pointer-coarse:py-3.5"
             onClick={() => setPrefs({ tour: "welcome" })}
           >
             Take the tour again

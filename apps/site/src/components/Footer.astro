@@ -142,6 +142,17 @@ const consentSettings = googleTagManagerOnPath(Astro.url.pathname, PUBLIC_GTM_ID
     color: var(--ink-2);
     text-decoration: none;
   }
+  /* Touch: each link is a 44px row (the padding replaces the gap, so the rhythm stays the same). */
+  @media (pointer: coarse) {
+    .footer-group ul {
+      gap: 0;
+    }
+    .footer-group a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 2.75rem;
+    }
+  }
   .footer-group a:hover {
     color: var(--ink);
     text-decoration: underline;

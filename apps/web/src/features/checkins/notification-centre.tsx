@@ -69,7 +69,7 @@ export function NotificationCentre() {
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Tooltip content={unread ? `${unread} unread notifications` : "Notifications"}>
         <Popover.Trigger
-          className="relative flex size-8 items-center justify-center rounded-md text-ink-2 hover:bg-surface-2 hover:text-ink"
+          className="relative flex size-8 pointer-coarse:size-11 items-center justify-center rounded-md text-ink-2 hover:bg-surface-2 hover:text-ink"
           aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
         >
           {unread ? <BellRing className="size-4" /> : <Bell className="size-4" />}

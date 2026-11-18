@@ -275,7 +275,7 @@ export function EventsSection({ kind, onOpen }: { kind: Kind; onOpen: (id: strin
                 />
                 <button
                   type="button"
-                  className="min-w-0 flex-1 text-left"
+                  className="min-w-0 flex-1 text-left pointer-coarse:min-h-11"
                   onClick={() => onOpen(e.id)}
                 >
                   <div className="flex items-center gap-1.5">

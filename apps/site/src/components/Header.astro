@@ -94,6 +94,7 @@ const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWi
     backdrop-filter: saturate(1.2) blur(10px);
     -webkit-backdrop-filter: saturate(1.2) blur(10px);
     border-bottom: 1px solid color-mix(in oklab, var(--line) 70%, transparent);
+    container: site-header / inline-size;
   }
   .header-inner {
     display: flex;
@@ -103,6 +104,8 @@ const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWi
   }
   .brand {
     display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
     text-decoration: none;
     color: var(--ink);
     border-radius: 8px;
@@ -121,8 +124,11 @@ const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWi
   .menu-button {
     display: inline-flex;
     align-items: center;
+    flex: none;
     gap: 0.5rem;
-    min-height: 2.5rem;
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    justify-content: center;
     padding: 0.4rem 0.8rem;
     border: 1px solid var(--line-strong);
     border-radius: 999px;
@@ -130,6 +136,29 @@ const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWi
     color: var(--ink);
     font-size: var(--text-sm);
     font-weight: 600;
+  }
+  /*
+   The lockup, theme switch and Menu button sit on one row. With the gutters that row is about
+   362px wide, so when the header itself is narrower the Menu button hangs off the right edge
+   (a 320px phone, or 360px once a classic scrollbar takes its 15px). Tighten only then; at
+   360px and up with no scrollbar the full lockup already fits, and the button label stays.
+  */
+  @container site-header (max-width: 22.4rem) {
+    .header-inner {
+      gap: 0.5rem;
+    }
+    .brand,
+    .header-tools,
+    .nav {
+      flex-shrink: 0;
+    }
+    .brand :global(.logo-svg) {
+      height: 30px;
+      width: auto;
+    }
+    .menu-button {
+      padding-inline: 0.55rem;
+    }
   }
   .menu-icon {
     display: grid;
@@ -155,7 +184,8 @@ const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWi
     inset: var(--header-h) 0 auto 0;
     max-height: calc(100dvh - var(--header-h));
     overflow-y: auto;
-    padding: var(--space-s) var(--gutter) var(--space-l);
+    overscroll-behavior: contain;
+    padding: var(--space-s) var(--gutter) max(var(--space-l), env(safe-area-inset-bottom));
     background: var(--bg);
     border-bottom: 1px solid var(--line);
     box-shadow: var(--shadow-2);
@@ -186,6 +216,9 @@ const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWi
     gap: var(--space-s);
   }
   .signin {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
     color: var(--ink);
     font-weight: 600;
     font-size: var(--text-sm);
@@ -193,6 +226,13 @@ const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWi
   }
   .signin:hover {
     text-decoration: underline;
+  }
+
+  /* The page behind the open menu does not scroll. */
+  @media (max-width: 59.99rem) {
+    :global(:root.menu-open) {
+      overflow: hidden;
+    }
   }
 
   /* Without JavaScript the small-screen menu cannot open, so its links show in a row instead. */

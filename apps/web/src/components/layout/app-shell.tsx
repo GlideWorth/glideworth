@@ -78,7 +78,7 @@ function NavLink({
       aria-current={isActive ? "page" : undefined}
       aria-label={collapsed ? item.label : undefined}
       className={cn(
-        "group flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] font-medium transition-colors",
+        "group flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] font-medium transition-colors pointer-coarse:h-11",
         isActive
           ? "bg-surface text-ink shadow-card"
           : "text-ink-2 hover:bg-surface-2 hover:text-ink",
@@ -134,13 +134,17 @@ function Sidebar() {
       data-app-chrome
       className={cn(
         "hidden shrink-0 flex-col border-r border-border bg-bg transition-[width] duration-200 md:flex",
-        collapsed ? "w-[60px]" : "w-[220px]",
+        collapsed ? "w-[60px] pointer-coarse:w-[68px]" : "w-[220px]",
       )}
     >
       <div
         className={cn("flex h-14 shrink-0 items-center px-4", collapsed && "justify-center px-0")}
       >
-        <Link to="/" aria-label="Glideworth home" className="rounded-md">
+        <Link
+          to="/"
+          aria-label="Glideworth home"
+          className="flex items-center rounded-md pointer-coarse:min-h-11 pointer-coarse:min-w-11 pointer-coarse:justify-center"
+        >
           {collapsed ? <GlideworthMark /> : <Wordmark />}
         </Link>
       </div>
@@ -157,7 +161,7 @@ function Sidebar() {
             type="button"
             onClick={toggle}
             className={cn(
-              "flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[12.5px] text-ink-3 hover:bg-surface-2 hover:text-ink-2",
+              "flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[12.5px] text-ink-3 hover:bg-surface-2 hover:text-ink-2 pointer-coarse:h-11",
               collapsed && "justify-center px-0",
             )}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
@@ -189,13 +193,13 @@ function NavDrawer() {
         <D.Overlay className="fixed inset-0 z-40 bg-black/30 data-[state=open]:animate-[glideworth-fade_140ms_ease-out]" />
         <D.Content
           {...restoreFocus}
-          className="fixed inset-y-0 left-0 z-50 flex w-[min(84vw,300px)] flex-col border-r border-border bg-bg shadow-pop outline-none data-[state=open]:animate-[glideworth-drawer-in_200ms_cubic-bezier(.2,.8,.2,1)]"
+          className="fixed inset-y-0 left-0 z-50 flex w-[min(84vw,300px)] flex-col border-r border-border bg-bg pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] shadow-pop outline-none data-[state=open]:animate-[glideworth-drawer-in_200ms_cubic-bezier(.2,.8,.2,1)]"
           aria-describedby={undefined}
         >
           <div className="flex h-14 shrink-0 items-center justify-between px-4">
             <Wordmark />
             <D.Close
-              className="rounded-md p-2 text-ink-3 hover:bg-surface-2"
+              className="-mr-2 flex items-center justify-center rounded-md p-2 text-ink-3 hover:bg-surface-2 pointer-coarse:size-11"
               aria-label="Close menu"
             >
               <X className="size-4" />
@@ -208,7 +212,10 @@ function NavDrawer() {
               <WorkspaceSwitcher className="px-2.5 pb-2" />
             </Suspense>
           ) : null}
-          <nav className="flex flex-1 flex-col gap-4 overflow-y-auto px-2.5 py-2" aria-label="Main">
+          <nav
+            className="flex flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-2.5 py-2"
+            aria-label="Main"
+          >
             <NavGroups collapsed={false} onNavigate={close} />
           </nav>
           <div className="flex flex-col gap-0.5 border-t border-border px-2.5 py-2 pb-safe">
@@ -269,6 +276,7 @@ function BottomNav() {
         <li>
           <button
             type="button"
+            data-tour="bottom-nav-more"
             onClick={() => setNavOpen(true)}
             className={cn(
               "flex h-14 w-full flex-col items-center justify-center gap-0.5 text-[10.5px] font-medium",
@@ -401,7 +409,7 @@ function ThemeButton() {
     <Tooltip content={`Theme: ${theme === "system" ? `system (${resolved})` : theme} · ⇧D`}>
       <button
         type="button"
-        className="flex size-8 items-center justify-center rounded-md text-ink-2 hover:bg-surface-2 hover:text-ink"
+        className="flex size-8 items-center justify-center rounded-md text-ink-2 hover:bg-surface-2 hover:text-ink pointer-coarse:size-11"
         aria-label={resolved === "dark" ? "Switch to light theme" : "Switch to dark theme"}
         onClick={() => setTheme(resolved === "dark" ? "light" : "dark")}
       >
@@ -425,7 +433,7 @@ function TopBar() {
         type="button"
         data-tour="menu-button"
         onClick={() => setNavOpen(true)}
-        className="-ml-1 flex size-9 shrink-0 items-center justify-center rounded-md text-ink-2 hover:bg-surface-2 md:hidden"
+        className="-ml-1 hidden size-9 shrink-0 items-center justify-center rounded-md text-ink-2 hover:bg-surface-2 pointer-coarse:size-11 sm:flex md:hidden"
         aria-label="Open navigation menu"
       >
         <Menu className="size-5" />
@@ -448,7 +456,7 @@ function TopBar() {
           data-tour="search"
           onClick={openPalette}
           aria-keyshortcuts="Meta+K Control+K"
-          className="flex h-8 items-center gap-2 rounded-md border-border text-[12.5px] text-ink-3 hover:bg-surface-2 hover:text-ink-2 max-lg:w-8 max-lg:justify-center lg:w-[200px] lg:border lg:bg-surface lg:px-2.5 lg:shadow-card"
+          className="hidden h-8 items-center gap-2 rounded-md border-border text-[12.5px] text-ink-3 hover:bg-surface-2 hover:text-ink-2 max-lg:w-8 max-lg:justify-center pointer-coarse:max-lg:size-11 sm:flex lg:w-[200px] lg:border lg:bg-surface lg:px-2.5 lg:shadow-card"
         >
           <Search className="size-4 shrink-0" />
           {/* The name is the visible text where there is any (speech input says what it sees); the
@@ -464,7 +472,7 @@ function TopBar() {
               <button
                 type="button"
                 onClick={() => setShortcuts(true)}
-                className="flex size-8 items-center justify-center rounded-md text-ink-2 hover:bg-surface-2 hover:text-ink"
+                className="flex size-8 items-center justify-center rounded-md text-ink-2 hover:bg-surface-2 hover:text-ink pointer-coarse:size-11"
                 aria-label="Keyboard shortcuts"
                 aria-keyshortcuts="?"
               >
@@ -478,7 +486,7 @@ function TopBar() {
                 target="_blank"
                 rel="noreferrer"
                 aria-label="API reference (opens in a new tab)"
-                className="hidden size-8 items-center justify-center rounded-md text-ink-2 hover:bg-surface-2 hover:text-ink lg:flex"
+                className="hidden size-8 items-center justify-center rounded-md text-ink-2 hover:bg-surface-2 hover:text-ink pointer-coarse:size-11 lg:flex"
               >
                 <BookOpen className="size-4" />
               </a>
@@ -497,11 +505,12 @@ function OverflowMenu() {
   const setTheme = useUi((s) => s.setTheme);
   const setShortcuts = useUi((s) => s.setShortcutsOpen);
   const item =
-    "flex cursor-default items-center gap-2 rounded-md px-2 py-2 text-[13px] text-ink outline-none select-none data-[highlighted]:bg-surface-2";
+    "flex cursor-default items-center gap-2 rounded-md px-2 py-2 text-[13px] text-ink outline-none select-none data-[highlighted]:bg-surface-2 pointer-coarse:min-h-11";
   return (
     <M.Root>
       <M.Trigger
-        className="flex size-8 items-center justify-center rounded-md text-ink-2 hover:bg-surface-2"
+        data-tour="more-menu"
+        className="flex size-8 items-center justify-center rounded-md text-ink-2 hover:bg-surface-2 pointer-coarse:size-11"
         aria-label="More options"
       >
         <Ellipsis className="size-4" />
@@ -525,6 +534,10 @@ function OverflowMenu() {
             ))}
           </M.RadioGroup>
           <M.Separator className="my-1 h-px bg-border" />
+          {/* Phones have no room for the search button in the top bar. */}
+          <M.Item className={cn(item, "sm:hidden")} onSelect={openPalette}>
+            <Search className="size-4 text-ink-3" /> Search and commands
+          </M.Item>
           <M.Item className={item} onSelect={() => setShortcuts(true)}>
             <Keyboard className="size-4 text-ink-3" /> Keyboard shortcuts
           </M.Item>
@@ -699,7 +712,10 @@ function Frame() {
     );
 
   return (
-    <div data-app-frame className="flex h-dvh overflow-hidden bg-bg text-ink">
+    <div
+      data-app-frame
+      className="flex h-dvh overflow-hidden bg-bg pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] text-ink"
+    >
       <Sidebar />
       <NavDrawer />
       <div className="flex min-w-0 flex-1 flex-col">

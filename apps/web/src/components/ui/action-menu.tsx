@@ -34,7 +34,7 @@ export function ActionMenuContent({
 }
 
 const itemCls =
-  "relative flex cursor-default select-none items-center gap-2 rounded-md px-2 py-1.5 text-[13px] text-ink outline-none data-[highlighted]:bg-surface-2 data-[disabled]:opacity-50 [&_svg]:size-3.5 [&_svg]:text-ink-3";
+  "relative flex cursor-default select-none items-center gap-2 rounded-md px-2 py-1.5 pointer-coarse:min-h-11 text-[13px] text-ink outline-none data-[highlighted]:bg-surface-2 data-[disabled]:opacity-50 [&_svg]:size-3.5 [&_svg]:text-ink-3";
 
 export function ActionMenuItem({
   children,

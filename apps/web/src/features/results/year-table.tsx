@@ -101,7 +101,7 @@ export function YearTable({
                     .map((c) => (
                       <label
                         key={c.id}
-                        className="flex cursor-pointer items-center gap-2 py-0.5 text-[12.5px]"
+                        className="flex cursor-pointer items-center gap-2 py-0.5 text-[12.5px] pointer-coarse:min-h-11"
                       >
                         <input
                           type="checkbox"

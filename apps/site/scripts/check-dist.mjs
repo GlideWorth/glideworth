@@ -2,6 +2,7 @@
  * Checks the built site in dist/ (run `pnpm build` first, then `pnpm check:dist`).
  *
  * Errors (exit 1):
+ *  - every page has one viewport meta with width=device-width that does not block zooming
  *  - every page has exactly one <title>, one <h1>, a meta description and a canonical URL that is
  *    https://glideworth.com/<own path> with the trailing slash; indexable pages have unique titles and
  *    descriptions; titles over 70 characters and descriptions over 180 are errors
@@ -203,6 +204,13 @@ for (const file of html) {
   const title = decode(titleTags[0]?.replace(/<\/?title>/g, "") ?? "");
   const desc = decode(doc.match(/<meta name="description" content="([^"]*)"/)?.[1] ?? "");
   if (!desc) fail(rel, "missing meta description");
+  // Phones: one responsive viewport, and pinch-zoom never blocked (WCAG 1.4.4).
+  const viewports = doc.match(/<meta name="viewport" content="[^"]*"/g) ?? [];
+  if (viewports.length !== 1) fail(rel, `expected one viewport meta, found ${viewports.length}`);
+  else if (!/width=device-width/.test(viewports[0]))
+    fail(rel, `viewport meta has no width=device-width: ${viewports[0]}`);
+  else if (/maximum-scale|user-scalable\s*=\s*(no|0)/i.test(viewports[0]))
+    fail(rel, `viewport meta blocks zooming: ${viewports[0]}`);
   const canonical = doc.match(/<link rel="canonical" href="([^"]*)"/)?.[1];
   if (!canonical?.startsWith(`${SITE}/`)) fail(rel, `canonical missing or off-site: ${canonical}`);
   else {

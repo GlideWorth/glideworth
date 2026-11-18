@@ -34,13 +34,13 @@ export function ConfirmHost() {
         <A.Overlay className="fixed inset-0 z-[60] bg-black/30" />
         <A.Content
           {...restoreFocus}
-          className="fixed left-1/2 top-1/2 z-[61] w-[min(92vw,420px)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-surface p-5 shadow-pop"
+          className="fixed left-1/2 top-1/2 z-[61] max-h-[calc(100dvh-2rem)] w-[min(92vw,420px)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-xl border border-border bg-surface p-5 shadow-pop"
         >
           <A.Title className="display text-[18px] font-semibold">{req?.title}</A.Title>
           <A.Description className="mt-1.5 text-[13px] text-ink-2">
             {req?.description ?? ""}
           </A.Description>
-          <div className="mt-5 flex justify-end gap-2">
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
             <A.Cancel asChild>
               <Button variant="ghost">Cancel</Button>
             </A.Cancel>

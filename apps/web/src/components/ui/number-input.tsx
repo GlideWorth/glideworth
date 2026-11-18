@@ -49,7 +49,7 @@ export function NumberInput({
       {prefix ? <span className="text-ink-3 text-[12px] select-none">{prefix}</span> : null}
       <input
         inputMode="decimal"
-        className="num min-w-0 flex-1 bg-transparent text-right outline-none"
+        className="num min-w-0 flex-1 self-stretch bg-transparent text-right outline-none"
         value={text}
         onFocus={() => setFocused(true)}
         onBlur={() => {
@@ -122,7 +122,7 @@ export function AmountInput({
         className="flex-1"
       />
       <fieldset
-        className="m-0 flex h-8 min-w-0 overflow-hidden rounded-md border border-border p-0 text-[11px]"
+        className="m-0 flex h-8 pointer-coarse:h-11 min-w-0 overflow-hidden rounded-md border border-border p-0 text-[11px]"
         aria-label="Value basis"
       >
         {(["real", "nominal"] as const).map((b) => (

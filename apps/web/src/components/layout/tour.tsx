@@ -40,13 +40,21 @@ export const TOUR: Stop[] = [
   },
   {
     id: "planning",
-    anchors: ['[data-tour="nav-Planning"]', '[data-tour="menu-button"]'],
+    anchors: [
+      '[data-tour="nav-Planning"]',
+      '[data-tour="menu-button"]',
+      '[data-tour="bottom-nav-more"]',
+    ],
     title: "Planning: what happens next",
     body: "Plans hold income, spending, milestones and savings flows. Branch a plan to explore a what-if without touching the original.",
   },
   {
     id: "analysis",
-    anchors: ['[data-tour="nav-Analysis"]', '[data-tour="menu-button"]'],
+    anchors: [
+      '[data-tour="nav-Analysis"]',
+      '[data-tour="menu-button"]',
+      '[data-tour="bottom-nav-more"]',
+    ],
     title: "Analysis: how robust is it",
     body: "Year-by-year results, chance of success across a thousand markets, cash flow, taxes, side-by-side comparisons and plain-language insights.",
   },
@@ -64,13 +72,17 @@ export const TOUR: Stop[] = [
   },
   {
     id: "search",
-    anchors: ['[data-tour="search"]'],
+    anchors: ['[data-tour="search"]', '[data-tour="more-menu"]'],
     title: "Find anything",
     body: `Press ${modKey} K to jump to any page or plan, add an account or event, or run a simulation. Press ? for every shortcut.`,
   },
   {
     id: "data",
-    anchors: ['[data-tour="nav-data"]', '[data-tour="menu-button"]'],
+    anchors: [
+      '[data-tour="nav-data"]',
+      '[data-tour="menu-button"]',
+      '[data-tour="bottom-nav-more"]',
+    ],
     title: "Your data, your machine",
     body: "Import from ProjectionLab or CSV, download a full backup, and connect AI assistants under Settings.",
   },

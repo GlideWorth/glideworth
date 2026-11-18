@@ -90,7 +90,7 @@ function Option<V extends string>({ o }: { o: SelectOption<V> }) {
   return (
     <S.Item
       value={o.value}
-      className="relative flex cursor-default select-none flex-col rounded-md py-1.5 pr-2 pl-7 text-[13px] outline-none data-[highlighted]:bg-surface-2"
+      className="relative flex cursor-default select-none flex-col justify-center rounded-md py-1.5 pointer-coarse:min-h-11 pr-2 pl-7 text-[13px] outline-none data-[highlighted]:bg-surface-2"
     >
       <S.ItemIndicator className="absolute left-2 top-2">
         <Check className="size-3.5 text-accent" />

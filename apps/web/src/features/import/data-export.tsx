@@ -143,7 +143,7 @@ export function TablesCard() {
             )}
           </Field>
         </div>
-        <ul className="grid gap-2 sm:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {TABLES.map((t) => (
             <li key={t.id}>
               <button

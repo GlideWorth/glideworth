@@ -142,7 +142,7 @@ export function NextSteps() {
                 type="button"
                 onClick={() => dismiss(s.id)}
                 aria-label={`Dismiss: ${s.title}`}
-                className="absolute top-2.5 right-2.5 rounded p-1 text-ink-3 hover:bg-surface-2 hover:text-ink"
+                className="absolute top-2.5 right-2.5 flex items-center justify-center rounded p-1 text-ink-3 hover:bg-surface-2 hover:text-ink pointer-coarse:top-0 pointer-coarse:right-0 pointer-coarse:size-11"
               >
                 <X className="size-3.5" />
               </button>

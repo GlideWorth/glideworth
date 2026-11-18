@@ -123,7 +123,7 @@ export function ShortcutsOverlay() {
     <D.Root open={open} onOpenChange={setOpen}>
       <D.Portal>
         <D.Overlay className="fixed inset-0 z-[55] bg-black/30" />
-        <D.Content className="fixed top-1/2 left-1/2 z-[56] flex max-h-[86vh] w-[min(94vw,720px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-pop">
+        <D.Content className="fixed top-1/2 left-1/2 z-[56] flex max-h-[86dvh] w-[min(94vw,720px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-pop">
           <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
             <div>
               <D.Title className="display text-[19px] font-semibold">Keyboard shortcuts</D.Title>

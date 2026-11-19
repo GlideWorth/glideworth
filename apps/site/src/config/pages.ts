@@ -31,7 +31,7 @@ export const pages = {
   "/": {
     title: "Glideworth: open-source retirement and financial planner",
     fullTitle: true,
-    description: `Plan decades ahead with tax estimates for ${n} countries, Monte Carlo on historical returns, solvers and an MCP server for AI assistants. Open source; self-host free.`,
+    description: `Plan decades ahead with tax estimates for ${n} countries, Monte Carlo, solvers and an MCP server. Open source, and free to self-host.`,
     ogTitle: "Plan your glide path to and through retirement",
     ogEyebrow: "Open-source financial planner",
   },

@@ -28,7 +28,7 @@ export const TOOLS: readonly ToolMeta[] = [
     group: "fire",
     article: {
       href: "/blog/coast-fire-explained/",
-      title: "Coast FIRE explained: the number, the formula, the gaps",
+      title: "Coast FIRE number, formula and gaps",
     },
   },
   {
@@ -41,7 +41,7 @@ export const TOOLS: readonly ToolMeta[] = [
     group: "fire",
     article: {
       href: "/blog/what-is-your-fire-number/",
-      title: "What is your FIRE number? The 25x rule and its limits",
+      title: "FIRE number: the 25x rule and its limits",
     },
   },
   {
@@ -54,7 +54,7 @@ export const TOOLS: readonly ToolMeta[] = [
     group: "fire",
     article: {
       href: "/blog/barista-fire-part-time-income/",
-      title: "Barista FIRE: how part-time income changes the maths",
+      title: "Barista FIRE and part-time income",
     },
   },
   {
@@ -67,7 +67,7 @@ export const TOOLS: readonly ToolMeta[] = [
     group: "retirement",
     article: {
       href: "/blog/how-long-will-my-money-last/",
-      title: "How long will my money last? Three ways to answer",
+      title: "How long will my money last?",
     },
   },
   {
@@ -80,7 +80,7 @@ export const TOOLS: readonly ToolMeta[] = [
     group: "retirement",
     article: {
       href: "/blog/withdrawal-strategies-compared/",
-      title: "Withdrawal strategies compared: four rules, one test",
+      title: "Withdrawal strategies: four rules compared",
     },
   },
   {
@@ -93,7 +93,7 @@ export const TOOLS: readonly ToolMeta[] = [
     group: "retirement",
     article: {
       href: "/blog/monte-carlo-retirement-simulations/",
-      title: "Monte Carlo retirement simulations: reading the result",
+      title: "Monte Carlo retirement simulations",
     },
   },
 ];

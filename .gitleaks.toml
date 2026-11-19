@@ -24,3 +24,13 @@ targetRules = ["generic-api-key"]
 paths = ['''^apps/site/src/content/features/rest-api\.mdx$''']
 regexTarget = "match"
 regexes = ['''KEY=glideworth_[a-z0-9]{8}_\.\.\.''']
+
+# IndexNow requires this exact string to be published at the site root. It authorises nothing.
+# The secret scan reads every branch in a full checkout, so this allowlist has to be on each
+# open branch, not only the one that adds the key.
+[[allowlists]]
+description = "Public IndexNow site-verification key (published at the site root by design)"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexTarget = "match"
+regexes = ['''90abf381325f8bcc1f145c06aeb4946e''']

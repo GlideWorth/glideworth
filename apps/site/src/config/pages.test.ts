@@ -15,6 +15,11 @@ describe("page descriptions", () => {
     expect(pages["/pricing/"].description.length).toBeLessThanOrEqual(160);
   });
 
+  it("keeps the home page description within 120 to 155 characters", () => {
+    expect(pages["/"].description.length).toBeGreaterThanOrEqual(120);
+    expect(pages["/"].description.length).toBeLessThanOrEqual(155);
+  });
+
   it("are unique", () => {
     const descriptions = entries.map(([, meta]) => meta.description);
     expect(new Set(descriptions).size).toBe(descriptions.length);

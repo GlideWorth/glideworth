@@ -278,7 +278,12 @@ export class BillingService {
       if (!customerId) {
         const created = await this.stripe(() =>
           this.d.gateway.createCustomer(
-            { email: i.ownerEmail, name: i.ownerName, accountId: i.accountId },
+            {
+              email: i.ownerEmail,
+              name: i.ownerName,
+              accountId: i.accountId,
+              ...(i.actor ? { personId: i.actor.userId } : {}),
+            },
             `customer:${i.accountId}`,
           ),
         );

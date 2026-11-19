@@ -40,6 +40,20 @@ function isResourceMissing(err: unknown): boolean {
 const chunk = <T>(xs: T[], n: number): T[][] =>
   Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n));
 
+/**
+ * A new customer's metadata: the account it bills, and the owner's user id under the key PostHog's revenue
+ * analytics joins on (`posthog_person_distinct_id`), the id the web app identifies the owner by.
+ */
+export function customerMetadata(p: {
+  accountId: string;
+  personId?: string;
+}): Record<string, string> {
+  return {
+    account_id: p.accountId,
+    ...(p.personId ? { posthog_person_distinct_id: p.personId } : {}),
+  };
+}
+
 /** Portal configuration (design 4.1): payment method, invoices, cancel at period end, interval switch, tax id. */
 export function portalConfigurationParams(p: {
   prices: Array<{ productId: string; priceIds: string[] }>;
@@ -166,7 +180,7 @@ export function stripeGateway(client: Stripe): StripeGateway & WebhookEndpointAd
 
     async createCustomer(p, idempotencyKey) {
       const created = await client.customers.create(
-        { email: p.email, name: p.name, metadata: { account_id: p.accountId } },
+        { email: p.email, name: p.name, metadata: customerMetadata(p) },
         { idempotencyKey },
       );
       return { id: created.id };

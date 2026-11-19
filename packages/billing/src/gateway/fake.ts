@@ -17,7 +17,7 @@ import {
   refundReason,
   subscriptionView,
 } from "./mapping.js";
-import { portalConfigurationParams, STRIPE_API_VERSION } from "./stripe.js";
+import { customerMetadata, portalConfigurationParams, STRIPE_API_VERSION } from "./stripe.js";
 
 /** Shaped like the SDK's errors (`type`, `code`, `statusCode`) so error handling is exercised the same way. */
 export class FakeStripeError extends Error {
@@ -315,7 +315,7 @@ export class FakeStripeGateway implements StripeGateway, WebhookEndpointAdmin {
   }
 
   async createCustomer(
-    p: { email: string; name: string; accountId: string },
+    p: { email: string; name: string; accountId: string; personId?: string },
     idempotencyKey: string,
   ) {
     this.enter("createCustomer", [p, idempotencyKey]);
@@ -325,7 +325,7 @@ export class FakeStripeGateway implements StripeGateway, WebhookEndpointAdmin {
         id,
         email: p.email,
         name: p.name,
-        metadata: { account_id: p.accountId },
+        metadata: customerMetadata(p),
         deleted: false,
       });
       return { id };

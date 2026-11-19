@@ -78,6 +78,22 @@ describe("checkout guards (design 4.2, 4.6)", () => {
     expect(h.fake.callsTo("createCheckoutSession")).toHaveLength(0);
   });
 
+  it("stores the owner's user id on the new customer for PostHog's revenue join", async () => {
+    const h = await harness();
+    const owner = { userId: "u_1", role: "owner", emailVerified: true };
+    await h.service.createCheckout(input("tacct1", { actor: owner }));
+    const [customer] = [...h.fake.customers.values()];
+    expect(customer?.metadata).toEqual({
+      account_id: "tacct1",
+      posthog_person_distinct_id: "u_1",
+    });
+
+    // Without an actor (operator and CLI paths) there is no person to join, so only the account is stored.
+    await h.service.createCheckout(input("tacct2"));
+    const second = [...h.fake.customers.values()].find((c) => c.metadata.account_id === "tacct2");
+    expect(second?.metadata).toEqual({ account_id: "tacct2" });
+  });
+
   it("refuses non-owners and unverified users", async () => {
     const h = await harness();
     expect(

@@ -106,7 +106,16 @@ export interface StripeGateway {
     existingId?: string;
   }): Promise<{ id: string }>;
   createCustomer(
-    p: { email: string; name: string; accountId: string },
+    p: {
+      email: string;
+      name: string;
+      accountId: string;
+      /**
+       * The owner's user id, stored as `posthog_person_distinct_id` so PostHog's revenue analytics can join the
+       * customer to the person the web app identifies by that id.
+       */
+      personId?: string;
+    },
     idempotencyKey: string,
   ): Promise<{ id: string }>;
   createCheckoutSession(

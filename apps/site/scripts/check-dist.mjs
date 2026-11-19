@@ -391,7 +391,7 @@ const expectLastmod = (p, date) => {
     fail("sitemap", `${p} lastmod is ${lastmodByPath.get(p) ?? "missing"}, expected ${date}`);
 };
 expectLastmod("/blog/coast-fire-explained/", "2026-11-16");
-expectLastmod("/legal/privacy/", "2026-11-18");
+expectLastmod("/legal/privacy/", "2026-11-19");
 expectLastmod("/changelog/", "2026-11-18");
 expectLastmod("/docs/api-and-mcp/api-reference/", "2026-11-17");
 

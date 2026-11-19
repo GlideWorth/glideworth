@@ -31,7 +31,12 @@ import { AccountsService } from "./accounts/service.js";
 import { type ControlAudit, controlAudit } from "./audit.js";
 import { fsObjectStore, s3ObjectStore } from "./backups/object-store.js";
 import { BackupService } from "./backups/service.js";
-import { billingLogBridge, billingNotifier, trackCheckoutSessions } from "./billing/glue.js";
+import {
+  billingAnalytics,
+  billingLogBridge,
+  billingNotifier,
+  trackCheckoutSessions,
+} from "./billing/glue.js";
 import { type CloudConfig, loadCloudConfig } from "./config.js";
 import { googleIssuers } from "./federation/google.js";
 import { OidcClient } from "./federation/oidc.js";
@@ -47,6 +52,7 @@ import type { CloudHttpDeps, SupportView } from "./http/kit.js";
 import { fairThreadGate } from "./jobs/fair-gate.js";
 import { createPostHogErrorReporter, reportingLogger } from "./log/error-reporter.js";
 import { createLogger, type ErrorReporter, type Logger, type LogLevel } from "./log/index.js";
+import { createPostHogProductEvents, type ProductEvents } from "./log/product-events.js";
 import { createTenantPolicy, type TenantPolicy } from "./policy.js";
 import { QuotaService } from "./quotas.js";
 import { CloudScheduler } from "./scheduler.js";
@@ -89,6 +95,8 @@ export interface CloudRuntimeOptions<R extends TenantRuntimeBase> {
     oidcFetch?: typeof fetch;
     /** The HTTP client server error reports use (tests: a capturing fake PostHog). */
     errorReportFetch?: typeof fetch;
+    /** The HTTP client server-side product events use (tests: a capturing fake PostHog). */
+    productEventFetch?: typeof fetch;
   };
 }
 
@@ -99,6 +107,8 @@ export interface CloudRuntime<R extends TenantRuntimeBase> {
   log: Logger;
   /** Server error reports (PostHog), or null when `config.errorReports` is not set. */
   errorReporter: ErrorReporter | null;
+  /** Server-side product events (billing changes, PostHog), or null when `config.errorReports` is not set. */
+  productEvents: ProductEvents | null;
   db: ControlDb;
   closeDb(): void;
   keys: Keyring;
@@ -185,6 +195,15 @@ export async function createCloudRuntime<R extends TenantRuntimeBase>(
       })
     : null;
   const log = errorReporter ? reportingLogger(baseLog, errorReporter) : baseLog;
+  // Same project and gate as the error reports: no token (a self-host copy), no product events.
+  const productEvents = config.errorReports
+    ? createPostHogProductEvents({
+        token: config.errorReports.token,
+        host: config.errorReports.host,
+        log: baseLog,
+        ...(o.overrides?.productEventFetch ? { fetch: o.overrides.productEventFetch } : {}),
+      })
+    : null;
   const pricing = loadPricingConfig(config.pricingFile);
   for (const sub of ["control", "tenants", "exports", "staging"])
     mkdirSync(resolve(config.dataDir, sub), { recursive: true, mode: 0o700 });
@@ -252,6 +271,7 @@ export async function createCloudRuntime<R extends TenantRuntimeBase>(
     portalConfigurationId ||= synced.portalConfigurationId ?? "";
   }
   const gateway = trackCheckoutSessions(rawGateway, db);
+  const track = productEvents ? billingAnalytics(db, productEvents) : undefined;
   const billing = new BillingService({
     gateway,
     store: controlBillingStore(db),
@@ -267,9 +287,10 @@ export async function createCloudRuntime<R extends TenantRuntimeBase>(
       log,
       publicUrl: config.publicUrl,
       kick: () => void outbox.drain().catch(() => {}),
+      ...(track ? { track } : {}),
     }),
     limiter: (key, l, w) => limiter.hit(key, l, w).allowed,
-    log: billingLogBridge({ log, audit }),
+    log: billingLogBridge({ log, audit, ...(track ? { track } : {}) }),
   });
   const entitlements = createEntitlements({ db, pricing });
   const quotas = new QuotaService({ db, limiter, entitlements });
@@ -408,6 +429,7 @@ export async function createCloudRuntime<R extends TenantRuntimeBase>(
     pricing,
     log,
     errorReporter,
+    productEvents,
     db,
     closeDb: control.close,
     keys,

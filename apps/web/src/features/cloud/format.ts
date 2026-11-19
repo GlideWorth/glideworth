@@ -3,15 +3,19 @@
 const DAY = 86_400_000;
 
 /**
- * Days from `now` until `iso`, rounded up, so a 7-day trial that started a minute ago shows 7 days left, as the
- * site and Checkout say; 0 when less than a day is left or it is past.
+ * Whole days from `now` until `iso`, counted the way Stripe Checkout counts a trial ("13 days free").
+ * Checkout floors to completed 24-hour periods, so 13 days and 13 hours is 13, not 14. Less than one
+ * whole day, or a time already past, is 0, which `daysText` renders as "less than a day".
+ *
+ * The billing headline and the shell banner both use this. Trial emails do not count days: trial-ending
+ * states the end date, and deletion-warning states the fixed 30- and 7-day retention intervals.
  */
 export function daysLeft(iso: string | null | undefined, now: Date = new Date()): number {
   if (!iso) return 0;
   const t = Date.parse(iso);
   if (Number.isNaN(t)) return 0;
   const ms = t - now.getTime();
-  return ms < DAY ? 0 : Math.ceil(ms / DAY);
+  return ms < DAY ? 0 : Math.floor(ms / DAY);
 }
 
 /** "12 days", "1 day", or "less than a day" (for a count from `daysLeft`). */

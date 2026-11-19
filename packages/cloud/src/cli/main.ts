@@ -283,7 +283,7 @@ async function delegated(
   } finally {
     await rt.registry.shutdown();
     rt.closeDb();
-    await rt.errorReporter?.flush();
+    await Promise.all([rt.errorReporter?.flush(), rt.productEvents?.flush()]);
   }
 }
 

@@ -372,8 +372,8 @@ describe("billing", () => {
         trialEndsAt: end,
       }),
     );
-    // 13 days and an hour: rounded up, so the trial does not look a day shorter than it is.
-    expect(screen.getByText("Free trial: 14 days left")).toBeTruthy();
+    // 13 days and an hour: Stripe Checkout floors to "13 days free", so the page does too.
+    expect(screen.getByText("Free trial: 13 days left")).toBeTruthy();
     expect(screen.getByText(/No card is needed and nothing is charged/)).toBeTruthy();
     expect(screen.getByText(/Subscribe now and you keep the rest of your trial/)).toBeTruthy();
     expect(screen.getByText("Choose a plan")).toBeTruthy();
@@ -905,7 +905,7 @@ describe("shell: banners, switcher, suspended page", () => {
       signedIn("owner", { level: "full", reason: "trial", changesAt: end }, { trialEndsAt: end }),
     );
     const banner = screen.getByRole("status");
-    expect(banner.textContent).toMatch(/Free trial: 10 days left, no card needed/);
+    expect(banner.textContent).toMatch(/Free trial: 9 days left, no card needed/);
     expect(
       (within(banner).getByRole("link", { name: "Subscribe" }) as HTMLAnchorElement).getAttribute(
         "href",

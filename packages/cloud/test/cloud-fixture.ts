@@ -28,7 +28,12 @@ import { AccountsService } from "../src/accounts/service.js";
 import { controlAudit } from "../src/audit.js";
 import { memoryObjectStore } from "../src/backups/object-store.js";
 import { BackupService } from "../src/backups/service.js";
-import { billingLogBridge, billingNotifier, trackCheckoutSessions } from "../src/billing/glue.js";
+import {
+  type BillingTrack,
+  billingLogBridge,
+  billingNotifier,
+  trackCheckoutSessions,
+} from "../src/billing/glue.js";
 import type { CloudConfig } from "../src/config.js";
 import { controlBillingStore } from "../src/control/billing-store.js";
 import { openControlDb } from "../src/control/db.js";
@@ -307,6 +312,8 @@ export async function makeCloud(
     dataDir?: string;
     /** "Sign in with Google" against an in-process fake provider (test/fake-oidc.ts). Off when absent. */
     google?: GoogleTestClient;
+    /** Billing product analytics (`billingAnalytics`). Off when absent, as on a self-host copy. */
+    track?: BillingTrack;
   } = {},
 ) {
   const dataDir = o.dataDir ?? tempDir();
@@ -335,9 +342,16 @@ export async function makeCloud(
     publicUrl: PUBLIC_URL,
     webhookSecret: WEBHOOK_SECRET,
     portalConfigurationId: sync.portalConfigurationId ?? "",
-    notify: billingNotifier({ db, outbox, audit, log: testLog, publicUrl: PUBLIC_URL }),
+    notify: billingNotifier({
+      db,
+      outbox,
+      audit,
+      log: testLog,
+      publicUrl: PUBLIC_URL,
+      ...(o.track ? { track: o.track } : {}),
+    }),
     limiter: (k, l, w) => limiter.hit(k, l, w).allowed,
-    log: billingLogBridge({ log: testLog, audit }),
+    log: billingLogBridge({ log: testLog, audit, ...(o.track ? { track: o.track } : {}) }),
     now,
   });
   const entitlements = createEntitlements({ db, pricing, now });

@@ -264,6 +264,47 @@ describe("billing wording for every state", () => {
     expect(member.action).toBe("none");
     expect(member.body[2]).toMatch(/owner can subscribe/);
   });
+  it("partial day matches Stripe Checkout's floor, on the billing page and the banner", () => {
+    // QA 19 Nov 2026 ~09:07 Asia/Dubai. Trial started 18 Nov ~22:08 Asia/Dubai and ends
+    // 2 Dec 2026 22:08 (18:08 UTC): 13 days and about 13 hours left. Checkout said "13 days free";
+    // ceiling that remainder showed "14 days left".
+    const end = "2026-12-02T18:08:00.000Z";
+    const now = new Date("2026-11-19T05:07:00.000Z");
+    const trial: BillingInfo = {
+      ...base,
+      status: "trialing_local",
+      offered,
+      access: { level: "full", reason: "trial", changesAt: end },
+      trialEndsAt: end,
+    };
+    const v = billingView(trial, now, "en-GB");
+    expect(daysLeft(end, now)).toBe(13);
+    expect(v).toMatchObject({ state: "trialing", trialDaysLeft: 13 });
+    expect(v.headline).toBe("Free trial: 13 days left");
+    expect(v.body[0]).toBe(
+      "You have full access until 2 Dec 2026. No card is needed and nothing is charged.",
+    );
+    expect(
+      bannerFor({ level: "full", reason: "trial", changesAt: end }, end, true, now)?.text,
+    ).toBe("Free trial: 13 days left, no card needed. Subscribe to keep editing after it ends.");
+    // Under one whole day the count is 0, so the sentence stays "less than a day left" (the end
+    // date on the billing page says when). The same helper feeds the banner.
+    const soon = "2026-11-19T20:00:00.000Z";
+    const late = new Date("2026-11-19T05:07:00.000Z");
+    expect(daysLeft(soon, late)).toBe(0);
+    expect(daysText(daysLeft(soon, late))).toBe("less than a day");
+    const ending: BillingInfo = {
+      ...trial,
+      access: { level: "full", reason: "trial", changesAt: soon },
+      trialEndsAt: soon,
+    };
+    expect(billingView(ending, late, "en-GB").headline).toBe("Free trial: less than a day left");
+    expect(
+      bannerFor({ level: "full", reason: "trial", changesAt: soon }, soon, true, late)?.text,
+    ).toBe(
+      "Free trial: less than a day left, no card needed. Subscribe to keep editing after it ends.",
+    );
+  });
   it("subscribed during the trial: the first charge, its date and how to cancel", () => {
     const v = billingView(
       {
@@ -466,17 +507,22 @@ describe("QR code (drawn locally)", () => {
 
 describe("formatting", () => {
   it("counts whole trial days left as Stripe does, and prices in minor units", () => {
-    // A 30-day trial a few minutes after it started: Stripe Checkout says "29 days free".
-    expect(daysLeft("2026-12-17T05:41:00Z", new Date("2026-11-17T05:44:00Z"))).toBe(30);
-    // A 7-day trial that started a minute ago (seen on production as "6 days left").
-    expect(daysLeft("2026-11-24T12:57:59Z", new Date("2026-11-17T12:58:59Z"))).toBe(7);
-    expect(daysLeft("2026-11-24T12:57:59Z", new Date("2026-11-23T00:57:59Z"))).toBe(2);
+    // Stripe Checkout floors to whole 24-hour periods ("N days free").
+    // A 30-day trial a few minutes after it started: Checkout says "29 days free".
+    expect(daysLeft("2026-12-17T05:41:00Z", new Date("2026-11-17T05:44:00Z"))).toBe(29);
+    // A 7-day trial that started a minute ago: Checkout says "6 days free".
+    expect(daysLeft("2026-11-24T12:57:59Z", new Date("2026-11-17T12:58:59Z"))).toBe(6);
+    // 1 day and 12 hours is 1, not 2.
+    expect(daysLeft("2026-11-24T12:57:59Z", new Date("2026-11-23T00:57:59Z"))).toBe(1);
+    // An exact number of days is that number. Under a day, or already past, is 0 ("less than a day").
     expect(daysLeft("2026-12-17T05:41:00Z", new Date("2026-11-17T05:41:00Z"))).toBe(30);
     expect(daysLeft("2026-11-17T01:00:00Z", new Date("2026-11-16T12:00:00Z"))).toBe(0);
     expect(daysLeft("2026-11-10T00:00:00Z", new Date("2026-11-16T12:00:00Z"))).toBe(0);
+    expect(daysLeft(undefined, new Date("2026-11-16T12:00:00Z"))).toBe(0);
+    expect(daysLeft("not-a-date", new Date("2026-11-16T12:00:00Z"))).toBe(0);
     expect(daysText(0)).toBe("less than a day");
     expect(daysText(1)).toBe("1 day");
-    expect(daysText(29)).toBe("29 days");
+    expect(daysText(13)).toBe("13 days");
     expect(fmtPrice(900, "usd", "en-US")).toBe("$9");
     expect(fmtPrice(9000, "usd", "en-US")).toBe("$90");
     expect(fmtPrice(950, "gbp", "en-GB")).toBe("£9.50");

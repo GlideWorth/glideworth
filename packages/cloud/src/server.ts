@@ -302,7 +302,7 @@ export async function start<R extends TenantRuntimeBase, P>(o: {
     await runtime.registry.shutdown();
     clearBeat(runtime.db);
     runtime.closeDb();
-    await runtime.errorReporter?.flush();
+    await Promise.all([runtime.errorReporter?.flush(), runtime.productEvents?.flush()]);
   };
   if (o.handleSignals !== false) {
     for (const sig of ["SIGINT", "SIGTERM"] as const)

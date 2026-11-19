@@ -70,6 +70,8 @@ export interface BootOptions {
   oidcFetch?: typeof fetch;
   /** Server error reports: the HTTP client the PostHog reporter uses (only with GLIDEWORTH_POSTHOG_* set). */
   errorReportFetch?: typeof fetch;
+  /** Server-side product events: the HTTP client they use (only with GLIDEWORTH_POSTHOG_* set). */
+  productEventFetch?: typeof fetch;
 }
 
 export async function bootCloud(o: BootOptions = {}) {
@@ -118,6 +120,7 @@ export async function bootCloud(o: BootOptions = {}) {
       captcha: staticCaptcha(CAPTCHA),
       ...(o.oidcFetch ? { oidcFetch: o.oidcFetch } : {}),
       ...(o.errorReportFetch ? { errorReportFetch: o.errorReportFetch } : {}),
+      ...(o.productEventFetch ? { productEventFetch: o.productEventFetch } : {}),
     },
     log,
   });

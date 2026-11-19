@@ -7,6 +7,8 @@
  *   state changes and an operator alert when two live subscriptions exist for one account (review finding 2).
  * - `trackCheckoutSessions`: wraps the Stripe gateway so every Checkout Session this cell creates is recorded;
  *   the checkout route keeps at most one session open per account (review finding 2).
+ * - `billingAnalytics`: subscription changes and renewals as PostHog product events (log/product-events.ts),
+ *   sent as the workspace owner; given to `billingNotifier` and `billingLogBridge` as `track`.
  */
 import { and, desc, eq, gt } from "drizzle-orm";
 import type { ControlAudit } from "../audit.js";
@@ -15,6 +17,11 @@ import type { MailOutbox } from "../control/outbox.js";
 import { accounts, checkoutSessions, users } from "../control/schema.js";
 import type { BillingNotice } from "../external-types.js";
 import type { Logger } from "../log/index.js";
+import {
+  type ProductEvents,
+  type ServerProductEvent,
+  subscriptionChange,
+} from "../log/product-events.js";
 
 type StripeGateway = import("@glideworth/billing").StripeGateway;
 type BillingLogger = import("@glideworth/billing").BillingLogger;
@@ -44,6 +51,28 @@ export function chargeText(charge: {
   return `${amount} ${currency} a ${charge.interval}`;
 }
 
+/** Sends a billing product event for an account (`billingAnalytics`). */
+export type BillingTrack = (accountId: string, e: ServerProductEvent) => void;
+
+/**
+ * Billing product events, sent as the account's owner: the user id the web app identifies them by, so the
+ * events land on their person. An account without an owner sends nothing; a failure never reaches billing.
+ */
+export function billingAnalytics(db: ControlDb, events: ProductEvents): BillingTrack {
+  return (accountId, e) => {
+    try {
+      const owner = db
+        .select({ userId: accounts.ownerUserId })
+        .from(accounts)
+        .where(eq(accounts.id, accountId))
+        .get();
+      if (owner?.userId) events.capture(owner.userId, e);
+    } catch {
+      // Analytics never breaks billing.
+    }
+  };
+}
+
 export function billingNotifier(d: {
   db: ControlDb;
   outbox: MailOutbox;
@@ -52,6 +81,8 @@ export function billingNotifier(d: {
   publicUrl: string;
   /** Called after a message is queued (the server starts a drain). */
   kick?: () => void;
+  /** Product analytics for renewals (`billingAnalytics`); absent on a self-host copy. */
+  track?: BillingTrack;
 }): (n: BillingNotice) => Promise<void> {
   const billingUrl = `${d.publicUrl.replace(/\/+$/, "")}/settings/billing`;
   const owner = (accountId: string) =>
@@ -76,8 +107,11 @@ export function billingNotifier(d: {
         d.log.error("billing.operator_alert", { kind: n.kind, accountId: n.accountId });
         return;
       case "payment-succeeded":
+        // Stripe sends receipts; nothing to mail. Renewals are counted in product analytics.
+        d.track?.(n.accountId, { event: "subscription_payment_succeeded" });
+        return;
       case "subscription-activated":
-        // Stripe sends receipts; activation is visible in the app. Nothing to mail.
+        // Activation is visible in the app. Nothing to mail.
         return;
     }
     const o = owner(n.accountId);
@@ -137,7 +171,12 @@ const FIELD_MAP: Record<string, string> = {
   kind: "kind",
 };
 
-export function billingLogBridge(d: { log: Logger; audit: ControlAudit }): BillingLogger {
+export function billingLogBridge(d: {
+  log: Logger;
+  audit: ControlAudit;
+  /** Product analytics for subscription changes (`billingAnalytics`); absent on a self-host copy. */
+  track?: BillingTrack;
+}): BillingLogger {
   return (level, event, fields) => {
     const safe: Record<string, string | number | boolean | null> = {};
     for (const [k, v] of Object.entries(fields)) {
@@ -162,16 +201,27 @@ export function billingLogBridge(d: { log: Logger; audit: ControlAudit }): Billi
         });
         d.log.error("billing.operator_alert", { kind: "duplicate_subscription", accountId });
       } else if (event === "billing.subscription_changed" && accountId) {
+        const from = typeof fields.from === "string" ? fields.from : null;
+        const to = typeof fields.to === "string" ? fields.to : null;
         d.audit.record({
           actorType: "stripe",
           actorId: null,
           accountId,
           event: "billing.subscription_changed",
-          detail: {
-            from: typeof fields.from === "string" ? fields.from : null,
-            to: typeof fields.to === "string" ? fields.to : null,
-          },
+          detail: { from, to },
         });
+        if (to) {
+          const cancelAtPeriodEnd = fields.cancelAtPeriodEnd === true;
+          d.track?.(accountId, {
+            event: "subscription_status_changed",
+            properties: {
+              change: subscriptionChange(from, to, cancelAtPeriodEnd),
+              from_status: from,
+              to_status: to,
+              cancel_at_period_end: cancelAtPeriodEnd,
+            },
+          });
+        }
       } else if (event === "billing.payment_failed" && accountId) {
         d.audit.record({
           actorType: "stripe",

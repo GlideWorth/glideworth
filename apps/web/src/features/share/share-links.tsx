@@ -7,7 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link2, Loader2, Plus, RefreshCw, Share2, TriangleAlert } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Badge } from "../../components/ui/badge";
-import { Button } from "../../components/ui/button";
+import { Button, buttonVariants } from "../../components/ui/button";
 import { confirmAction } from "../../components/ui/confirm-dialog";
 import { Dialog, DialogContent } from "../../components/ui/dialog";
 import { EmptyState } from "../../components/ui/empty-state";
@@ -17,8 +17,11 @@ import { SwitchField } from "../../components/ui/switch";
 import { toast } from "../../components/ui/toaster";
 import { useAccess } from "../../lib/access";
 import { ApiRequestError, api, type ShareLink } from "../../lib/api";
+import { cn } from "../../lib/cn";
+import { isDemo } from "../../lib/demo";
 import { relativeTime } from "../../lib/format";
 import { useFormat, useWorkspace } from "../../lib/workspace";
+import { DemoSignUpLink } from "../demo/demo-ui";
 import { CopyButton } from "../settings/keys-section";
 
 const PRIVACY: { value: ShareLink["privacy"]; label: string; hint: string }[] = [
@@ -85,6 +88,25 @@ export function ShareLinksPanel({ planId, planName }: { planId?: string; planNam
   });
   const planNames = new Map((ws?.doc.plans ?? []).map((p) => [p.id, p.name]));
 
+  if (isDemo())
+    return (
+      <EmptyState
+        icon={Share2}
+        title="Share links are part of your account"
+        compact
+        action={
+          <DemoSignUpLink
+            placement="share"
+            className={cn(buttonVariants({ variant: "primary", size: "sm" }))}
+          >
+            Start your free 14-day trial
+          </DemoSignUpLink>
+        }
+      >
+        Send a partner or adviser a read-only link to a plan&rsquo;s results. No card needed for the
+        trial.
+      </EmptyState>
+    );
   if (!online)
     return (
       <EmptyState icon={Share2} title="Sharing needs the server" compact>

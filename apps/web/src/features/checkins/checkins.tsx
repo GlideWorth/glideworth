@@ -23,6 +23,7 @@ import { Card, CardBody, CardHeader } from "../../components/ui/card";
 import { EmptyState } from "../../components/ui/empty-state";
 import { toast } from "../../components/ui/toaster";
 import { useAccess } from "../../lib/access";
+import { isDemo } from "../../lib/demo";
 import {
   ApiRequestError,
   api,
@@ -288,7 +289,9 @@ export function HealthHistory({
   if (!online(ws))
     return (
       <EmptyState icon={Activity} title="Plan health needs the server" compact>
-        Check-ins run on your Glideworth server; this browser is offline.
+        {isDemo()
+          ? "Scheduled check-ins run for your account; the demo has none."
+          : "Check-ins run on your Glideworth server; this browser is offline."}
       </EmptyState>
     );
   if (q.isLoading)

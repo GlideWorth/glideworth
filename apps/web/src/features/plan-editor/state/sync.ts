@@ -12,6 +12,7 @@ import { useEffect } from "react";
 import { z } from "zod";
 import { toast } from "../../../components/ui/toaster";
 import { ApiRequestError, api, type FinancePath, isMissingRoute } from "../../../lib/api";
+import { DEMO_KEYS, isDemo } from "../../../lib/demo";
 import { useWorkspace, type Workspace } from "../../../lib/workspace";
 import {
   commitSaved,
@@ -33,6 +34,8 @@ import { validate } from "./validation";
 
 const HouseholdBundle = z.object({ household: Household, finances: CurrentFinances });
 const SAMPLE_KEY = "glideworth:sample-doc:v1";
+/** The demo's edited sample is kept apart from this browser's offline copy of the sample. */
+const sampleKey = () => (isDemo() ? DEMO_KEYS.doc : SAMPLE_KEY);
 const draftsKey = (hh: string) => `glideworth:drafts:v1:${hh}`;
 const AUTOSAVE_MS = 900;
 const RETRY_MS = 5_000;
@@ -192,7 +195,7 @@ async function saveEntity(key: EntityKey) {
         ? value
         : { ...(value as Plan), version: (value as Plan).version + 1, updatedAt: stamp };
     commitSaved(key, value, stamped, "local");
-    writeJson(SAMPLE_KEY, useEditorStore.getState().base);
+    writeJson(sampleKey(), useEditorStore.getState().base);
     return;
   }
 
@@ -527,7 +530,7 @@ export function useEditorBridge() {
     const fresh = !s.ready || s.householdId !== data.doc.household.id || s.source !== data.source;
     if (fresh) {
       if (data.source === "sample") {
-        const local = readJson<unknown>(SAMPLE_KEY);
+        const local = readJson<unknown>(sampleKey());
         const parsed = local ? safeDocument(local) : null;
         loadDocument(parsed ?? data.doc, "sample");
         if (parsed)
@@ -592,12 +595,12 @@ function safeDocument(raw: unknown): GlideworthDocument | null {
 
 /** Forget this browser's offline copy of the sample (used by "Reset sample"). */
 export function clearLocalSample() {
-  writeJson(SAMPLE_KEY, null);
+  writeJson(sampleKey(), null);
 }
 
 /** After a structural change (plan created/deleted offline), persist and publish the workspace. */
 export function afterStructuralChange(qc: QueryClient) {
   const s = useEditorStore.getState();
-  if (s.source === "sample") writeJson(SAMPLE_KEY, s.base);
+  if (s.source === "sample") writeJson(sampleKey(), s.base);
   publish(qc);
 }

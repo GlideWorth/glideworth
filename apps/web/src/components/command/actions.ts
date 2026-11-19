@@ -5,6 +5,7 @@
 import type { GlideworthDocument, Plan } from "@glideworth/core";
 import type { QueryClient } from "@tanstack/react-query";
 import { loadApi } from "../../lib/api-lazy";
+import { isDemo } from "../../lib/demo";
 import { formatPercent } from "../../lib/format";
 import type { Workspace } from "../../lib/workspace";
 import { usePrefs } from "../../stores/prefs";
@@ -36,7 +37,9 @@ export async function recordSnapshot(qc: QueryClient) {
   if (ws?.source !== "api") {
     toast({
       title: "Snapshots need the server",
-      description: "Glideworth is showing offline sample data, so nothing can be recorded.",
+      description: isDemo()
+        ? "The demo's sample household has no saved history to add to."
+        : "Glideworth is showing offline sample data, so nothing can be recorded.",
       tone: "negative",
     });
     return;

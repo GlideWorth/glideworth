@@ -691,6 +691,13 @@ resources and prompts, client set-up and the safety model are in [MCP.md](MCP.md
 - **Data.** TanStack Query loads the workspace (a `GlideworthDocument`) from the API. If the API is
   unreachable, it falls back to the bundled **synthetic** sample, clearly badged "Sample data ·
   offline".
+- **Public demo (`/demo`).** A page loaded under `/demo` runs the same app as the sign-up-free demo
+  (`lib/demo.ts`): the router uses the `/demo` base path, the workspace is the bundled synthetic sample plus
+  this browser's edits (`glideworth:demo:*` keys, cleared by "Reset demo"), the session is "no sign-in", and
+  every engine run happens in the browser's workers. A network guard wraps `fetch` and `XMLHttpRequest` so a
+  demo page can request only build assets and the analytics relay from its own origin: no request reaches
+  the API, so a signed-in visitor's workspace can never load into it. Account-only pages (import, onboarding,
+  share links, keys, billing and other server-side settings) are hidden or replaced by a sign-up prompt.
 - **Simulation.** Simulations run in a module Web Worker (`src/workers/simulation.worker.ts`)
   through a promise RPC (`sim-client.ts`) with an inline fallback. Errors cross the boundary typed
   (NotImplemented carries feature and workstream).

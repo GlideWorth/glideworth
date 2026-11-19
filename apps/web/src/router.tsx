@@ -47,6 +47,8 @@ import {
   WelcomePage,
 } from "./routes/lazy-pages";
 import { cloudOnly, selfHostOnly } from "./routes/mode-gate";
+import { notInDemo } from "./features/demo/demo-ui";
+import { DEMO_BASE, isDemo } from "./lib/demo";
 
 /**
  * Code-based route tree. Each feature workstream owns its page module under src/features/<area>;
@@ -126,20 +128,26 @@ const routeSettingsSection = createRoute({
   path: "/settings/$section",
   component: SettingsPage,
 });
+// The public demo (lib/demo.ts) has no account: these pages create or share real data, so it offers sign-up.
+const SETUP_IN_DEMO = "Setting up your own household is part of your account";
 const routeWelcome = createRoute({
   getParentRoute: () => root,
   path: "/welcome",
-  component: WelcomePage,
+  component: notInDemo(WelcomePage, SETUP_IN_DEMO),
 });
 const routeSetup = createRoute({
   getParentRoute: () => root,
   path: "/welcome/setup",
-  component: SetupPage,
+  component: notInDemo(SetupPage, SETUP_IN_DEMO),
 });
 const routeImport = createRoute({
   getParentRoute: () => root,
   path: "/import",
-  component: ImportPage,
+  component: notInDemo(
+    ImportPage,
+    "Import and export are part of your account",
+    "Bring in a ProjectionLab export, a spreadsheet or a Glideworth backup, and export your plans, once you have an account. The demo runs on a sample household and saves nothing to a server.",
+  ),
   validateSearch: (s: Record<string, unknown>): { tab?: string } =>
     typeof s.tab === "string" ? { tab: s.tab } : {},
 });
@@ -149,12 +157,12 @@ const routeImport = createRoute({
 const routeShared = createRoute({
   getParentRoute: () => root,
   path: "/share/$token",
-  component: SharedPlanPage,
+  component: notInDemo(SharedPlanPage, "Shared plans open outside the demo"),
 });
 const routeAccept = createRoute({
   getParentRoute: () => root,
   path: "/accept",
-  component: selfHostOnly(AcceptPage),
+  component: notInDemo(selfHostOnly(AcceptPage), "Invitations open outside the demo"),
   validateSearch: (s: Record<string, unknown>): { token?: string } =>
     typeof s.token === "string" ? { token: s.token } : {},
 });
@@ -298,11 +306,16 @@ const routeTree = root.addChildren([
   ...authAliases,
 ]);
 
-/** The app's router. `history` is only given by tests (a memory history); the app uses the browser's. */
+/**
+ * The app's router. `history` is only given by tests (a memory history); the app uses the browser's.
+ * The public demo runs the same pages under `/demo` (lib/demo.ts): links and paths inside the app stay
+ * `/results`, `/plans/...`, and the URL bar shows `/demo/results`.
+ */
 export const createAppRouter = (history?: RouterHistory) =>
   createRouter({
     routeTree,
     ...(history ? { history } : {}),
+    ...(isDemo() ? { basepath: DEMO_BASE } : {}),
     defaultPreload: "intent",
     // (i) route-level error boundary, 404 and loading skeleton, rendered inside the app shell.
     defaultErrorComponent: RouteError,

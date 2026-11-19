@@ -25,6 +25,7 @@ import { Select } from "../../components/ui/select";
 import { Stat } from "../../components/ui/stat";
 import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/table";
 import { api } from "../../lib/api";
+import { isDemo } from "../../lib/demo";
 import { formatDay, formatMoney, formatSigned } from "../../lib/format";
 import { conv as toToday } from "../../lib/money";
 import type { Workspace } from "../../lib/workspace";
@@ -448,7 +449,9 @@ export function ProgressView() {
       actions={
         <>
           {!actions.live ? (
-            <Badge tone="ochre">Offline sample · changes are not saved</Badge>
+            <Badge tone="ochre">
+              {isDemo() ? "Demo · changes are not saved" : "Offline sample · changes are not saved"}
+            </Badge>
           ) : null}
           <Button
             size="sm"

@@ -8,6 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "../components/ui/toaster";
 import { loadApi } from "./api-lazy";
 import { isExplainedProblem } from "./api-problems";
+import { DEMO_KEYS, isDemo } from "./demo";
 import { useWorkspace, type Workspace } from "./workspace";
 
 /** The settings schema (Zod), loaded on first use so it is not part of the app shell. */
@@ -20,10 +21,12 @@ const schema = () => import("@glideworth/core").then((m) => m.UserSettings);
 const NOT_LOADED = {} as UserSettings;
 
 const LOCAL_KEY = "glideworth:settings:v1";
+/** The demo keeps its settings apart from this browser's own offline copy. */
+const localKey = () => (isDemo() ? DEMO_KEYS.settings : LOCAL_KEY);
 
 async function readLocal(): Promise<UserSettings | null> {
   try {
-    const raw = localStorage.getItem(LOCAL_KEY);
+    const raw = localStorage.getItem(localKey());
     return raw ? (await schema()).parse(JSON.parse(raw)) : null;
   } catch {
     return null;
@@ -31,7 +34,7 @@ async function readLocal(): Promise<UserSettings | null> {
 }
 function writeLocal(s: UserSettings) {
   try {
-    localStorage.setItem(LOCAL_KEY, JSON.stringify(s));
+    localStorage.setItem(localKey(), JSON.stringify(s));
   } catch {
     /* best effort */
   }

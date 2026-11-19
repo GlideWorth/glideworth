@@ -9,6 +9,7 @@ import { NotFound } from "../../components/layout/route-states";
 import { Select } from "../../components/ui/select";
 import { useCloudSession, useMode } from "../../lib/auth";
 import { cn } from "../../lib/cn";
+import { isDemo } from "../../lib/demo";
 import { serverReachable, useWorkspace } from "../../lib/workspace";
 import { ShareLinksPanel } from "../share/share-links";
 import { AboutSection } from "./about-section";
@@ -82,17 +83,19 @@ export function SettingsPage() {
   const groups = [...new Set(sections.map((s) => s.group))];
   // `persisted !== "api"` used to mean "offline", including while the workspace was still loading
   // and while a new workspace had no household yet. Only a failed request is an outage.
-  const description = !ws
-    ? isPending
-      ? "Loading your settings…"
-      : "The server is offline: settings are kept in this browser until it is back."
-    : noWorkspace || (mode === "cloud" && ws.status === 403)
-      ? "You are not in a workspace, so settings are kept in this browser only."
-      : ws.firstRun
-        ? "Nothing is set up yet, so settings are kept in this browser for now."
-        : serverReachable(ws)
-          ? "Changes save as you make them."
-          : "The server is offline: settings are kept in this browser until it is back.";
+  const description = isDemo()
+    ? "This is the demo: settings are kept in this browser only."
+    : !ws
+      ? isPending
+        ? "Loading your settings…"
+        : "The server is offline: settings are kept in this browser until it is back."
+      : noWorkspace || (mode === "cloud" && ws.status === 403)
+        ? "You are not in a workspace, so settings are kept in this browser only."
+        : ws.firstRun
+          ? "Nothing is set up yet, so settings are kept in this browser for now."
+          : serverReachable(ws)
+            ? "Changes save as you make them."
+            : "The server is offline: settings are kept in this browser until it is back.";
   return (
     <Page title="Settings" description={description}>
       <div className="grid gap-6 md:grid-cols-[200px_minmax(0,1fr)]">

@@ -19,6 +19,7 @@ import {
   Webhook,
 } from "lucide-react";
 import type { AppMode } from "../../lib/auth";
+import { isDemo } from "../../lib/demo";
 
 export interface SettingsSection {
   id: string;
@@ -200,9 +201,17 @@ export const CLOUD_SECTION_IDS: readonly string[] = CLOUD_SECTIONS.map((s) => s.
  * account, security, members and billing screens.
  */
 export const sectionsForMode = (mode: AppMode): SettingsSection[] =>
-  mode === "cloud"
-    ? [...CLOUD_SECTIONS, ...SETTINGS_SECTIONS.filter((s) => s.id !== "people")]
-    : SETTINGS_SECTIONS;
+  isDemo()
+    ? SETTINGS_SECTIONS.filter((s) => DEMO_SECTION_IDS.includes(s.id))
+    : mode === "cloud"
+      ? [...CLOUD_SECTIONS, ...SETTINGS_SECTIONS.filter((s) => s.id !== "people")]
+      : SETTINGS_SECTIONS;
+
+/**
+ * The public demo has no account, so it lists only the settings that live in this browser: formats,
+ * appearance and planning defaults. Keys, webhooks, people, sharing, check-ins and data need an account.
+ */
+const DEMO_SECTION_IDS: readonly string[] = ["profile", "appearance", "planning"];
 
 export const DEVELOPER_DOCS_ICON = Code2;
 

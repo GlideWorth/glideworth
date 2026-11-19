@@ -20,6 +20,7 @@ import { toast } from "../../components/ui/toaster";
 import { Tooltip } from "../../components/ui/tooltip";
 import { api } from "../../lib/api";
 import { cn } from "../../lib/cn";
+import { isDemo } from "../../lib/demo";
 import { formatMonth } from "../../lib/format";
 import { useMediaQuery } from "../../lib/use-media";
 import { useFormat } from "../../lib/workspace";
@@ -539,7 +540,9 @@ function HistoryCard({ plan }: { plan: PlanT }) {
       />
       {source !== "api" ? (
         <p className="p-4 text-[12.5px] text-ink-3">
-          Version history needs the API. Offline, undo (⌘/Ctrl+Z) still works for this session.
+          {isDemo()
+            ? "Version history is kept with your account. In the demo, undo (⌘/Ctrl+Z) works for this session."
+            : "Version history needs the API. Offline, undo (⌘/Ctrl+Z) still works for this session."}
         </p>
       ) : q.isLoading ? (
         <div className="m-4 h-20 animate-pulse rounded-lg bg-surface-2" />

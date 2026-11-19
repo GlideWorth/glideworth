@@ -26,9 +26,11 @@ import { lazy, type ReactNode, type RefObject, Suspense, useEffect, useRef } fro
 import { NotificationCentre } from "../../features/checkins/notification-centre";
 import { openPalette, usePalette } from "../../features/plan-editor/components/palette-store";
 import { dirtyKeys, useEditorStore } from "../../features/plan-editor/state/doc-store";
+import { DemoBanner } from "../../features/demo/demo-ui";
 import { useAccess } from "../../lib/access";
 import { CLOUD_PUBLIC_PATHS, modeOf, useCloudSession, useMode, useSession } from "../../lib/auth";
 import { cn } from "../../lib/cn";
+import { isDemo } from "../../lib/demo";
 import { setCompactNumbers } from "../../lib/format";
 import { useRestoreFocus } from "../../lib/restore-focus";
 import { useSettings } from "../../lib/settings";
@@ -304,7 +306,8 @@ function SyncStatus() {
   const unsavedError = useEditorStore((s) =>
     dirtyKeys(s).some((k) => s.save[k]?.status === "error"),
   );
-  if (!ws) return null;
+  // The demo banner says what this is; the sample is not "offline".
+  if (!ws || isDemo()) return null;
   // The server answered; there is just nothing in the workspace yet. Not offline.
   if (ws.source === "sample" && ws.firstRun) return null;
   // Signed in but in no workspace (the server refuses with 403): reachable, but nothing is saved.
@@ -722,7 +725,7 @@ function Frame() {
   useFirstRunRedirect();
   useSettingsSync();
   useReadOnlySync();
-  const focusMode = path.startsWith("/welcome");
+  const focusMode = path.startsWith("/welcome") && !isDemo();
   const mode = useMode();
   const access = useCloudSession()?.workspace?.access;
   const suspended = access?.level === "suspended";
@@ -750,6 +753,7 @@ function Frame() {
       <Sidebar />
       <NavDrawer />
       <div className="flex min-w-0 flex-1 flex-col">
+        {isDemo() ? <DemoBanner /> : null}
         <TopBar />
         <main
           id="main"

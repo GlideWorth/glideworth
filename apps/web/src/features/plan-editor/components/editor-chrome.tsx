@@ -20,6 +20,7 @@ import { Kbd, modKey } from "../../../components/ui/kbd";
 import { toast } from "../../../components/ui/toaster";
 import { Tooltip } from "../../../components/ui/tooltip";
 import { cn } from "../../../lib/cn";
+import { isDemo } from "../../../lib/demo";
 import {
   type EntityKey,
   type EntitySave,
@@ -161,7 +162,11 @@ export function SaveIndicator({ keys }: { keys: EntityKey[] }) {
   } else if (local || (source === "sample" && states.some((s) => s?.status === "local"))) {
     icon = <CloudOff className="size-3.5" />;
     text = source === "sample" ? "Saved in this browser" : "Saved in this browser only";
-    detail = local?.message ?? "The API is offline, so edits are kept in this browser.";
+    detail =
+      local?.message ??
+      (isDemo()
+        ? "This is the demo, so edits are kept in this browser. Reset demo starts again."
+        : "The API is offline, so edits are kept in this browser.");
   } else if (dirtyCount) {
     icon = <span className="size-1.5 rounded-full bg-ochre" />;
     text = "Unsaved changes";

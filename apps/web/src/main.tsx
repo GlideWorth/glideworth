@@ -1,5 +1,7 @@
 // First: moves pre-rename browser storage keys before any store reads them.
 import "./lib/legacy-storage";
+// Then: on a /demo page, refuse the server's paths before any other module can request them.
+import "./lib/demo";
 import "@fontsource-variable/inter";
 import "@fontsource-variable/fraunces";
 import "./styles.css";

@@ -4,6 +4,7 @@
  * a missing route means "sessions are not in use here".
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { DEMO_SESSION, isDemo } from "./demo";
 
 export const AUTH_PATHS = {
   session: "/api/v1/auth/status",
@@ -307,7 +308,9 @@ export const signOut = () => post(AUTH_PATHS.logout);
 export function useSession() {
   return useQuery({
     queryKey: ["session"],
-    queryFn: () => checkSession(),
+    // The public demo has no account: never ask the server who is signed in.
+    queryFn: (): Promise<SessionState> =>
+      isDemo() ? Promise.resolve(DEMO_SESSION) : checkSession(),
     staleTime: 5 * 60_000,
     retry: false,
   });

@@ -12,6 +12,7 @@ import { useUi } from "../stores/ui";
 import { runSimulation } from "../workers/sim-client";
 import { ApiRequestError, loadApi } from "./api-lazy";
 import { type SessionState, sessionAfterUnauthorized } from "./auth";
+import { isDemo } from "./demo";
 import {
   type FormatOptions,
   formatMoney,
@@ -49,6 +50,12 @@ export function useWorkspace() {
   return useQuery({
     queryKey: ["workspace"],
     queryFn: async (): Promise<Workspace> => {
+      // The public demo never asks the server: the sample household, with this browser's edits.
+      if (isDemo())
+        return {
+          doc: (await import("../features/demo/demo-data")).loadDemoDocument(),
+          source: "sample",
+        };
       const sample = async () => (await import("@glideworth/core/samples")).createSampleDocument();
       try {
         const api = await loadApi();
@@ -88,11 +95,12 @@ export function useWorkspace() {
         };
       }
     },
-    staleTime: 30_000,
+    staleTime: isDemo() ? Number.POSITIVE_INFINITY : 30_000,
     retry: (count, e) => e instanceof ServerUnreachableError && count < 2,
     // Reconnect on its own: poll while the server is unreachable (real data kept on screen) or
     // while we are showing the offline sample because the server was down at start-up.
     refetchInterval: (q) => {
+      if (isDemo()) return false;
       const d = q.state.data;
       if (q.state.status === "error") return RECONNECT_MS;
       if (d?.source === "sample" && !d.firstRun && (d.status === undefined || d.status >= 500))

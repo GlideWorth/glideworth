@@ -1,7 +1,13 @@
 /**
  * Australia, resident individuals. Income year 1 July `startYear` to 30 June `startYear + 1`;
  * engine period year Y uses income year Y/Y+1. Nominal AUD. Calculation: ../jurisdictions/au.ts.
+ * Sources (re-checked 2026-11-19; listed in `SOURCES`): the rate tables and Medicare thresholds
+ * from the amending Acts on the Federal Register of Legislation. The ATO site refused automated
+ * access on 2026-11-16 and 2026-11-19, so the super caps are not confirmed from the ATO.
  */
+
+/** Rates and thresholds below are legislated nominal amounts, not indexed, through this year. */
+export const AU_LEGISLATED_THROUGH = 2027;
 
 export interface AuYear {
   startYear: number;
@@ -42,24 +48,28 @@ export interface AuYear {
 
 const SOURCES = [
   {
-    url: "https://www.ato.gov.au/tax-rates-and-codes/tax-rates-australian-residents",
-    note: "Resident rates; 16% -> 15% from 1 July 2026, 14% from 1 July 2027 (Treasury Laws Amendment (Cost of Living Tax Cuts) Act 2024 / 2025 amendments)",
+    url: "https://www.legislation.gov.au/C2025A00028/asmade/text",
+    note: "Treasury Laws Amendment (More Cost of Living Relief) Act 2025 (No. 28, 2025), Schedule 1: Income Tax Rates Act 1986 Schedule 7 resident rates for 2026-27 (15% / 30% / 37% / 45% over 45,000 / 135,000 / 190,000) and for 2027-28 and later (14% first rate). 2025-26: 16% (Treasury Laws Amendment (Cost of Living Tax Cuts) Act 2024) (read 2026-11-19)",
   },
   {
-    url: "https://www.ato.gov.au/individuals-and-families/medicare-and-private-health-insurance/medicare-levy/medicare-levy-reduction-for-low-income-earners",
-    note: "Medicare levy low-income thresholds: 2024-25 values (singles 27,222; families 45,907 + 4,216 per child; single seniors 43,020), used for every year. ATO pages refuse automated access; checked against the Budget paper below on 2026-11-16",
+    url: "https://www.legislation.gov.au/C2026A00058/asmade/text",
+    note: "Treasury Laws Amendment (Delivering an Efficient and Trusted Tax System) Act 2026 (No. 58, assented 30 June 2026), Schedule 5: Medicare levy low-income thresholds for 2025-26 and later years: singles 27,222 -> 28,011 (phase-in limit 35,013); families 45,907 -> 47,238 plus 4,216 -> 4,338 per child; single seniors and pensioners 43,020 -> 44,268 (phase-in limit 55,335) (read 2026-11-19)",
   },
   {
     url: "https://budget.gov.au/content/bp2/download/bp2_2026-27.pdf",
-    note: "2026-27 Budget Paper No. 2: the 2024-25 thresholds (27,222 / 45,907 / 4,216 / 43,020) are to rise 2.9% from 1 July 2025 (singles 28,011); not applied. No 2026-27 thresholds published (read 2026-11-16)",
+    note: "2026-27 Budget Paper No. 2, 'Increasing the Medicare levy low-income thresholds': the same figures, from 1 July 2025 (read 2026-11-19)",
   },
   {
     url: "https://www.ato.gov.au/tax-rates-and-codes/key-superannuation-rates-and-thresholds/contributions-caps",
-    note: "Concessional cap $32,500 and non-concessional cap $130,000 from 1 July 2026",
+    note: "Concessional cap 32,500 and non-concessional cap 130,000 for 2026-27: NOT CONFIRMED (the ATO site refused automated access on 2026-11-16 and 2026-11-19); 30,000 / 120,000 for 2025-26",
+  },
+  {
+    url: "https://www.legislation.gov.au/C2026A00008/asmade/text",
+    note: "Treasury Laws Amendment (Building a Stronger and Fairer Super System) Act 2026 (No. 8, assented 13 March 2026): Division 296 tax on earnings for total super balances over 3,000,000 (and over 10,000,000) from 2026-27; not modelled (read 2026-11-19)",
   },
   {
     url: "https://www.ato.gov.au/individuals-and-families/income-deductions-offsets-and-records/tax-offsets/low-income-tax-offset",
-    note: "LITO",
+    note: "LITO 700, reduced by 5% of income over 37,500 and 1.5% over 45,000 (Income Tax Assessment Act 1997 s 61-115); ATO page refused automated access",
   },
 ];
 
@@ -75,12 +85,12 @@ const Y2026: AuYear = {
   ],
   medicare: {
     rate: 0.02,
-    singleThreshold: 27_222,
-    familyThreshold: 45_907,
-    perChild: 4_216,
+    singleThreshold: 28_011,
+    familyThreshold: 47_238,
+    perChild: 4_338,
     shadeInRate: 0.1,
-    seniorSingleThreshold: 43_020,
-    dataYear: "2024-25",
+    seniorSingleThreshold: 44_268,
+    dataYear: "2025-26 and later (Act No. 58 of 2026)",
   },
   lito: { max: 700, taper1Start: 37_500, taper1Rate: 0.05, taper2Start: 45_000, taper2Rate: 0.015 },
   cgtDiscount: 0.5,

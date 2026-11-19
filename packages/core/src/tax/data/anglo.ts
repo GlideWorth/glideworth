@@ -70,28 +70,28 @@ export const US_LOCAL_SIMPLIFICATIONS: readonly string[] = [
 ];
 
 export const CA_FEDERAL_SIMPLIFICATIONS: readonly string[] = [
-  "Tax year 2026; later years index with the plan threshold policy.",
-  "Credits: basic personal (with the high-income reduction), age, pension income, Canada employment, CPP/QPP and EI and dividend tax credits only; no medical, disability, tuition, donation or caregiver credits (enter them as credits if you need them).",
+  "Tax year 2026 (CRA, checked 2026-11-19). Later years index the 2026 amounts with the plan threshold policy; the only later change applied is the legislated base CPP rate of 4.75% from 2027 (Bill C-30). CRA’s published 2027 figures (YMPE 76,700, YAMPE 87,400, RRSP limit 35,390) are not used, and the TFSA limit is indexed smoothly rather than in $500 steps.",
+  "Credits: basic personal (with the high-income reduction), age, pension income, Canada employment, CPP/QPP and EI and dividend tax credits only; no medical, disability, tuition, donation or caregiver credits (enter them as credits if you need them). Any tax-deferred withdrawal at 65 or older counts for the pension income amount, although in law an RRSP lump sum does not.",
   "AMT, the GIS and its clawback, the Canada Workers Benefit and the GST/HST credit are not modelled. OAS is reduced by the recovery tax in the same year (not with the one-year lag of real instalments).",
-  "Pension income splitting is optimised in 5% steps over federal and provincial tax together.",
-  "Capital gains use the 50% inclusion rate; the lifetime capital gains exemption and the principal residence designation details are not modelled (a main home is exempt).",
+  "Pension income splitting is optimised in 5% steps over federal and provincial tax together. CPP contributions stop at 70; QPP contributions continue at the 2026 rate (QPP’s 2027 rate is not confirmed).",
+  "Capital gains use the enacted 50% inclusion rate (the proposed two-thirds rate was cancelled in March 2025); the lifetime capital gains exemption and the principal residence designation details are not modelled (a main home is exempt).",
   "TFSA and FHSA withdrawals are tax-free; FHSA qualifying-home-purchase rules and TFSA room recapture are not tracked.",
   ENGINE_GAINS,
 ];
 
 export const CA_PROVINCE_SIMPLIFICATIONS: readonly string[] = [
-  "Tax year 2026 provincial and territorial brackets and basic amounts; later years index with the plan threshold policy.",
-  "Ontario surtax and health premium are modelled; other provinces’ low-income reductions, surtaxes and refundable credits are not.",
+  "Tax year 2026 provincial and territorial brackets and amounts. Later years index them with the plan threshold policy, except Manitoba (indexation paused from 2025 with no end date) and British Columbia (paused 2027-2030), which keep their 2026 values during the pause.",
+  "Ontario’s surtax (worked before the dividend tax credit) and Health Premium, Manitoba’s basic personal amount phase-out, Yukon’s federal-style basic amount and Saskatchewan’s senior supplementary amount are modelled; other provinces’ low-income reductions, surtaxes and refundable credits are not.",
   "Quebec: the federal abatement and QPP are applied, but the separate Quebec return’s age and pension amounts, QPIP premiums and the Quebec work premium are not modelled.",
-  "Some provinces carry noted approximations (for example the BPA phase-out); check them before relying on the figure.",
+  "Provincial dividend tax credit rates are CRA’s 2025 rates (the 2026 worksheets are not published yet). Provinces with an unconfirmed figure (Manitoba, Newfoundland and Labrador, Quebec) list it below.",
 ];
 
 export const AU_SIMPLIFICATIONS: readonly string[] = [
-  "Income years 2025-26 and 2026-27 with the legislated 2027-28 rates; later years carry the last rates forward and index thresholds with the plan threshold policy.",
-  "Residents only; non-resident and working-holiday rates are not modelled.",
-  "Medicare levy uses the single low-income threshold for each person (the seniors and pensioners threshold from 67); family thresholds and the Medicare levy surcharge (private cover) are not modelled. The thresholds are the 2024-25 values for every year: the 2.9% increase from 1 July 2025 announced in the 2026-27 Budget is not applied and 2026-27 thresholds have not been published.",
-  "Offsets: the low income tax offset and franking credits only; SAPTO, the private health insurance rebate and HELP/HECS repayments are not modelled.",
-  "Super: 15% contributions tax on concessional contributions, Division 293 and excess concessional contributions are modelled; carry-forward of unused concessional cap, the transfer balance cap and excess non-concessional tax are not.",
+  "Income years 2025-26 and 2026-27 and the legislated 2027-28 rates (Income Tax Rates Act 1986 as amended in 2024 and 2025). Rates and thresholds are not indexed in law, so they keep their legislated values through 2027-28; later years carry the 2027-28 rates forward and index thresholds with the plan threshold policy.",
+  "Residents only; non-resident and working-holiday rates are not modelled. The Age Pension is not modelled: enter it as income.",
+  "Medicare levy uses the single low-income threshold (28,011 from 2025-26, Act No. 58 of 2026) for each person, or the seniors and pensioners threshold (44,268) from 67 without SAPTO’s other tests; family thresholds and the Medicare levy surcharge (private cover) are not modelled.",
+  "Offsets: the low income tax offset and franking credits only (credits assume the 30% company rate, not the 25% base rate entity rate); SAPTO, the private health insurance rebate and HELP/HECS repayments are not modelled.",
+  "Super: 15% contributions tax on concessional contributions, Division 293 and excess concessional contributions are modelled; carry-forward of unused concessional cap, the transfer balance cap, excess non-concessional tax and Division 296 tax on earnings for total super balances over $3 million (law from 2026-27) are not. The 2026-27 caps (32,500 and 130,000) could not be confirmed on the ATO site.",
   "Super benefits are tax-free from 60; below 60 the taxable component is taxed with the 15% offset (untaxed elements are not modelled). Pension-phase earnings are untaxed.",
   "Capital gains get the 50% discount (all gains are treated as held over 12 months); a main home is exempt.",
   ENGINE_GAINS,

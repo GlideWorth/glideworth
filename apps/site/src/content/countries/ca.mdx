@@ -8,8 +8,9 @@ taxYears:
   - "2026"
 modelled:
   - Federal income tax with the basic personal, age, pension income and Canada employment amounts
-  - Provincial and territorial income tax for all 13 provinces and territories, with Ontario surtax and health premium and the Quebec abatement
-  - CPP and QPP contributions (base, enhanced and CPP2) and EI premiums
+  - Provincial and territorial income tax for all 13 provinces and territories, with Ontario surtax and health premium, Manitoba's basic personal amount phase-out, Saskatchewan's senior supplementary amount and the Quebec abatement
+  - The legislated pauses in provincial indexation (Manitoba from 2025, British Columbia from 2027 to 2030)
+  - CPP and QPP contributions (base, enhanced and CPP2), including the lower base CPP rate from 2027 and the end of CPP contributions at 70, and EI premiums
   - Old Age Security recovery tax
   - Dividend gross-up and tax credits (eligible and non-eligible); capital gains at a 50% inclusion rate
   - Pension income splitting, optimised across federal and provincial tax
@@ -33,38 +34,59 @@ simplifications for the federal part and {facts.simplificationCount('ca-province
 complete: the Canada Pension Plan and Old Age Security are modelled, but the project's status notes list CPP, OAS and the
 Guaranteed Income Supplement as partial, and GIS is an amount you enter.
 
-Plans use calendar years. Years after 2026 index thresholds with the plan's threshold policy.
+Plans use calendar years. Years after 2026 index thresholds with the plan's threshold policy, except where a province
+has paused indexation in law (below). The figures were checked against the Canada Revenue Agency and provincial
+sources on 19 November 2026.
 
 ## Federal tax, 2026
 
 Federal brackets: 14% to $58,523; 20.5% to $117,045; 26% to $181,440; 29% to $258,482; 33% above. Credits are
-worked at 14%. The basic personal amount is $16,452, reducing to $14,829 for the highest incomes. The age amount
-is $9,208 (reduced at 15% of income above $46,432), the pension income amount $2,000 and the Canada employment
-amount $1,501. Eligible dividends are grossed up by 38% and non-eligible by 15%, with matching credits. Capital
-gains are 50% included. Pension income splitting is chosen in 5% steps to minimise federal and provincial tax
-together.
+worked at 14%. The basic personal amount is $16,452, reducing to $14,829 between net incomes of $181,440 and
+$258,482. The age amount is $9,208, reduced by 15% of net income above $46,432 (net income after any OAS repayment),
+the pension income amount $2,000 and the Canada employment amount $1,501. Eligible dividends are grossed up by 38%
+and non-eligible by 15%, with federal credits of 15.0198% and 9.0301% of the grossed-up amount. Capital gains are
+50% included: the proposed increase to two-thirds was cancelled in March 2025. Pension income splitting is chosen
+in 5% steps to minimise federal and provincial tax together.
 
 ## CPP, EI and OAS
 
 The 2026 Canada Pension Plan figures are a maximum pensionable earnings figure of $74,600, an additional maximum of
 $85,000 and a basic exemption of $3,500; employees pay 4.95% base plus 1% enhanced, and 4% on the second tier
-(CPP2). Quebec uses QPP at 6.3% (5.3% base plus 1% enhanced). EI premiums are 1.63% up to $68,900 of earnings (1.3% in Quebec). Old Age Security
-is reduced by a 15% recovery tax on income above $95,323; it is applied in the same year, not with the one-year lag
-of real instalments. The default CPP start age is 65.
+(CPP2). From 2027 the base rate falls to 4.75% (Bill C-30), so employees pay 5.75% in total. CPP contributions stop
+at 70. Quebec uses QPP at 6.3% (5.3% base plus 1% enhanced); QPP's 2027 rate has not been confirmed, so the 2026
+rate is kept. EI premiums are 1.63% up to $68,900 of earnings (1.3% in Quebec). Old Age Security is reduced by a
+15% recovery tax on net income above $95,323; it is applied in the same year, not with the one-year lag of real
+instalments. The default CPP start age is 65.
 
 ## Accounts, limits and access
 
 - **RRSP**: deduction limit of 18% of earned income up to $33,810; no contributions after age 71. RRIF minimum
-  withdrawals follow the regulation factors (1 / (90 − age) before 71).
+  withdrawals follow CRA's prescribed factors (1 / (90 − age) up to 70; 5.28% at 71, rising to 20% from 95).
 - **TFSA**: $7,000 a year from age 18; withdrawals are tax-free.
 - **FHSA**: $8,000 a year; withdrawals are treated as tax-free.
 - RESP, LIRA and non-registered accounts are available as account types.
 
+CRA has published 2027 figures (an RRSP limit of $35,390 and maximum pensionable earnings of $76,700). Glideworth does
+not use them yet: it indexes the 2026 figures.
+
 ## Provinces and territories
 
 All ten provinces and three territories have their own brackets, basic amounts, age and pension amounts and
-dividend tax credits. Ontario's surtax and Health Premium are modelled. For Quebec, the federal abatement of
-16.5% and QPP are applied.
+dividend tax credits, taken from CRA's July 2026 payroll formulas (T4127) and the 2026 TD1 forms. Points to know:
+
+- **Ontario**: the surtax (20% of Ontario tax over $5,818 and 36% over $7,446) is worked before the Ontario dividend
+  tax credit, as on the ON428 form, and the Health Premium (up to $900) is added.
+- **Manitoba**: brackets of $47,000 and $100,000 and a basic personal amount of $15,780, which Manitoba stopped
+  indexing from 2025, so they stay at these values in later years. The basic personal amount is reduced to nil
+  between net incomes of $200,000 and $400,000.
+- **British Columbia**: the first rate is 5.60% for 2026 (Budget 2026). Brackets and credits are not indexed from
+  2027 to 2030.
+- **Prince Edward Island**: a 20% rate applies above $200,000 from 2026.
+- **Newfoundland and Labrador**: the basic personal amount is $13,094 for 2026 and $15,000 from 2027.
+- **Saskatchewan**: the senior supplementary amount of $2,569 is added from 65.
+- **Yukon**: the basic personal amount follows the federal one, including its reduction for high incomes.
+- **Quebec**: the federal abatement of 16.5% and QPP are applied. Quebec's 2026 brackets ($54,345, $108,680 and
+  $132,245) and basic personal amount ($18,952) come from Quebec's Ministère des Finances.
 
 ## Worked example
 
@@ -91,26 +113,34 @@ S&P 500, 10-year Treasuries, T-bills and CPI-U from 1928 to 2025, in US dollars.
 
 ## What to treat with care
 
-- Provincial dividend tax credit rates are noted as approximate for many provinces, and Manitoba's basic personal
-  amount phase-out ($200,000 to $400,000) is not modelled.
-- Quebec's own brackets and basic amount could not be confirmed from Revenu Québec, whose site refused automated
-  access when the tables were checked on 16 November 2026.
-- The tables are for 2026 only; later years index them.
+- Provincial dividend tax credit rates are CRA's 2025 rates; the 2026 worksheets are not published yet.
+- Manitoba's brackets: CRA's payroll formulas and Manitoba Finance give $47,000 and $100,000, but CRA's page of
+  2026 rates shows $47,564 and $101,200. Glideworth uses $47,000 and $100,000; the conflict is not resolved.
+- Quebec's three lower rates (14%, 19% and 24%) and Quebec's dividend tax credits could not be confirmed, because
+  Revenu Québec's site refused automated access. The top rate of 25.75% is confirmed by the Manitoba Budget 2026
+  comparison of provincial rates.
+- Newfoundland and Labrador's $15,000 basic personal amount from 2027 may be indexed for 2027; that is not
+  confirmed.
+- The tables are for 2026; later years index them, except for the legislated changes above.
 - The Quebec model leaves out several items of the separate Quebec return.
 
 ## Official sources
 
 - [CRA: tax rates and brackets](https://www.canada.ca/en/revenue-agency/services/tax/individuals/tax-rates-brackets/current-year.html)
 - [CRA: indexation adjustment for personal income tax and benefit amounts](https://www.canada.ca/en/revenue-agency/services/tax/individuals/frequently-asked-questions-individuals/adjustment-personal-income-tax-benefit-amounts.html)
-- [CRA: T4127 Payroll Deductions Formulas, January 2026](https://www.canada.ca/en/revenue-agency/services/forms-publications/payroll/t4127-payroll-deductions-formulas/t4127-jan.html)
+- [CRA: T4127 Payroll Deductions Formulas, July 2026](https://www.canada.ca/en/revenue-agency/services/forms-publications/payroll/t4127-payroll-deductions-formulas/t4127-jul/t4127-jul-payroll-deductions-formulas.html)
   and the 2026 [TD1 forms](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/td1/td1-26e.pdf) (federal and provincial)
-- [CRA: CPP contribution rates, maximums and exemptions](https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/payroll/payroll-deductions-contributions/canada-pension-plan-cpp/cpp-contribution-rates-maximums-exemptions.html)
-  and [EI premium rates and maximums](https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/payroll/payroll-deductions-contributions/employment-insurance-ei/ei-premium-rates-maximums.html)
-- [Revenu Québec: principal changes for 2026](https://www.revenuquebec.ca/en/businesses/source-deductions-and-employer-contributions/employers-kit/principal-changes-for-2026-employers-kit/)
-  (could not be opened on 16 November 2026)
-
-Leaving Canada triggers a deemed sale of taxable investments in the model; see the
-[moving-country page](/planning/moving-country/).
+- [CRA: CPP contribution rates, maximums and exemptions](https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/payroll/payroll-deductions-contributions/canada-pension-plan-cpp/cpp-contribution-rates-maximums-exemptions.html),
+  [what's new for payroll](https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/payroll/whats-new-payroll.html)
+  (the 2027 base CPP rate) and [EI premium rates and maximums](https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/payroll/payroll-deductions-contributions/employment-insurance-ei/ei-premium-rates-maximums.html)
+- [CRA: RRSP, TFSA and other limits](https://www.canada.ca/en/revenue-agency/services/tax/registered-plans-administrators/pspa/mp-rrsp-dpsp-tfsa-limits-ympe.html)
+  and [RRIF prescribed factors](https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/completing-slips-summaries/t4rsp-t4rif-information-returns/payments/chart-prescribed-factors.html)
+- [CRA: 2025 Ontario ON428 form](https://www.canada.ca/content/dam/cra-arc/formspubs/pbg/5006-c/5006-c-25e.pdf) (surtax and Health Premium)
+- [Prime Minister's Office: capital gains inclusion rate increase cancelled](https://www.pm.gc.ca/en/news/news-releases/2025/03/21/prime-minister-mark-carney-cancels-proposed-capital-gains-tax-increase)
+- [Manitoba Finance: personal income taxes](https://www.gov.mb.ca/finance/personal/ptaxes.html),
+  [BC Budget 2026 highlights](https://www.bcbudget.gov.bc.ca/2026/highlights/) and
+  [Newfoundland and Labrador Budget 2026](https://www.gov.nl.ca/budget/2026/what-you-need-to-know/a-plan-for-lower-taxes/)
+- [Quebec Ministère des Finances: 2026 personal income tax parameters](https://cdn-contenu.quebec.ca/cdn-contenu/adm/min/finances/publications-adm/parametres/AUTFR_RegimeImpot2026.pdf) (in French)
 
 <Callout type="note" title="Estimates, not advice">
   Glideworth is planning software. Its tax figures help you compare choices under your own assumptions; they

@@ -2,9 +2,12 @@
  * Canada: federal + provincial/territorial income tax per person. 50% capital-gains inclusion,
  * eligible / non-eligible dividend gross-up and dividend tax credits, basic personal amount (with
  * the federal high-income reduction), age amount, pension income amount, Canada employment amount,
- * CPP/QPP (base, enhanced, CPP2) and EI premiums, OAS recovery tax, RRSP deductions, Quebec
- * abatement, Ontario surtax and health premium, and pension-income splitting (optimised over
- * federal + provincial tax in 5% steps). Data: ../data/ca.ts.
+ * CPP/QPP (base, enhanced, CPP2; CPP stops at 70; base CPP 4.75% from 2027) and EI premiums, OAS
+ * recovery tax, RRSP deductions, Quebec abatement, Ontario surtax (before the dividend tax credit)
+ * and health premium, Manitoba's basic-amount phase-out, Yukon's federal-style basic amount,
+ * Saskatchewan's senior supplementary amount, legislated provincial indexation pauses (Manitoba,
+ * British Columbia 2027-2030), and pension-income splitting (optimised over federal + provincial
+ * tax in 5% steps). Data: ../data/ca.ts.
  *
  * Not modelled: Quebec's separate return details (age/pension amounts, QPIP), AMT, provincial
  * low-income reductions, GIS clawback.
@@ -43,9 +46,14 @@ import { defaultCharacterForIncomeType } from "./flat.js";
 const C = CA_2026;
 
 interface Ctx {
+  year: number;
   f: number;
   scale: number;
   fs: number;
+  /** Provincial index factor x period scale (differs from `fs` during a legislated pause). */
+  pfs: number;
+  /** Index anchors for provincial pauses, kept in the provincial output's facts. */
+  pFacts: Record<string, number>;
   quebec: boolean;
   prov: CaProvince | null;
   people: TaxPerson[];
@@ -58,7 +66,44 @@ function context(input: TaxYearInput, provCode?: string): Ctx {
   const prov = code ? (CA_PROVINCE_BY_CODE[code] ?? null) : null;
   if (code && !prov)
     throw new ScenarioError(`unknown Canadian province '${code}'`, { region: code });
-  return { f, scale, fs: f * scale, quebec: code === "QC", prov, people: alivePeople(input) };
+  const pIdx = prov?.frozenThrough
+    ? indexFactor(input, `ca.${prov.code}`, prov.frozenThrough)
+    : { factor: f, facts: {} };
+  return {
+    year: input.year,
+    f,
+    scale,
+    fs: f * scale,
+    pfs: pIdx.factor * scale,
+    pFacts: pIdx.facts,
+    quebec: code === "QC",
+    prov,
+    people: alivePeople(input),
+  };
+}
+
+/** Federal basic personal amount: the enhanced amount, reduced between the 29% and 33% brackets. */
+function federalBpa(netIncome: number, fs: number): number {
+  const F = C.federal;
+  const lo = F.brackets[3]![0] * fs;
+  const hi = F.brackets[4]![0] * fs;
+  if (netIncome <= lo) return F.bpaMax * fs;
+  if (netIncome >= hi) return F.bpaMin * fs;
+  return F.bpaMax * fs - ((F.bpaMax - F.bpaMin) * fs * (netIncome - lo)) / (hi - lo);
+}
+
+/** Provincial basic personal amount for a person with this net income (line 23600). */
+function provincialBpa(P: CaProvince, x: Ctx, netIncome: number): number {
+  if (P.bpaFollowsFederal) return federalBpa(netIncome, x.fs);
+  const base = P.bpaFrom && x.year >= P.bpaFrom.year ? P.bpaFrom.amount : P.bpa;
+  const bpa = base * x.pfs;
+  if (!P.bpaPhaseOut) return bpa;
+  // Manitoba: reduced to nil between the two net incomes (TD1MB 2026; not indexed).
+  const from = P.bpaPhaseOut[0] * x.scale;
+  const to = P.bpaPhaseOut[1] * x.scale;
+  if (netIncome <= from) return bpa;
+  if (netIncome >= to) return 0;
+  return bpa * (1 - (netIncome - from) / (to - from));
 }
 
 interface PersonCalc {
@@ -117,13 +162,17 @@ function personCalc(
 
   // ---- CPP/QPP and EI (employee; self-employed pay both halves of CPP, no EI)
   const cp = C.cpp;
-  const rate = x.quebec ? cp.qppRate : cp.baseRate + cp.enhancedRate;
-  const baseShare = (x.quebec ? cp.qppBaseRate : cp.baseRate) / rate;
+  const cppBaseRate = x.year >= 2027 ? cp.baseRateFrom2027 : cp.baseRate;
+  // CPP contributions stop at 70; QPP has no such age in this model.
+  const contributes = x.quebec || person.age < cp.maxAge;
+  const rate = !contributes ? 0 : x.quebec ? cp.qppRate : cppBaseRate + cp.enhancedRate;
+  const baseShare = rate > 0 ? (x.quebec ? cp.qppBaseRate : cppBaseRate) / rate : 0;
+  const cpp2Rate = contributes ? cp.cpp2Rate : 0;
   const ympe = cp.ympe * fs;
   const yampe = cp.yampe * fs;
   const exempt = cp.basicExemption * x.scale;
   const pensionable = (e: number) => rate * clamp0(Math.min(e, ympe) - exempt);
-  const cpp2 = (e: number) => cp.cpp2Rate * clamp0(Math.min(e, yampe) - ympe);
+  const cpp2 = (e: number) => cpp2Rate * clamp0(Math.min(e, yampe) - ympe);
   const wage = b.wage;
   const se = b.selfEmployment;
   const empCpp = pensionable(wage);
@@ -131,7 +180,7 @@ function personCalc(
   // Self-employed: both halves on SE earnings above what wages already covered.
   const seCpp = se > 0 ? 2 * rate * clamp0(Math.min(wage + se, ympe) - Math.max(wage, exempt)) : 0;
   const seCpp2 =
-    se > 0 ? 2 * cp.cpp2Rate * clamp0(Math.min(wage + se, yampe) - Math.max(wage, ympe)) : 0;
+    se > 0 ? 2 * cpp2Rate * clamp0(Math.min(wage + se, yampe) - Math.max(wage, ympe)) : 0;
   const cppTotal = empCpp + empCpp2 + seCpp + seCpp2;
   // Employee (and SE employee-half) base contributions earn a credit; enhanced portions, CPP2 and
   // the SE employer half are deductions.
@@ -168,27 +217,20 @@ function personCalc(
     oas,
     C.oas.clawbackRate * clamp0(netIncome - C.oas.clawbackThreshold * fs),
   );
+  // Net income at line 23600 is after the OAS repayment deduction (line 23500); with no other
+  // deductions it equals taxable income. The BPA and age amounts are tested against it.
   const taxable = clamp0(netIncome - clawback);
+  const net23600 = taxable;
   const pensionForCredit = clamp0(eligiblePension + splitIn);
 
   // ---- federal
   const F = C.federal;
   const fb = bands(F.brackets, fs);
   const basic = sliceTax(fb, 0, taxable).tax;
-  const lo = F.brackets[3]![0] * fs;
-  const hi = F.brackets[4]![0] * fs;
-  const bpa =
-    taxable <= lo
-      ? F.bpaMax * fs
-      : taxable >= hi
-        ? F.bpaMin * fs
-        : (F.bpaMax -
-            ((F.bpaMax - F.bpaMin) * (taxable / fs - F.brackets[3]![0])) /
-              (F.brackets[4]![0] - F.brackets[3]![0])) *
-          fs;
+  const bpa = federalBpa(net23600, fs);
   const age =
     person.age >= 65
-      ? clamp0(F.ageAmount * fs - F.ageReductionRate * clamp0(netIncome - F.ageThreshold * fs))
+      ? clamp0(F.ageAmount * fs - F.ageReductionRate * clamp0(net23600 - F.ageThreshold * fs))
       : 0;
   const pens = Math.min(pensionForCredit, F.pensionAmount * fs);
   const emp = Math.min(wage, F.canadaEmploymentAmount * fs);
@@ -204,20 +246,32 @@ function personCalc(
   let ontarioHealth = 0;
   const P = x.prov;
   if (withProvince && P) {
-    const pb = bands(P.brackets, fs);
+    const pfs = x.pfs;
+    const pb = bands(P.brackets, pfs);
     const pbasic = sliceTax(pb, 0, taxable).tax;
     const lowRate = P.brackets[0]![1];
     const pAge =
       person.age >= 65
-        ? clamp0(P.ageAmount * fs - 0.15 * clamp0(netIncome - P.ageThreshold * fs))
+        ? clamp0(P.ageAmount * pfs - 0.15 * clamp0(net23600 - P.ageThreshold * pfs))
         : 0;
-    const pPens = Math.min(pensionForCredit, P.pensionAmount * fs);
-    const pCredits = lowRate * (P.bpa * fs + pAge + pPens + (x.quebec ? 0 : cppCreditBase + ei));
+    const pSenior = person.age >= 65 && P.seniorSupplement ? P.seniorSupplement * pfs : 0;
+    const pPens = Math.min(pensionForCredit, P.pensionAmount * pfs);
+    const pCredits =
+      lowRate *
+      (provincialBpa(P, x, net23600) +
+        pAge +
+        pSenior +
+        pPens +
+        (x.quebec ? 0 : cppCreditBase + ei));
     const pDtc = eligGross * P.dtcEligible + nonEligGross * P.dtcNonEligible;
-    provincial = clamp0(pbasic - pCredits - pDtc);
+    const afterCredits = clamp0(pbasic - pCredits);
+    provincial = clamp0(afterCredits - pDtc);
     if (P.code === "ON") {
-      for (const [thr, r] of ONTARIO_2026.surtax)
-        ontarioSurtax += r * clamp0(provincial - thr * fs);
+      // ON428 Part C: the surtax is worked on Ontario tax after non-refundable credits and before
+      // the dividend tax credit (lines 62-71); any credit left over after basic tax reduces it.
+      let surtax = 0;
+      for (const [thr, r] of ONTARIO_2026.surtax) surtax += r * clamp0(afterCredits - thr * pfs);
+      ontarioSurtax = clamp0(afterCredits + surtax - pDtc) - provincial;
       for (const [from, at, slope, cap] of ONTARIO_2026.healthPremium)
         if (taxable > from * x.scale)
           ontarioHealth = Math.min(cap, at + slope * (taxable - from * x.scale)) * x.scale;
@@ -364,7 +418,7 @@ function computeProvince(
     sink.add("other", `Ontario Health Premium${sfx}`, r.ontarioHealth);
     taxable += r.taxable;
     if (i === 0) {
-      const pb = bands(x.prov!.brackets, x.fs);
+      const pb = bands(x.prov!.brackets, x.pfs);
       for (const band of pb) if (r.taxable > band.from) marginal = band.rate;
     }
   });
@@ -373,7 +427,7 @@ function computeProvince(
     grossIncome: 0,
     taxableIncome: taxable,
     marginalRate: marginal,
-    facts: {},
+    facts: { ...x.pFacts },
   };
 }
 

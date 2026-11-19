@@ -6,7 +6,8 @@
  * pension-phase earnings untaxed (no tax items arise), minimum pension drawdowns. Data: ../data/au.ts.
  *
  * Not modelled: Medicare levy surcharge (needs private-cover status), SAPTO, HELP repayments,
- * non-resident rates, family Medicare thresholds (each person uses the single threshold).
+ * non-resident rates, family Medicare thresholds (each person uses the single threshold),
+ * Division 296 tax on large super balances, the Age Pension.
  */
 
 import {
@@ -23,7 +24,7 @@ import {
   sliceTax,
 } from "../common.js";
 import { AU_SIMPLIFICATIONS } from "../data/anglo.js";
-import { AU_YEARS, auMinimumDrawdownRate } from "../data/au.js";
+import { AU_LEGISLATED_THROUGH, AU_YEARS, auMinimumDrawdownRate } from "../data/au.js";
 import type {
   RequiredDistributionQuery,
   TaxContributionLimitQuery,
@@ -38,7 +39,9 @@ const SUPER = new Set(["au-super-accumulation", "au-super-pension"]);
 
 function compute(input: TaxYearInput): { out: TaxYearOutput; total: number } {
   const d = pickYear(AU_YEARS, input.year);
-  const idx = indexFactor(input, "au", undefined);
+  // Australian rates and thresholds are fixed in law, not indexed: nominal through the last
+  // legislated year, then indexed with the plan threshold policy.
+  const idx = indexFactor(input, "au", AU_LEGISLATED_THROUGH);
   const scale = periodScale(input);
   const fs = idx.factor * scale;
   const people = alivePeople(input);

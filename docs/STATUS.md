@@ -92,11 +92,11 @@ that is wrong whenever the rules change. Someone must add new years each spring.
 | UK                           | 2025/26, 2026/27; 2027/28 as announced at Budget 2025 and 2026; 2029/30                                           |
 | US federal, payroll          | 2026 and 2027 (OBBBA; Rev. Proc. 2025-32 and 2026-35); a TCJA-sunset what-if is an **estimate** (2017 law x 1.33) |
 | US states, cities            | 2026                                                                                                              |
-| Canada                       | 2026                                                                                                              |
+| Canada                       | 2026; base CPP 4.75% from 2027 (Bill C-30)                                                                        |
 | Australia                    | 2025-26, 2026-27, legislated 2027-28                                                                              |
 | Germany, Netherlands, Israel | 2026                                                                                                              |
 | Ireland                      | 2026; 2027 as announced in Budget 2027 (Finance (No. 2) Bill 2026)                                                |
-| New Zealand                  | 2026-27                                                                                                           |
+| New Zealand                  | 2026-27; ACC earners' levy 2027-28                                                                                |
 | France                       | 2026 finance law (taxes 2025 income), 2026 social rates                                                           |
 | Spain                        | **2025** IRPF scales, 2026 social security                                                                        |
 | United Arab Emirates         | 2026 (no personal tax; gratuity, DEWS, savings scheme, GPSSA Law 57 of 2023)                                      |
@@ -114,10 +114,17 @@ Figures that could not be confirmed or are provisional:
   for which the 2025 amounts are used: Louisiana's final standard deduction, Maine's pension deduction phase-out,
   Montana's senior subtraction, Ohio's exemptions, Rhode Island's retirement income limits, South Carolina's
   dependent exemption and Vermont's brackets. Each is named in that state's simplifications.
-- Canada: Quebec's brackets and basic amount are **not confirmed from an official source** (Revenu Québec refused
-  automated access, 2026-11-16); federal, other provincial, CPP/QPP, EI and OAS figures were confirmed from CRA.
-- Australia: Medicare levy low-income thresholds are the 2024-25 values for every year; the 2.9% increase from 1 July
-  2025 announced in the 2026-27 Budget is not applied and 2026-27 thresholds are not published.
+- Canada (checked 2026-11-19): Quebec's three lower rates (14% / 19% / 24%) and Quebec's dividend tax credits are
+  **not confirmed from an official source** (Revenu Québec refused automated access); Quebec's thresholds and basic
+  amount are confirmed from Quebec's Ministère des Finances and the 25.75% top rate from the Manitoba Budget 2026.
+  Manitoba's 2026 brackets: the T4127 and Manitoba Finance give 47,000 / 100,000 (used), CRA's current-year rates
+  page shows 47,564 / 101,200 (**not resolved**). Newfoundland and Labrador's 15,000 basic amount from 2027 may be
+  indexed for 2027 (not confirmed). Provincial dividend tax credits are CRA's 2025 rates (2026 worksheets not
+  published). QPP's 2027 rate is not confirmed (the 2026 rate is kept). Federal, other provincial, CPP, EI, OAS,
+  RRSP/TFSA and RRIF figures were confirmed from CRA.
+- Australia (checked 2026-11-19): the 2026-27 super caps (concessional 32,500, non-concessional 130,000) are **not
+  confirmed** (the ATO site refused automated access); rates and the Medicare levy thresholds were confirmed from the
+  amending Acts on the Federal Register of Legislation.
 - Netherlands: 2026 Box 3 deemed returns for savings and debts are provisional; the counter-evidence route is not
   applied.
 - US TCJA-sunset variant: an estimate, not law.
@@ -156,18 +163,18 @@ Tax sources, checked 2026-11-16 (the status of each country's sourcing; licences
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | US federal, payroll                     | ok (IRS, SSA, CMS; 2027 figures checked 2026-11-19)                                                            |
 | US states and cities                    | ok for 49 states, DC and 5 cities (2026-11-19); Idaho and some figures of 9 states not confirmed (above)       |
-| Canada                                  | ok (CRA); Quebec brackets and basic amount not confirmed                                                       |
+| Canada                                  | ok (CRA, provinces; 2026-11-19); Quebec lower rates and Manitoba bracket conflict not confirmed (above)        |
 | Israel                                  | not confirmed (official sites unreachable)                                                                     |
 | United Arab Emirates                    | ok (copied sentence reworded)                                                                                  |
-| Australia                               | ok on facts (ATO cited; Medicare thresholds checked against the 2026-27 Budget paper)                          |
+| Australia                               | ok on facts (legislation, 2026-11-19); 2026-27 super caps not confirmed (ATO site unreachable)                 |
 | Ireland                                 | ok on facts for 2026 (Revenue); 2027 from Budget 2027 documents (2026-11-19); gaps above                       |
-| New Zealand                             | ok (IRD rates from 1 April 2025, no end date)                                                                  |
+| New Zealand                             | ok (IRD, 2026-11-19: rates from 1 April 2025, ACC levy 2026-27 and 2027-28)                                    |
 | UK, Germany, France, Spain, Netherlands | UK ok (gov.uk, legislation.gov.uk, Budget 2026; checked 2026-11-19; gaps above); others unchanged in this pass |
 
 Each country's full list of simplifications is `TAX_SIMPLIFICATIONS`
 (`packages/core/src/tax/data/simplifications.ts`) and is shown with the tax results. Highlights: US SALT cap and
 itemised phase-outs not applied, AMT adds back only the standard and senior deductions, no EITC or education credits; Canada no
-AMT, GIS is an amount you enter; Australia no SAPTO, HELP or Medicare levy surcharge; UK no pension allowance
+AMT, GIS is an amount you enter; Australia no SAPTO, HELP, Medicare levy surcharge or Division 296 tax; UK no pension allowance
 carry-forward, Class 1 and 4 NI only, one pair of CGT rates; everywhere gains are realised pro rata to basis, all
 long-term, and losses are never realised.
 

@@ -60,10 +60,15 @@ const BEFORE: Record<string, string> = {
   "US-CA-couple": "2f28a3b2f4669683",
   "US-TX-single": "2fd4d5f8bab37cf9",
   "US-TX-couple": "7193dfba63cce91f",
-  "CA-ON-single": "d8b71ac87e88ebe5",
-  "CA-ON-couple": "5624c8622fac1c14",
-  "AU-single": "28664a204e21e404",
-  "AU-couple": "f16a3bd6654dceaf",
+  // Re-recorded 2026-11-19 (CA/AU/NZ official-source check): Ontario surtax before the dividend
+  // tax credit, base CPP 4.75% from 2027, no CPP from 70, age amount on net income after the OAS
+  // repayment, and the cited sources.
+  "CA-ON-single": "f5f9ac2af8ef5eab",
+  "CA-ON-couple": "efbb9e31797fa564",
+  // Re-recorded 2026-11-19: Medicare levy thresholds of Act No. 58 of 2026, legislated amounts kept
+  // nominal through 2027-28, and the cited sources.
+  "AU-single": "40ce59307ce88edc",
+  "AU-couple": "7d3e20b93534b2ac",
   "DE-single": "557a6b72037213fd",
   "DE-couple": "d955b763e69d1e64",
   "NL-single": "030e373d6d593429",
@@ -76,8 +81,10 @@ const BEFORE: Record<string, string> = {
   "IL-couple": "762a6d5a8e851e06",
   "IE-single": "71e400d674cd0200",
   "IE-couple": "9245a0705f59a682",
-  "NZ-single": "bbc44208f7c312d3",
-  "NZ-couple": "d0ed3366381db116",
+  // Re-recorded 2026-11-19: ACC levy 1.83% to 160,244 for 2027-28, amounts kept nominal through
+  // 2027-28, and the cited sources.
+  "NZ-single": "a3aced29874e08c4",
+  "NZ-couple": "89558b057a50e9a1",
 };
 
 describe("single-country households are unchanged by the cross-border model", () => {

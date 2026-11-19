@@ -15,7 +15,7 @@ import {
   pickYear,
   sliceTax,
 } from "../common.js";
-import { NZ_SIMPLIFICATIONS, NZ_YEARS } from "../data/nz.js";
+import { NZ_PUBLISHED_THROUGH, NZ_SIMPLIFICATIONS, NZ_YEARS } from "../data/nz.js";
 import type { BracketFill, TaxYearInput } from "../types.js";
 import { type CountryResult, nationalJurisdiction } from "./intl.js";
 
@@ -23,7 +23,8 @@ const ID = "nz";
 
 function compute(input: TaxYearInput, explain: boolean): CountryResult {
   const d = pickYear(NZ_YEARS, input.year);
-  const idx = indexFactor(input, ID, undefined);
+  // NZ rates and thresholds are not indexed in law: nominal while published, then indexed.
+  const idx = indexFactor(input, ID, NZ_PUBLISHED_THROUGH);
   const fs = idx.factor * periodScale(input);
   const people = alivePeople(input);
   const sink = new LineSink(ID);

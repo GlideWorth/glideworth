@@ -1,6 +1,8 @@
 /**
- * New Zealand vectors (IRD individual rates; ACC earners' levy 2026/27). Hand-worked; working
- * inline. Bracket tax matches IRD's published rate table method.
+ * New Zealand vectors (IRD individual rates from 1 April 2025; ACC earners' levy 2026-27 and
+ * 2027-28). Hand-worked; working inline. Bracket tax matches IRD's published rate table method; the
+ * maximum ACC levies (2,741.22 for 2026-27, 2,932.47 for 2027-28) are IRD's published figures:
+ * https://www.ird.govt.nz/income-tax/income-tax-for-individuals/acc-clients-and-carers/acc-earners-levy-rates
  */
 import { describe, expect, it } from "vitest";
 import { nzJurisdiction } from "../src/tax/jurisdictions/nz.js";
@@ -70,5 +72,25 @@ describe("New Zealand 2026-27", () => {
         birthMonth: 1,
       }),
     ).toBe(65);
+  });
+});
+
+describe("New Zealand ACC earners' levy and indexation (IRD, read 2026-11-19)", () => {
+  it("2026-27 maximum levy is IRD's 2,741.22 (1.75% of 156,641)", () => {
+    expect(sumLabel(nz({ ...wage(156_641) }), /ACC/)).toBeCloseTo(2_741.22, 2);
+    expect(sumLabel(nz({ ...wage(400_000) }), /ACC/)).toBeCloseTo(2_741.22, 2);
+  });
+
+  it("2027-28: 1.83% up to 160,244, maximum IRD's 2,932.47", () => {
+    const y = (amount: number) => nz({ year: 2027, ...wage(amount) });
+    expect(sumLabel(y(50_000), /ACC/)).toBeCloseTo(915, 6);
+    expect(sumLabel(y(160_244), /ACC/)).toBeCloseTo(2_932.47, 2);
+    expect(sumLabel(y(400_000), /ACC/)).toBeCloseTo(2_932.47, 2);
+  });
+
+  it("rates are set in law, not indexed: nominal through 2027-28 whatever the inflation", () => {
+    const at = (year: number) => nz({ year, priceIndex: 1.05, ...wage(65_000) });
+    expect(sumLabel(at(2027), /^Income tax/)).toBeCloseTo(11_720.5, 6);
+    expect(sumLabel(at(2028), /^Income tax/)).toBeLessThan(11_720.5);
   });
 });

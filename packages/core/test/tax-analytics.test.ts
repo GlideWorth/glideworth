@@ -79,6 +79,20 @@ describe("US estate tax and net legacy", () => {
       0,
     );
   });
+  it("$20m estate in 2027: 40% over the published $15.48m exclusion (Rev. Proc. 2026-35 3.44)", () => {
+    // Not the 2026 amount indexed: price index 1.05 is ignored in the year the amount is published.
+    const r = estimateUsEstateTax({ year: 2027, grossEstate: 20_000_000, priceIndex: 1.05 });
+    expect(r.exclusion).toBe(15_480_000);
+    expect(r.tax).toBeCloseTo(0.4 * 4_520_000, 6);
+    // Later years index the 2027 amount from its own price index.
+    const later = estimateUsEstateTax({
+      year: 2028,
+      grossEstate: 0,
+      priceIndex: 1.05 * 1.02,
+      basePriceIndex: 1.05,
+    });
+    expect(later.exclusion).toBeCloseTo(15_480_000 * 1.02, 6);
+  });
   it("net legacy subtracts heirs’ income tax, liquidation and admin costs", () => {
     const r = estimateNetLegacy({
       taxDeferred: 400_000,

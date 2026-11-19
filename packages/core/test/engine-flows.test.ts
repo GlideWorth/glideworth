@@ -109,10 +109,11 @@ describe("flows: workplace plans", () => {
         }),
       );
     const r = run("1980-01");
-    // Limits come from the US tax data (2026: $24,500 deferral; $11,250 super catch-up at 60-63).
-    expect(account(r, 2027, "k1").contributions).toBeCloseTo(24_500, 6);
+    // Limits come from the US tax data for the plan year, 2027 (Notice 2026-66: $25,500 deferral;
+    // $11,750 super catch-up at 60-63).
+    expect(account(r, 2027, "k1").contributions).toBeCloseTo(25_500, 6);
     expect(account(r, 2027, "k2").contributions).toBe(0);
-    expect(account(run("1966-01"), 2027, "k1").contributions).toBeCloseTo(24_500 + 11_250, 6);
+    expect(account(run("1966-01"), 2027, "k1").contributions).toBeCloseTo(25_500 + 11_750, 6);
   });
 
   it("mega-backdoor Roth uses the remaining 415(c) space; backdoor Roth is non-deductible", () => {
@@ -143,10 +144,11 @@ describe("flows: workplace plans", () => {
         years: 1,
       }),
     );
-    expect(account(r, 2027, "rk").contributions).toBeCloseTo(72_000 - 24_500 - 3_000, 6);
+    // 2027 limits (Notice 2026-66): 415(c) $75,000, deferral $25,500, IRA $7,500.
+    expect(account(r, 2027, "rk").contributions).toBeCloseTo(75_000 - 25_500 - 3_000, 6);
     expect(account(r, 2027, "ira").contributions).toBeCloseTo(7_500, 6);
     // Only the traditional 401(k) deferral is deductible (the employer match is not the employee's).
-    expect(period(r, 2027).taxes.total).toBeCloseTo((300_000 - 24_500) * 0.2, 6);
+    expect(period(r, 2027).taxes.total).toBeCloseTo((300_000 - 25_500) * 0.2, 6);
     expect(r.trace.some((t) => t.code === "MEGA_BACKDOOR_ROTH")).toBe(true);
   });
 

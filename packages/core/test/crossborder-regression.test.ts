@@ -23,6 +23,13 @@
  * Benefit and State Pension rates, the Pension Tax Allowance and the cited sources. IE: the Budget
  * 2027 table for 2027 on (bands, credits, USC; PRSI 4.3875% in 2027 and 4.5% after) with
  * thresholds nominal through 2027, and USC on retirement lump sums above €500,000.
+ *
+ * Re-baselined 2026-11-19 for the US tax check: the US-CA and US-TX hashes changed (the samples use
+ * the flat plug-in and are unchanged). Every 2026 tax line is unchanged; from 2027 the federal lines
+ * follow the published 2027 tables (Rev. Proc. 2026-35, SSA 2027 wage base, CMS 2027 IRMAA, Notice
+ * 2026-66 limits) instead of 2026 indexed; US-CA adds California SDI at 1.4% from 2027 and the
+ * senior exemption credit from 65. All four also carry the new `us.federalIncomeTax` fact and the
+ * added cited sources; US-CA also carries the new state facts.
  */
 import { describe, expect, it } from "vitest";
 import { simulate } from "../src/engine/simulate.js";
@@ -49,10 +56,10 @@ const BEFORE: Record<string, string> = {
   "GB-ENG-couple": "6a75d2004a2e2491",
   "GB-SCT-single": "46070e0e27a76ea1",
   "GB-SCT-couple": "2059ce0c001a722e",
-  "US-CA-single": "5ffa0c719014e762",
-  "US-CA-couple": "6b54b4d5b51c152d",
-  "US-TX-single": "cc39e49f105c1dd9",
-  "US-TX-couple": "0f7c151ef7cd5b76",
+  "US-CA-single": "11cb3737d870a493",
+  "US-CA-couple": "2f28a3b2f4669683",
+  "US-TX-single": "2fd4d5f8bab37cf9",
+  "US-TX-couple": "7193dfba63cce91f",
   "CA-ON-single": "d8b71ac87e88ebe5",
   "CA-ON-couple": "5624c8622fac1c14",
   "AU-single": "28664a204e21e404",

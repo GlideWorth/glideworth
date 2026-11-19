@@ -26,7 +26,12 @@ import {
   ukDrawdownCandidates,
 } from "../solvers/tax-strategy.js";
 import { UK_TAX_YEARS } from "../tax/data/uk.js";
-import { estimateNetLegacy, estimateUkInheritanceTax, estimateUsEstateTax } from "../tax/estate.js";
+import {
+  estimateNetLegacy,
+  estimateUkInheritanceTax,
+  estimateUsEstateTax,
+  usEstateBaseYear,
+} from "../tax/estate.js";
 import { applyPlanPatch } from "./patch.js";
 
 // ------------------------------------------------------------------------------- net legacy
@@ -111,16 +116,17 @@ export function netLegacyAtEnd(
       ...(freeze ? { freezeEndPriceIndex: freeze.priceIndex } : {}),
     }).tax;
   } else if (country === "US") {
+    // Index the latest published exclusion from its own year's price index, when the plan has it.
+    const baseYear = usEstateBaseYear(p.year);
+    const basePi = result.periods.find((x) => x.year === baseYear)?.priceIndex;
+    const indexing = { priceIndex: p.priceIndex, ...(basePi ? { basePriceIndex: basePi } : {}) };
     estateTax = estimateUsEstateTax({
       year: p.year,
       grossEstate: Math.max(0, estate),
       toCharity: Math.max(0, estate) * settings.charitableShare,
-      priceIndex: p.priceIndex,
+      ...indexing,
       ...(opts.transferAllowances
-        ? {
-            dsue: estimateUsEstateTax({ year: p.year, grossEstate: 0, priceIndex: p.priceIndex })
-              .exclusion,
-          }
+        ? { dsue: estimateUsEstateTax({ year: p.year, grossEstate: 0, ...indexing }).exclusion }
         : {}),
     }).tax;
   }

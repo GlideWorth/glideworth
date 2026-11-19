@@ -119,7 +119,8 @@ describe("tax.strategy: US Roth conversions", () => {
       }),
     );
     const p = period(r, 2027);
-    const d = US_FEDERAL_YEARS[0]!;
+    // The plan year is 2027, so the 2027 brackets apply (Rev. Proc. 2026-35: 12% to $52,025).
+    const d = US_FEDERAL_YEARS.find((y) => y.year === 2027)!;
     const top12 = d.brackets.single.find(([, rate]) => rate === 0.22)![0];
     expect(account(r, 2027, "roth").transfersIn).toBeGreaterThan(0);
     expect(p.taxes.facts["us.ordinaryTaxableIncome"]).toBeCloseTo(top12, -1);

@@ -13,8 +13,9 @@
  *   income            keep AGI (or taxable income when there is no AGI) at or below amount
  */
 import { runTaxStack, stackTotal, withExtraIncome } from "./analytics.js";
-import { indexFactor } from "./common.js";
+import { US_ACA_YEARS, US_IRMAA_YEARS } from "./data/us-federal.js";
 import { federalPovertyLine, irmaaThresholds } from "./jurisdictions/us-federal.js";
+import { usTable } from "./jurisdictions/us-index.js";
 import type {
   ResolvedTaxCharacter,
   TaxJurisdiction,
@@ -82,7 +83,8 @@ export function targetSatisfied(
       return r <= target.rate + 1e-12;
     }
     case "irmaa-tier": {
-      const thr = irmaaThresholds(input.filingStatus, indexFactor(input, "us", undefined).factor);
+      const t = usTable(US_IRMAA_YEARS, input);
+      const thr = irmaaThresholds(input.filingStatus, t.factor, t.row);
       const limit =
         thr[Math.max(0, Math.min(thr.length - 1, target.tier - 1))] ?? Number.POSITIVE_INFINITY;
       return (f.magi ?? 0) <= limit;
@@ -91,7 +93,8 @@ export function targetSatisfied(
       const size =
         input.aca?.householdSize ??
         input.people.filter((p) => p.alive).length + input.dependents.length;
-      const fpl = federalPovertyLine(size, indexFactor(input, "us", undefined).factor);
+      const aca = usTable(US_ACA_YEARS, input);
+      const fpl = federalPovertyLine(size, aca.factor, aca.row);
       return (f["us.acaMagi"] ?? f.agi ?? 0) <= target.multiple * fpl;
     }
     case "income": {

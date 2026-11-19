@@ -11,9 +11,9 @@ import { createDefaultTaxRegistry } from "../src/tax/registry.js";
 
 const EXPECTED_COUNT: Record<string, number> = {
   uk: 18,
-  "us-federal": 10,
+  "us-federal": 15,
   "us-payroll": 4,
-  "us-state": 5,
+  "us-state": 6,
   "us-local": 3,
   "ca-federal": 7,
   "ca-province": 4,

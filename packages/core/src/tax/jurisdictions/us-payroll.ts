@@ -5,17 +5,11 @@
  * Per person; pre-tax 401(k) deferrals do NOT reduce FICA wages.
  */
 
-import {
-  alivePeople,
-  clamp0,
-  collectIncome,
-  indexFactor,
-  LineSink,
-  periodScale,
-} from "../common.js";
+import { alivePeople, clamp0, collectIncome, LineSink, periodScale } from "../common.js";
 import { US_PAYROLL_SIMPLIFICATIONS } from "../data/anglo.js";
-import { US_FIXED, US_PAYROLL_2026 } from "../data/us-federal.js";
+import { US_FIXED, US_PAYROLL_YEARS } from "../data/us-federal.js";
 import type { TaxJurisdiction, TaxYearInput, TaxYearOutput } from "../types.js";
+import { usTable } from "./us-index.js";
 
 export interface UsPayrollResult {
   socialSecurity: number;
@@ -29,8 +23,7 @@ export interface UsPayrollResult {
 }
 
 export function usPayroll(input: TaxYearInput): UsPayrollResult {
-  const P = US_PAYROLL_2026;
-  const f = indexFactor(input, "us", undefined).factor;
+  const { row: P, factor: f } = usTable(US_PAYROLL_YEARS, input);
   const scale = periodScale(input);
   const base = P.socialSecurityWageBase * f * scale;
   const people = alivePeople(input);
@@ -72,9 +65,8 @@ function compute(input: TaxYearInput): TaxYearOutput {
   sink.add("payroll", "Medicare", r.medicare, r.wages);
   sink.add("payroll", "Additional Medicare Tax", r.additionalMedicare);
   sink.add("self-employment", "Self-employment tax", r.seTax, r.seEarnings);
-  const P = US_PAYROLL_2026;
-  const base =
-    P.socialSecurityWageBase * indexFactor(input, "us", undefined).factor * periodScale(input);
+  const { row: P, factor } = usTable(US_PAYROLL_YEARS, input);
+  const base = P.socialSecurityWageBase * factor * periodScale(input);
   return {
     lines: sink.lines,
     grossIncome: r.wages + r.seEarnings / P.seNetEarningsFactor,
@@ -101,6 +93,8 @@ export const usPayrollJurisdiction: TaxJurisdiction = {
   owner: "b",
   computeYear: compute,
   explainYear: compute,
-  sources: US_PAYROLL_2026.sources.map((s) => ({ taxYear: "2026", ...s })),
+  sources: US_PAYROLL_YEARS.flatMap((y) =>
+    y.sources.map((s) => ({ taxYear: String(y.year), ...s })),
+  ),
   simplifications: US_PAYROLL_SIMPLIFICATIONS,
 };

@@ -7,7 +7,8 @@
  * (accounts sharing one allowance, e.g. all 401(k)-type deferrals, or ISA + LISA).
  */
 import type { AccountType } from "../schema/accounts.js";
-import { US_LIMITS_2026 } from "../tax/data/us-federal.js";
+import { pickYear } from "../tax/common.js";
+import { US_LIMITS_2026, US_LIMITS_YEARS } from "../tax/data/us-federal.js";
 import type { AccountState, EngineContext, PeriodState } from "./context.js";
 import { ownerAge } from "./context.js";
 import { nonResidentContributionCap } from "./crossborder.js";
@@ -40,8 +41,14 @@ export function limitGroupOf(type: AccountType): string {
   return type;
 }
 
-/** US 415(c) total annual additions limit (from the US tax data), indexed. */
-export const US_415C = US_LIMITS_2026.sepOrSoloTotal;
+/**
+ * US 415(c) total annual additions limit for `year` (from the US tax data): the published figure,
+ * indexed with the plan's price index after the latest published year.
+ */
+export function us415c(year: number, pi: number): number {
+  const L = pickYear(US_LIMITS_YEARS, year);
+  return L.sepOrSoloTotal * (year > L.year ? pi : 1);
+}
 
 function fallbackLimit(
   ctx: EngineContext,
@@ -52,21 +59,28 @@ function fallbackLimit(
 ): number | null {
   const t = a.def.type;
   const g = limitGroupOf(t);
+  // US accounts outside a US tax stack: the 2026 IRS limits, indexed from the plan start.
+  const L = US_LIMITS_2026;
   switch (g) {
     case "us-401k":
     case "us-457b": {
-      const catchUp = age >= 60 && age < 64 ? 11_250 : age >= 50 ? 7_500 : 0;
-      return (23_500 + catchUp) * pi;
+      const catchUp = age >= 60 && age < 64 ? L.catchUp60to63 : age >= 50 ? L.catchUp50 : 0;
+      return (L.electiveDeferral + catchUp) * pi;
     }
     case "us-ira":
-      return Math.min((7_000 + (age >= 50 ? 1_000 : 0)) * pi, Math.max(0, earned));
+      return Math.min((L.ira + (age >= 50 ? L.iraCatchUp : 0)) * pi, Math.max(0, earned));
     case "sep-ira":
-      return Math.min(US_415C * pi, 0.25 * Math.max(0, earned));
-    case "simple-ira":
-      return (16_500 + (age >= 50 ? 3_500 : 0)) * pi;
+      return Math.min(L.sepOrSoloTotal * pi, 0.25 * Math.max(0, earned));
+    case "simple-ira": {
+      const catchUp =
+        age >= 60 && age < 64 ? L.simpleCatchUp60to63 : age >= 50 ? L.simpleCatchUp : 0;
+      return (L.simple + catchUp) * pi;
+    }
     case "hsa":
       return (
-        ((a.behaviour.hsaCoverage === "family" ? 8_550 : 4_300) + (age >= 55 ? 1_000 : 0)) * pi
+        ((a.behaviour.hsaCoverage === "family" ? L.hsa.family : L.hsa.self) +
+          (age >= 55 ? L.hsa.catchUp55 : 0)) *
+        pi
       );
     case "coverdell-esa":
       return 2_000;

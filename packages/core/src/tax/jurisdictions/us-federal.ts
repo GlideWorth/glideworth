@@ -14,7 +14,6 @@ import {
   clamp0,
   collectIncome,
   finiteMarginal,
-  indexFactor,
   LineSink,
   periodScale,
   pickYear,
@@ -24,13 +23,16 @@ import {
 import { US_FEDERAL_SIMPLIFICATIONS } from "../data/anglo.js";
 import {
   UNIFORM_LIFETIME,
-  US_ACA_2026,
+  US_ACA_YEARS,
   US_FEDERAL_SUNSET_2026,
   US_FEDERAL_YEARS,
   US_FIXED,
   US_IRMAA_2026,
-  US_LIMITS_2026,
+  US_IRMAA_YEARS,
+  US_LIMITS_YEARS,
+  type UsAcaYear,
   type UsFederalYear,
+  type UsIrmaaYear,
   usRmdStartAge,
 } from "../data/us-federal.js";
 import type {
@@ -44,6 +46,7 @@ import type {
   TaxYearOutput,
 } from "../types.js";
 import { defaultCharacterForIncomeType } from "./flat.js";
+import { usTable } from "./us-index.js";
 import { usPayroll } from "./us-payroll.js";
 
 const ID = "us-federal";
@@ -70,38 +73,57 @@ export function taxableSocialSecurity(
   return Math.min(0.85 * benefits, 0.85 * (prov - b2) + Math.min(0.5 * benefits, 0.5 * (b2 - b1)));
 }
 
-function irmaaTable(status: TaxYearInput["filingStatus"]) {
-  if (status === "married-joint") return US_IRMAA_2026.joint;
-  if (status === "married-separate") return US_IRMAA_2026.separate;
-  return US_IRMAA_2026.single;
+function irmaaTable(status: TaxYearInput["filingStatus"], t: UsIrmaaYear) {
+  if (status === "married-joint") return t.joint;
+  if (status === "married-separate") return t.separate;
+  return t.single;
 }
 
-/** Monthly IRMAA surcharge (Part B above standard + Part D) for a MAGI. Tiers are cliffs. */
+/**
+ * Monthly IRMAA surcharge (Part B above standard + Part D) for a MAGI. Tiers are cliffs.
+ * `table` defaults to 2026; pass the year's table (US_IRMAA_YEARS) for other years.
+ */
 export function irmaaMonthly(
   magi: number,
   status: TaxYearInput["filingStatus"],
   factor = 1,
+  table: UsIrmaaYear = US_IRMAA_2026,
 ): number {
   let s = 0;
-  for (const [lo, b, d] of irmaaTable(status))
-    if (magi > lo * factor) s = (b - US_IRMAA_2026.standardPartB + d) * factor;
+  for (const [lo, b, d] of irmaaTable(status, table))
+    if (magi > lo * factor) s = (b - table.standardPartB + d) * factor;
   return s;
 }
 
 /** IRMAA tier thresholds (MAGI upper bounds before each surcharge tier), indexed. */
-export function irmaaThresholds(status: TaxYearInput["filingStatus"], factor = 1): number[] {
-  return irmaaTable(status).map(([lo]) => lo * factor);
+export function irmaaThresholds(
+  status: TaxYearInput["filingStatus"],
+  factor = 1,
+  table: UsIrmaaYear = US_IRMAA_2026,
+): number[] {
+  return irmaaTable(status, table).map(([lo]) => lo * factor);
 }
 
-export function federalPovertyLine(householdSize: number, factor = 1): number {
-  return (
-    (US_ACA_2026.fpl.first + US_ACA_2026.fpl.additional * Math.max(0, householdSize - 1)) * factor
-  );
+export function federalPovertyLine(
+  householdSize: number,
+  factor = 1,
+  table: UsAcaYear = US_ACA_YEARS[0]!,
+): number {
+  return (table.fpl.first + table.fpl.additional * Math.max(0, householdSize - 1)) * factor;
 }
 
-export function acaApplicablePercentage(fplMultiple: number, enhanced: boolean): number | null {
-  const table = enhanced ? US_ACA_2026.enhanced : US_ACA_2026.applicable;
-  if (!enhanced && fplMultiple >= US_ACA_2026.cliff) return null;
+/**
+ * Applicable percentage for a household income as a multiple of the poverty line, or null when no
+ * credit is allowed (below 100% or above 400%; Form 8962 line 5 rounds down to a whole percentage).
+ */
+export function acaApplicablePercentage(
+  fplMultiple: number,
+  enhanced: boolean,
+  aca: UsAcaYear = US_ACA_YEARS[0]!,
+): number | null {
+  const table = enhanced ? aca.enhanced : aca.applicable;
+  if (fplMultiple < aca.floor) return null;
+  if (!enhanced && Math.floor(fplMultiple * 100 + 1e-9) > aca.cliff * 100) return null;
   let row = table[0]!;
   let next: (typeof table)[number] | undefined;
   for (let i = 0; i < table.length; i++)
@@ -119,17 +141,16 @@ interface FedCore {
   total: number;
 }
 
-function yearData(input: TaxYearInput): UsFederalYear {
+function yearData(input: TaxYearInput): { d: UsFederalYear; f: number } {
+  const t = usTable(US_FEDERAL_YEARS, input);
   return toggle(input, "us.tcjaSunset", false)
-    ? US_FEDERAL_SUNSET_2026
-    : pickYear(US_FEDERAL_YEARS, input.year);
+    ? { d: US_FEDERAL_SUNSET_2026, f: usTable([US_FEDERAL_SUNSET_2026], input).factor }
+    : { d: t.row, f: t.factor };
 }
 
 function computeFederal(input: TaxYearInput, explain: boolean): FedCore {
-  const d = yearData(input);
+  const { d, f } = yearData(input);
   const status = input.filingStatus;
-  const idx = indexFactor(input, "us", undefined);
-  const f = idx.factor;
   const scale = periodScale(input);
   const fs = f * scale;
   const people = alivePeople(input);
@@ -176,6 +197,7 @@ function computeFederal(input: TaxYearInput, explain: boolean): FedCore {
   if (
     d.seniorDeduction &&
     input.year <= d.seniorDeduction.lastYear &&
+    !d.seniorDeduction.notAllowed.includes(status) &&
     toggle(input, "us.obbbaSeniorDeduction", true)
   ) {
     const S = d.seniorDeduction;
@@ -216,11 +238,14 @@ function computeFederal(input: TaxYearInput, explain: boolean): FedCore {
 
   // ---- AMT (standard deduction added back; no other preference items modelled)
   let amt = 0;
+  let amtExemption = 0;
   if (toggle(input, "us.amt", true)) {
     const amti = taxable + (itemizing ? 0 : deduction) + exemptions + senior;
     const ex = clamp0(
-      d.amt.exemption[status] * fs - 0.25 * clamp0(amti - d.amt.phaseoutStart[status] * fs),
+      d.amt.exemption[status] * fs -
+        d.amt.phaseoutRate * clamp0(amti - d.amt.phaseoutStart[status] * fs),
     );
+    amtExemption = ex;
     const base = clamp0(amti - ex);
     const amtPref = Math.min(pref, base);
     const amtOrd = base - amtPref;
@@ -262,9 +287,14 @@ function computeFederal(input: TaxYearInput, explain: boolean): FedCore {
   let fplMultiple = 0;
   let acaLine: { kind: "credit" | "aca-reconciliation"; amount: number } | null = null;
   if (input.aca && input.aca.benchmarkPremium > 0) {
-    const fpl = federalPovertyLine(input.aca.householdSize, f);
+    const aca = usTable(US_ACA_YEARS, input);
+    const fpl = federalPovertyLine(input.aca.householdSize, aca.factor, aca.row);
     fplMultiple = acaMagi / scale / fpl;
-    const pct = acaApplicablePercentage(fplMultiple, toggle(input, "us.acaEnhanced", false));
+    const pct = acaApplicablePercentage(
+      fplMultiple,
+      toggle(input, "us.acaEnhanced", false),
+      aca.row,
+    );
     ptc = pct === null ? 0 : clamp0(input.aca.benchmarkPremium - pct * acaMagi);
     acaLine =
       input.aca.advanceCredit !== undefined
@@ -279,7 +309,8 @@ function computeFederal(input: TaxYearInput, explain: boolean): FedCore {
   if (onMedicare > 0 && toggle(input, "us.irmaa", true)) {
     const h = input.history;
     lookbackMagi = h[h.length - 2]?.magi ?? h[h.length - 1]?.magi ?? magi;
-    irmaa = onMedicare * irmaaMonthly(lookbackMagi, status, f) * 12 * scale;
+    const t = usTable(US_IRMAA_YEARS, input);
+    irmaa = onMedicare * irmaaMonthly(lookbackMagi, status, t.factor, t.row) * 12 * scale;
   }
 
   // ---- early-withdrawal penalty (US and generic accounts only)
@@ -312,7 +343,6 @@ function computeFederal(input: TaxYearInput, explain: boolean): FedCore {
   sink.add("penalty", "Early withdrawal penalty", penalty);
 
   const facts: Record<string, number> = {
-    ...idx.facts,
     "tax.year": input.year,
     "tax.priceIndex": input.priceIndex,
     agi,
@@ -326,8 +356,14 @@ function computeFederal(input: TaxYearInput, explain: boolean): FedCore {
     "us.itemizing": itemizing ? 1 : 0,
     "us.seniorDeduction": senior,
     "us.qbiDeduction": qbi,
+    "us.amtExemption": amtExemption,
     "us.seTaxDeduction": payroll.seDeduction,
     "us.ptc": ptc,
+    // Income tax after credits (Form 1040 line 22 plus NIIT, less refundable child credit): the
+    // base of the state deductions for federal income tax (Alabama, Missouri).
+    "us.federalIncomeTax": clamp0(
+      beforeCredits - (ctc - ctcRefundable) - other + niit - ctcRefundable,
+    ),
     "tax.ordinaryBracketRate": ordTaxable > 0 ? ord.marginal : 0,
   };
   if (fplMultiple > 0) facts["us.fplMultiple"] = fplMultiple;
@@ -380,7 +416,9 @@ const RMD_TYPES = new Set([
 ]);
 
 export function usContributionLimit(q: TaxContributionLimitQuery): number | null {
-  const L = US_LIMITS_2026;
+  const L = pickYear(US_LIMITS_YEARS, q.year);
+  // The query carries no history, so later years index from the plan start (may run ahead of
+  // the IRS by the years between the plan start and the latest published year).
   const f = q.year > L.year ? q.priceIndex : 1;
   const age = q.ownerAge;
   if (DEFERRAL_401K.has(q.accountType)) {
@@ -463,9 +501,9 @@ export const usFederalJurisdiction: TaxJurisdiction = {
   ],
   sources: [
     ...US_FEDERAL_YEARS.flatMap((y) => y.sources.map((s) => ({ taxYear: String(y.year), ...s }))),
-    { taxYear: "2026", url: US_IRMAA_2026.source, note: "IRMAA tiers" },
-    ...US_ACA_2026.sources.map((s) => ({ taxYear: "2026", ...s })),
-    ...US_LIMITS_2026.sources.map((s) => ({ taxYear: "2026", ...s })),
+    ...US_IRMAA_YEARS.map((t) => ({ taxYear: String(t.year), url: t.source, note: "IRMAA tiers" })),
+    ...US_ACA_YEARS.flatMap((t) => t.sources.map((s) => ({ taxYear: String(t.year), ...s }))),
+    ...US_LIMITS_YEARS.flatMap((t) => t.sources.map((s) => ({ taxYear: String(t.year), ...s }))),
   ],
   simplifications: US_FEDERAL_SIMPLIFICATIONS,
 };

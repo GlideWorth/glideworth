@@ -1,11 +1,12 @@
 ---
 title: Retirement planning in the United States
-description: "How Glideworth plans US retirement: federal, payroll, state and city tax for 2026, 401(k), IRA, Roth and HSA rules, RMDs, Social Security, and gaps."
+description: "How Glideworth plans US retirement: federal and payroll tax for 2026 and 2027, state and city tax, 401(k), IRA, Roth and HSA rules, RMDs, Social Security, and gaps."
 ogTitle: Retirement planning in the US
 countryCode: US
 countryName: United States
 taxYears:
-  - 2026 (as amended by OBBBA)
+  - 2026 and 2027 federal and payroll (as amended by OBBBA)
+  - 2026 state and city
   - A what-if for the 2017 tax law returning, which is an estimate and not law
 modelled:
   - Federal income tax with brackets, the standard deduction, the extra deduction at 65 and over, and the senior deduction (2025 to 2028)
@@ -13,16 +14,20 @@ modelled:
   - The child tax credit and the ACA premium tax credit; IRMAA surcharges on Medicare
   - Federal tax on Social Security benefits
   - Payroll tax - Social Security, Medicare and the Additional Medicare Tax - and self-employment tax
-  - State income tax for all 50 states and DC, and city income tax for New York City, Philadelphia, Wilmington, Detroit and Newark
-  - 401(k), 403(b), 457(b), TSP, IRAs, Roth versions, SEP, SIMPLE, HSA and 529 accounts with 2026 contribution limits, early-withdrawal penalties and the Roth five-year rule
+  - State income tax for all 50 states and DC, including state rules for Social Security, retirement income and age, and city income tax for New York City, Philadelphia, Wilmington, Detroit and Newark
+  - 401(k), 403(b), 457(b), TSP, IRAs, Roth versions, SEP, SIMPLE, HSA and 529 accounts with 2026 and 2027 contribution limits, early-withdrawal penalties and the Roth five-year rule
   - Required minimum distributions, 72(t) payments, Roth conversions and federal estate tax
 notModelled:
-  - The SALT cap and the phase-outs of itemised deductions; itemised deductions are only what you enter
-  - Alternative minimum tax beyond adding back the standard deduction; incentive stock options and other preference items
-  - The earned income credit, education credits, the child and dependent care credit, the saver's credit, the foreign tax credit on foreign investment income (relief for a household that moves country is modelled separately) and energy credits
+  - The SALT cap and the limits on itemised deductions; itemised deductions are only what you enter
+  - Alternative minimum tax beyond adding back the standard and senior deductions; incentive stock options and other preference items
+  - The earned income credit, education credits, the child and dependent care credit, the saver's credit, the foreign tax credit and energy credits
+  - The deductions for tips, overtime and car-loan interest; the 25% and 28% capital gains rates; income limits on Roth IRA contributions
+  - The Joint Life table for a much younger spouse and the still-working exception for required minimum distributions
   - W-2 wage and property limits on the QBI deduction, the kiddie tax and estimated-tax underpayment penalties
   - Employer payroll taxes and state disability or family-leave taxes other than California SDI
-  - State additions and subtractions, itemised deductions, state minimum taxes and part-year or multi-state residence
+  - Most state additions and subtractions, itemised deductions, state minimum taxes, and pension exclusions limited to government or military pensions
+  - State tax changes already legislated for 2027 and later (for example Hawaii's new brackets); later years index the 2026 state tables
+  - Part-year or multi-state residence
   - County, school-district and other local taxes outside the five cities in the data
   - Loss harvesting; gains are realised in proportion to cost basis and treated as long-term
 ---
@@ -30,13 +35,13 @@ notModelled:
 import { facts } from '../../lib/facts';
 
 The United States is, with the United Kingdom, the most detailed model in Glideworth. Federal and payroll tax
-cover 2026 under the law as amended by the One Big Beautiful Bill Act (OBBBA). Every state and DC are modelled,
-and five cities. Glideworth carries {facts.simplificationCount('us-federal')} written simplifications for the
+cover 2026 and 2027 under the law as amended by the One Big Beautiful Bill Act (OBBBA), using the figures the IRS,
+the Social Security Administration and Medicare have published. Every state and DC are modelled, and five cities. Glideworth carries {facts.simplificationCount('us-federal')} written simplifications for the
 federal model alone, and shows them beside your tax results.
 
-Plans use calendar years. Years after 2026 index the 2026 brackets with the plan's threshold policy; a few
-thresholds fixed in statute, such as the net investment income tax and Social Security benefit-taxation
-thresholds, stay fixed.
+Plans use calendar years. Years after 2027 index the 2027 figures with the plan's threshold policy, starting from
+2027 prices; a few thresholds fixed in statute, such as the net investment income tax and Social Security
+benefit-taxation thresholds, stay fixed.
 
 ## Federal income tax, 2026
 
@@ -48,16 +53,30 @@ thresholds, stay fixed.
 | 0% rate on gains and qualified dividends, up to taxable income of | $49,450 | $98,900 |
 | 15% rate up to | $545,500 | $613,700 |
 
+## Federal income tax, 2027
+
+The IRS published the 2027 figures in Rev. Proc. 2026-35 on 5 November 2026.
+
+| | Single | Married filing jointly |
+|---|---|---|
+| Brackets | 10% to $12,800; 12% to $52,025; 22% to $109,125; 24% to $208,325; 32% to $264,550; 35% to $661,375; 37% above | 10% to $25,600; 12% to $104,050; 22% to $218,250; 24% to $416,650; 32% to $529,100; 35% to $793,650; 37% above |
+| Standard deduction | $16,600 | $33,200 |
+| Extra deduction at 65 or over | $2,100 | $1,700 each |
+| 0% rate on gains and qualified dividends, up to taxable income of | $51,050 | $102,100 |
+| 15% rate up to | $563,200 | $633,600 |
+
 Head of household, married filing separately and qualifying surviving spouse have their own rows. The senior
-deduction of $6,000 is available from 2025 to 2028 and phases out at 6% above $75,000 of income ($150,000 joint).
-The net investment income tax is 3.8% above $200,000 ($250,000 joint). The child tax credit is $2,200 per child,
-$1,700 of it refundable, phasing out above $200,000 ($400,000 joint). Social Security benefit taxation (the 50%
-and 85% tiers), IRMAA surcharges and the ACA premium tax credit are modelled too. The enhanced ACA credits
-expired after 2025; a setting turns them back on if you want to test that.
+deduction of $6,000 is available from 2025 to 2028 and phases out at 6% above $75,000 of income ($150,000 joint);
+married couples must file jointly to claim it. The net investment income tax is 3.8% above $200,000 ($250,000
+joint). The child tax credit is $2,200 per child in 2026 and $2,300 in 2027 ($1,700 and $1,800 of it refundable),
+phasing out above $200,000 ($400,000 joint). The alternative minimum tax exemption phases out at 50 cents per
+dollar from 2026. Social Security benefit taxation (the 50% and 85% tiers), IRMAA surcharges and the ACA premium
+tax credit are modelled too. The enhanced ACA credits expired after 2025, so there is no credit above 400% of the
+poverty line; a setting turns them back on if you want to test that.
 
 ## Payroll tax and Social Security
 
-Employee Social Security tax is 6.2% on wages up to $184,500 (2026), Medicare 1.45% on all wages, and the
+Employee Social Security tax is 6.2% on wages up to $184,500 in 2026 and $192,300 in 2027, Medicare 1.45% on all wages, and the
 Additional Medicare Tax 0.9% above $200,000 ($250,000 joint). Self-employment tax is included. Pre-tax 401(k)
 deferrals do not reduce these taxes, as the law says.
 
@@ -69,33 +88,42 @@ cost-of-living adjustment. Up to 85% of the benefit can be taxable, using the st
 ## Accounts, limits and access
 
 Glideworth knows 401(k), Roth 401(k), 403(b), 457(b), 401(a), solo 401(k), TSP, traditional, Roth, SEP, SIMPLE and
-inherited IRAs, HSA, 529 and Coverdell accounts, and taxable brokerage accounts. 2026 limits in the tables:
+inherited IRAs, HSA, 529 and Coverdell accounts, and taxable brokerage accounts. Limits in the tables (2026, then
+2027):
 
-- Elective deferrals to a 401(k) or similar plan: $24,500, plus $8,000 catch-up from age 50, or $11,250 at ages 60
-  to 63.
-- IRA: $7,500, plus a $1,100 catch-up from age 50.
-- SIMPLE: $17,000, plus $4,000 catch-up, or $5,250 at ages 60 to 63. SEP or solo total: $72,000.
-- HSA: $4,400 for self-only cover, $8,750 for family cover, plus $1,000 from age 55.
+- Elective deferrals to a 401(k) or similar plan: $24,500 / $25,500, plus a catch-up from age 50 of $8,000 /
+  $8,500, or $11,250 / $11,750 at ages 60 to 63.
+- IRA: $7,500 in both years, plus a $1,100 catch-up from age 50.
+- SIMPLE: $17,000 / $17,500, plus $4,000 catch-up, or $5,250 at ages 60 to 63. SEP or solo total: $72,000 /
+  $75,000.
+- HSA: $4,400 / $4,500 for self-only cover, $8,750 / $9,000 for family cover, plus $1,000 from age 55.
 
 Early withdrawals before 59 and a half carry a 10% penalty unless the account setting says otherwise; 72(t)
 payments are penalty-free. Non-qualified HSA withdrawals before 65 carry a 20% additional tax, and non-qualified
 529 earnings 10%. Roth earnings are qualified after 59 and a half and five tax years from the first
 contribution. Required minimum distributions follow the SECURE 2.0 starting age (73 for people born 1951 to 1959,
 75 from 1960) and the IRS Uniform Lifetime Table. Roth conversions and tax-strategy comparison are available.
-Main-home sale gains are excluded up to $250,000 ($500,000 joint). The federal estate tax exclusion is $15,000,000.
+Main-home sale gains are excluded up to $250,000 ($500,000 joint). The federal estate tax exclusion is $15,000,000 in 2026 and $15,480,000 in 2027.
 
 ## State and city tax
 
-All 50 states and DC use their 2026 rates and brackets. Each state's figures were checked on 16 November 2026 against
-that state's revenue department, statute or tax-year forms, which the tax results cite. Eight state sites (Idaho,
-Kansas, Louisiana, Michigan, New Hampshire, Ohio, Rhode Island and Wisconsin) could not be opened, and some figures
-of nine other states could not be confirmed; those states' results say which figures are not confirmed from an
-official source. Alaska, Florida, Nevada, New Hampshire, South Dakota, Tennessee, Texas and Wyoming levy no tax on wages, and
-Washington taxes only long-term capital gains. Every state starts from federal adjusted gross income. California's
-state disability insurance (1.3% of wages) is included in the California row. City income tax is modelled for New
-York City, Philadelphia, Wilmington (Delaware), Detroit and Newark (which levies nothing on residents); the
-Wilmington and Newark pages could not be opened. Twenty-four state rows carry a noted approximation, for example for a married-couple threshold or a pension
-exclusion; check them before relying on a figure for a particular return.
+All 50 states and DC use their 2026 rates and brackets. Each state's figures were checked on 16 and 19 November
+2026 against that state's revenue department, statute or tax-year forms, which the tax results cite. Idaho's
+official sites could not be opened, so none of its figures is confirmed; nine other states (Arizona, Colorado,
+Louisiana, Maine, Montana, Ohio, Rhode Island, South Carolina and Vermont) have one or two figures that are not yet
+published or could not be confirmed. Each of those states' results says which figures are not confirmed from an
+official source. Alaska, Florida, Nevada, New Hampshire, South Dakota, Tennessee, Texas and Wyoming levy no income
+tax, and Washington taxes only long-term capital gains.
+
+Most states start from federal adjusted gross income; Colorado, Iowa, Montana and North Dakota start from federal
+taxable income, and New Mexico and DC use the federal standard deduction. State rules for retirement income are
+modelled where the state has them: Social Security exemptions with their age and income tests, pension and IRA
+exclusions with their income tests, extra amounts at 65, and the deductions for federal income tax in Alabama and
+Missouri. Exclusions that apply only to government or military pensions are not modelled. California's state
+disability insurance (1.3% of wages in 2026, 1.4% in 2027) is included in the California row. City income tax is
+modelled for New York City, Philadelphia, Wilmington (Delaware), Detroit and Newark (which levies nothing on
+residents). Thirty-two state rows carry a noted approximation, for example for a married-couple threshold or the
+scope of a pension exclusion; check them before relying on a figure for a particular return.
 
 ## Worked example
 
@@ -124,37 +152,41 @@ distribution.
 - The "TCJA sunset" setting, which models the 2017 tax law returning, is an estimate: the 2017 brackets and
   deductions multiplied by 1.33, with personal exemptions restored. It is not law.
 - Itemised deductions are what you enter. The SALT cap is not applied for you.
-- The AMT adds back only the standard deduction, and the QBI deduction treats self-employment income as a
+- The AMT adds back only the standard and senior deductions, and the QBI deduction treats self-employment income as a
   specified service business.
-- IRMAA is estimated from income two years earlier (or the latest year early in the plan), using the 2026 tiers
-  indexed like other thresholds.
-- Residence is the household's state for the whole year. A relocation milestone switches state from the next
-  period.
+- IRMAA is estimated from income two years earlier (or the latest year early in the plan), using the 2026 and
+  2027 tiers, indexed after 2027 like other thresholds.
+- The household lives in one state for the whole year.
 - Dollar thresholds in later years are projected, so a figure for 2035 is a projection, not a published rate.
 
 ## Official sources
 
 - [IRS Rev. Proc. 2025-32](https://www.irs.gov/pub/irs-drop/rp-25-32.pdf) (2026 brackets, deductions, gains
   thresholds, AMT, child tax credit and QBI) and [IRB 2025-45](https://www.irs.gov/irb/2025-45_IRB)
+- [IRS Rev. Proc. 2026-35](https://www.irs.gov/pub/irs-drop/rp-26-35.pdf) (2027 brackets, deductions, gains
+  thresholds, AMT, child tax credit, QBI and the estate tax exclusion)
 - [IRS on OBBBA changes for individuals](https://www.irs.gov/newsroom/working-families-tax-cuts-individuals-and-workers)
-- [IRS: 401(k) limit increases to $24,500 for 2026](https://www.irs.gov/newsroom/401k-limit-increases-to-24500-for-2026-ira-limit-increases-to-7500)
+  and [the senior deduction](https://www.irs.gov/newsroom/one-big-beautiful-bill-act-tax-deductions-for-working-americans-and-seniors)
+- [IRS: 401(k) limit increases to $24,500 for 2026](https://www.irs.gov/newsroom/401k-limit-increases-to-24500-for-2026-ira-limit-increases-to-7500),
+  [IRS Notice 2026-66](https://www.irs.gov/pub/irs-drop/n-26-66.pdf) (2027 plan and IRA limits) and
+  [Rev. Proc. 2026-24](https://www.irs.gov/pub/irs-drop/rp-26-24.pdf) (2027 HSA limits)
 - [Net investment income tax](https://www.irs.gov/individuals/net-investment-income-tax),
   [Additional Medicare Tax](https://www.irs.gov/taxtopics/tc560), [FICA rates](https://www.irs.gov/taxtopics/tc751),
   [selling your home](https://www.irs.gov/taxtopics/tc701), [taxable Social Security](https://www.irs.gov/pub/irs-pdf/p915.pdf)
-- [Social Security contribution and benefit base](https://www.ssa.gov/oact/cola/cbb.html) and
-  [Medicare premium tables (SSA POMS)](https://secure.ssa.gov/poms.nsf/lnx/0601101020)
-- [IRS Rev. Proc. 2025-25](https://www.irs.gov/pub/irs-drop/rp-25-25.pdf) (ACA applicable percentages) and the
+- [Social Security contribution and benefit base](https://www.ssa.gov/oact/cola/cbb.html), the
+  [2027 base notice](https://www.govinfo.gov/content/pkg/FR-2026-10-26/html/2026-21796.htm),
+  [Medicare premium tables (SSA POMS)](https://secure.ssa.gov/poms.nsf/lnx/0601101020) and the
+  [CMS 2027 premiums](https://www.cms.gov/newsroom/fact-sheets/2027-medicare-parts-b-premiums-deductibles)
+- [IRS Rev. Proc. 2025-25](https://www.irs.gov/pub/irs-drop/rp-25-25.pdf) and
+  [Rev. Proc. 2026-26](https://www.irs.gov/pub/irs-drop/rp-26-26.pdf) (ACA applicable percentages) and the
   [HHS poverty guidelines](https://aspe.hhs.gov/topics/poverty-economic-mobility/poverty-guidelines)
 - [Philadelphia wage tax](https://www.phila.gov/services/payments-assistance-taxes/taxes/business-taxes/business-taxes-by-type/wage-tax-employers/),
-  [Wilmington earned income tax](https://www.wilmingtonde.gov/residents/earned-income-tax-and-net-profits-tax),
+  [Wilmington earned income tax regulations](https://www.wilmingtonde.gov/home/showpublisheddocument/462/638206223264700000),
   [Detroit income tax](https://detroitmi.gov/departments/office-chief-financial-officer/ocfo-divisions/office-treasury/income-tax/income-tax-information)
 - State rates: each state's revenue department, statute or 2026 forms, listed with that state's tax results, for
-  example the [California FTB 2026 indexing notice](https://www.ftb.ca.gov/about-ftb/newsroom/tax-news/2026/10.html)
-  and the [New York IT-2105-I (2026)](https://www.tax.ny.gov/pdf/2026/inc/it2105i_2026.pdf), which also gives the
-  New York City rates
-
-Moving to or from the US, including citizenship-based taxation, is covered on the
-[moving-country page](/planning/moving-country/).
+  example the [California FTB 2026 indexing notice](https://www.ftb.ca.gov/about-ftb/newsroom/tax-news/2026/10.html),
+  the [New York IT-2105-I (2026)](https://www.tax.ny.gov/pdf/2026/inc/it2105i_2026.pdf), which also gives the
+  New York City rates, and the [California EDD SDI rates](https://edd.ca.gov/en/payroll_taxes/rates_and_withholding/)
 
 <Callout type="note" title="Estimates, not advice">
   Glideworth is planning software. Its tax figures help you compare choices under your own assumptions; they

@@ -30,36 +30,42 @@ export const UK_SIMPLIFICATIONS: readonly string[] = [
 ];
 
 export const US_FEDERAL_SIMPLIFICATIONS: readonly string[] = [
-  "Tax year 2026 (as amended by OBBBA); later years index the 2026 brackets with the plan threshold policy. Statutory unindexed thresholds (NIIT, Social Security taxation) stay fixed.",
-  "Itemised deductions are only what you enter as itemised; the SALT cap and the phase-outs of individual itemised deductions are not applied automatically.",
-  "AMT adds back only the standard deduction; incentive stock options and other preference items are not modelled.",
-  "QBI deduction is simplified: 20% of self-employment income, treated as a specified service business (phased out above the threshold); W-2 wage and property limits are not modelled.",
-  "Credits: the child tax credit and the ACA premium tax credit only; no earned income credit, education credits, child and dependent care credit, saver’s credit, foreign tax credit or energy credits. Other credits can be entered as amounts.",
-  "IRMAA (Part B and Part D surcharges) is estimated from the MAGI of two years earlier, or the latest year available early in the plan, using the 2026 tiers indexed like other thresholds.",
+  "Tax years 2026 and 2027 as published by the IRS (Rev. Proc. 2025-32 and 2026-35, as amended by OBBBA); later years index the 2027 figures with the plan threshold policy from the start of 2027. Statutory thresholds that are not indexed (net investment income tax, Additional Medicare Tax, Social Security benefit taxation, child tax credit phase-out) stay fixed.",
+  "Itemised deductions are only what you enter as itemised; the SALT cap and its phase-down, the limit on itemised deductions for the 37% bracket, the 0.5%-of-AGI floor on charitable gifts and the charitable deduction for people who do not itemise (from 2026) are not applied automatically.",
+  "AMT adds back the standard deduction and the senior deduction only; incentive stock options, state and local taxes and other preference items are not modelled.",
+  "QBI deduction is simplified: 20% of self-employment income, treated as a specified service business (phased out above the threshold); W-2 wage and property limits and the $400 minimum deduction are not modelled.",
+  "Credits: the child tax credit and the ACA premium tax credit only; no credit for other dependents, earned income credit, education credits, child and dependent care credit, saver’s credit, foreign tax credit or energy credits. Other credits can be entered as amounts.",
+  "Social Security benefit taxation leaves tax-exempt interest out of provisional income, and treats a married person filing separately as having lived with their spouse (up to 85% taxable from the first dollar).",
+  "Capital gains: long-term gains and qualified dividends use the 0%, 15% and 20% bands; the 25% rate on unrecaptured section 1250 gain and the 28% rate on collectibles are not modelled.",
+  "IRMAA (Part B and Part D surcharges) is estimated from the MAGI of two years earlier, or the latest year available early in the plan, using the published 2026 and 2027 tiers, indexed after 2027 like other thresholds.",
+  "ACA premium tax credit: you enter the benchmark (second-lowest-cost silver) premium; there is no credit below 100% or above 400% of the poverty line, and Medicaid eligibility is not modelled.",
   "Early-withdrawal penalties apply to accounts whose early-withdrawal setting is on (plus the HSA and 529 statutory penalties); 72(t) payments are penalty-free, other exceptions must be reflected in the account settings.",
+  "Required minimum distributions use the Uniform Lifetime Table; the Joint Life table for a spouse more than 10 years younger, the still-working exception for workplace plans and the April 1 deferral of the first distribution are not modelled.",
+  "Contribution limits are the IRS 2026 and 2027 figures, indexed from the plan start after 2027; the income limits on Roth IRA contributions and on deducting traditional IRA contributions are not applied.",
   "The OBBBA deductions for qualified tips, overtime pay and car-loan interest are not modelled.",
   "No state and local taxes here (see the state and local entries), no kiddie tax and no estimated-tax underpayment penalties.",
   ENGINE_GAINS,
 ];
 
 export const US_PAYROLL_SIMPLIFICATIONS: readonly string[] = [
-  "Tax year 2026 wage base, indexed in later years with the plan threshold policy.",
-  "Employee FICA, Additional Medicare Tax and self-employment tax only; employer payroll taxes are not modelled. California SDI is charged with California state tax (1.3% of all wages in 2026); other states’ disability and family-leave payroll taxes (NJ, NY, WA, MA…) are not modelled.",
+  "Social Security wage base for 2026 ($184,500) and 2027 ($192,300); later years index the 2027 base with the plan threshold policy (the law indexes it with average wages, not prices).",
+  "Employee FICA, Additional Medicare Tax and self-employment tax only; employer payroll taxes are not modelled. California SDI is charged with California state tax (1.3% of all wages in 2026, 1.4% in 2027); other states’ disability and family-leave payroll taxes (NJ, NY, WA, MA…) are not modelled.",
   "Pre-tax 401(k) deferrals do not reduce FICA wages (as the law says); cafeteria-plan (section 125) deductions that would are not modelled separately.",
   "Excess Social Security tax from multiple employers is not refunded: wages from several jobs are combined per person.",
 ];
 
 export const US_STATE_SIMPLIFICATIONS: readonly string[] = [
-  "Tax year 2026 rates and brackets for all 50 states and DC, checked against each state’s revenue department, statute or tax-year publication (2026-11-16); figures a state’s site would not let us confirm are named below for that state. Later years index with the plan threshold policy.",
-  "Every state starts from federal AGI; state additions and subtractions, itemised deductions, state AMT/minimum taxes and income-tested phase-outs are not modelled.",
-  "State credits other than personal-exemption credits are not modelled; retirement exclusions are included only where they are a simple per-person amount by age.",
-  "Some states carry noted approximations (for example MFJ thresholds or pension exclusions); check them before relying on the figure for a specific return.",
-  "Residency is the household’s state for the whole year; part-year residence, multi-state wages and credits for tax paid to other states are not modelled (a relocation milestone switches state from the next period).",
+  "Tax year 2026 rates and brackets for all 50 states and DC, checked against each state’s revenue department, statute or tax-year publication (2026-11-16 and 2026-11-19); figures a state has not published or that could not be confirmed are named below for that state. Later years index the 2026 figures with the plan threshold policy (many state amounts are fixed in law and do not change).",
+  "Every state starts from federal AGI (states that start from federal taxable income use the federal deduction); state additions and subtractions other than those listed, itemised deductions, state AMT/minimum taxes and most income-tested phase-outs are not modelled.",
+  "Retirement income: Social Security exemptions with their age and income tests, per-person and per-return pension and IRA exclusions (and, in Georgia and Delaware, the investment income they cover), their income tests and Social Security offsets, and age deductions are modelled where the state has them; exclusions for government or military pensions only are not. Roth conversions count as retirement income for state exclusions.",
+  "State credits other than personal-exemption, age, Social Security and Connecticut’s personal tax credits are not modelled. Alabama’s and Missouri’s deductions for federal income tax are modelled; Oregon’s federal tax subtraction is not.",
+  "Some states carry noted approximations (for example joint-return thresholds or the scope of a pension exclusion); check them before relying on the figure for a specific return.",
+  "The household lives in one state for the whole year; part-year residence, multi-state wages and credits for tax paid to other states are not modelled.",
 ];
 
 export const US_LOCAL_SIMPLIFICATIONS: readonly string[] = [
   "Only the city income taxes in the data table are modelled (New York City, Philadelphia, Wilmington, Detroit, Newark); county taxes, school-district taxes and payroll-based local taxes elsewhere are not.",
-  "Philadelphia, Wilmington and Detroit tax wages and self-employment income only; Detroit’s tax on residents’ other income and Philadelphia’s School Income Tax on unearned income are not modelled. Philadelphia’s 2026 rate is the average of the rates before and after 1 July.",
+  "Philadelphia and Wilmington tax wages and self-employment income only; Detroit also taxes residents’ interest, dividends, gains and rent (not pensions or Social Security). Philadelphia’s School Income Tax on residents’ unearned income is not modelled, and its 2026 wage tax rate is the average of the rates before and after 1 July.",
   "City brackets are statutory and not indexed.",
 ];
 

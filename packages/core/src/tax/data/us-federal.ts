@@ -1,6 +1,8 @@
 /**
  * US federal tax data (tax year = calendar year). Nominal USD. Calculation: ../jurisdictions/us-*.ts.
- * Future years index these with the plan's price index (IRS indexes with chained CPI).
+ * Tax years 2026 and 2027 are published figures. Later years index the latest published year with
+ * the plan's price index from the start of that year (the IRS indexes with chained CPI); see
+ * ../jurisdictions/us-index.ts. Every table names its official source; figures checked 2026-11-19.
  */
 import type { FilingStatus } from "../../schema/tax.js";
 
@@ -25,10 +27,14 @@ export interface UsFederalYear {
     phaseoutStart: ByStatus<number>;
     phaseoutRate: number;
     lastYear: number;
+    /** Filing statuses that cannot claim it (married people must file jointly). */
+    notAllowed: FilingStatus[];
   };
   amt: {
     exemption: ByStatus<number>;
     phaseoutStart: ByStatus<number>;
+    /** Exemption reduction per dollar of AMTI above the phase-out start (50% from 2026, OBBBA). */
+    phaseoutRate: number;
     breakpoint28: ByStatus<number>;
   };
   childTaxCredit: { perChild: number; refundable: number; phaseoutStart: ByStatus<number> };
@@ -37,6 +43,11 @@ export interface UsFederalYear {
 
 const RP_2025_32 = "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf";
 const IRB_2025_45 = "https://www.irs.gov/irb/2025-45_IRB";
+const RP_2026_35 = "https://www.irs.gov/pub/irs-drop/rp-26-35.pdf";
+const OBBBA_SENIORS =
+  "https://www.irs.gov/newsroom/one-big-beautiful-bill-act-tax-deductions-for-working-americans-and-seniors";
+const OBBBA_INDIVIDUALS =
+  "https://www.irs.gov/newsroom/working-families-tax-cuts-individuals-and-workers";
 
 const mfsHalf = (mfj: number) => mfj / 2;
 
@@ -50,10 +61,15 @@ export const US_FEDERAL_2026: UsFederalYear = {
     },
     { url: IRB_2025_45, note: "IRB 2025-45 (HTML of Rev. Proc. 2025-32)" },
     {
-      url: "https://www.irs.gov/newsroom/working-families-tax-cuts-individuals-and-workers",
-      note: "OBBBA: senior deduction $6,000 (2025-2028), SALT cap",
+      url: OBBBA_SENIORS,
+      note: "OBBBA senior deduction: $6,000 per person 65+, 2025-2028, phased out at 6% of MAGI over $75,000 ($150,000 joint)",
+    },
+    {
+      url: OBBBA_INDIVIDUALS,
+      note: "Senior deduction: married taxpayers must file jointly to claim it (read 2026-11-19)",
     },
   ],
+  // Rev. Proc. 2025-32 section 4.01, Tables 1-4 (read 2026-11-19).
   brackets: {
     single: [
       [0, 0.1],
@@ -101,6 +117,7 @@ export const US_FEDERAL_2026: UsFederalYear = {
       [384_350, 0.37],
     ],
   },
+  // Rev. Proc. 2025-32 section 4.14(1) and (3).
   standardDeduction: {
     single: 16_100,
     "married-joint": 32_200,
@@ -109,6 +126,7 @@ export const US_FEDERAL_2026: UsFederalYear = {
     "married-separate": 16_100,
   },
   additionalAged: { married: 1_650, unmarried: 2_050 },
+  // Rev. Proc. 2025-32 section 4.03.
   capitalGains: {
     single: { zeroMax: 49_450, fifteenMax: 545_500 },
     "married-joint": { zeroMax: 98_900, fifteenMax: 613_700 },
@@ -128,7 +146,10 @@ export const US_FEDERAL_2026: UsFederalYear = {
     },
     phaseoutRate: 0.06,
     lastYear: 2028,
+    notAllowed: ["married-separate"],
   },
+  // Rev. Proc. 2025-32 section 4.10: exemption, 28% breakpoint, phase-out from $500,000 /
+  // $1,000,000 to $680,200 / $1,280,400 (so 50 cents per dollar, IRC 55(d)(3) as amended by OBBBA).
   amt: {
     exemption: {
       single: 90_100,
@@ -144,6 +165,7 @@ export const US_FEDERAL_2026: UsFederalYear = {
       "head-of-household": 500_000,
       "married-separate": 500_000,
     },
+    phaseoutRate: 0.5,
     breakpoint28: {
       single: 244_500,
       "married-joint": 244_500,
@@ -152,6 +174,7 @@ export const US_FEDERAL_2026: UsFederalYear = {
       "married-separate": 122_250,
     },
   },
+  // Rev. Proc. 2025-32 section 4.05; phase-out thresholds statutory (IRC 24(b)).
   childTaxCredit: {
     perChild: 2_200,
     refundable: 1_700,
@@ -163,6 +186,7 @@ export const US_FEDERAL_2026: UsFederalYear = {
       "married-separate": 200_000,
     },
   },
+  // Rev. Proc. 2025-32 section 4.26: threshold; phase-in range width $75,000 ($150,000 joint).
   qbi: {
     threshold: {
       single: 201_750,
@@ -178,6 +202,132 @@ export const US_FEDERAL_2026: UsFederalYear = {
       "head-of-household": 75_000,
       "married-separate": 75_000,
     },
+  },
+};
+
+/** Tax year 2027: Rev. Proc. 2026-35 (released 5 November 2026; read 2026-11-19). */
+export const US_FEDERAL_2027: UsFederalYear = {
+  year: 2027,
+  startYear: 2027,
+  sources: [
+    {
+      url: RP_2026_35,
+      note: "Rev. Proc. 2026-35: 2027 brackets (3.01), LTCG (3.03), CTC (3.05), AMT (3.11), standard deduction (3.15), QBI (3.28)",
+    },
+    {
+      url: "https://www.irs.gov/newsroom/irs-releases-tax-inflation-adjustments-for-tax-year-2027-taxpayers-continue-to-benefit-from-the-working-families-tax-cuts",
+      note: "IRS news release on the 2027 adjustments",
+    },
+    { url: OBBBA_SENIORS, note: "Senior deduction $6,000 (not indexed), 2025-2028" },
+  ],
+  // Rev. Proc. 2026-35 section 3.01, Tables 1-4.
+  brackets: {
+    single: [
+      [0, 0.1],
+      [12_800, 0.12],
+      [52_025, 0.22],
+      [109_125, 0.24],
+      [208_325, 0.32],
+      [264_550, 0.35],
+      [661_375, 0.37],
+    ],
+    "married-joint": [
+      [0, 0.1],
+      [25_600, 0.12],
+      [104_050, 0.22],
+      [218_250, 0.24],
+      [416_650, 0.32],
+      [529_100, 0.35],
+      [793_650, 0.37],
+    ],
+    "qualifying-surviving-spouse": [
+      [0, 0.1],
+      [25_600, 0.12],
+      [104_050, 0.22],
+      [218_250, 0.24],
+      [416_650, 0.32],
+      [529_100, 0.35],
+      [793_650, 0.37],
+    ],
+    "head-of-household": [
+      [0, 0.1],
+      [18_250, 0.12],
+      [69_650, 0.22],
+      [109_100, 0.24],
+      [208_300, 0.32],
+      [264_550, 0.35],
+      [661_350, 0.37],
+    ],
+    "married-separate": [
+      [0, 0.1],
+      [12_800, 0.12],
+      [52_025, 0.22],
+      [109_125, 0.24],
+      [208_325, 0.32],
+      [264_550, 0.35],
+      [396_825, 0.37],
+    ],
+  },
+  // Rev. Proc. 2026-35 section 3.15(1) and (3).
+  standardDeduction: {
+    single: 16_600,
+    "married-joint": 33_200,
+    "qualifying-surviving-spouse": 33_200,
+    "head-of-household": 24_925,
+    "married-separate": 16_600,
+  },
+  additionalAged: { married: 1_700, unmarried: 2_100 },
+  // Rev. Proc. 2026-35 section 3.03.
+  capitalGains: {
+    single: { zeroMax: 51_050, fifteenMax: 563_200 },
+    "married-joint": { zeroMax: 102_100, fifteenMax: 633_600 },
+    "qualifying-surviving-spouse": { zeroMax: 102_100, fifteenMax: 633_600 },
+    "head-of-household": { zeroMax: 68_350, fifteenMax: 598_400 },
+    "married-separate": { zeroMax: 51_050, fifteenMax: 316_800 },
+  },
+  personalExemption: 0,
+  seniorDeduction: US_FEDERAL_2026.seniorDeduction!,
+  // Rev. Proc. 2026-35 section 3.11 (complete phase-out amounts imply the 50% rate).
+  amt: {
+    exemption: {
+      single: 93_000,
+      "married-joint": 144_700,
+      "qualifying-surviving-spouse": 144_700,
+      "head-of-household": 93_000,
+      "married-separate": 72_350,
+    },
+    phaseoutStart: {
+      single: 515_950,
+      "married-joint": 1_031_900,
+      "qualifying-surviving-spouse": 1_031_900,
+      "head-of-household": 515_950,
+      "married-separate": 515_950,
+    },
+    phaseoutRate: 0.5,
+    breakpoint28: {
+      single: 252_500,
+      "married-joint": 252_500,
+      "qualifying-surviving-spouse": 252_500,
+      "head-of-household": 252_500,
+      "married-separate": 126_250,
+    },
+  },
+  // Rev. Proc. 2026-35 section 3.05.
+  childTaxCredit: {
+    perChild: 2_300,
+    refundable: 1_800,
+    phaseoutStart: US_FEDERAL_2026.childTaxCredit.phaseoutStart,
+  },
+  // Rev. Proc. 2026-35 section 3.28(1).
+  qbi: {
+    threshold: {
+      single: 208_300,
+      "married-joint": 416_600,
+      "qualifying-surviving-spouse": 208_300,
+      "head-of-household": 208_300,
+      "married-separate": 208_325,
+    },
+    phaseInRange: US_FEDERAL_2026.qbi.phaseInRange,
   },
 };
 
@@ -234,10 +384,12 @@ export const US_FEDERAL_SUNSET_2026: UsFederalYear = {
     "married-separate": 6_350 * SUNSET_FACTOR,
   },
   personalExemption: 4_050 * SUNSET_FACTOR,
+  // Pre-TCJA law phased the AMT exemption out at 25 cents per dollar.
+  amt: { ...US_FEDERAL_2026.amt, phaseoutRate: 0.25 },
   childTaxCredit: { ...US_FEDERAL_2026.childTaxCredit, perChild: 1_000, refundable: 1_000 },
 };
 
-export const US_FEDERAL_YEARS: readonly UsFederalYear[] = [US_FEDERAL_2026];
+export const US_FEDERAL_YEARS: readonly UsFederalYear[] = [US_FEDERAL_2026, US_FEDERAL_2027];
 
 /** Thresholds NOT indexed for inflation (statutory dollar amounts). */
 export const US_FIXED = {
@@ -287,8 +439,19 @@ export const US_FIXED = {
   retirementAccessAge: 59.5,
 };
 
-export const US_PAYROLL_2026 = {
+export interface UsPayrollYear {
+  year: number;
+  startYear: number;
+  socialSecurityRate: number;
+  socialSecurityWageBase: number;
+  medicareRate: number;
+  seNetEarningsFactor: number;
+  sources: { url: string; note?: string }[];
+}
+
+export const US_PAYROLL_2026: UsPayrollYear = {
   year: 2026,
+  startYear: 2026,
   socialSecurityRate: 0.062,
   socialSecurityWageBase: 184_500,
   medicareRate: 0.0145,
@@ -302,9 +465,39 @@ export const US_PAYROLL_2026 = {
   ],
 };
 
+/** 2027: SSA notice, Federal Register 26 October 2026 (base $192,300; read 2026-11-19). */
+export const US_PAYROLL_2027: UsPayrollYear = {
+  ...US_PAYROLL_2026,
+  year: 2027,
+  startYear: 2027,
+  socialSecurityWageBase: 192_300,
+  sources: [
+    {
+      url: "https://www.govinfo.gov/content/pkg/FR-2026-10-26/html/2026-21796.htm",
+      note: "SSA notice (91 FR 67380): OASDI contribution and benefit base $192,300 for 2027",
+    },
+    { url: "https://www.irs.gov/taxtopics/tc751", note: "FICA rates (statutory, unchanged)" },
+  ],
+};
+
+export const US_PAYROLL_YEARS: readonly UsPayrollYear[] = [US_PAYROLL_2026, US_PAYROLL_2027];
+
+/** IRMAA tiers for one year: monthly Part B total premium and Part D adjustment by MAGI. */
+export interface UsIrmaaYear {
+  year: number;
+  startYear: number;
+  standardPartB: number;
+  source: string;
+  /** [MAGI lower bound (exclusive), Part B total, Part D adjustment]. */
+  single: [number, number, number][];
+  joint: [number, number, number][];
+  separate: [number, number, number][];
+}
+
 /** 2026 IRMAA (SSA POMS HI 01101.020). Monthly Part B total premium and Part D adjustment. */
-export const US_IRMAA_2026 = {
+export const US_IRMAA_2026: UsIrmaaYear = {
   year: 2026,
+  startYear: 2026,
   standardPartB: 202.9,
   source: "https://secure.ssa.gov/poms.nsf/lnx/0601101020",
   /** [MAGI lower bound (exclusive), Part B total, Part D adjustment]. */
@@ -328,9 +521,57 @@ export const US_IRMAA_2026 = {
   ] as [number, number, number][],
 };
 
-/** ACA premium tax credit, coverage year 2026 (Rev. Proc. 2025-25; enhanced credits expired after 2025). */
-export const US_ACA_2026 = {
+/** 2027 IRMAA: CMS fact sheet of 17 November 2026 (Part B and Part D tables; read 2026-11-19). */
+export const US_IRMAA_2027: UsIrmaaYear = {
+  year: 2027,
+  startYear: 2027,
+  standardPartB: 209.4,
+  source: "https://www.cms.gov/newsroom/fact-sheets/2027-medicare-parts-b-premiums-deductibles",
+  single: [
+    [112_000, 293.1, 15.4],
+    [141_000, 418.8, 39.7],
+    [177_000, 544.4, 64.0],
+    [212_000, 670.0, 88.3],
+    [499_999.99, 711.8, 96.4],
+  ],
+  joint: [
+    [224_000, 293.1, 15.4],
+    [282_000, 418.8, 39.7],
+    [354_000, 544.4, 64.0],
+    [424_000, 670.0, 88.3],
+    [749_999.99, 711.8, 96.4],
+  ],
+  separate: [
+    [112_000, 670.0, 88.3],
+    [387_999.99, 711.8, 96.4],
+  ],
+};
+
+export const US_IRMAA_YEARS: readonly UsIrmaaYear[] = [US_IRMAA_2026, US_IRMAA_2027];
+
+/**
+ * ACA premium tax credit, coverage year 2026 (Rev. Proc. 2025-25; enhanced credits expired after 2025,
+ * confirmed by the 2026 Form 8962 instructions: no credit above 400% FPL, full repayment of excess APTC).
+ */
+export interface UsAcaYear {
+  year: number;
+  startYear: number;
+  /** HHS poverty guideline (48 states/DC) of the year before coverage. */
+  fpl: { first: number; additional: number };
+  /** [FPL multiple lower bound, applicable % at lower bound, at upper bound of the segment]. */
+  applicable: [number, number, number][];
+  /** No credit above this multiple (Form 8962 line 5 is the whole percentage; 401% gets none). */
+  cliff: number;
+  /** No credit below this multiple (100% FPL; lawfully present exception removed from 2026). */
+  floor: number;
+  /** ARPA/IRA enhanced schedule (law toggle 'us.acaEnhanced'): 0% to 150%, 8.5% cap, no cliff. */
+  enhanced: [number, number, number][];
+  sources: { url: string; note?: string }[];
+}
+
+export const US_ACA_2026: UsAcaYear = {
   year: 2026,
+  startYear: 2026,
   /** 2025 HHS poverty guideline (48 states/DC) used for 2026 coverage. */
   fpl: { first: 15_650, additional: 5_500 },
   /** [FPL multiple lower bound, applicable % at lower bound, at upper bound of the segment]. */
@@ -342,8 +583,8 @@ export const US_ACA_2026 = {
     [2.5, 0.0844, 0.0996],
     [3.0, 0.0996, 0.0996],
   ] as [number, number, number][],
-  /** No credit at or above this multiple (the cliff). */
   cliff: 4.0,
+  floor: 1.0,
   /** ARPA/IRA enhanced schedule (law toggle 'us.acaEnhanced'): 0% to 150%, 8.5% cap, no cliff. */
   enhanced: [
     [0, 0, 0],
@@ -362,8 +603,40 @@ export const US_ACA_2026 = {
       url: "https://aspe.hhs.gov/topics/poverty-economic-mobility/poverty-guidelines",
       note: "2025 FPL",
     },
+    {
+      url: "https://www.irs.gov/pub/irs-dft/i8962--dft.pdf",
+      note: "2026 Form 8962 instructions (draft): no PTC above 400% FPL or below 100%; excess APTC repaid in full",
+    },
   ],
 };
+
+/** Coverage year 2027: Rev. Proc. 2026-26 and the 2026 HHS poverty guidelines (read 2026-11-19). */
+export const US_ACA_2027: UsAcaYear = {
+  ...US_ACA_2026,
+  year: 2027,
+  startYear: 2027,
+  fpl: { first: 15_960, additional: 5_680 },
+  applicable: [
+    [0, 0.0215, 0.0215],
+    [1.33, 0.0323, 0.043],
+    [1.5, 0.043, 0.0678],
+    [2.0, 0.0678, 0.0866],
+    [2.5, 0.0866, 0.1022],
+    [3.0, 0.1022, 0.1022],
+  ],
+  sources: [
+    {
+      url: "https://www.irs.gov/pub/irs-drop/rp-26-26.pdf",
+      note: "Rev. Proc. 2026-26 section 3: 2027 applicable percentage table",
+    },
+    {
+      url: "https://www.govinfo.gov/content/pkg/FR-2026-01-15/html/2026-00755.htm",
+      note: "2026 HHS poverty guidelines: $15,960 for one person, $5,680 per additional person",
+    },
+  ],
+};
+
+export const US_ACA_YEARS: readonly UsAcaYear[] = [US_ACA_2026, US_ACA_2027];
 
 /** IRS Uniform Lifetime Table (Treas. Reg. §1.401(a)(9)-9(c), effective 2022). Age -> divisor. */
 export const UNIFORM_LIFETIME: Record<number, number> = {
@@ -428,9 +701,26 @@ export function usRmdStartAge(birthYear: number): number {
   return 75;
 }
 
-/** 2026 contribution limits (IRS IR-2025-111; Rev. Proc. 2025-19 for HSA). */
-export const US_LIMITS_2026 = {
+export interface UsLimitsYear {
+  year: number;
+  startYear: number;
+  electiveDeferral: number;
+  catchUp50: number;
+  catchUp60to63: number;
+  ira: number;
+  iraCatchUp: number;
+  simple: number;
+  simpleCatchUp: number;
+  simpleCatchUp60to63: number;
+  sepOrSoloTotal: number;
+  hsa: { self: number; family: number; catchUp55: number };
+  sources: { url: string; note?: string }[];
+}
+
+/** 2026 contribution limits (IRS IR-2025-111, Notice 2025-67; Rev. Proc. 2025-19 for HSA). */
+export const US_LIMITS_2026: UsLimitsYear = {
   year: 2026,
+  startYear: 2026,
   electiveDeferral: 24_500,
   catchUp50: 8_000,
   catchUp60to63: 11_250,
@@ -446,14 +736,56 @@ export const US_LIMITS_2026 = {
       url: "https://www.irs.gov/newsroom/401k-limit-increases-to-24500-for-2026-ira-limit-increases-to-7500",
       note: "2026 retirement plan limits",
     },
+    { url: "https://www.irs.gov/pub/irs-drop/n-25-67.pdf", note: "Notice 2025-67" },
+    { url: "https://www.irs.gov/pub/irs-drop/rp-25-19.pdf", note: "Rev. Proc. 2025-19 (HSA 2026)" },
   ],
 };
 
-export const US_ESTATE = {
-  year: 2026,
-  basicExclusion: 15_000_000,
-  source: RP_2025_32,
+/** 2027 limits: Notice 2026-66 (IR-2026-136) and Rev. Proc. 2026-24 for HSAs (read 2026-11-19). */
+export const US_LIMITS_2027: UsLimitsYear = {
+  year: 2027,
+  startYear: 2027,
+  electiveDeferral: 25_500,
+  catchUp50: 8_500,
+  catchUp60to63: 11_750,
+  ira: 7_500,
+  iraCatchUp: 1_100,
+  simple: 17_500,
+  simpleCatchUp: 4_000,
+  simpleCatchUp60to63: 5_250,
+  sepOrSoloTotal: 75_000,
+  // The $1,000 HSA catch-up (55+) is statutory and not indexed (IRC 223(b)(3)).
+  hsa: { self: 4_500, family: 9_000, catchUp55: 1_000 },
+  sources: [
+    {
+      url: "https://www.irs.gov/pub/irs-drop/n-26-66.pdf",
+      note: "Notice 2026-66: 2027 retirement plan and IRA limits",
+    },
+    {
+      url: "https://www.irs.gov/newsroom/401k-limit-increases-to-25500-for-2027-ira-limit-remains-7500",
+      note: "IRS news release on the 2027 limits",
+    },
+    {
+      url: "https://www.irs.gov/pub/irs-drop/rp-26-24.pdf",
+      note: "Rev. Proc. 2026-24 section 3.01: 2027 HSA limits",
+    },
+  ],
 };
+
+export const US_LIMITS_YEARS: readonly UsLimitsYear[] = [US_LIMITS_2026, US_LIMITS_2027];
+
+/** Estate tax basic exclusion amount (IRC 2010(c)(3)) by year of death. */
+export const US_ESTATE_YEARS: readonly {
+  year: number;
+  startYear: number;
+  basicExclusion: number;
+  source: string;
+}[] = [
+  // Rev. Proc. 2025-32 section 4.41.
+  { year: 2026, startYear: 2026, basicExclusion: 15_000_000, source: RP_2025_32 },
+  // Rev. Proc. 2026-35 section 3.44 (read 2026-11-19).
+  { year: 2027, startYear: 2027, basicExclusion: 15_480_000, source: RP_2026_35 },
+];
 
 /**
  * Mortality rates q(x), ages 0-120, of 26 CFR 1.401(a)(9)-9(e) (T.D. 9930, the rates behind the

@@ -4,7 +4,7 @@
  *   estimateUkInheritanceTax: nil-rate band, residence nil-rate band (with £2m taper), transfer
  *     of a late spouse's unused bands, spouse exemption, 36% charity rate, pensions in the estate
  *     from 6 April 2027, gifts within seven years using the NRB first (taper relief ignored).
- *   estimateUsEstateTax: basic exclusion ($15m in 2026, indexed from 2027), portability (DSUE),
+ *   estimateUsEstateTax: basic exclusion ($15m in 2026, $15.48m in 2027, indexed after), portability (DSUE),
  *     marital and charitable deductions, unified rate schedule. State estate taxes not modelled.
  *   estimateNetLegacy: Legacy minus estate tax, heirs' income tax on tax-deferred accounts,
  *     embedded gains (unless step-up), liquidation and admin costs (EstateSettings).
@@ -12,7 +12,7 @@
 
 import { clamp0, pickYear, type ThresholdPolicy } from "./common.js";
 import { UK_TAX_YEARS } from "./data/uk.js";
-import { US_ESTATE } from "./data/us-federal.js";
+import { US_ESTATE_YEARS } from "./data/us-federal.js";
 
 export interface UkInheritanceTaxInput {
   /** Calendar year of death (tax year starting that April). */
@@ -140,8 +140,13 @@ export interface UsEstateTaxInput {
   /** Adjusted taxable gifts made in life. */
   lifetimeGifts?: number;
   priceIndex?: number;
-  /** Price index in the exclusion's base year (2026); defaults to 1. */
+  /** Price index in the year of the latest published exclusion (see usEstateBaseYear); defaults to 1. */
   basePriceIndex?: number;
+}
+
+/** Year of the published US basic exclusion that a death in `year` indexes from. */
+export function usEstateBaseYear(year: number): number {
+  return pickYear(US_ESTATE_YEARS, year).year;
 }
 
 export function estimateUsEstateTax(q: UsEstateTaxInput): {
@@ -151,13 +156,14 @@ export function estimateUsEstateTax(q: UsEstateTaxInput): {
   source: string;
 } {
   const pi = q.priceIndex ?? 1;
+  const row = pickYear(US_ESTATE_YEARS, q.year);
   const exclusion =
-    US_ESTATE.basicExclusion * (q.year > US_ESTATE.year ? pi / (q.basePriceIndex ?? 1) : 1) +
+    row.basicExclusion * (q.year > row.year ? pi / (q.basePriceIndex ?? 1) : 1) +
     clamp0(q.dsue ?? 0);
   const taxableEstate = clamp0(q.grossEstate - clamp0(q.toSpouse ?? 0) - clamp0(q.toCharity ?? 0));
   const base = taxableEstate + clamp0(q.lifetimeGifts ?? 0);
   const tax = clamp0(unifiedTax(base) - unifiedTax(exclusion));
-  return { tax, exclusion, taxableEstate, source: US_ESTATE.source };
+  return { tax, exclusion, taxableEstate, source: row.source };
 }
 
 export interface NetLegacyInput {

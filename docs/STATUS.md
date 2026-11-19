@@ -87,19 +87,20 @@ automatically. Crypto has no history and is sampled from a distribution.
 Later years carry the last known rates forward and index thresholds with inflation (or per the threshold policy);
 that is wrong whenever the rules change. Someone must add new years each spring.
 
-| Country                             | Years in the tables                                                          |
-| ----------------------------------- | ---------------------------------------------------------------------------- |
-| UK                                  | 2025/26, 2026/27; 2027/28 as announced at Budget 2025 and 2026; 2029/30      |
-| US federal, payroll, states, cities | 2026 (OBBBA); a TCJA-sunset what-if is an **estimate** (2017 law x 1.33)     |
-| Canada                              | 2026                                                                         |
-| Australia                           | 2025-26, 2026-27, legislated 2027-28                                         |
-| Germany, Netherlands, Israel        | 2026                                                                         |
-| Ireland                             | 2026; 2027 as announced in Budget 2027 (Finance (No. 2) Bill 2026)           |
-| New Zealand                         | 2026-27                                                                      |
-| France                              | 2026 finance law (taxes 2025 income), 2026 social rates                      |
-| Spain                               | **2025** IRPF scales, 2026 social security                                   |
-| United Arab Emirates                | 2026 (no personal tax; gratuity, DEWS, savings scheme, GPSSA Law 57 of 2023) |
-| Cross-border tables                 | UK non-resident rules 2026-27 (gov.uk); US FEIE 2025-2026                    |
+| Country                      | Years in the tables                                                                                               |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| UK                           | 2025/26, 2026/27; 2027/28 as announced at Budget 2025 and 2026; 2029/30                                           |
+| US federal, payroll          | 2026 and 2027 (OBBBA; Rev. Proc. 2025-32 and 2026-35); a TCJA-sunset what-if is an **estimate** (2017 law x 1.33) |
+| US states, cities            | 2026                                                                                                              |
+| Canada                       | 2026                                                                                                              |
+| Australia                    | 2025-26, 2026-27, legislated 2027-28                                                                              |
+| Germany, Netherlands, Israel | 2026                                                                                                              |
+| Ireland                      | 2026; 2027 as announced in Budget 2027 (Finance (No. 2) Bill 2026)                                                |
+| New Zealand                  | 2026-27                                                                                                           |
+| France                       | 2026 finance law (taxes 2025 income), 2026 social rates                                                           |
+| Spain                        | **2025** IRPF scales, 2026 social security                                                                        |
+| United Arab Emirates         | 2026 (no personal tax; gratuity, DEWS, savings scheme, GPSSA Law 57 of 2023)                                      |
+| Cross-border tables          | UK non-resident rules 2026-27 (gov.uk); US FEIE 2025-2026                                                         |
 
 Figures that could not be confirmed or are provisional:
 
@@ -107,12 +108,12 @@ Figures that could not be confirmed or are provisional:
   surtax threshold and National Insurance rates. The Tax Authority and National Insurance Institute sites refused
   automated access, so the figures are as published by independent sources (PwC is no longer cited). The partial
   exemption for qualifying pension annuities could not be confirmed either, so pensions are taxed in full.
-- US states: **not confirmed from an official source** (2026-11-16; the state site would not open): all figures for
-  Idaho, Kansas, Louisiana, Michigan, New Hampshire, Ohio, Rhode Island and Wisconsin, and the Wilmington and Newark
-  city rates; some figures for Arizona (rate), Georgia (retirement exclusion), Iowa (exemption credit), Kentucky
-  (pension exclusion), Missouri (capital gains subtraction), Oklahoma (deduction, exemptions, retirement exclusion),
-  South Carolina (dependent exemption, retirement deductions), Vermont (thresholds, deduction, exemption) and West
-  Virginia (exemption, retirement exclusion). Each is named in that state's simplifications.
+- US states: **not confirmed from an official source** (2026-11-19): all figures for Idaho (its official sites refused
+  connections); Arizona's 2.5% rate (confirmed only by a 2025 legislative fiscal note) and whether voters approved a
+  2.0% rate from 2027; whether Colorado adds back the federal senior deduction; and 2026 amounts not yet published,
+  for which the 2025 amounts are used: Louisiana's final standard deduction, Maine's pension deduction phase-out,
+  Montana's senior subtraction, Ohio's exemptions, Rhode Island's retirement income limits, South Carolina's
+  dependent exemption and Vermont's brackets. Each is named in that state's simplifications.
 - Canada: Quebec's brackets and basic amount are **not confirmed from an official source** (Revenu Québec refused
   automated access, 2026-11-16); federal, other provincial, CPP/QPP, EI and OAS figures were confirmed from CRA.
 - Australia: Medicare levy low-income thresholds are the 2024-25 values for every year; the 2.9% increase from 1 July
@@ -151,21 +152,21 @@ Figures that could not be confirmed or are provisional:
 
 Tax sources, checked 2026-11-16 (the status of each country's sourcing; licences are in `DATA-LICENSES.md`):
 
-| Country                                 | Sourcing status                                                                                                   |
-| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| US federal, payroll                     | ok (IRS, SSA)                                                                                                     |
-| US states and cities                    | ok for 42 states, DC and 3 cities from each state's own publications; 8 states and 2 cities not confirmed (above) |
-| Canada                                  | ok (CRA); Quebec brackets and basic amount not confirmed                                                          |
-| Israel                                  | not confirmed (official sites unreachable)                                                                        |
-| United Arab Emirates                    | ok (copied sentence reworded)                                                                                     |
-| Australia                               | ok on facts (ATO cited; Medicare thresholds checked against the 2026-27 Budget paper)                             |
-| Ireland                                 | ok on facts for 2026 (Revenue); 2027 from Budget 2027 documents (2026-11-19); gaps above                          |
-| New Zealand                             | ok (IRD rates from 1 April 2025, no end date)                                                                     |
-| UK, Germany, France, Spain, Netherlands | UK ok (gov.uk, legislation.gov.uk, Budget 2026; checked 2026-11-19; gaps above); others unchanged in this pass    |
+| Country                                 | Sourcing status                                                                                                |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| US federal, payroll                     | ok (IRS, SSA, CMS; 2027 figures checked 2026-11-19)                                                            |
+| US states and cities                    | ok for 49 states, DC and 5 cities (2026-11-19); Idaho and some figures of 9 states not confirmed (above)       |
+| Canada                                  | ok (CRA); Quebec brackets and basic amount not confirmed                                                       |
+| Israel                                  | not confirmed (official sites unreachable)                                                                     |
+| United Arab Emirates                    | ok (copied sentence reworded)                                                                                  |
+| Australia                               | ok on facts (ATO cited; Medicare thresholds checked against the 2026-27 Budget paper)                          |
+| Ireland                                 | ok on facts for 2026 (Revenue); 2027 from Budget 2027 documents (2026-11-19); gaps above                       |
+| New Zealand                             | ok (IRD rates from 1 April 2025, no end date)                                                                  |
+| UK, Germany, France, Spain, Netherlands | UK ok (gov.uk, legislation.gov.uk, Budget 2026; checked 2026-11-19; gaps above); others unchanged in this pass |
 
 Each country's full list of simplifications is `TAX_SIMPLIFICATIONS`
 (`packages/core/src/tax/data/simplifications.ts`) and is shown with the tax results. Highlights: US SALT cap and
-itemised phase-outs not applied, AMT adds back only the standard deduction, no EITC or education credits; Canada no
+itemised phase-outs not applied, AMT adds back only the standard and senior deductions, no EITC or education credits; Canada no
 AMT, GIS is an amount you enter; Australia no SAPTO, HELP or Medicare levy surcharge; UK no pension allowance
 carry-forward, Class 1 and 4 NI only, one pair of CGT rates; everywhere gains are realised pro rata to basis, all
 long-term, and losses are never realised.

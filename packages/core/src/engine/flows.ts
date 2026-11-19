@@ -43,7 +43,7 @@ import {
 } from "./context.js";
 import { parseMonth } from "./dates.js";
 import { fxAt } from "./indices.js";
-import { annualLimit, limitGroupOf, lisaCap, US_415C } from "./limits.js";
+import { annualLimit, limitGroupOf, lisaCap, us415c } from "./limits.js";
 import { nonResidentContributionCap } from "./crossborder.js";
 import { rulesFor } from "./rules.js";
 import { ownerCutoff } from "./survivor.js";
@@ -176,7 +176,7 @@ function contribute(
   if (f.route === "mega-backdoor-roth") {
     // After-tax space under the 415(c) total-additions limit.
     const space =
-      US_415C * ps.piStart * frac -
+      us415c(ps.bounds.year, ps.piStart) * frac -
       (ps.limitUsed.get(`${a.owner}|us-401k`) ?? 0) -
       (ps.limitUsed.get(`${a.owner}|employer`) ?? 0) -
       (ps.limitUsed.get(`${a.owner}|after-tax`) ?? 0);

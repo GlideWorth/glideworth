@@ -205,7 +205,16 @@ export const sectionsForMode = (mode: AppMode): SettingsSection[] =>
     : SETTINGS_SECTIONS;
 
 export const DEVELOPER_DOCS_ICON = Code2;
-export const settingsSection = (id: string | undefined, mode: AppMode = "selfhost") => {
+
+/**
+ * The section for a settings URL. `/settings` (no id) opens the mode's first section. An id this
+ * mode does not list is not a page: callers show the 404 instead of falling back to another section.
+ */
+export const settingsSection = (
+  id: string | undefined,
+  mode: AppMode = "selfhost",
+): SettingsSection | undefined => {
   const list = sectionsForMode(mode);
-  return list.find((s) => s.id === id) ?? list[0]!;
+  if (id === undefined) return list[0];
+  return list.find((s) => s.id === id);
 };

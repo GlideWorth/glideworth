@@ -5,7 +5,7 @@
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isPublicPath } from "../src/components/layout/app-shell";
 import { CLOUD_SECTION_IDS, sectionsForMode } from "../src/features/settings/sections";
@@ -300,6 +300,62 @@ describe("cloud", () => {
       await screen.findByRole("heading", { name: "This workspace has not started yet" }),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Subscribe,/ })).toBeNull();
+  });
+
+  it.each(["/settings/shares", "/settings/people"])(
+    "%s is the 404, not the Account page (issue #60)",
+    async (path) => {
+      stubFetch(CLOUD_SIGNED_IN);
+      await open(path);
+      expect(await screen.findByRole("heading", { name: "There is no page here" })).toBeTruthy();
+      expect(screen.getByText("404 · Off the trail")).toBeTruthy();
+      expect(screen.queryByRole("heading", { name: "Account" })).toBeNull();
+      expect(screen.queryByRole("navigation", { name: "Settings sections" })).toBeNull();
+      expect(router.state.location.pathname).toBe(path);
+    },
+  );
+
+  it("keeps /settings and a real section, and 404s an unknown one on self-host (issue #60)", async () => {
+    stubFetch(CLOUD_SIGNED_IN);
+    await open("/settings");
+    const nav = await screen.findByRole("navigation", { name: "Settings sections" });
+    expect(within(nav).getByRole("link", { name: "Account" }).getAttribute("aria-current")).toBe(
+      "page",
+    );
+    cleanup();
+    stubFetch(CLOUD_SIGNED_IN);
+    await open("/settings/sharing");
+    expect(await screen.findByRole("heading", { name: "Share links" })).toBeTruthy();
+    cleanup();
+    stubFetch(SELFHOST_STATUS);
+    await open("/settings/shares");
+    expect(await screen.findByRole("heading", { name: "There is no page here" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Profile & locale" })).toBeNull();
+  });
+
+  it("the guided setup tab title follows each step's heading (issue #60)", async () => {
+    stubFetch(CLOUD_SIGNED_IN);
+    await open("/welcome/setup");
+    const steps = [
+      "Where you live",
+      "Who is in the plan",
+      "What you have",
+      "What you earn",
+      "What you spend",
+      "Your retirement goal",
+    ];
+    for (const title of steps) {
+      expect(await screen.findByRole("heading", { name: title })).toBeTruthy();
+      await waitFor(() => expect(document.title).toBe(`${title} · Glideworth`));
+      if (title === "Who is in the plan") {
+        fireEvent.change(screen.getByRole("textbox", { name: "First name" }), {
+          target: { value: "Robin" },
+        });
+      }
+      if (title !== "Your retirement goal")
+        fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    }
+    expect(router.state.location.pathname).toBe("/welcome/setup");
   });
 
   it("a suspended workspace shows the suspended page instead of the app", async () => {

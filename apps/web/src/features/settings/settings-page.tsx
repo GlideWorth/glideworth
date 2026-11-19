@@ -77,11 +77,11 @@ export function SettingsPage() {
   const { persisted } = useSettings();
   const { data: ws } = useWorkspace();
   const noWorkspace = useCloudSession()?.workspace === null;
+  // Unknown ids (and a hosted section on a self-host server) are not this page.
+  if (!current) return <NotFound />;
   const isCloudSection = CLOUD_SECTION_IDS.includes(current.id);
   const Body = BODY[current.id] ?? ProfileSection;
   const groups = [...new Set(sections.map((s) => s.group))];
-  // A hosted-mode address (/settings/billing) is not a page on a self-host server.
-  if (mode !== "cloud" && CLOUD_SECTION_IDS.includes(params.section ?? "")) return <NotFound />;
   return (
     <Page
       title="Settings"

@@ -554,7 +554,17 @@ function OverflowMenu() {
 
 // ------------------------------------------------------------------------------------ behaviours
 
-/** Move focus to the new page's heading after navigation, and keep the document title in sync. */
+/** The tab title follows the page heading, including a heading that changes without a new URL. */
+function writeDocumentTitle(h1: Element | null | undefined) {
+  const title = h1?.textContent?.trim();
+  document.title = title ? `${title} · Glideworth` : "Glideworth";
+  return title;
+}
+
+/**
+ * Move focus to the new page's heading after navigation, and keep the document title in sync.
+ * The title also follows a heading that changes in place (the guided setup steps share one URL).
+ */
 function useRouteFocus(mainRef: RefObject<HTMLElement | null>) {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const first = useRef(true);
@@ -562,16 +572,35 @@ function useRouteFocus(mainRef: RefObject<HTMLElement | null>) {
   useEffect(() => {
     let cancelled = false;
     let tries = 0;
+    let observed: Element | null = null;
+    let headingObserver: MutationObserver | undefined;
+    let structure: MutationObserver | undefined;
+    const heading = () => mainRef.current?.querySelector("h1") ?? document.querySelector("main h1");
+    // Re-bind when the heading element is replaced. Text edits of the current heading are watched
+    // on the element itself, so the rest of the page updating does not rewrite the title.
+    const watchHeading = (h1: Element | null) => {
+      if (h1 === observed) return;
+      headingObserver?.disconnect();
+      observed = h1;
+      if (!h1) return;
+      writeDocumentTitle(h1);
+      headingObserver = new MutationObserver(() => writeDocumentTitle(h1));
+      headingObserver.observe(h1, { subtree: true, childList: true, characterData: true });
+    };
     const apply = () => {
       if (cancelled) return;
       const main = mainRef.current;
-      const h1 = main?.querySelector("h1") ?? document.querySelector("main h1");
+      const h1 = heading();
       if (!h1 && tries++ < 12) {
         setTimeout(apply, 120);
         return;
       }
-      const title = h1?.textContent?.trim();
-      document.title = title ? `${title} · Glideworth` : "Glideworth";
+      const title = writeDocumentTitle(h1);
+      if (main && !structure) {
+        structure = new MutationObserver(() => watchHeading(heading()));
+        structure.observe(main, { childList: true, subtree: true });
+      }
+      watchHeading(h1);
       if (first.current) {
         first.current = false;
         return;
@@ -587,6 +616,8 @@ function useRouteFocus(mainRef: RefObject<HTMLElement | null>) {
     requestAnimationFrame(apply);
     return () => {
       cancelled = true;
+      structure?.disconnect();
+      headingObserver?.disconnect();
     };
   }, [path, mainRef]);
   return announce;

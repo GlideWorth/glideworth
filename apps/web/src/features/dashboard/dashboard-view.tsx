@@ -39,6 +39,7 @@ import { successTone } from "../../stores/prefs";
 import { useUi } from "../../stores/ui";
 import { useMcStore } from "../chance/mc-store";
 import { ChangesSinceCheckInCard, useChangesSinceCheckin } from "../checkins/checkins";
+import { CalculatorHandoffBanner } from "../cloud/handoff-notice";
 import { attempt, bridge } from "../results/core-bridge";
 import {
   buildEntityIndex,
@@ -300,6 +301,7 @@ export function DashboardView() {
       description="Where you stand today and where your main plan is heading."
       actions={<Customise on={on} set={setWidget} />}
     >
+      <CalculatorHandoffBanner />
       <div className="grid gap-5 rounded-[var(--radius-card)] border border-border bg-surface px-5 py-4 shadow-card md:grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)]">
         <div className="flex items-end justify-between gap-4">
           <Stat

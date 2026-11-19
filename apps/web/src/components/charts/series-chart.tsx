@@ -1,6 +1,7 @@
 /**
- * Generic time-series chart (bars / lines / areas over a category axis) used by most analysis
- * views. One y axis only (never dual-axis): money OR percent OR plain numbers.
+ * Generic time-series chart (bars / lines / areas) used by most analysis views. The x-axis is
+ * categories, one slot per point, unless `xValues` gives a coordinate per point — then it is a
+ * linear scale. One y axis only (never dual-axis): money OR percent OR plain numbers.
  */
 import { useCallback, useRef } from "react";
 import { formatMoney, formatNumber, formatPercent } from "../../lib/format";
@@ -34,6 +35,14 @@ export interface SeriesChartProps {
   height?: number;
   ariaLabel: string;
   onClickIndex?: (i: number) => void;
+  /**
+   * Numeric x coordinate for each label and series value. Plots on a linear axis instead of
+   * one equal-width category per point, so unevenly spaced samples (a solver search clustering
+   * on the answer) keep their real spacing. Ticks are the axis's own evenly spaced values.
+   */
+  xValues?: number[];
+  /** Tick text for a linear x-axis. Defaults to the number itself. */
+  formatX?: (value: number) => string;
   /** Vertical markers at label indexes. */
   markers?: { index: number; label: string; tone?: "accent" | "ochre" | "negative" | "ink" }[];
   /** Horizontal reference lines. */
@@ -48,6 +57,12 @@ export interface SeriesChartProps {
   stepX?: boolean;
 }
 
+/** Y of a category point (a number) or a linear point (`[x, y]`). */
+function yValue(v: unknown): number | null {
+  const raw = Array.isArray(v) ? v[v.length - 1] : v;
+  return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
+}
+
 export function SeriesChart(props: SeriesChartProps) {
   const {
     labels,
@@ -58,6 +73,8 @@ export function SeriesChart(props: SeriesChartProps) {
     height = 280,
     ariaLabel,
     onClickIndex,
+    xValues,
+    formatX,
     markers,
     refLines,
     tooltipExtra,
@@ -106,27 +123,40 @@ export function SeriesChart(props: SeriesChartProps) {
             }[];
             const i = ps[0]?.dataIndex ?? 0;
             const rows = ps
-              .filter(
-                (p) => !series[p.seriesIndex]?.silent && p.value !== null && p.value !== undefined,
-              )
+              .filter((p) => !series[p.seriesIndex]?.silent && yValue(p.value) !== null)
               .map((p) =>
                 tooltipRow(
                   col(series[p.seriesIndex]!),
                   series[p.seriesIndex]!.name,
-                  fmt(p.value as number, false),
+                  fmt(yValue(p.value)!, false),
                 ),
               );
             return `${tooltipHeader(tooltipTitle ? tooltipTitle(i) : (labels[i] ?? ""))}${rows.join("")}${tooltipExtra ? tooltipExtra(i) : ""}`;
           },
         },
-        xAxis: {
-          type: "category",
-          data: labels,
-          boundaryGap: hasBar,
-          ...ax,
-          splitLine: { show: false },
-          axisLabel: { ...ax.axisLabel, hideOverlap: true },
-        },
+        xAxis: xValues
+          ? {
+              type: "value",
+              ...ax,
+              // Pin the scale to the samples. A category axis would give every sample the same
+              // width and a tick per sample, repeating labels where the search clusters.
+              min: (v: { min: number; max: number }) => (v.max === v.min ? v.min - 1 : v.min),
+              max: (v: { min: number; max: number }) => (v.max === v.min ? v.max + 1 : v.max),
+              splitLine: { show: false },
+              axisLabel: {
+                ...ax.axisLabel,
+                hideOverlap: true,
+                formatter: (v: number) => (formatX ? formatX(v) : String(v)),
+              },
+            }
+          : {
+              type: "category",
+              data: labels,
+              boundaryGap: hasBar,
+              ...ax,
+              splitLine: { show: false },
+              axisLabel: { ...ax.axisLabel, hideOverlap: true },
+            },
         yAxis: {
           type: "value",
           ...ax,
@@ -153,7 +183,7 @@ export function SeriesChart(props: SeriesChartProps) {
           const type = s.type ?? "line";
           const base = {
             name: s.name,
-            data: s.values,
+            data: xValues ? s.values.map((y, i) => [xValues[i], y]) : s.values,
             z: s.z ?? 2,
             silent: s.silent ?? false,
             emphasis: { focus: s.silent ? "none" : "series" },
@@ -165,7 +195,7 @@ export function SeriesChart(props: SeriesChartProps) {
                     animation: false,
                     data: [
                       ...(markers ?? []).map((m) => ({
-                        xAxis: labels[m.index],
+                        xAxis: xValues ? xValues[m.index] : labels[m.index],
                         lineStyle: { color: tone(m.tone), type: "dashed", width: 1 },
                         label: {
                           formatter: m.label,
@@ -220,6 +250,8 @@ export function SeriesChart(props: SeriesChartProps) {
             symbol: s.symbol ? "circle" : "none",
             symbolSize: 6,
             showSymbol: !!s.symbol,
+            // Endpoint symbols sit on the axis min/max; don't clip them.
+            clip: xValues ? false : undefined,
             connectNulls: false,
             lineStyle: {
               width: s.transparent ? 0 : (s.width ?? 2),
@@ -244,6 +276,8 @@ export function SeriesChart(props: SeriesChartProps) {
       format,
       locale,
       currency,
+      xValues,
+      formatX,
       markers,
       refLines,
       tooltipExtra,
@@ -257,12 +291,29 @@ export function SeriesChart(props: SeriesChartProps) {
   );
   const clickRef = useRef(onClickIndex);
   clickRef.current = onClickIndex;
+  const xValuesRef = useRef(xValues);
+  xValuesRef.current = xValues;
   const onReady = useCallback((c: ChartInstance) => {
     c.getZr().on("click", (e: { offsetX: number; offsetY: number }) => {
       const pt = [e.offsetX, e.offsetY];
       if (!c.containPixel({ gridIndex: 0 }, pt)) return;
       const [x] = c.convertFromPixel({ gridIndex: 0 }, pt) as number[];
-      if (x !== undefined && Number.isFinite(x)) clickRef.current?.(Math.round(x));
+      if (x === undefined || !Number.isFinite(x)) return;
+      const xs = xValuesRef.current;
+      if (!xs?.length) {
+        clickRef.current?.(Math.round(x));
+        return;
+      }
+      let best = 0;
+      let bestD = Infinity;
+      for (let i = 0; i < xs.length; i++) {
+        const d = Math.abs(xs[i]! - x);
+        if (d < bestD) {
+          best = i;
+          bestD = d;
+        }
+      }
+      clickRef.current?.(best);
     });
   }, []);
   return <Chart build={build} height={height} ariaLabel={ariaLabel} onReady={onReady} />;

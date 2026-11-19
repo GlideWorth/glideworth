@@ -72,7 +72,7 @@ import {
   type TornadoRow,
 } from "./insights-model";
 import { scaleExpenses, scaleFlows, type Variant } from "./plan-edits";
-import { PlanChangePreview } from "./plan-preview";
+import { PlanChangePreview, SOLVER_PROJECTION_NOTE } from "./plan-preview";
 import { SurvivorPanel, TemplateGallery } from "./scenario-panels";
 import { TaxStrategyPanel } from "./tax-strategy-panel";
 
@@ -306,6 +306,12 @@ function GoalSeekPanel({
   };
   const r = state.result;
   const variant = r ? variantFromSeek(kind, r, plan, asOf, { milestoneId, flowId }) : null;
+  // Sorted by the variable, not by the order the search tried them. A category axis would draw
+  // each evaluation at equal width and repeat labels where the search clusters on the answer.
+  const curve =
+    r && r.evaluations.length > 1 ? [...r.evaluations].sort((a, b) => a.value - b.value) : null;
+  const formatCurveX = (v: number) =>
+    kind === "retirement" ? monthFromOffset(asOf, v) : f.percent(v, 0);
   const answer = (v: number | null) => {
     if (v === null) return "No answer in range";
     if (kind === "spending") return `${v >= 1 ? "+" : ""}${f.percent(v - 1, 0)} spending`;
@@ -486,13 +492,11 @@ function GoalSeekPanel({
                 ))}
               </div>
             ) : null}
-            {r.evaluations.length > 1 ? (
+            {curve ? (
               <SeriesChart
-                labels={[...r.evaluations]
-                  .sort((a, b) => a.value - b.value)
-                  .map((e) =>
-                    kind === "retirement" ? monthFromOffset(asOf, e.value) : f.percent(e.value, 0),
-                  )}
+                labels={curve.map((e) => formatCurveX(e.value))}
+                xValues={curve.map((e) => e.value)}
+                formatX={formatCurveX}
                 format="percent"
                 locale={f.locale}
                 height={160}
@@ -502,9 +506,7 @@ function GoalSeekPanel({
                   {
                     name: "Chance of success",
                     color: (t) => t.accent,
-                    values: [...r.evaluations]
-                      .sort((a, b) => a.value - b.value)
-                      .map((e) => e.metric),
+                    values: curve.map((e) => e.metric),
                     symbol: true,
                   },
                 ]}
@@ -515,6 +517,7 @@ function GoalSeekPanel({
                 input={input}
                 base={result}
                 variant={variant}
+                projectionNote={SOLVER_PROJECTION_NOTE}
                 title={
                   kind === "spending"
                     ? "max spending"

@@ -56,18 +56,29 @@ export function Delta({
   );
 }
 
+/**
+ * Shown on a goal-seek preview. The solver's answer is a Monte Carlo success rate; the figures
+ * in this card are a separate deterministic run and can show a shortfall even when that rate is
+ * on target.
+ */
+export const SOLVER_PROJECTION_NOTE =
+  "Deterministic projection at the plan's assumed rates, separate from the Monte Carlo chance of success above.";
+
 export function PlanChangePreview({
   input,
   base,
   variant,
   title,
   onDone,
+  projectionNote,
 }: {
   input: SimulationInput;
   base: ProjectionResult;
   variant: Variant;
   title: string;
   onDone?: () => void;
+  /** Labels the outcome stats as a deterministic run, distinct from a Monte Carlo answer. */
+  projectionNote?: string;
 }) {
   const f = useFormat();
   const qc = useQueryClient();
@@ -153,6 +164,9 @@ export function PlanChangePreview({
           <Loader2 className="size-3.5 animate-spin" /> Simulating the change…
         </div>
       ) : null}
+      {projectionNote ? (
+        <p className="text-[12px] leading-relaxed text-ink-3">{projectionNote}</p>
+      ) : null}
       {q.error ? <ErrorState error={q.error} title="This change could not be simulated" /> : null}
       {a && q.data ? (
         <>
@@ -178,7 +192,9 @@ export function PlanChangePreview({
               higherIsBetter={false}
             />
             <div>
-              <div className="eyebrow">Outcome</div>
+              <div className="eyebrow">
+                {projectionNote ? "Outcome at assumed rates" : "Outcome"}
+              </div>
               <div
                 className={cn(
                   "text-[15px] font-semibold",

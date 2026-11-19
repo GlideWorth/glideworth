@@ -177,6 +177,28 @@ describe("sign-up", () => {
     expect(api.calls).toHaveLength(0);
   });
 
+  it("signed in: stores the calculator inputs before leaving for the dashboard", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/signup?from=tool&tool=fire&v=1&age=30&spend=40000&balance=50000&save=20000&cur=USD&timing=mid",
+    );
+    navigateSpy.mockImplementation(() => {
+      expect(readHandoff()?.values).toMatchObject({
+        age: "30",
+        spend: "40000",
+        balance: "50000",
+        cur: "USD",
+        save: "20000",
+        timing: "mid",
+      });
+    });
+    renderWithClient(<SignUpPage />, signedIn());
+    await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith({ to: "/", replace: true }));
+    // The address bar loses the query; the inputs are what the dashboard offers.
+    expect(readHandoff()?.tool).toBe("fire");
+  });
+
   it("keeps calculator inputs from the link for the first plan", async () => {
     window.history.replaceState(
       null,

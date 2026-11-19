@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { describeQuota, onApiProblem, reportApiProblem } from "../src/lib/api-problems";
 import { csrfHeaders, interpretSession, modeOf } from "../src/lib/auth";
 import { billingView, bannerFor } from "../src/features/cloud/billing-state";
-import { applyHandoff, parseHandoff } from "../src/features/cloud/handoff";
+import { applyHandoff, handoffHighlights, parseHandoff } from "../src/features/cloud/handoff";
 import { readFragmentParam } from "../src/features/cloud/fragment";
 import { safeNext } from "../src/features/cloud/next";
 import { passwordProblem } from "../src/features/cloud/password-rules";
@@ -200,6 +200,46 @@ describe("calculator hand-off", () => {
     expect(answers.accounts.some((a) => a.balance === 150000)).toBe(true);
     expect(used.join(" ")).toMatch(/currency USD/);
     expect(skipped).toEqual(expect.arrayContaining(["ret", "save"]));
+  });
+  it("describes the inputs a signed-in person is offered, for every calculator that shares the hand-off", () => {
+    const now = new Date(Date.UTC(2026, 10, 19));
+    expect(
+      handoffHighlights(
+        parseHandoff(
+          "?from=tool&tool=fire&age=30&spend=40000&wr=4&balance=50000&save=20000&ret=5&tax=0&hy=30&stocks=60&timing=mid&cur=USD&v=1",
+        )!,
+        now,
+      ),
+    ).toEqual(["age 30", "$40,000 a year spending", "$50,000 invested", "USD"]);
+    expect(
+      handoffHighlights(
+        parseHandoff(
+          "?from=tool&tool=coast-fire&v=1&cur=GBP&age=35&retire=62&balance=150000&spend=48000",
+        )!,
+        now,
+      ),
+    ).toEqual(["age 35", "£48,000 a year spending", "£150,000 invested", "GBP", "retire at 62"]);
+    expect(
+      handoffHighlights(
+        parseHandoff(
+          "?from=tool&tool=barista-fire&v=1&age=45&planTo=95&spend=30000&balance=300000&cur=USD",
+        )!,
+        now,
+      ),
+    ).toEqual([
+      "$30,000 a year spending",
+      "$300,000 invested",
+      "USD",
+      "stop full-time work at 45",
+      "plan to age 95",
+    ]);
+    // Withdrawal has no age. Balance and currency still come across; spending does not.
+    expect(
+      handoffHighlights(
+        parseHandoff("?from=tool&tool=withdrawal&v=1&cur=USD&balance=800000&rate=4")!,
+        now,
+      ),
+    ).toEqual(["$800,000 invested", "USD"]);
   });
   it("Barista FIRE: the age is the age leaving full-time work", () => {
     const { answers } = applyHandoff(

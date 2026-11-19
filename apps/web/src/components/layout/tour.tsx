@@ -1,8 +1,10 @@
 /**
  * Dismissible guided tour of the main areas. Each stop points at a real element (marked with
- * data-tour) and falls back to a centred card when the element is not on screen (e.g. phones).
- * Escape or "Skip tour" ends it; it can be restarted from the command palette or Settings. While a dialog is
- * open the tour is hidden (and ignores keys), and it comes back where it was when the dialog closes.
+ * data-tour). With nothing to point at (the welcome stop, or a control that is off screen) the
+ * card sits in the bottom corner, clear of the phone tab bar, so it does not cover the chart in
+ * the middle of the page. Escape or "Skip tour" ends it; it can be restarted from the command
+ * palette or Settings. While a dialog is open the tour is hidden (and ignores keys), and it comes
+ * back where it was when the dialog closes.
  */
 import { ArrowLeft, ArrowRight, X } from "lucide-react";
 import {
@@ -193,7 +195,11 @@ export function Tour() {
         bottom: window.innerHeight - rect.top + 10,
         left: Math.max(12, Math.min(rect.left, window.innerWidth - W - 12)),
       };
-  } else style = { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
+  } else {
+    // No anchor: the corner, not the centre. A centred card covers the dashboard chart, the
+    // Monte Carlo fan and the goal-seek curve — the things the tour is introducing.
+    style = {};
+  }
 
   return (
     <div className="no-print" data-app-chrome>
@@ -218,7 +224,11 @@ export function Tour() {
         aria-labelledby="tour-title"
         aria-describedby="tour-body"
         tabIndex={-1}
-        className="fixed z-[72] flex flex-col gap-2 rounded-xl border border-border bg-surface p-4 shadow-pop outline-none"
+        className={`fixed z-[72] flex flex-col gap-2 rounded-xl border border-border bg-surface p-4 shadow-pop outline-none${
+          rect
+            ? ""
+            : " right-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] md:right-4 md:bottom-4"
+        }`}
         style={{ ...style, width: W }}
       >
         <div className="flex items-center justify-between gap-2">

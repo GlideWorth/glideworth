@@ -60,15 +60,14 @@ export function SignUpPage() {
   const { ref, failed } = useErrorFocus();
   const [invitation] = useState(heldInvitation);
   const invitedTo = invitation?.offer?.workspaceName || null;
-  // A calculator on glideworth.com links here with its inputs: keep them for the first plan.
+  // A calculator on glideworth.com links here with its inputs. Store them before leaving: someone
+  // who is already signed in is sent to the dashboard, and that redirect does not keep the query.
+  // The dashboard offers a new plan from what was stored and does not change the plan they have.
   const [handoff] = useState(() => parseHandoff(window.location.search));
   useEffect(() => {
     if (handoff) stashHandoff(handoff);
-  }, [handoff]);
-  // Already signed in: nothing to do here.
-  useEffect(() => {
     if (session?.kind === "authenticated") void navigate({ to: "/", replace: true });
-  }, [session, navigate]);
+  }, [handoff, session, navigate]);
 
   const validate = (): Errors => {
     const e: Errors = {};

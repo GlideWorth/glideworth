@@ -3,14 +3,19 @@
  * `/signup?from=tool&tool=<id>&v=1&<key>=<value>&…` (apps/site/src/tools/README.md). The receiving side:
  *
  *  1. `/signup` parses the query (`parseHandoff`), keeps only known keys with valid values, and stashes the
- *     result in this browser (`stashHandoff`) so it survives the email-verification round trip, which
- *     usually opens a new tab. The numbers are the person's own calculator inputs, not secrets; they are
- *     kept for 7 days and removed once used or declined.
- *  2. After sign-up the app lands on the welcome screen, which offers "Start from your calculator
- *     inputs"; the guided setup then opens with those answers filled in (`applyHandoff`). Nothing is
- *     created until the person finishes the setup.
+ *     result in this browser (`stashHandoff`) before it does anything else. The stash survives the
+ *     email-verification round trip, which usually opens a new tab, and the redirect that sends a person
+ *     who is already signed in straight to the dashboard (that redirect does not keep the query). The
+ *     numbers are the person's own calculator inputs, not secrets; they are kept for 7 days and removed
+ *     once used or declined.
+ *  2. A new account lands on the welcome screen, which offers "Start from your calculator inputs"; the
+ *     guided setup then opens with those answers filled in (`applyHandoff`). Nothing is created until
+ *     the person finishes the setup.
+ *  3. An existing household sees the same inputs on the dashboard and can start a new plan from them.
+ *     The plan they already have is left as it is until they finish setup and confirm the replacement.
  */
 import { CURRENCY_CODES } from "../../lib/countries";
+import { formatMoney } from "../../lib/format";
 import { defaultAnswers, type SetupAnswers } from "../onboarding/build-document";
 
 export const HANDOFF_TOOLS = {
@@ -190,4 +195,41 @@ export function applyHandoff(
   for (const k of ["ret", "tax", "save", "wr", "stocks", "method"])
     if (v[k] !== undefined) skipped.push(k);
   return { answers: a, used, skipped };
+}
+
+const MONEY_LOCALE: Record<string, string> = {
+  USD: "en-US",
+  CAD: "en-CA",
+  AUD: "en-AU",
+  NZD: "en-NZ",
+  EUR: "en-IE",
+};
+
+/**
+ * The inputs guided setup will actually use, in words a person can check against the calculator
+ * ("age 30", "$40,000 a year spending"). Same rules as `applyHandoff`, so the offer never claims a
+ * number the planner will drop.
+ */
+export function handoffHighlights(h: Handoff, now: Date = new Date()): string[] {
+  const { answers, used } = applyHandoff(h, now);
+  const cur = answers.currency;
+  const money = (n: number) =>
+    formatMoney(n, { locale: MONEY_LOCALE[cur] ?? "en-GB", currency: cur });
+  const out: string[] = [];
+  const age = used.find((u) => u.startsWith("age "));
+  if (age) out.push(age);
+  if (used.includes("yearly spending"))
+    out.push(`${money(answers.spending.essential)} a year spending`);
+  if (used.includes("invested balance")) {
+    const balance = answers.accounts.reduce((s, x) => s + (x.balance || 0), 0);
+    out.push(`${money(balance)} invested`);
+  }
+  if (used.some((u) => u.startsWith("currency "))) out.push(cur);
+  const retire = used.find(
+    (u) => u.startsWith("retire at ") || u.startsWith("stop full-time work at "),
+  );
+  if (retire) out.push(retire);
+  const planTo = used.find((u) => u.startsWith("plan to age "));
+  if (planTo) out.push(planTo);
+  return out;
 }

@@ -85,6 +85,8 @@ function zoneEdges(d: DeYear, f: number) {
 interface PersonDe {
   id: string;
   zvE: number;
+  /** Employment income after the Werbungskosten allowance (§49(1) Nr. 4 income for non-residents). */
+  employment: number;
   capitalInterestDiv: number;
   capitalGains: number;
   social: { pension: number; unemployment: number; health: number; care: number };
@@ -187,6 +189,7 @@ function personDe(input: TaxYearInput, d: DeYear, fs: number, person: TaxPerson)
   return {
     id: pid,
     zvE,
+    employment,
     capitalInterestDiv: b.interest + (b.qualifiedDividends + b.ordinaryDividends) * fundShare,
     capitalGains: (b.gainsLong + b.gainsShort) * fundShare,
     social: { pension: rv, unemployment: av, health: kv, care: pv },
@@ -252,7 +255,15 @@ function compute(input: TaxYearInput, explain: boolean): CountryResult {
     const half = joint ? a.zvE / 2 : a.zvE;
     const mult = joint ? 2 : 1;
     const credits = rs.filter((r) => a.ids.includes(r.id)).reduce((s, r) => s + r.credits, 0);
-    const est = clamp0(mult * deTariff(half, d, fs) - credits);
+    // Non-residents (§50(1) sentence 2 EStG): the tariff applies to taxable income increased by
+    // the Grundfreibetrag; for pay, only by the part of the Grundfreibetrag above the pay.
+    const nonResidentAdd =
+      !joint && input.nonResident?.personalAllowance[a.ids[0]!] === false
+        ? clamp0(
+            d.tariff.grundfreibetrag * fs - (rs.find((r) => r.id === a.ids[0])?.employment ?? 0),
+          )
+        : 0;
+    const est = clamp0(mult * deTariff(half + nonResidentAdd, d, fs) - credits);
     const fg = a.freigrenze * fs;
     const soli = est <= fg ? 0 : Math.min(d.soli.rate * est, d.soli.milderungsRate * (est - fg));
     sink.add("income", `Einkommensteuer${joint ? " (Splitting)" : ""}${a.sfx}`, est, a.zvE);

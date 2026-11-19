@@ -73,24 +73,43 @@ Accounts, property, debts and income can sit in another country, and the tax est
 
 - **Where each thing is.** Every account, property, debt and income has a country. It defaults to the household's
   country, or the account type's (an ISA is British).
-- **Which country may tax what.** Your country of residence taxes worldwide income. The country where something is
-  may also tax it as a non-resident (rent and property gains almost everywhere). A treaty table says who keeps the
-  right to tax each kind of income, and your country of residence gives a credit for tax paid elsewhere.
-- **Wrappers abroad.** Your country of residence may not recognise a foreign tax-free account; by default its growth
-  is taxed on withdrawal. You cannot pay into an ISA, a UK pension, a TFSA or an RRSP while you live outside its
-  country.
+- **Which country may tax what.** The country you live in taxes your worldwide income (the UAE has no income
+  tax). The country where something is may also tax it, as a non-resident: rent and property gains almost
+  everywhere, and some pensions and dividends. A treaty table says which country may tax each kind of income, and
+  the country you live in gives a credit for tax paid elsewhere.
+- **Wrappers abroad.** The country you live in may not recognise a foreign tax-free account such as an ISA. Most
+  countries then tax the income inside it every year; Glideworth taxes the growth once, when you withdraw, so its
+  figure comes later and may be lower than the real one. Foreign pensions are taxed as pension income where you
+  live, and their tax-free lump sum is taxed too unless a rule says otherwise.
+- **Paying in from abroad.** Glideworth stops contributions to an ISA, a Lifetime ISA, a UK pension, a TFSA, an
+  RRSP, an FHSA or a LIRA while you live outside its country. The law is a little looser: a UK pension can get
+  relief on up to £3,600 a year for 5 years after you leave in some cases, and an RRSP can use room you already
+  have.
 - **Citizenship.** In Current finances, open **About you**, then **Citizenship**, to add citizenships or a US green
-  card. US citizens and green-card holders also pay US federal tax wherever they live, after the foreign earned
-  income exclusion and a credit.
+  card. US citizens and green-card holders also pay US federal tax wherever they live. Pay earned abroad is
+  excluded up to the foreign earned income exclusion ($132,900 in 2026, $137,300 in 2027), the rest is taxed at
+  the rates it would face without the exclusion, and a credit is given for foreign income tax, except the part on
+  the excluded pay.
 
 In the **Taxes** results, a plan with anything abroad shows tax by country and by reason (residence, source,
 citizenship, relief), and "How this is taxed, and why" explains any item with its source.
 
-<Callout type="note" title="Moving country is not modelled">
-  There is no change of residence during a plan, so no departure tax, no State Pension frozen abroad and no change
-  in UK inheritance tax scope. Only UK-UAE is implemented article by article; other treaty pairs are basic or use
-  the credit method with a warning. See [Known limitations](/docs/methodology/known-limitations/).
+<Callout type="note" title="What the treaty table covers">
+  The table has UK-UAE, UK-US, UK-Australia, UK-Canada, UK-Spain, UK-France and US-Canada. Their articles on
+  pensions, social security, dividends, interest and gains were checked against the treaty texts on 2026-11-19.
+  Other pairs fall back to both countries taxing, with a credit where you live and a warning. There is no change of
+  residence during a plan, so no departure tax, no State Pension frozen abroad and no change in UK inheritance tax
+  scope. See [Known limitations](/docs/methodology/known-limitations/).
 </Callout>
+
+Some things about assets abroad are not modelled and can matter a lot:
+
+- US tax on non-US funds held by Americans (the PFIC rules), and US estate tax on the US shares and property of
+  people who are not American.
+- Australia's foreign-resident tax rates: Australian pay, rent and gains of someone living elsewhere are taxed as
+  if they lived there, which is too low.
+- France's allowances for years of ownership on property gains, so the tax on a long-held French home is too high.
+- Pension lump sums are not told apart from regular pension payments in the country the pension comes from.
 
 ## What this does not do
 

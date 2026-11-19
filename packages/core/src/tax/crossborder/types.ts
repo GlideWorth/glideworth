@@ -37,6 +37,11 @@ export interface SourceRule {
    */
   method?: "resident-rates" | "flat";
   rate?: number;
+  /**
+   * Flat rates that depend on where the holder lives (first match wins), e.g. France's lower social
+   * levy for people covered by EU/EEA or UK social security. Absent or no match = `rate`.
+   */
+  rateByResidence?: readonly { residences: readonly string[]; rate: number }[];
   note: string;
 }
 
@@ -75,6 +80,8 @@ export interface NonResidentRules {
     timeApportionment: boolean;
     note: string;
   };
+  /** Gains on property in the country are exempt for non-residents owned more than this many years (Germany: 10, §23(1) EStG). */
+  propertyGainsExemptAfterYears?: number;
   wrappers: readonly WrapperRule[];
   /** Country taxes its citizens wherever they live (US). */
   citizenshipTaxation?: {
@@ -112,6 +119,19 @@ export interface Treaty {
   rules: Partial<Record<IncomeCategory, TreatyRule>>;
   /** Relief method of each side (credit for every pair Glideworth knows). */
   method: "credit";
+  /**
+   * Saving clause: `country` may tax its own residents and citizens as if the treaty did not exist,
+   * except for the categories listed (the treaty's own list of excepted articles). Glideworth applies
+   * it to residents of `country` and to its citizens living in the other state.
+   */
+  savingClause?: {
+    country: string;
+    /** Treaty benefits kept by everyone, citizens included. */
+    exceptions: readonly IncomeCategory[];
+    /** Treaty benefits kept only by people who are neither citizens nor green-card holders. */
+    exceptionsForNonCitizens?: readonly IncomeCategory[];
+    note: string;
+  };
   notes: readonly string[];
   sources: readonly Source[];
 }

@@ -37,7 +37,7 @@ export const TAX_BASIS_LABEL: Record<TaxBasisKind, { label: string; description:
   relief: {
     label: "Relief",
     description:
-      "Credit for tax already paid in another country (negative: it removes double tax).",
+      "Credit for tax already paid on the same income in another country, given by the country you live in or, for US citizens abroad, by the US (negative: it removes double tax).",
   },
 };
 
@@ -49,8 +49,9 @@ export const CROSS_BORDER_SIMPLIFICATIONS: readonly string[] = [
   "Residence is what you enter, for the whole plan: no statutory residence test, 183-day rule or treaty tie-breaker is applied, and moving country is not modelled.",
   "Treaty relief is assumed claimed (forms such as DT-Individual filed); until then the source country may deduct tax.",
   "Double tax is relieved by the credit method, limited to the residence tax on the same income; there is one foreign-tax-credit basket and no carry-forward.",
-  "Treaties other than UK-UAE are modelled at a basic level (main allocation rules only); unknown pairs fall back to both countries taxing with a credit.",
-  "Foreign tax-free wrappers are not recognised by default (ISA, Roth, TFSA, DEWS...): the earnings share of each withdrawal is taxed where you live.",
+  "Treaties: UK-UAE, UK-US, UK-Australia, UK-Canada, UK-Spain, UK-France and US-Canada are in the table, checked on 2026-11-19 for the articles on pensions, social security, dividends, interest and gains; other articles and conditions are not modelled. Pairs not in the table fall back to both countries taxing with a credit, with a warning.",
+  "Foreign tax-free wrappers (ISA, Roth, TFSA, DEWS...) are not recognised by default. Most countries tax the income inside them every year; Glideworth taxes the earnings share of each withdrawal as a gain where you live, which is later and may be lower than in reality.",
+  "Pension lump sums are not told apart from regular pension payments when the other country taxes them, so a treaty rule that gives lump sums to the pension's country (UK-US) is not applied at source.",
   "Each country is computed in its own currency with your exchange-rate table at the start of each year; a missing rate is treated as 1.",
   "Wrappers of another country cannot be funded while you live elsewhere (ISA, UK pensions, TFSA, RRSP...); the UK's 5-year £3,600 pension relief after leaving is not modelled.",
 ];

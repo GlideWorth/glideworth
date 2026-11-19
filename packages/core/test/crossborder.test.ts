@@ -243,6 +243,39 @@ describe("UAE resident with UK items", () => {
     expect(p.taxes.total).toBeCloseTo(37_700 * 0.18 + 59_300 * 0.24, 4);
   });
 
+  it("German flat of a UAE resident: the gain is taxed in Germany when no more than 10 years pass between purchase and sale, exempt after (§23(1) Nr. 1, §49(1) Nr. 8 EStG)", () => {
+    const sell = (acquiredOn: string) =>
+      simulate(
+        uk({
+          location: { country: "AE" },
+          realAssets: [
+            ukFlat({
+              id: "berlin",
+              name: "Berlin flat",
+              country: "DE",
+              acquiredOn,
+              behaviour: {
+                usage: "investment",
+                appreciation: { kind: "none" },
+                sale: { at: at("2026-06"), brokerFeeRate: 0 },
+              },
+            }),
+          ],
+          fx: [AED_GBP, { from: "EUR", to: "GBP", rate: 0.85 }],
+          asOf: "2025-12",
+          fiscal: false,
+          end: "2027-12",
+        }),
+      );
+    const de = (r: ProjectionResult) =>
+      linesOf(period(r, 2026), (l) => l.country === "DE" && l.basis === "source");
+    // The engine dates a sale at the start of its plan year (January 2026 here).
+    // Exactly ten years (January 2016 to January 2026) is still "not more than ten years": taxed.
+    expect(de(sell("2016-01"))).toBeGreaterThan(0);
+    // One month more: exempt.
+    expect(de(sell("2015-12"))).toBeCloseTo(0, 6);
+  });
+
   it("a UK pension keeps the UK access age wherever its owner lives", () => {
     const sipp: AccountInput = {
       id: "sipp",

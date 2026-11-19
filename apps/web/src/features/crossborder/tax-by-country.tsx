@@ -184,8 +184,9 @@ function ReliefNote() {
   return (
     <p className="flex gap-1.5 text-[11.5px] text-ink-3">
       <Info className="mt-0.5 size-3.5 shrink-0" />
-      Relief is the credit the country you live in gives for tax already paid on the same income
-      elsewhere, so it is not taxed twice. “Paid” is what each country actually collects.
+      Relief is a credit for tax already paid on the same income in another country, so it is not
+      taxed twice. The country you live in gives it, and so does the US for its citizens abroad.
+      “Paid” is what each country actually collects.
     </p>
   );
 }

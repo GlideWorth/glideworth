@@ -96,9 +96,11 @@ describe("data tables", () => {
       residenceTaxes: true,
     });
     expect(TREATIES.find((t) => t.pair.join() === "AE,GB")!.depth).toBe("high");
+    // UK-US Art. 17(3): social security paid to a resident of the other State is taxable only
+    // there (corrected 2026-11-19; it was the paying State before).
     expect(treatyRule("GB", "US", "state-pension")).toMatchObject({
-      sourceMayTax: true,
-      residenceTaxes: false,
+      sourceMayTax: false,
+      residenceTaxes: true,
     });
     expect(treatyRule("SG", "GB", "rental").known).toBe(false);
   });

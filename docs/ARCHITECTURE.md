@@ -554,14 +554,20 @@ country, explain one item, simplifications).
   3. _Source tax_, per person: for every other country with items, its `NON_RESIDENT_RULES` decide what it taxes
      (flat final withholding, or the national plug-in run with `nonResident`), subject to the treaty
      (`treatyRule(residence, source, category)`: residence / source / shared / government-pension allocation,
-     rate caps). UK: personal allowance only for British / EEA citizens; the disregarded-income limit (lower of
-     the full calculation and tax on non-disregarded income without allowance); non-resident CGT on UK property
-     from the April 2015 / 2019 value, time-apportioned or whole (lowest).
+     rate caps; a flat rate can depend on the residence country, `rateByResidence`). UK: personal allowance only
+     for British / EEA citizens; the disregarded-income limit (lower of the full calculation and tax on
+     non-disregarded income without allowance); non-resident CGT on UK property from the April 2015 / 2019 value,
+     time-apportioned or whole (lowest). US and Germany: no standard deduction / Grundfreibetrag for
+     non-residents (the plug-ins read `nonResident`); German property gains exempt after 10 years.
+     A treaty's `savingClause` lets the US tax its own residents despite an allocation to the other State,
+     except for the categories the treaty excepts.
   4. _Relief_: the residence country credits each source country's tax, limited to its own tax on the same items
      (with-and-without difference). Unknown pairs fall back to this credit method with a warning.
-  5. _Citizenship_: a US person living outside the US also pays US federal tax on worldwide income after the
-     foreign earned income exclusion, less a foreign tax credit limited to the US tax on foreign income; the
-     residence country credits US tax on US-source income.
+  5. _Citizenship_: a US person living outside the US also pays US federal tax on worldwide income (less what a
+     treaty keeps from the saving clause, `citizenshipMayTax`) after the foreign earned income exclusion with the
+     stacking rule (tax on all income less the tax on the excluded amount at the same rates), less a foreign tax
+     credit limited to the US income tax on foreign income; foreign tax on excluded pay and foreign social
+     security contributions are not credited. The residence country credits US tax on US-source income.
 
   Money is converted to each jurisdiction's currency (`COUNTRY_TAX_CURRENCY`) with the plan's FX table at the
   period start and back; a missing pair is a warning (rate 1) and an audit finding. Tax lines keep their plug-in

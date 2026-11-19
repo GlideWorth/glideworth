@@ -105,15 +105,21 @@ official calculator for every case.
 
 - Residence is the household's country, for everyone, for the whole plan: no statutory residence test, no 183-day
   rules, and treaty relief assumed claimed.
-- Only UK-UAE is implemented article by article. UK-US, UK-Australia, UK-Canada, UK-Spain, UK-France and US-Canada are
-  basic. Other pairs use the credit method with a warning.
-- Non-resident rules are detailed for the UK and basic elsewhere (no withholding on interest or dividends; resident
-  rates are used for non-residents).
+- The treaty table has UK-UAE (article by article), and UK-US, UK-Australia, UK-Canada, UK-Spain, UK-France and
+  US-Canada for their articles on pensions, social security, dividends, interest and gains (checked against the
+  treaty texts on 2026-11-19). Other pairs use the credit method with a warning.
+- Non-resident rules are detailed for the UK and partly checked for the US, Canada, Germany, France, Spain and
+  Ireland; elsewhere resident rates and allowances are used for non-residents. Australia's foreign-resident rates
+  are not applied, so Australian tax on a foreign resident's Australian income is too low.
+- A foreign ISA, TFSA or Roth that the country you live in does not recognise is taxed once, on withdrawal; most
+  countries tax the income inside it every year.
 - While you live outside a wrapper's country, the model stops contributions to it (ISA, UK pensions, TFSA, RRSP). It
   does not model the UK relief on pension contributions of up to 3,600 pounds a year in the five tax years after
   leaving, which UK law allows.
-- US citizens abroad pay federal tax only, with one foreign-tax-credit basket in the model and no carry-forward of
-  unused credit.
+- US citizens abroad pay federal income tax and the Net Investment Income Tax, with the foreign earned income
+  exclusion (stacking rule applied, no housing exclusion), one foreign-tax-credit basket and no carry-forward of
+  unused credit. The PFIC rules for non-US funds and US estate tax for people who are not American are not
+  modelled.
 - The bracket and marginal-rate analytics on the Taxes page describe the household country's calculation only.
   Planned real assets and plan-level account overrides have no country field in the plan editor. The gratuity is
   UAE-only.

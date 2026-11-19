@@ -186,9 +186,15 @@ function computeFederal(input: TaxYearInput, explain: boolean): FedCore {
     status === "qualifying-surviving-spouse";
   const filers = status === "married-joint" ? people : people.slice(0, 1);
   const n65 = filers.filter((p) => p.age >= 65).length;
-  const standard =
-    d.standardDeduction[status] * fs +
-    n65 * (married ? d.additionalAged.married : d.additionalAged.unmarried) * fs;
+  // Non-resident aliens (cross-border source tax) cannot claim the standard deduction
+  // (Publication 519, chapter 5).
+  const nonResidentAlien =
+    !!input.nonResident &&
+    filers.every((p) => input.nonResident!.personalAllowance[p.id] === false);
+  const standard = nonResidentAlien
+    ? 0
+    : d.standardDeduction[status] * fs +
+      n65 * (married ? d.additionalAged.married : d.additionalAged.unmarried) * fs;
   const itemizing = itemizedItems > standard;
   const deduction = Math.max(standard, itemizedItems);
   const exemptions =

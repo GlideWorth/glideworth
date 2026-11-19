@@ -21,8 +21,8 @@ import { fxPairKey } from "../schema/assumptions.js";
 import type { Location } from "../schema/household.js";
 import { COUNTRY_TAX_CURRENCY } from "../tax/crossborder/currency.js";
 import { NON_RESIDENT_RULES } from "../tax/crossborder/nonresident.js";
-import { treatyRule } from "../tax/crossborder/treaties.js";
-import type { IncomeCategory } from "../tax/crossborder/types.js";
+import { citizenshipMayTax, treatyRule } from "../tax/crossborder/treaties.js";
+import type { IncomeCategory, SourceRule } from "../tax/crossborder/types.js";
 import { wrapperView } from "../tax/crossborder/wrappers.js";
 import { NATIONAL_JURISDICTION_BY_COUNTRY } from "../tax/registry.js";
 import type {
@@ -193,8 +193,12 @@ function wrapperEarningsShare(ctx: EngineContext, a: AccountState): number {
   return Math.max(0, Math.min(1, 1 - basis / value));
 }
 
-/** People's citizenship includes `country` (default: the household's country). */
+/**
+ * People's citizenship includes `country` (default: the household's country). For the US, a
+ * green-card holder counts too (treaty saving clauses treat them like citizens).
+ */
 function isNational(ctx: EngineContext, personId: string, country: string): boolean {
+  if (country === "US" && ctx.crossBorder?.usPersons.has(personId)) return true;
   return (
     ctx.crossBorder?.citizenships.get(personId)?.has(country) ??
     ctx.household.location.country === country
@@ -513,16 +517,61 @@ function runStack(
   };
 }
 
-function totalOf(stack: readonly TaxJurisdiction[], input: TaxYearInput, rate: number): number {
+function totalOf(
+  stack: readonly TaxJurisdiction[],
+  input: TaxYearInput,
+  rate: number,
+  exceptKinds?: ReadonlySet<TaxLine["kind"]>,
+): number {
   const conv = scaleInput(input, 1 / rate);
   const outputs: TaxYearOutput[] = [];
   let t = 0;
   for (const j of stack) {
     const o = j.computeYear(conv, outputs);
     outputs.push(o);
-    for (const l of o.lines) t += l.amount;
+    for (const l of o.lines) if (!exceptKinds?.has(l.kind)) t += l.amount;
   }
   return t * rate;
+}
+
+/** Foreign social security contributions (not creditable against US tax). */
+const SOCIAL_CONTRIBUTIONS = new Set<TaxLine["kind"]>(["payroll", "self-employment"]);
+
+/** US tax lines the foreign tax credit cannot reduce (it offsets regular income tax and AMT only). */
+const NOT_CREDITABLE = new Set<TaxLine["kind"]>(["niit", "irmaa", "penalty"]);
+
+/** Flat non-resident rate for a holder living in `residence` (the rule's residence override, if any). */
+function flatRateFor(rule: SourceRule, residence: string): number {
+  const o = rule.rateByResidence?.find((x) => x.residences.includes(residence));
+  return o?.rate ?? rule.rate ?? 0;
+}
+
+/**
+ * Stacking rule for the foreign earned income exclusion (Form 2555, Foreign Earned Income Tax
+ * Worksheet): the tax on `excluded` at the ordinary rates of the person's filing status, with no
+ * deduction, in base currency. Computed with the plug-in on the excluded amount plus the deduction
+ * the plug-in gives on it, so the taxable income it taxes is the excluded amount.
+ */
+function ordinaryTaxOnExcluded(
+  j: TaxJurisdiction,
+  base: TaxYearInput,
+  pid: string,
+  excluded: number,
+  rate: number,
+): number {
+  const make = (amount: number): TaxYearInput => ({
+    ...base,
+    income: [{ sourceId: "__feie__", owner: pid, character: "ordinary", amount, exemptIn: [] }],
+    withdrawals: [],
+    deductions: [],
+    dependents: [],
+  });
+  const tag = { basis: "citizenship" as const, country: "US", personId: pid };
+  const first = runStack([j], make(excluded), rate, tag, false);
+  const f = first.outputs[0]?.facts ?? {};
+  const deduction = ((f["us.deduction"] ?? 0) + (f["us.seniorDeduction"] ?? 0)) * rate;
+  const r = runStack([j], make(excluded + deduction), rate, tag, false);
+  return r.lines.filter((l) => l.kind === "income").reduce((s, l) => s + l.amount, 0);
 }
 
 function residenceStack(ctx: EngineContext, ps: PeriodState, loc: Location): TaxJurisdiction[] {
@@ -772,6 +821,10 @@ export function crossBorderTaxes(
         },
         (info) => (info.follows === "rental" || !!info.accountId) && info.country === S,
       );
+      if (nr.propertyGainsExemptAfterYears)
+        items.income = items.income.filter(
+          (it) => !heldLongerThan(ctx, it, nr.propertyGainsExemptAfterYears! * 12),
+        );
       // Flat-rate items (final withholding).
       input.income.forEach((it, i) => {
         const info = incomeInfo[i]!;
@@ -779,7 +832,7 @@ export function crossBorderTaxes(
         const s = share(it.owner, [pid], alive);
         if (!(s > 0)) return;
         const d = decide(info)!;
-        const rate = Math.min(d.rule.rate ?? 0, d.cap ?? Number.POSITIVE_INFINITY);
+        const rate = Math.min(flatRateFor(d.rule, R), d.cap ?? Number.POSITIVE_INFINITY);
         const t = it.amount * s * rate;
         flatTax.amount += t;
         flatTax.byCat.set(info.category!, (flatTax.byCat.get(info.category!) ?? 0) + t);
@@ -790,7 +843,7 @@ export function crossBorderTaxes(
         const s = share(w.owner, [pid], alive);
         if (!(s > 0)) return;
         const d = decide(info)!;
-        const rate = Math.min(d.rule.rate ?? 0, d.cap ?? Number.POSITIVE_INFINITY);
+        const rate = Math.min(flatRateFor(d.rule, R), d.cap ?? Number.POSITIVE_INFINITY);
         const t = (nr.pensionLumpSumTaxFree ? w.taxableAmount : w.amount) * s * rate;
         flatTax.amount += t;
         flatTax.byCat.set(info.category!, (flatTax.byCat.get(info.category!) ?? 0) + t);
@@ -908,10 +961,15 @@ export function crossBorderTaxes(
     for (const pid of alive) {
       if (!st.usPersons.has(pid)) continue;
       const rate = taxRate(ctx, ps, "US");
+      // Saving clause: everything is taxed except what the treaty with the residence country keeps
+      // for citizens (US Social Security of a UK or Canadian resident: only there).
+      const usMayTax = (info: ItemInfo) =>
+        !info.category || citizenshipMayTax("US", R, info.country, info.category);
       const items = itemsFor(
         [pid],
-        () => true,
+        usMayTax,
         (info, w) => {
+          if (!usMayTax(info)) return null;
           if (info.country === "US") return w;
           const view = wrapperView("US", info.country, w.accountType, w.treatment, overrides);
           if (w.treatment === "tax-free" && !view.recognised) {
@@ -949,12 +1007,13 @@ export function crossBorderTaxes(
       let foreignEarned = 0;
       for (const it of items.income) if (isForeignEarned(it)) foreignEarned += it.amount;
       const excluded = Math.min(foreignEarned, feie);
-      const k = foreignEarned > 0 ? 1 - excluded / foreignEarned : 1;
-      if (k < 1)
-        items.income = items.income.map((it) =>
-          isForeignEarned(it) ? { ...it, amount: it.amount * k } : it,
-        );
+      let grossIncome = 0;
+      for (const it of items.income) grossIncome += it.amount;
+      for (const w of items.withdrawals) grossIncome += w.taxableAmount;
       const fs = base0.filingStatus;
+      // Stacking rule (Form 2555): tax = tax on all income including the excluded pay, less the
+      // tax at the same rates on the excluded amount alone, so the rest is taxed at the rates that
+      // would apply without the exclusion.
       const uInput: TaxYearInput = {
         ...input,
         ...items,
@@ -972,6 +1031,10 @@ export function crossBorderTaxes(
         { basis: "citizenship", country: "US", personId: pid, suffix: " (US citizen abroad)" },
         explain,
       );
+      const exclusionTax =
+        excluded > 0
+          ? Math.min(ordinaryTaxOnExcluded(usFed, uInput, pid, excluded, rate), full.total)
+          : 0;
       const usSourceOnly: TaxYearInput = {
         ...uInput,
         income: uInput.income.filter((it) => countryOf(it) === "US"),
@@ -979,14 +1042,45 @@ export function crossBorderTaxes(
           (w) => classifyWithdrawal(ctx, ps, w).country === "US",
         ),
       };
-      const limit = Math.max(0, full.total - totalOf([usFed], usSourceOnly, rate));
-      // Foreign tax paid by this person: their share of the residence tax plus other source taxes.
-      let foreignPaid = Math.max(0, residenceTax.total) / alive.length;
+      // Foreign tax credit limit: the US income tax (after the exclusion) on foreign income.
+      const creditable =
+        full.total -
+        exclusionTax -
+        full.lines.filter((l) => NOT_CREDITABLE.has(l.kind)).reduce((s, l) => s + l.amount, 0);
+      const limit = Math.max(0, creditable - totalOf([usFed], usSourceOnly, rate, NOT_CREDITABLE));
+      // Foreign tax paid by this person: their share of the residence tax plus other source taxes,
+      // less the part on pay excluded under the FEIE, which cannot be credited (Publication 514:
+      // pro rata to the income the foreign tax was charged on).
+      // Social security contributions (UK National Insurance and the like) are left out: no credit
+      // is allowed for those paid to a country with a US social security agreement (Publication 514).
+      const residenceContributions = lines
+        .filter((l) => l.basis === "residence" && SOCIAL_CONTRIBUTIONS.has(l.kind))
+        .reduce((s, l) => s + l.amount, 0);
+      let foreignPaid = Math.max(0, residenceTax.total - residenceContributions) / alive.length;
       for (const l of lines)
-        if (l.basis === "source" && l.personId === pid && l.country !== "US")
+        if (
+          l.basis === "source" &&
+          l.personId === pid &&
+          l.country !== "US" &&
+          !SOCIAL_CONTRIBUTIONS.has(l.kind)
+        )
           foreignPaid += l.amount;
+      if (excluded > 0 && grossIncome > 0) foreignPaid *= Math.max(0, 1 - excluded / grossIncome);
       const ftc = Math.min(foreignPaid, limit);
       collect(full, "US", "citizenship", rate);
+      if (exclusionTax > 1e-9) {
+        lines.push({
+          jurisdictionId: usFed.id,
+          kind: "income",
+          label: `Foreign earned income exclusion (${personName(ctx, pid)})`,
+          amount: -exclusionTax,
+          base: excluded,
+          basis: "citizenship",
+          country: "US",
+          personId: pid,
+        });
+        add("US", "citizenship", -exclusionTax);
+      }
       if (excluded > 0) facts[`us.feie.${pid}`] = excluded;
       if (ftc > 1e-9) {
         lines.push({
@@ -1001,7 +1095,8 @@ export function crossBorderTaxes(
         add("US", "relief", -ftc);
       }
       // The residence country credits US tax on US-source income (US tax not on foreign income).
-      const usSourceTax = Math.max(0, Math.min(full.total - ftc, full.total - limit));
+      const usNet = full.total - exclusionTax;
+      const usSourceTax = Math.max(0, Math.min(usNet - ftc, totalOf([usFed], usSourceOnly, rate)));
       if (usSourceTax > 1e-9 && residenceTax.stack.length > 0 && residenceTax.total > 0) {
         const without: TaxYearInput = {
           ...residenceTax.input,
@@ -1107,6 +1202,15 @@ function applyPropertyRebasing(
     const k = whole > 0 ? it.amount / whole : 0;
     income[i] = { ...it, amount: chargeable * k };
   }
+}
+
+/** A property gain on an asset owned for more than `months` (false when the purchase month is unknown). */
+function heldLongerThan(ctx: EngineContext, it: TaxIncomeItem, months: number): boolean {
+  if (!it.sale) return false;
+  const r = ctx.assets.find((x) => x.def.id === it.sale!.assetId);
+  if (!r) return false;
+  const acquired = r.acquiredAt ?? (r.def.acquiredOn ? parseYm(r.def.acquiredOn) : null);
+  return acquired !== null && it.sale.month - acquired > months;
 }
 
 function parseYm(m: string): number {

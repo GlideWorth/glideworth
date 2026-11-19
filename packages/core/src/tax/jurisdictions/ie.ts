@@ -1,8 +1,9 @@
 /**
  * Ireland: income tax (20% / 40% with the single, single-parent and married bands, joint
  * assessment), personal, employee (PAYE), earned-income and age credits, USC with its exemption
- * threshold, Class A PRSI, DIRT on deposit interest, CGT with the annual exemption and age-related
- * pension relief. Data: ../data/ie.ts. Known simplifications: IE_SIMPLIFICATIONS.
+ * threshold, Class A PRSI, DIRT on deposit interest, CGT with the annual exemption, age-related
+ * pension relief and the lifetime limits on tax-free retirement lump sums. Data: ../data/ie.ts.
+ * Known simplifications: IE_SIMPLIFICATIONS.
  */
 import {
   alivePeople,
@@ -29,6 +30,28 @@ export function iePensionReliefShare(d: IeYear, age: number): number {
   return r;
 }
 
+/** Last year with its own table: thresholds stay nominal to here under the legislated policy. */
+const LAST_TABLE_YEAR = Math.max(...IE_YEARS.map((y) => y.startYear));
+
+/**
+ * Tax on the tax-free share of pension withdrawals (retirement lump sums), given the lifetime total
+ * already taken: tax-free to `taxFree`, standard rate to `standardRateTo`, higher rate above.
+ */
+export function ieLumpSumTax(d: IeYear, prior: number, amount: number): number {
+  const L = d.lumpSum;
+  const slice = (lo: number, hi: number) =>
+    clamp0(Math.min(prior + amount, hi) - Math.max(prior, lo));
+  return (
+    d.rates.standard * slice(L.taxFree, L.standardRateTo) +
+    d.rates.higher * slice(L.standardRateTo, Number.POSITIVE_INFINITY)
+  );
+}
+
+/** Part of a lump sum above the 20% band (`standardRateTo`), the only part that pays USC. */
+export function ieLumpSumExcess(d: IeYear, prior: number, amount: number): number {
+  return clamp0(prior + amount - Math.max(prior, d.lumpSum.standardRateTo));
+}
+
 /** USC on `income` (0 when income is at or below the exemption threshold). */
 export function ieUsc(d: IeYear, income: number, f = 1): number {
   if (income <= d.usc.exemptUpTo * f) return 0;
@@ -37,7 +60,7 @@ export function ieUsc(d: IeYear, income: number, f = 1): number {
 
 function compute(input: TaxYearInput, explain: boolean): CountryResult {
   const d = pickYear(IE_YEARS, input.year);
-  const idx = indexFactor(input, ID, undefined);
+  const idx = indexFactor(input, ID, LAST_TABLE_YEAR);
   const fs = idx.factor * periodScale(input);
   const people = alivePeople(input);
   const joint = input.filingStatus === "married-joint" && people.length === 2;
@@ -138,16 +161,28 @@ function compute(input: TaxYearInput, explain: boolean): CountryResult {
   let gross = 0;
   for (const x of per) {
     const sfx = multi ? ` (${x.p.id})` : "";
-    const usc = ieUsc(d, x.uscBase, fs);
+    const lumpKey = `ie.lumpSumUsed.${x.p.id}`;
+    const lumpPrior = input.history[input.history.length - 1]?.[lumpKey] ?? 0;
+    // USC applies to the part of retirement lump sums above €500,000 (Revenue TDM 18D-00-01 11.4).
+    const uscBase = x.uscBase + ieLumpSumExcess(d, lumpPrior, x.b.deferredTaxFree);
+    const usc = ieUsc(d, uscBase, fs);
     const P = d.prsi;
+    const prsiRate = input.year > d.startYear ? (P.rateAfter ?? P.rate) : P.rate;
     const prsiWage = x.b.wage > P.weeklyThreshold * 52 * fs ? x.b.wage : 0;
-    const prsi = x.p.age < P.untilAge ? P.rate * (prsiWage + x.b.selfEmployment) : 0;
+    const prsi = x.p.age < P.untilAge ? prsiRate * (prsiWage + x.b.selfEmployment) : 0;
     const gains = x.b.gainsLong + x.b.gainsShort;
     const cgt = d.cgt.rate * clamp0(gains - d.cgt.exemption * fs);
-    sink.add("other", `Universal Social Charge${sfx}`, usc, x.uscBase);
+    sink.add("other", `Universal Social Charge${sfx}`, usc, uscBase);
     sink.add("payroll", `PRSI${sfx}`, prsi);
     sink.add("dividends", `DIRT (deposit interest)${sfx}`, d.dirt * x.b.interest, x.b.interest);
     sink.add("capital-gains", `Capital gains tax${sfx}`, cgt, gains);
+    sink.add(
+      "income",
+      `Tax on retirement lump sum${sfx}`,
+      ieLumpSumTax(d, lumpPrior, x.b.deferredTaxFree),
+      x.b.deferredTaxFree,
+    );
+    if (lumpPrior + x.b.deferredTaxFree > 0) facts[lumpKey] = lumpPrior + x.b.deferredTaxFree;
     facts[`ie.taxableIncome.${x.p.id}`] = x.income;
     taxable += x.income;
     gross +=

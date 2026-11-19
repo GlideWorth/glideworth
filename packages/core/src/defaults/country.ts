@@ -149,7 +149,8 @@ export function defaultsForCountry(
         tax: {
           mode: stack.length ? "estimate" : "flat",
           jurisdictions: stack,
-          flat: { ordinary: 0.2, capitalGains: 0.18, dividends: 0.0875, local: 0 },
+          // Fallback only: basic rates for 2026/27 (dividend ordinary rate 10.75% from April 2026).
+          flat: { ordinary: 0.2, capitalGains: 0.18, dividends: 0.1075, local: 0 },
           note: "UK income tax, National Insurance, dividend and capital gains tax, with the personal allowance and Scottish bands from the region.",
         },
         taxYear: {

@@ -4,8 +4,8 @@
  * separate property income rates (from 2027/28), capital gains tax, National Insurance (Class 1
  * employee, Class 4; none above State Pension age), pension relief (net pay / relief at source /
  * salary sacrifice), annual allowance with taper and MPAA (charge on the excess), lump sum
- * allowance on tax-free pension cash, marriage allowance, High Income Child Benefit Charge and
- * student/postgraduate loan repayments.
+ * allowance on tax-free pension cash, marriage allowance, the Pension Tax Allowance (2027/28 to
+ * 2029/30, announced), High Income Child Benefit Charge and student/postgraduate loan repayments.
  *
  * Independent taxation: everything is computed per person; 'joint' items split evenly.
  * Data: ../data/uk.ts (versioned per tax year). This file holds no figures.
@@ -75,6 +75,11 @@ interface Factors {
   fixed: number;
   /** Benefits (Child Benefit) uprated with prices. */
   benefit: number;
+  /**
+   * Pension Tax Allowance threshold: the 2027/28 figure, then indexed with prices as a stand-in for
+   * the full new State Pension it follows (2028/29 and 2029/30 figures not yet published).
+   */
+  pta: number;
   studentLoan: Record<string, number>;
   scale: number;
   facts: Record<string, number>;
@@ -90,6 +95,7 @@ function factors(input: TaxYearInput): Factors {
   };
   const it = take("uk", d.income.frozenThrough);
   const scotUpper = take("uk.scotUpper", d.income.scotlandUpperFrozenThrough);
+  const pta = take("uk.pta", 2027);
   const policy = thresholdPolicy(input);
   const indexed = policy === "frozen" ? 1 : input.priceIndex;
   const fixed = policy === "indexed" ? input.priceIndex : 1;
@@ -104,6 +110,7 @@ function factors(input: TaxYearInput): Factors {
     scotUpper,
     fixed,
     benefit: input.priceIndex,
+    pta,
     studentLoan,
     scale: periodScale(input),
     facts,
@@ -129,6 +136,8 @@ interface PersonResult {
   ni4: number;
   studentLoans: { plan: string; amount: number; cumulative: number }[];
   credits: number;
+  /** Pension Tax Allowance: income tax reduction available (before capping at the tax due). */
+  pta: number;
   penalties: number;
   rasGross: number;
   rasTopUp: number;
@@ -386,10 +395,21 @@ function computePerson(
     if (excess > 0) aaCharge = sliceTax(nsBands, totalTaxable, excess).tax;
   }
 
+  const spa = ukStatePensionAge(birthYearOf(person, input.year), person.birthMonth);
+
+  // ---- Pension Tax Allowance (2027/28 to 2029/30): over State Pension age, total income near the
+  // full new State Pension. Worth up to the basic rate on (threshold - PA), withdrawn £1 per £3.
+  let pta = 0;
+  const PTA = I.pensionTaxAllowance;
+  if (PTA && input.year <= PTA.lastYear && person.age >= spa) {
+    const threshold = PTA.threshold * F.pta * scale;
+    const max = I.rates.basic * clamp0(threshold - I.personalAllowance * it);
+    pta = clamp0(max - clamp0(netIncome - threshold) * PTA.withdrawalPerPound);
+  }
+
   // ---- National Insurance (none at or above State Pension age)
   let ni1 = 0;
   let ni4 = 0;
-  const spa = ukStatePensionAge(birthYearOf(person, input.year), person.birthMonth);
   if (person.age < spa) {
     const N = d.ni;
     const nf = F.it * scale;
@@ -464,6 +484,7 @@ function computePerson(
     ni4,
     studentLoans,
     credits,
+    pta,
     penalties: b.penalties,
     rasGross,
     rasTopUp,
@@ -553,6 +574,7 @@ function computeUk(input: TaxYearInput, explain: boolean): UkResult {
     if (marriageAllowance && marriageAllowance.to === i) reducers += marriageAllowance.relief;
     const it = incomeTax(r);
     const reduction = Math.min(reducers, it);
+    const ptaUsed = Math.min(r.pta, it - reduction);
     sink.add(
       "income",
       `Income tax${scot ? " (Scottish rates)" : ""}${sfx}`,
@@ -567,6 +589,7 @@ function computeUk(input: TaxYearInput, explain: boolean): UkResult {
         `${marriageAllowance?.to === i ? "Marriage allowance / tax reducers" : "Tax reducers"}${sfx}`,
         -reduction,
       );
+    if (ptaUsed > 0) sink.add("credit", `Pension Tax Allowance${sfx}`, -ptaUsed);
     sink.add("capital-gains", `Capital gains tax${sfx}`, r.taxCgt);
     sink.add("other", `Pension annual allowance charge${sfx}`, r.aaCharge);
     sink.add("payroll", `National Insurance (Class 1)${sfx}`, r.ni1);
@@ -653,20 +676,16 @@ function pensionAccessAge(q: PensionAccessQuery): number | null {
 }
 
 /**
- * Cash ISA sub-limit (from 6 April 2027 by default, savers under 65), inside the overall ISA
- * allowance. `tax.uk.cashIsaLimit` switches it off or overrides the amount, start and exempt age.
+ * Cash ISA sub-limit inside the overall ISA allowance, only when the plan sets one
+ * (`tax.uk.cashIsaLimit` with an amount; default start April 2027, savers 65+ exempt). There is no
+ * statutory cash limit: Budget 2026 dropped the £12,000 limit announced for April 2027.
  */
 function contributionSubLimit(q: ContributionSubLimitQuery): ContributionSubLimit | null {
   if (q.accountType !== "uk-isa" || q.subtype !== "cash") return null;
   const cfg = q.config.uk?.cashIsaLimit;
-  if (cfg && !cfg.enabled) return null;
-  if (q.ownerAge >= (cfg?.exemptFromAge ?? 65)) return null;
-  const from = cfg?.from ?? UK_CASH_ISA_LIMIT_FROM;
-  const annual =
-    cfg?.amount ??
-    pickYear(UK_TAX_YEARS, Math.max(q.year, Number(from.slice(0, 4)))).isa.cashUnder65;
-  if (annual === undefined) return null;
-  return { key: "uk-cash-isa", annual, from };
+  if (!cfg || cfg.enabled === false || cfg.amount === undefined) return null;
+  if (q.ownerAge >= (cfg.exemptFromAge ?? 65)) return null;
+  return { key: "uk-cash-isa", annual: cfg.amount, from: cfg.from ?? UK_CASH_ISA_LIMIT_FROM };
 }
 
 /** New State Pension deferral: +1% per 9 weeks deferred, at least 9 weeks. */

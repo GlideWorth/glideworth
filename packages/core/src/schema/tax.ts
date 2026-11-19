@@ -119,15 +119,15 @@ export const UkTaxOptions = z
     /** Default pension relief method when a contribution does not say. */
     defaultPensionScheme: z.enum(["net-pay", "relief-at-source", "salary-sacrifice"]).optional(),
     /**
-     * Cash ISA sub-limit (Budget 2025: £12,000 of the £20,000 ISA allowance may go into cash ISAs
-     * from 6 April 2027; savers aged 65 and over keep the full allowance). Defaults: on, the amount
-     * in the UK tax data for the tax year, from 2027-04, exempt from age 65. `enabled: false` turns
-     * it off; the other fields override the legislated values.
+     * A cash ISA sub-limit inside the ISA allowance, for what-if planning. There is none in law:
+     * Budget 2025 announced £12,000 from 6 April 2027 for under-65s, and Budget 2026 withdrew it.
+     * Applies only when `amount` is set (and `enabled` is not false); default start 2027-04, savers
+     * aged 65 and over exempt.
      */
     cashIsaLimit: z
       .object({
         enabled: z.boolean().default(true),
-        /** Annual cash ISA limit (nominal); absent = the UK tax data's value for the tax year. */
+        /** Annual cash ISA limit (nominal); absent = no limit. */
         amount: NonNegativeMoney.optional(),
         /** First month the limit applies ('YYYY-MM'); default 2027-04 (6 April 2027). */
         from: z

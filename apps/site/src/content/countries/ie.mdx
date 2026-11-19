@@ -1,47 +1,63 @@
 ---
 title: Retirement planning in Ireland
-description: "How Glideworth estimates Irish tax at a basic level for 2026: income tax, USC, PRSI, DIRT, capital gains and pension relief, and the gaps to know about."
+description: "How Glideworth estimates Irish tax for 2026 and 2027: income tax, USC, PRSI, DIRT, capital gains, pension relief and retirement lump sums, and the gaps to know about."
 ogTitle: Retirement planning in Ireland
 countryCode: IE
 countryName: Ireland
 taxYears:
   - "2026"
+  - "2027 as announced in Budget 2027"
 modelled:
   - Income tax at 20% and 40% with rate bands and tax credits, and joint assessment for married couples
   - The Universal Social Charge and employee PRSI
   - DIRT at 33% on deposit interest
   - Capital gains tax at 33% to 6 October 2026 and 31% from 7 October 2026, with the annual exemption
   - Age-related pension tax relief and pension contributions
+  - Retirement lump sums, tax-free up to €200,000 over a lifetime, then 20% to €500,000 and 40% plus USC above
   - A default State Pension (Contributory) age of 66
 notModelled:
   - Disposal dates within the year (2026 gains use the 33% and 31% rates averaged by days, 32.53%)
-  - The PRSI credit taper and PRSI on unearned income
-  - Exit tax and deemed disposals on funds; all other interest, dividends and fund distributions are taxed as income
-  - Reduced USC rates for people over 70 and medical card holders
-  - The Single Person Child Carer Credit
-  - Employer pension contributions, the standard fund threshold and lump-sum rules; the 25% tax-free lump sum is not applied automatically
+  - Exit tax and the 8-year deemed disposal on funds and ETFs, and the new Investment Account; fund income and gains are taxed as ordinary income and capital gains
+  - The PRSI credit taper and PRSI on rents and investment income
+  - Reduced USC rates for people over 70 and medical card holders, and the USC surcharge on self-employed income over €100,000
+  - The Single Person Child Carer Credit, the home carer credit and the rent credit
+  - Employer pension contributions, the standard fund threshold and ARF imputed distributions
+  - The State Pension amount (you enter it) and deferring it past 66
 ---
 
 import { facts } from '../../lib/facts';
 
 Ireland is estimated at a **basic level**: the main rules are in, with {facts.simplificationCount('ie')} written
-simplifications, and it has had less checking than the United Kingdom or the United States. The tables are for 2026, and
-later years index them with the plan's threshold policy.
+simplifications, and it has had less checking than the United Kingdom or the United States. The tables are for 2026
+(Revenue) and 2027 (Budget 2027, announced on 6 October 2026; the Finance (No. 2) Bill 2026 that brings it in was not yet
+law in November 2026). Later years carry the 2027 tables forward and index them with the plan's threshold policy.
 
 ## What is modelled
 
-- **Income tax (2026)**: 20% up to the rate band and 40% above. The band is €44,000 for a single person, €48,000 for a single parent,
-  and €53,000 for a married couple, with up to €35,000 more for a second income. Credits: personal €2,000 (single)
-  or €4,000 (married), employee €2,000, earned income €2,000, and an age credit of €245 (€490 married) from 65.
-- **USC**: 0.5% to €12,012; 2% to €28,700; 3% to €70,044; 8% above; not payable when total income is €13,000 or less.
-  State Pension and other social welfare income are exempt.
-- **PRSI**: Class A employee at an average of about 4.24% for 2026 (4.2% January to September and 4.35% from 1 October).
-  No employee PRSI at €352 a week or less, and none from age 66.
-- **DIRT** at 33% on deposit interest. **Capital gains tax** on most gains at 33% for disposals to 6 October 2026 and 31% from 7 October 2026, with a
-  €1,270 annual exemption. Glideworth has no disposal dates, so 2026 gains use the average by days (32.53%) and later
-  years 31%.
+| | 2026 | 2027 (Budget 2027) |
+|---|---|---|
+| Standard rate band, single | €44,000 | €46,500 |
+| Single parent | €48,000 | €50,500 |
+| Married couple | €53,000, plus up to €35,000 for a second income | €55,500, plus up to €37,500 |
+| Personal credit, single / married | €2,000 / €4,000 | €2,125 / €4,250 |
+| Employee and earned income credits | €2,000 each, together at most €2,000 | €2,125 each, together at most €2,125 |
+| Age credit from 65, single / married | €245 / €490 | €245 / €490 |
+| USC | 0.5% to €12,012; 2% to €28,700; 3% to €70,044; 8% above | 2% band to €30,300; otherwise the same |
+| Class A employee PRSI | 4.2%, 4.35% from 1 October (average 4.2375%) | 4.35%, 4.5% from 1 October (average 4.3875%) |
+| Capital gains tax | 33% to 6 October, 31% from 7 October (average 32.53%) | 31% |
+
+- **Income tax** is 20% up to the rate band and 40% above, less tax credits.
+- **USC** is not payable when total income is €13,000 or less. State Pension and other social welfare income are exempt.
+- **PRSI**: none at €352 a week or less, and none from age 66. Self-employed income is charged at the same rate. Years
+  after 2027 use 4.5%; any later rise is not confirmed.
+- **DIRT** at 33% on deposit interest. **Capital gains tax** has a €1,270 annual exemption. Glideworth has no disposal
+  dates, so 2026 gains use the average by days.
 - **Pension relief** is age-related: 15% of earnings up to age 29, 20% from 30, 25% from 40, 30% from 50, 35% from 55 and 40% from
   60, on earnings capped at €115,000. Pension access is from 60. There is no USC or PRSI relief on contributions.
+- **Retirement lump sums**: the tax-free share you set on a pension account is tax-free up to €200,000 over your
+  lifetime, taxed at 20% from €200,000 to €500,000 and at 40% above that, where USC is also due.
+- **State Pension (Contributory)**: an income you enter, from 66 by default. The maximum personal rate is €299.30 a
+  week in 2026 and €309.30 from January 2027. It pays income tax but no USC or PRSI.
 
 ## Worked example
 
@@ -59,6 +75,11 @@ A single employee earns €50,000 in 2026.
 - PRSI: €50,000 × 4.2375% (the 2026 average of 4.2% and 4.35%) = **€2,118.75**.
 - Together: €7,200 + €1,032.82 + €2,118.75 = **€10,351.57**.
 
+With the 2027 table the same salary pays income tax of 20% × €46,500 + 40% × €3,500 − €4,250 = €6,450, USC of
+€60.06 + 2% × €18,288 + 3% × €19,700 = €1,016.82 and PRSI of 4.3875% × €50,000 = €2,193.75: **€9,660.57** in all.
+Both years match the Department of Finance's Budget 2027 table for a single employee on €50,000 (€7,200, €2,119 and
+€1,033 before the Budget; €6,450, €2,194 and €1,017 after), which rounds to the euro.
+
 ## Historical data for simulations
 
 No Irish or euro-area market history is bundled. Irish households are tested against US history by default
@@ -66,11 +87,18 @@ No Irish or euro-area market history is bundled. Irish households are tested aga
 
 ## What to treat with care
 
+- **Funds and ETFs.** Irish and equivalent EU, EEA and OECD funds and ETFs pay exit tax (38% in 2026, 35% from 2027
+  as announced), with no annual exemption and a deemed disposal every 8 years. Glideworth does not model exit tax: it
+  taxes fund gains at the CGT rate and distributions as income, so the tax on a fund portfolio can be well off. The
+  Investment Account announced from 1 July 2027 (1% a year on the value above €50,000, up to €12,000 paid in a year)
+  is not modelled either.
+- The 2027 figures are Budget 2027 as announced, before the Finance Bill became law.
 - Capital gains tax for 2026 is an average of the 33% and 31% rates (32.53%), because the model does not know when
   in the year a gain is made. Development land (33%) and the other special CGT rates are not modelled.
-- PRSI uses an average of the two 2026 rates.
 - To model the 25% tax-free retirement lump sum, set a tax-free withdrawal share on the account.
-- No preset has been checked line by line against an official calculator for every case.
+- The tax calculations reproduce Revenue's published 2026 worked examples and the Department of Finance's Budget
+  2027 tables for single employees, but no preset has been checked line by line
+  against an official calculator for every case.
 
 ## Official sources
 
@@ -79,9 +107,19 @@ No Irish or euro-area market history is bundled. Irish households are tested aga
   [USC](https://www.revenue.ie/en/jobs-and-pensions/usc/index.aspx)
 - [Department of Social Protection: PRSI contribution rates (January 2026)](https://assets.gov.ie/static/documents/cb168977/PRSI_C20260116_Contribution_Rates_and_User_Guide_-_SW_14_-_English_Version_-_January_2026_.pdf-web.pdf)
 - [Revenue: how to calculate CGT](https://www.revenue.ie/en/gains-gifts-and-inheritance/transfering-an-asset/how-to-calculate-cgt.aspx)
-- [Revenue: pensions manual, chapter 3](https://www.revenue.ie/en/tax-professionals/tdm/pensions/chapter-03.pdf) and
+- [Revenue: pension tax relief limits](https://www.revenue.ie/en/jobs-and-pensions/pension/relief/tax-relief-limits.aspx) and
   [tax relief for pension contributions](https://www.revenue.ie/en/jobs-and-pensions/pensions/tax-relief-for-pension-contributions.aspx)
 - [Revenue: DIRT rate](https://www.revenue.ie/en/additional-incomes/dirt/what-dirt-rate-is-applicable.aspx)
+- [Revenue: how Income Tax is calculated (worked examples)](https://www.revenue.ie/en/jobs-and-pensions/calculating-your-income-tax/how-income-tax-is-calculated.aspx)
+  and [calculating USC](https://www.revenue.ie/en/jobs-and-pensions/usc/calculating-usc.aspx)
+- [Revenue: retirement lump sums](https://www.revenue.ie/en/jobs-and-pensions/pension/private/retirement-lump-sums.aspx)
+  and [Tax and Duty Manual Part 18D-00-01 (USC on lump sums above €500,000)](https://www.revenue.ie/en/tax-professionals/tdm/income-tax-capital-gains-tax-corporation-tax/part-18d/18D-00-01.pdf)
+- [Revenue eBrief 016/26: exit tax 38% from 1 January 2026](https://www.revenue.ie/en/tax-professionals/ebrief/2026/no-0162026.aspx)
+- [Citizens Information: State Pension (Contributory)](https://www.citizensinformation.ie/en/social-welfare/older-and-retired-people/state-pension-contributory/)
+  and [social welfare rates in Budget 2027](https://www.citizensinformation.ie/en/money-and-tax/budgets/social-welfare-rates-announced-in-budget-2027/)
+- [Department of Finance: Budget 2027 tax policy changes summary](https://assets.gov.ie/static/documents/3aa2894e/Budget_2027_-_Tax_Policy_Changes_Summary_-_Eng.pdf)
+  and [Budget 2027 tax policy changes book](https://assets.gov.ie/static/documents/c6792805/20261012_Budget_2027_Tax_Policy_Changes_Book.pdf)
+- [Parliamentary Budget Office: Finance (No. 2) Bill 2026](https://data.oireachtas.ie/ie/oireachtas/parliamentaryBudgetOffice/2026/2026-10-28_finance-no-2-bill-2026_en.pdf)
 
 <Callout type="note" title="Estimates, not advice">
   Glideworth is planning software. Its tax figures help you compare choices under your own assumptions; they

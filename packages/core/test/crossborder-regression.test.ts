@@ -17,6 +17,12 @@
  *
  * 2026-11-19 (engine 0.6.0, schema 2: moving country removed): all 31 hashes unchanged once
  * `meta.schemaVersion` is set back to 1, so the removal did not change any single-country result.
+ *
+ * Re-baselined 2026-11-19 for the UK and Ireland tax check: the UK sample, GB-ENG, GB-SCT and IE
+ * hashes changed. UK: 2027/28 savings and property rates 24/44/49 (Budget 2026), 2027/28 Child
+ * Benefit and State Pension rates, the Pension Tax Allowance and the cited sources. IE: the Budget
+ * 2027 table for 2027 on (bands, credits, USC; PRSI 4.3875% in 2027 and 4.5% after) with
+ * thresholds nominal through 2027, and USC on retirement lump sums above €500,000.
  */
 import { describe, expect, it } from "vitest";
 import { simulate } from "../src/engine/simulate.js";
@@ -36,13 +42,13 @@ const BEFORE: Record<string, string> = {
   "sample-us:plan-main": "8a0c18739edb7045",
   "sample-us:plan-early": "69b4a468bfb6d7d6",
   // Re-recorded when the sample's State Pension moved from 67 to 68 (Sam is born 1978; Pensions Act 2007).
-  "sample-uk:uk-plan-main": "d0abbb374af13e01",
+  "sample-uk:uk-plan-main": "eb8417e6a89076dc",
   "sample-de:de-plan-main": "b5b24f96cb250abb",
   "sample-nl:nl-plan-main": "33947faa14f65e50",
-  "GB-ENG-single": "008b8866c5fad8fa",
-  "GB-ENG-couple": "fa184c93e8a93a27",
-  "GB-SCT-single": "6e026b0a291221ce",
-  "GB-SCT-couple": "69ad4a4df9993ddf",
+  "GB-ENG-single": "ec9fe9b09b880e4c",
+  "GB-ENG-couple": "6a75d2004a2e2491",
+  "GB-SCT-single": "46070e0e27a76ea1",
+  "GB-SCT-couple": "2059ce0c001a722e",
   "US-CA-single": "5ffa0c719014e762",
   "US-CA-couple": "6b54b4d5b51c152d",
   "US-TX-single": "cc39e49f105c1dd9",
@@ -61,8 +67,8 @@ const BEFORE: Record<string, string> = {
   "ES-MD-couple": "97f1127523875d85",
   "IL-single": "6d14b74b182f58bc",
   "IL-couple": "762a6d5a8e851e06",
-  "IE-single": "12191555578c1c23",
-  "IE-couple": "c77700e525b80c1e",
+  "IE-single": "71e400d674cd0200",
+  "IE-couple": "9245a0705f59a682",
   "NZ-single": "bbc44208f7c312d3",
   "NZ-couple": "d0ed3366381db116",
 };

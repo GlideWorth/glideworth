@@ -89,12 +89,12 @@ that is wrong whenever the rules change. Someone must add new years each spring.
 
 | Country                             | Years in the tables                                                          |
 | ----------------------------------- | ---------------------------------------------------------------------------- |
-| UK                                  | 2025/26, 2026/27, announced 2027/28 and 2029/30                              |
+| UK                                  | 2025/26, 2026/27; 2027/28 as announced at Budget 2025 and 2026; 2029/30      |
 | US federal, payroll, states, cities | 2026 (OBBBA); a TCJA-sunset what-if is an **estimate** (2017 law x 1.33)     |
 | Canada                              | 2026                                                                         |
 | Australia                           | 2025-26, 2026-27, legislated 2027-28                                         |
 | Germany, Netherlands, Israel        | 2026                                                                         |
-| Ireland                             | 2026; from 2027 the 2026 tables with CGT at 31%                              |
+| Ireland                             | 2026; 2027 as announced in Budget 2027 (Finance (No. 2) Bill 2026)           |
 | New Zealand                         | 2026-27                                                                      |
 | France                              | 2026 finance law (taxes 2025 income), 2026 social rates                      |
 | Spain                               | **2025** IRPF scales, 2026 social security                                   |
@@ -120,8 +120,25 @@ Figures that could not be confirmed or are provisional:
 - Netherlands: 2026 Box 3 deemed returns for savings and debts are provisional; the counter-evidence route is not
   applied.
 - US TCJA-sunset variant: an estimate, not law.
-- Ireland: CGT is 33% to 6 October 2026 and 31% from 7 October 2026 (Revenue); with no disposal dates, 2026 uses the
-  average by days (32.53%) and 2027 onward 31%.
+- Ireland (checked 2026-11-19): CGT is 33% to 6 October 2026 and 31% from 7 October 2026 (Revenue); with no disposal
+  dates, 2026 uses the average by days (32.53%) and 2027 onward 31%. The 2027 table is Budget 2027 as announced
+  (Department of Finance Tax Policy Changes book and summary, Parliamentary Budget Office paper; Finance (No. 2) Bill
+  2026 not yet enacted). The married person's credit of €4,250 is not stated in words in an official source: it is
+  implied by the Department of Finance's Table 3 (married, one income) figures, which only add up with it. Class A
+  PRSI is 4.5% from 1 October 2027 (the agreed increases in the same book); any rise after that is **not confirmed**
+  and not applied (later years use 4.5%). The State Pension (Contributory) is €299.30 a week in 2026 and €309.30 in
+  2027 (Citizens Information); it is an income you enter. ARF imputed distribution rates and the standard fund
+  threshold are not modelled. The exit-tax figures (38% in 2026, 35% announced for 2027) are cited but not modelled.
+- UK (checked 2026-11-19): the 2027/28 savings and property rates of 24%, 44% and 49% and the Pension Tax Allowance
+  are Budget 2026 announcements awaiting Finance Bill 2026-27 (Finance Act 2026 enacted 22%, 42% and 47%). The
+  Pension Tax Allowance is fully withdrawn at about £13,317 by its published formula, while Annex A says £13,319
+  (probably rounding; **not resolved**). The government will uprate it with the new State Pension, but the 2028/29
+  and 2029/30 amounts are not published, so the 2027/28 threshold is indexed with prices. The 2027/28 State Pension
+  (£250.70 a week) is the DWP's proposed rate. Scottish property income rates and Scottish thresholds for 2027/28 are
+  not set yet (Scottish rates are kept on property income; higher and advanced thresholds are assumed frozen through
+  2027/28). Student loan thresholds for 2027/28 are not published (Plan 2 is held, as announced; the others are
+  indexed with prices). The salary sacrifice NI cap from April 2029 awaits secondary legislation. State Pension age
+  follows the legislated timetable; the government's third review has not reported.
 - Spain: 2025 scales are carried forward; only four regions have their own scales.
 - No preset has been checked line by line against an official calculator for every case.
 - UAE: the gratuity's daily wage (monthly basic / 30) is Glideworth's convention, and whether the two-year cap uses basic
@@ -142,9 +159,9 @@ Tax sources, checked 2026-11-16 (the status of each country's sourcing; licences
 | Israel                                  | not confirmed (official sites unreachable)                                                                        |
 | United Arab Emirates                    | ok (copied sentence reworded)                                                                                     |
 | Australia                               | ok on facts (ATO cited; Medicare thresholds checked against the 2026-27 Budget paper)                             |
-| Ireland                                 | ok on facts (Revenue; CGT change from 7 October 2026 modelled)                                                    |
+| Ireland                                 | ok on facts for 2026 (Revenue); 2027 from Budget 2027 documents (2026-11-19); gaps above                          |
 | New Zealand                             | ok (IRD rates from 1 April 2025, no end date)                                                                     |
-| UK, Germany, France, Spain, Netherlands | ok (unchanged in this pass)                                                                                       |
+| UK, Germany, France, Spain, Netherlands | UK ok (gov.uk, legislation.gov.uk, Budget 2026; checked 2026-11-19; gaps above); others unchanged in this pass    |
 
 Each country's full list of simplifications is `TAX_SIMPLIFICATIONS`
 (`packages/core/src/tax/data/simplifications.ts`) and is shown with the tax results. Highlights: US SALT cap and

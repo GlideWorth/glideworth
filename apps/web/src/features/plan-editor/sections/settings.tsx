@@ -984,8 +984,8 @@ export function TaxesSection() {
             />
             <SwitchField
               label="Cash ISA limit"
-              hint="From 6 April 2027 at most £12,000 of the ISA allowance can go into cash ISAs (savers 65 and over keep the full allowance). Applies to accounts marked as cash ISAs."
-              checked={uk.cashIsaLimit?.enabled ?? true}
+              hint="There is no separate cash ISA limit: Budget 2026 kept the full £20,000 for cash ISAs. Turn this on to test a limit of your own on accounts marked as cash ISAs (savers 65 and over exempt)."
+              checked={uk.cashIsaLimit?.enabled ?? false}
               onCheckedChange={(enabled) =>
                 set(
                   { uk: { ...uk, cashIsaLimit: { ...(uk.cashIsaLimit ?? {}), enabled } } },
@@ -993,12 +993,9 @@ export function TaxesSection() {
                 )
               }
             />
-            {(uk.cashIsaLimit?.enabled ?? true) ? (
+            {(uk.cashIsaLimit?.enabled ?? false) ? (
               <FieldGrid>
-                <FormField
-                  label="Cash ISA limit a year"
-                  hint="Blank: the legislated amount for each tax year."
-                >
+                <FormField label="Cash ISA limit a year" hint="Blank: no limit.">
                   {(id) => (
                     <CurrencyInput
                       id={id}

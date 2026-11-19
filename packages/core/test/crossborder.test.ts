@@ -124,8 +124,8 @@ describe("UAE resident with UK items", () => {
     expect(linesOf(p, (l) => l.basis === "source" && l.country === "GB")).toBeCloseTo(1_486, 6);
     expect(linesOf(p, (l) => l.country === "AE")).toBe(0);
     expect(p.taxes.total).toBeCloseTo(1_486, 6);
-    // 2027/28: separate property income rates from April 2027 (22%): 7,430 x 22% = 1,634.60.
-    expect(period(r, 2027).taxes.total).toBeCloseTo(1_634.6, 6);
+    // 2027/28: separate property income rates from April 2027 (24%, Budget 2026): 7,430 x 24% = 1,783.20.
+    expect(period(r, 2027).taxes.total).toBeCloseTo(1_783.2, 6);
   });
 
   it("a non-resident who is neither British nor EEA has no Personal Allowance on UK rent (gov.uk/tax-uk-income-live-abroad/personal-allowance)", () => {

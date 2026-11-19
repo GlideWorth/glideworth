@@ -245,7 +245,7 @@ function AccountSheetBody({ id, onClose }: { id: string; onClose: () => void }) 
           {account.type === "uk-isa" ? (
             <FormField
               label="ISA type"
-              hint="Cash ISAs count toward the cash ISA limit (from April 2027) as well as the £20,000 allowance."
+              hint="Cash ISAs count toward the £20,000 allowance, and toward a cash ISA limit if your plan sets one."
             >
               {(fid) => (
                 <Select<"stocks-and-shares" | "cash" | "innovative-finance">

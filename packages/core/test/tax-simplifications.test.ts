@@ -10,7 +10,7 @@ import { TAX_SIMPLIFICATIONS } from "../src/tax/data/simplifications.js";
 import { createDefaultTaxRegistry } from "../src/tax/registry.js";
 
 const EXPECTED_COUNT: Record<string, number> = {
-  uk: 14,
+  uk: 18,
   "us-federal": 10,
   "us-payroll": 4,
   "us-state": 5,
@@ -23,7 +23,7 @@ const EXPECTED_COUNT: Record<string, number> = {
   fr: 8,
   es: 8,
   il: 8,
-  ie: 5,
+  ie: 10,
   nz: 5,
   ae: 6,
 };

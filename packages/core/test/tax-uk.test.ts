@@ -5,6 +5,7 @@
  * Working is shown in comments so each figure can be re-checked against HMRC's calculators.
  */
 import { describe, expect, it } from "vitest";
+import { TaxConfig } from "../src/schema/tax.js";
 import { ukJurisdiction } from "../src/tax/jurisdictions/uk.js";
 import { sumKind, sumLabel, taxInput, total } from "./tax-helpers.js";
 
@@ -36,6 +37,33 @@ describe("UK income tax + NI, England/Wales/NI rates (gov.uk/income-tax-rates)",
     expect(o.facts["uk.personalAllowance.p1"]).toBeCloseTo(7_570, 6);
     expect(ni(o)).toBeCloseTo(3_016 + 59_730 * 0.02, 6);
     expect(o.marginalRate).toBeCloseTo(0.6, 6);
+  });
+
+  it("personal allowance taper edges (gov.uk/income-tax-rates): full at £100,000, nil at £125,140", () => {
+    // £100,000: 37,700 x 20% + (100,000 - 12,570 - 37,700) x 40% = 7,540 + 19,892 = 27,432
+    const at100k = salary(100_000);
+    expect(at100k.facts["uk.personalAllowance.p1"]).toBeCloseTo(12_570, 6);
+    expect(incomeTax(at100k)).toBeCloseTo(27_432, 6);
+    // £100,002: PA 12,569; £125,140: PA 0, 7,540 + (125,140 - 37,700) x 40% = 42,516
+    expect(salary(100_002).facts["uk.personalAllowance.p1"]).toBeCloseTo(12_569, 6);
+    const at125k = salary(125_140);
+    expect(at125k.facts["uk.personalAllowance.p1"]).toBeCloseTo(0, 6);
+    expect(incomeTax(at125k)).toBeCloseTo(42_516, 6);
+  });
+
+  it("Lifetime ISA limit £4,000 from 18 until 50 (gov.uk/lifetime-isa)", () => {
+    const limit = (ownerAge: number) =>
+      ukJurisdiction.contributionLimit?.({
+        accountType: "uk-lisa",
+        year: 2026,
+        ownerAge,
+        priceIndex: 1,
+        earnedIncome: 0,
+      });
+    expect(limit(17)).toBe(0);
+    expect(limit(18)).toBe(4_000);
+    expect(limit(49)).toBe(4_000);
+    expect(limit(50)).toBe(0);
   });
 
   it("£150,000 salary: no PA; 7,540 + 87,440x40% + 24,860x45% = 53,703; NI 5,010.60", () => {
@@ -95,9 +123,9 @@ describe("UK savings and dividends (gov.uk/apply-tax-free-interest-on-savings, /
     expect(incomeTax(o)).toBeCloseTo(286 + 286, 6);
   });
 
-  it("2027/28 savings rates rise by 2pp (Budget 2025): same case taxed at 22% = 440", () => {
+  it("2027/28 savings rates 24/44/49 (Budget 2026 Annex A, announced): same case at 24% = 480", () => {
     const o = salary(20_000, { year: 2027, income: [{ character: "interest", amount: 3_000 }] });
-    expect(sumLabel(o, /savings/)).toBeCloseTo(440, 6);
+    expect(sumLabel(o, /savings/)).toBeCloseTo(480, 6);
   });
 
   it("salary £40,000 + dividends £10,000: allowance £500 then 9,500 x 10.75% = 1,021.25", () => {
@@ -112,11 +140,11 @@ describe("UK savings and dividends (gov.uk/apply-tax-free-interest-on-savings, /
     expect(sumKind(o, "dividends")).toBeCloseTo(8_396.25, 6);
   });
 
-  it("2027/28 property income rates (22/42/47) apply outside Scotland only", () => {
+  it("2027/28 property income rates (24/44/49, Budget 2026) apply outside Scotland only", () => {
     const rent = { character: "rental" as const, amount: 10_000 };
     const eng = salary(30_000, { year: 2027, income: [rent] });
-    // all within basic band: 30,000-12,570 = 17,430 x 20% + 10,000 x 22%
-    expect(incomeTax(eng)).toBeCloseTo(3_486 + 2_200, 6);
+    // all within basic band: 30,000-12,570 = 17,430 x 20% + 10,000 x 24%
+    expect(incomeTax(eng)).toBeCloseTo(3_486 + 2_400, 6);
     const sct = salary(30_000, { year: 2027, region: "SCT", income: [rent] });
     // Scottish rates on 27,430 taxable: 753.73 + 2,597.80 + 10,474x21%
     expect(incomeTax(sct)).toBeCloseTo(753.73 + 2_597.8 + 10_474 * 0.21, 6);
@@ -337,5 +365,127 @@ describe("TaxConfig schema additions (optional, additive)", () => {
     });
     expect(TaxConfig.parse(JSON.parse(JSON.stringify(full)))).toEqual(full);
     expect(full.custom?.financialTransactionTax?.base).toBe("purchases");
+  });
+});
+
+/**
+ * Worked examples published by gov.uk, reproduced exactly (pages read 2026-11-19). Each test names
+ * the page; the inputs are the page's own figures.
+ */
+describe("gov.uk worked examples, 2026/27", () => {
+  it("gov.uk/tax-on-dividends: £29,570 wages + £3,000 dividends -> 17,000 x 20% + 2,500 x 10.75%", () => {
+    const o = salary(29_570, { income: [{ character: "qualified-dividend", amount: 3_000 }] });
+    expect(sumKind(o, "dividends")).toBeCloseTo(268.75, 6);
+    expect(incomeTax(o)).toBeCloseTo(3_400 + 268.75, 6);
+  });
+
+  it("gov.uk/apply-tax-free-interest-on-savings/how-much-is-tax-free: £16,000 wages + £200 interest -> no tax on the interest", () => {
+    const o = salary(16_000, { income: [{ character: "interest", amount: 200 }] });
+    expect(sumLabel(o, /savings/)).toBe(0);
+    expect(incomeTax(o)).toBeCloseTo(3_430 * 0.2, 6);
+  });
+
+  it("gov.uk/apply-tax-free-interest-on-savings/how-much-is-tax-free: basic-rate taxpayer with £1,300 interest pays £60", () => {
+    // Wages above £17,570 so the starting rate is used up; £1,000 PSA, then 300 x 20%.
+    const o = salary(30_000, { income: [{ character: "interest", amount: 1_300 }] });
+    expect(sumLabel(o, /savings/)).toBeCloseTo(60, 6);
+  });
+
+  it("gov.uk/capital-gains-tax/rates: taxable income £20,000, gains £12,600 -> £1,728", () => {
+    const o = salary(32_570, { income: [{ character: "capital-gains-long", amount: 12_600 }] });
+    expect(sumKind(o, "capital-gains")).toBeCloseTo(1_728, 6);
+  });
+
+  it("gov.uk/capital-gains-tax/rates: taxable income £20,000, gains £52,600 -> 17,700 x 18% + 31,900 x 24% = £10,842", () => {
+    const o = salary(32_570, { income: [{ character: "capital-gains-long", amount: 52_600 }] });
+    expect(sumKind(o, "capital-gains")).toBeCloseTo(10_842, 6);
+  });
+
+  it("gov.uk/marriage-allowance: incomes £11,500 and £20,000 -> the couple saves £214", () => {
+    const couple = (lawToggles: Record<string, boolean>) =>
+      uk({
+        people: [{}, {}],
+        config: { filingStatus: "married-joint", lawToggles },
+        income: [
+          { owner: "p1", character: "wage", amount: 11_500 },
+          { owner: "p2", character: "wage", amount: 20_000 },
+        ],
+      });
+    const off = couple({ "uk.marriageAllowance": false });
+    const on = couple({});
+    expect(incomeTax(off) - incomeTax(on)).toBeCloseTo(214, 6);
+  });
+
+  it("gov.uk/self-employed-national-insurance-rates: Class 4 6% on £12,570-£50,270, 2% above", () => {
+    const o = uk({ income: [{ character: "self-employment", amount: 60_000 }] });
+    expect(sumKind(o, "self-employment")).toBeCloseTo(37_700 * 0.06 + 9_730 * 0.02, 6);
+  });
+});
+
+/**
+ * Pension Tax Allowance, 2027/28 (Budget 2026 OOTLAR para 1.4 and Annex A; announced, Finance Bill
+ * 2026-27): over State Pension age, up to 20% x (£13,037 - £12,570) = £93.40 off income tax,
+ * withdrawn at £1 for every £3 of total income above £13,037.
+ */
+describe("UK Pension Tax Allowance 2027/28 (announced)", () => {
+  const pensioner = (amount: number, year = 2027, age = 70) =>
+    uk({
+      year,
+      people: [{ age, birthYear: year - age }],
+      income: [{ character: "pension", amount }],
+    });
+
+  it("only the full new State Pension (£250.70 x 52 = £13,036.40): no income tax", () => {
+    const o = pensioner(250.7 * 52);
+    expect(sumLabel(o, /^Income tax/)).toBeCloseTo((13_036.4 - 12_570) * 0.2, 6);
+    expect(sumLabel(o, /Pension Tax Allowance/)).toBeCloseTo(-(13_036.4 - 12_570) * 0.2, 6);
+    expect(total(o)).toBeCloseTo(0, 6);
+  });
+
+  it("£13,237 (£200 above the threshold): allowance 93.40 - 200/3 = 26.73", () => {
+    const o = pensioner(13_237);
+    expect(sumLabel(o, /Pension Tax Allowance/)).toBeCloseTo(-(93.4 - 200 / 3), 6);
+    expect(total(o)).toBeCloseTo(667 * 0.2 - (93.4 - 200 / 3), 6);
+  });
+
+  it("withdrawn in full by about £13,317 (Annex A rounds it to £13,319)", () => {
+    expect(sumLabel(pensioner(13_320), /Pension Tax Allowance/)).toBe(0);
+  });
+
+  it("not below State Pension age, and not in 2026/27", () => {
+    expect(sumLabel(pensioner(13_000, 2027, 60), /Pension Tax Allowance/)).toBe(0);
+    expect(sumLabel(pensioner(13_000, 2026), /Pension Tax Allowance/)).toBe(0);
+  });
+
+  it("ends after 2029/30", () => {
+    expect(sumLabel(pensioner(13_000, 2029), /Pension Tax Allowance/)).toBeLessThan(0);
+    expect(sumLabel(pensioner(13_000, 2030), /Pension Tax Allowance/)).toBe(0);
+  });
+});
+
+describe("UK 2027/28 published rates", () => {
+  it("cash ISA: no statutory sub-limit (Budget 2026 kept the full £20,000)", () => {
+    const q = (uk?: Record<string, unknown>) => ({
+      accountType: "uk-isa" as const,
+      subtype: "cash",
+      ownerAge: 30,
+      year: 2028,
+      config: TaxConfig.parse({ mode: "estimate", ...(uk ? { uk } : {}) }),
+    });
+    expect(ukJurisdiction.contributionSubLimit!(q())).toBeNull();
+    expect(ukJurisdiction.contributionSubLimit!(q({ cashIsaLimit: { amount: 12_000 } }))).toEqual({
+      key: "uk-cash-isa",
+      annual: 12_000,
+      from: "2027-04",
+    });
+  });
+
+  it("High Income Child Benefit Charge uses the 2027/28 rates (£28.00 and £18.55 a week)", () => {
+    const o = salary(70_000, {
+      year: 2027,
+      dependents: [3, 6],
+      config: { uk: { childBenefitClaimed: true } },
+    });
+    expect(sumLabel(o, /Child Benefit/)).toBeCloseTo((28 + 18.55) * 52 * 0.5, 6);
   });
 });

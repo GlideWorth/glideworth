@@ -299,7 +299,7 @@ describe("UK: State Pension deferral, cash ISA sub-limit, CGT on rebalancing", (
     );
   });
 
-  it("caps cash ISA contributions at the sub-limit from April 2027 for under-65s", () => {
+  it("caps cash ISA contributions only at a sub-limit the plan sets (none in law: Budget 2026)", () => {
     const run = (cfg?: Record<string, unknown>) =>
       simulate(
         sim({
@@ -346,13 +346,17 @@ describe("UK: State Pension deferral, cash ISA sub-limit, CGT on rebalancing", (
       );
     const c = (r: ReturnType<typeof simulate>, y: number) =>
       period(r, y).accounts.find((a) => a.accountId === "isa")!.contributions;
+    // Budget 2026 kept the cash ISA limit at the full £20,000: no sub-limit by default.
     const r = run();
     expect(c(r, 2026)).toBeCloseTo(20_000, 6);
-    // Calendar 2027: Jan-Mar under the old rules (3/12 of 20k), Apr-Dec capped at 9/12 of 12k.
-    expect(c(r, 2027)).toBeCloseTo(Math.min(20_000, 12_000 * (9 / 12) + 0), 6);
-    expect(c(r, 2028)).toBeCloseTo(12_000, 6);
-    expect(c(run({ enabled: false }), 2028)).toBeCloseTo(20_000, 6);
-    expect(c(run({ amount: 15_000 }), 2028)).toBeCloseTo(15_000, 6);
+    expect(c(r, 2028)).toBeCloseTo(20_000, 6);
+    // A limit the plan sets applies from April 2027 by default.
+    const set = run({ amount: 12_000 });
+    expect(c(set, 2026)).toBeCloseTo(20_000, 6);
+    // Calendar 2027: Jan-Mar uncapped, Apr-Dec capped at 9/12 of 12k.
+    expect(c(set, 2027)).toBeCloseTo(Math.min(20_000, 12_000 * (9 / 12) + 0), 6);
+    expect(c(set, 2028)).toBeCloseTo(12_000, 6);
+    expect(c(run({ enabled: false, amount: 12_000 }), 2028)).toBeCloseTo(20_000, 6);
   });
 
   it("realises capital gains when a glide path rebalances a taxable account (optional)", () => {

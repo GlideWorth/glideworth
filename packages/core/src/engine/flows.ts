@@ -143,7 +143,7 @@ function contribute(
       }
     }
   }
-  // Sub-limits inside the allowance (UK: cash ISA from April 2027 for under-65s).
+  // Sub-limits inside the allowance (UK: a cash ISA limit, when the plan sets one).
   const sub = subLimitCap(ctx, ps, a, months);
   if (sub) limit = Math.min(limit, Math.max(0, sub.cap - (ps.limitUsed.get(sub.key) ?? 0)));
   // Wrappers non-residents may not fund (ISA, TFSA...) or only up to a relief cap (UK pensions),

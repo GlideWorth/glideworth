@@ -375,8 +375,9 @@ strategies and flex cuts are pure exports of `engine/strategy.ts`.
   `statePensionDeferralUplift`: GB +1% per 9 weeks deferred past State Pension age (at least 9 weeks),
   DE +0.5% a month past the Regelaltersgrenze, for a pension not yet in payment at the plan start.
   The cash ISA sub-limit for accounts with `ukIsaType: 'cash'` is the UK plug-in's
-  `contributionSubLimit` (`tax.uk.cashIsaLimit`; default from April 2027, amount from the UK tax data,
-  savers 65+ exempt), applied inside the overall ISA allowance. Optional capital gains on rebalancing
+  `contributionSubLimit` (`tax.uk.cashIsaLimit`; only when the plan sets an amount, since Budget 2026
+  withdrew the announced £12,000 limit; default from April 2027, savers 65+ exempt), applied inside the
+  overall ISA allowance. Optional capital gains on rebalancing
   (`assumptions.rebalancingGains`): when a taxable account's bond share changes, the switched share
   of the opening balance realises its pro-rata unrealised gain (basis rises by the gain).
 - Negative (overdrawn) balances earn no investment growth or yield and pay no %-of-balance fee.

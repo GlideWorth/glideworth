@@ -297,8 +297,8 @@ export const Account = z
      */
     jurisdiction: CountryCode.optional(),
     /**
-     * UK ISAs: which kind. A cash ISA counts toward the cash ISA sub-limit (from April 2027, for
-     * savers under 65) as well as the overall ISA allowance. Absent = stocks and shares.
+     * UK ISAs: which kind. A cash ISA counts toward the overall ISA allowance and toward a cash ISA
+     * sub-limit when the plan sets one (`tax.uk.cashIsaLimit`). Absent = stocks and shares.
      */
     ukIsaType: z.enum(["cash", "stocks-and-shares", "innovative-finance"]).optional(),
     /**

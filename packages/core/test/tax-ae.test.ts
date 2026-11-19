@@ -2,13 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { defaultsForCountry } from "../src/defaults/country.js";
 import { simulate } from "../src/engine/simulate.js";
-import {
-  createUaeSampleDocument,
-  UAE_RETURN_PLAN_ID,
-  UAE_SAMPLE_PLAN_ID,
-} from "../src/samples/index.js";
-
-const NOOR = "p-noor";
+import { createUaeSampleDocument, UAE_SAMPLE_PLAN_ID } from "../src/samples/index.js";
 
 import { buildSimulationInput } from "../src/scenario.js";
 import { CURRENCY_PEGS } from "../src/tax/crossborder/currency.js";
@@ -188,8 +182,9 @@ describe("UAE defaults and sample", () => {
     expect(CURRENCY_PEGS[0]!.annualDrift).toBe(0);
   });
 
-  it("the synthetic sample simulates both plans; the move-back plan pays UK tax only after the move", () => {
+  it("the synthetic sample simulates; UK tax is only ever charged as a non-resident (source)", () => {
     const doc = createUaeSampleDocument();
+    expect(doc.plans.map((p) => p.id)).toEqual([UAE_SAMPLE_PLAN_ID]);
     const stay = simulate(buildSimulationInput(doc, UAE_SAMPLE_PLAN_ID));
     expect(
       stay.periods.every((p) =>
@@ -199,18 +194,5 @@ describe("UAE defaults and sample", () => {
     expect(stay.periods.some((p) => p.income.some((i) => i.sourceId.endsWith(":gratuity")))).toBe(
       true,
     );
-    const back = simulate(buildSimulationInput(doc, UAE_RETURN_PLAN_ID));
-    const moveYear = 2044; // Noor turns 60 in February 2044
-    expect(back.periods.filter((p) => p.year < moveYear).every((p) => p.taxes.total === 0)).toBe(
-      true,
-    );
-    expect(back.periods.find((p) => p.year === moveYear)!.taxes.residence![NOOR]).toEqual([
-      { country: "AE", months: 1 },
-      { country: "GB", region: "ENG", months: 11 },
-    ]);
-    // From then on every tax line is a UK one, and the UK taxes the household's worldwide income.
-    const later = back.periods.filter((p) => p.year > moveYear);
-    expect(later.every((p) => p.taxes.lines.every((l) => l.country === "GB"))).toBe(true);
-    expect(later.some((p) => p.taxes.total > 0)).toBe(true);
   });
 });

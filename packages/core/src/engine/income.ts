@@ -7,7 +7,6 @@
 import type { IncomeEvent } from "../schema/events.js";
 import { FREQUENCY_PER_YEAR } from "../schema/primitives.js";
 import type { Change } from "../schema/time.js";
-import { ukStatePensionUprated } from "../tax/crossborder/uk.js";
 import { aeGratuity } from "../tax/data/ae.js";
 import { ukStatePensionAge } from "../tax/data/uk.js";
 import { defaultCharacterForIncomeType } from "../tax/jurisdictions/flat.js";
@@ -44,7 +43,6 @@ import {
 } from "./dates.js";
 import { fxAt, isForeign } from "./indices.js";
 import { annualLimit } from "./limits.js";
-import { lastDeparture, residenceAt } from "./residency.js";
 import { countryRules } from "./rules.js";
 import { resolvePoints } from "./schedule.js";
 import { deathMonthOf, ownerCutoff, survivorOf } from "./survivor.js";
@@ -226,14 +224,6 @@ function eventAmounts(
     };
   }
   const cutoff = ownerCutoff(ctx, e.owner);
-  if (e.type === "state-pension" && ps.crossBorder) {
-    const frozen = statePensionFreeze(ctx, ps, e, base);
-    if (frozen !== 1)
-      base.monthShare = (
-        (prior) => (m: MonthIndex) =>
-          frozen * (prior?.(m) ?? 1)
-      )(base.monthShare);
-  }
   const own = periodAmount(ctx, ps, { ...base, cutoff });
   let survivor = 0;
   if (e.survivorShare && Number.isFinite(cutoff) && cutoff < ps.bounds.end) {
@@ -248,47 +238,6 @@ function eventAmounts(
 }
 
 export { UK_STATE_PENSION_DEFERRAL } from "../tax/data/uk.js";
-
-/**
- * UK State Pension paid abroad: uprated only in the EEA, Switzerland, Gibraltar and countries with a
- * social security agreement that provides for it (not Canada or New Zealand). Elsewhere it stays at
- * the rate first paid abroad (the rate when the owner left, or the first payment if later); back to
- * the current rate on return. Returns the multiplier on this period's (uprated) amount.
- */
-function statePensionFreeze(
-  ctx: EngineContext,
-  ps: PeriodState,
-  e: Extract<IncomeEvent, { type: "state-pension" }>,
-  args: PeriodAmountArgs,
-): number {
-  if (ctx.plan.tax.crossBorder?.freezeStatePensionAbroad === false) return 1;
-  if ((e.country ?? ctx.household.location.country) !== "GB") return 1;
-  const owner = ownerPerson(ctx, e.owner).id;
-  const here = residenceAt(ctx, owner, ps.bounds.start).country;
-  if (ukStatePensionUprated(here)) return 1;
-  const w = resolveWindow(ctx, e.range);
-  if (w.start === null) return 1;
-  const left = lastDeparture(ctx, owner, "GB", ps.bounds.start) ?? ctx.start;
-  const frozenAt = Math.max(left, w.start, ctx.start);
-  if (frozenAt >= ps.bounds.start) return 1;
-  const now = eventValueAt(ctx, { ...args, currency: undefined }, ps.bounds.start);
-  const then = eventValueAt(ctx, { ...args, currency: undefined }, frozenAt);
-  if (!(now > 0)) return 1;
-  const f = Math.min(1, then / now);
-  if (f < 1)
-    traceEvent(
-      ctx,
-      ps,
-      "income",
-      "STATE_PENSION_FROZEN",
-      () =>
-        `${e.name} is not uprated while living in ${here}: paid at ${(f * 100).toFixed(1)}% of the current rate`,
-      [e.id],
-      { country: here, factor: f },
-      "full",
-    );
-  return f;
-}
 
 const deferralSeen = new WeakSet<object>();
 

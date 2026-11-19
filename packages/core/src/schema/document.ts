@@ -11,7 +11,7 @@ import { Timestamp } from "./primitives.js";
 import { ProgressSnapshot, UserSettings } from "./progress-settings.js";
 
 /** Bump when a breaking schema change ships, and add a migration below. */
-export const SCHEMA_VERSION = 1 as const;
+export const SCHEMA_VERSION = 2 as const;
 
 /** The `app` marker every document is written with. */
 export const DOCUMENT_APP = "glideworth" as const;
@@ -41,10 +41,95 @@ export type Migration = {
 };
 
 /**
- * Registered migrations, in order. Example for a future v2:
- *   { from: 1, describe: 'rename Plan.flows[].mandatory -> alwaysFund', up: (raw) => ({ ...raw, schemaVersion: 2 }) }
+ * Registered migrations, in order. Each `up` returns raw JSON at the next version (`upgrade` sets
+ * `schemaVersion`).
  */
-export const MIGRATIONS: Migration[] = [];
+export const MIGRATIONS: Migration[] = [
+  {
+    from: 1,
+    describe:
+      "remove moving country: Plan.residency, relocate milestone effects, departure-tax / UK temporary non-residence / State Pension freeze switches, Person.residenceHistory and statePensionRecords",
+    up: (raw) => {
+      const doc = { ...raw };
+      if (Array.isArray(doc.plans)) doc.plans = doc.plans.map(dropMovesFromPlan);
+      const household = record(doc.household);
+      if (household && Array.isArray(household.people))
+        doc.household = {
+          ...household,
+          people: household.people.map((p) => {
+            const person = record(p);
+            if (!person) return p;
+            const { residenceHistory: _h, statePensionRecords: _r, ...rest } = person;
+            return rest;
+          }),
+        };
+      return doc;
+    },
+  },
+];
+
+function record(v: unknown): Record<string, unknown> | null {
+  return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+}
+
+const REMOVED_CROSS_BORDER_KEYS = [
+  "departureTax",
+  "ukTemporaryNonResidence",
+  "freezeStatePensionAbroad",
+] as const;
+
+const isRelocate = (v: unknown) => record(v)?.kind === "relocate";
+
+/** Drop relocate effects from a milestone-shaped value (a milestone, an effect list). */
+function dropRelocate(v: unknown): unknown {
+  if (Array.isArray(v)) return v.filter((x) => !isRelocate(x)).map(dropRelocate);
+  const r = record(v);
+  if (!r || !Array.isArray(r.effects)) return v;
+  return { ...r, effects: r.effects.filter((e) => !isRelocate(e)) };
+}
+
+function dropMovesFromPlan(p: unknown): unknown {
+  const plan = record(p);
+  if (!plan) return p;
+  const { residency: _residency, ...out } = plan;
+  if (Array.isArray(out.milestones)) out.milestones = out.milestones.map(dropRelocate);
+  const tax = record(out.tax);
+  if (tax?.crossBorder) out.tax = { ...tax, crossBorder: dropCrossBorderKeys(tax.crossBorder) };
+  const lineage = record(out.lineage);
+  if (lineage && Array.isArray(lineage.patch))
+    out.lineage = { ...lineage, patch: lineage.patch.filter(keepOp).map(cleanOp) };
+  return out;
+}
+
+/** Branch patches: ops on removed fields go; values carrying relocate effects lose them. */
+function keepOp(op: unknown): boolean {
+  const o = record(op);
+  const path = typeof o?.path === "string" ? o.path : "";
+  if (path === "/residency" || path.startsWith("/residency/")) return false;
+  if (REMOVED_CROSS_BORDER_KEYS.some((k) => path === `/tax/crossBorder/${k}`)) return false;
+  return !isRelocate(o?.value);
+}
+
+function cleanOp(op: unknown): unknown {
+  const o = record(op);
+  if (!o || !("value" in o) || typeof o.path !== "string") return op;
+  if (o.path.startsWith("/milestones")) return { ...o, value: dropRelocate(o.value) };
+  if (o.path === "/tax/crossBorder") return { ...o, value: dropCrossBorderKeys(o.value) };
+  if (o.path === "/tax") {
+    const tax = record(o.value);
+    if (tax?.crossBorder)
+      return { ...o, value: { ...tax, crossBorder: dropCrossBorderKeys(tax.crossBorder) } };
+  }
+  return op;
+}
+
+function dropCrossBorderKeys(v: unknown): unknown {
+  const cb = record(v);
+  if (!cb) return v;
+  const next = { ...cb };
+  for (const k of REMOVED_CROSS_BORDER_KEYS) delete next[k];
+  return next;
+}
 
 /** Bring raw JSON at `version` up to SCHEMA_VERSION by running the registered migrations. */
 function upgrade(raw: Record<string, unknown>, version: number): Record<string, unknown> {

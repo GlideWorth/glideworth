@@ -38,24 +38,6 @@ const MONARCH = `Date,Merchant,Category,Account,Original Statement,Notes,Amount,
 2026-11-03,Landlord,Rent,Checking,RENT NOV,,-1800.00,
 `;
 
-const OFX = `OFXHEADER:100
-DATA:OFXSGML
-VERSION:102
-SECURITY:NONE
-ENCODING:USASCII
-CHARSET:1252
-COMPRESSION:NONE
-OLDFILEUID:NONE
-NEWFILEUID:NONE
-
-<OFX><SIGNONMSGSRSV1><SONRS><STATUS><CODE>0<SEVERITY>INFO</STATUS><DTSERVER>20261118000000<LANGUAGE>ENG</SONRS></SIGNONMSGSRSV1>
-<BANKMSGSRSV1><STMTTRNRS><TRNUID>1<STATUS><CODE>0<SEVERITY>INFO</STATUS><STMTRS><CURDEF>USD<BANKACCTFROM><BANKID>123456789<ACCTID>000111222<ACCTTYPE>CHECKING</BANKACCTFROM>
-<BANKTRANLIST><DTSTART>20261001<DTEND>20261031
-<STMTTRN><TRNTYPE>CREDIT<DTPOSTED>20261001<TRNAMT>5000.00<FITID>1001<NAME>PAYROLL</STMTTRN>
-<STMTTRN><TRNTYPE>DEBIT<DTPOSTED>20261003<TRNAMT>-1800.00<FITID>1002<NAME>RENT</STMTTRN>
-</BANKTRANLIST><LEDGERBAL><BALAMT>12000.00<DTASOF>20261031</LEDGERBAL></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>
-`;
-
 const IMPORTED = {
   format: "glideworth",
   dryRun: false,
@@ -244,29 +226,6 @@ describe("first import before a plan exists", () => {
     expect(posted.mode).toBe("create");
     expect(posted.data.plans[0]?.name).toBe("My plan");
     expect(posted.data.plans[0]?.expenses.length).toBeGreaterThan(0);
-    expect(posted.data.household.people.map((p) => p.name)).not.toContain("Avery");
-  });
-
-  it("applies an OFX file the same way", async () => {
-    const calls = stubFetch({
-      ...noHousehold,
-      "POST /api/v1/import": () => json(IMPORTED),
-    });
-    await open("/import?tab=bank");
-    await screen.findByText(/Up to 2 MB/);
-    await chooseFile("bank-sample.ofx", OFX, "application/x-ofx");
-    expect(await screen.findByText(/Applying this import creates your plan/)).toBeTruthy();
-    expect(document.body.textContent).not.toMatch(/server is offline|not reachable/i);
-    const apply = await screen.findByRole("button", { name: "Apply import" });
-    await waitFor(() => expect((apply as HTMLButtonElement).disabled).toBe(false));
-    fireEvent.click(apply);
-    await screen.findByText("OFX file imported");
-    const posted = calls.find((c) => c.key === "POST /api/v1/import")?.body as {
-      mode: string;
-      data: { plans: { name: string }[]; household: { people: { name: string }[] } };
-    };
-    expect(posted.mode).toBe("create");
-    expect(posted.data.plans[0]?.name).toBe("My plan");
     expect(posted.data.household.people.map((p) => p.name)).not.toContain("Avery");
   });
 

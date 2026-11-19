@@ -269,10 +269,9 @@ export const TaxLine = z
     /**
      * Cross-border plans only: why this country taxes it. 'residence' (worldwide income of a
      * resident), 'source' (income sourced there, taxed as a non-resident), 'citizenship' (US
-     * citizens abroad), 'relief' (credit for foreign tax), 'exit' (departure tax), 'return' (UK
-     * temporary non-residence charge). Absent = single-country plan (residence).
+     * citizens abroad), 'relief' (credit for foreign tax). Absent = single-country plan (residence).
      */
-    basis: z.enum(["residence", "source", "citizenship", "relief", "exit", "return"]).optional(),
+    basis: z.enum(["residence", "source", "citizenship", "relief"]).optional(),
     /** Cross-border plans only: country (ISO alpha-2) of the jurisdiction. */
     country: z.string().optional(),
     /** Cross-border plans only: the person the line belongs to. */
@@ -295,23 +294,12 @@ export const TaxPeriodResult = z
     settlement: z.number(),
     /** Jurisdiction-specific extra values (e.g. AGI, MAGI) for drill-down and IRMAA look-back. */
     facts: z.record(z.string(), z.number()).default({}),
-    /**
-     * Cross-border plans only: residence of each person this period (with the months spent there)
-     * and the tax per country and basis, in the base currency.
-     */
-    residence: z
-      .record(
-        z.string(),
-        z.array(
-          z.object({ country: z.string(), region: z.string().optional(), months: z.number() }),
-        ),
-      )
-      .optional(),
+    /** Cross-border plans only: the tax per country and basis, in the base currency. */
     byCountry: z
       .array(
         z.object({
           country: z.string(),
-          basis: z.enum(["residence", "source", "citizenship", "relief", "exit", "return"]),
+          basis: z.enum(["residence", "source", "citizenship", "relief"]),
           amount: z.number(),
         }),
       )

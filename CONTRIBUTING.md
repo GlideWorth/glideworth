@@ -72,7 +72,7 @@ sent back.
 
 ```
 packages/core        pure TypeScript + zod: schema, engine, tax plug-ins, stochastic, solvers, insights
-packages/importers   pure TypeScript: ProjectionLab / CSV / OFX import, exports   (MIT)
+packages/importers   pure TypeScript: ProjectionLab / CSV import, exports         (MIT)
 apps/api             Hono + SQLite + OpenAPI + MCP
 apps/web             React + Vite
 ```

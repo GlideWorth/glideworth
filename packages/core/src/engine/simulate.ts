@@ -24,6 +24,7 @@ import {
   type PeriodState,
   warnOnce,
 } from "./context.js";
+import { initCrossBorder } from "./crossborder.js";
 import { buildPeriods, formatMonth, monthOfYear, parseMonth, yearOf } from "./dates.js";
 import { buildDrawdownGroups } from "./drawdown.js";
 import { autoMedicareEvents } from "./expenses.js";
@@ -38,7 +39,6 @@ import {
 } from "./indices.js";
 import { finalizeMilestones, initMilestones, resolveRef } from "./milestones.js";
 import { PIPELINE, validateReferences } from "./phases.js";
-import { initResidency } from "./residency.js";
 import { freshStrategyState } from "./strategy.js";
 import {
   type HistoricalDataset,
@@ -57,8 +57,12 @@ import {
  * no longer pays out growth it had not earned by the time of the withdrawal (accounts.ts
  * `withdrawable`); deterministic historical sequences read the bundled us-1928 instead of Shiller's
  * us-1871; retired dataset ids are read as their replacements).
+ * 0.6.0: moving country removed - the household lives at `Household.location` for the whole plan
+ * (no residency timeline, relocation effects, departure taxes, UK temporary non-residence or State
+ * Pension freeze); items in another country are still taxed there and at home; `taxes.residence`
+ * is gone from results).
  */
-export const ENGINE_VERSION = "0.5.0";
+export const ENGINE_VERSION = "0.6.0";
 
 export interface SimulateDeps {
   /** Tax registry; defaults to createDefaultTaxRegistry(). Inject to add/replace jurisdictions. */
@@ -97,10 +101,10 @@ function taxSourcesOf(ctx: EngineContext): { taxSources?: ProjectionResult["meta
   try {
     stack = ctx.registry.resolveStack(ctx.plan.tax, ctx.location);
   } catch {
-    if (!ctx.residency?.active) return {};
+    if (!ctx.crossBorder) return {};
   }
-  if (ctx.residency?.active)
-    for (const c of ctx.residency.countries) {
+  if (ctx.crossBorder)
+    for (const c of ctx.crossBorder.countries) {
       const id = NATIONAL_JURISDICTION_BY_COUNTRY[c];
       if (!id) continue;
       try {
@@ -203,8 +207,8 @@ export function simulate(
 
   // --- FX: every foreign currency resolves to the base currency (ScenarioError when a rate is missing).
   resolveFx(ctx);
-  // --- Cross-border plans: residency timeline and the tax currencies of the countries involved.
-  initResidency(ctx);
+  // --- Cross-border plans: items in other countries and the tax currencies of the countries involved.
+  initCrossBorder(ctx);
   /** Starting values in a foreign currency convert at the plan-start rate. */
   const fx0 = (currency: string | undefined) => fxAt(ctx, currency, start);
 

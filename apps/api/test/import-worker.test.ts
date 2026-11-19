@@ -1,10 +1,9 @@
-/* oxlint-disable typescript/no-explicit-any -- tests probe arbitrary JSON responses */
 /**
- * Security review finding 4, second half: bank-file, CSV and document imports are parsed in a worker thread
+ * Security review finding 4, second half: CSV and document imports are parsed in a worker thread
  * (`src/jobs/import-pool.ts`), not on the request thread.
  *
  * - the worker gives exactly what the in-process run gives, on the fixtures, for every kind of import;
- * - a hostile file at the 2 MB cap does not hold up `/health`;
+ * - a large crafted CSV does not hold up `/health`;
  * - the time limit stops the thread (422 IMPORT_TIMEOUT), the pool and per-workspace limits refuse a burst
  *   (503 IMPORT_BUSY, 429 RATE_LIMITED, with Retry-After), and importer errors map as before.
  *
@@ -18,7 +17,6 @@ import { migrateDocument } from "@glideworth/core";
 import { createSampleDocument, createUkSampleDocument } from "@glideworth/core/samples";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import { importDeps } from "../src/deps.js";
-import { BANK_FILE_LIMITS } from "../src/jobs/import-limits.js";
 import { ImportPool } from "../src/jobs/import-pool.js";
 import { type ImportTask, runImportTask } from "../src/jobs/import-task.js";
 import { type Harness, setup, WRITE_KEY } from "./helpers.js";
@@ -36,35 +34,32 @@ const { buildSyntheticExport } = (await import(
     .href
 )) as { buildSyntheticExport: () => unknown };
 
-const OFX = `OFXHEADER:100
-DATA:OFXSGML
-VERSION:102
-
-<OFX><BANKMSGSRSV1><STMTTRNRS><TRNUID>1<STATUS><CODE>0<SEVERITY>INFO</STATUS>
-<STMTRS><CURDEF>USD<BANKACCTFROM><BANKID>123456789<ACCTID>0011223344<ACCTTYPE>CHECKING</BANKACCTFROM>
-<BANKTRANLIST><DTSTART>20250101<DTEND>20260131
-<STMTTRN><TRNTYPE>DEBIT<DTPOSTED>20250305<TRNAMT>-52.30<FITID>1<NAME>GROCERY STORE</STMTTRN>
-<STMTTRN><TRNTYPE>DEBIT<DTPOSTED>20250910<TRNAMT>-1200.00<FITID>2<NAME>RENT PAYMENT</STMTTRN>
-<STMTTRN><TRNTYPE>DEBIT<DTPOSTED>20260110<TRNAMT>-80.00<FITID>3<NAME>ELECTRIC CO</STMTTRN>
-<STMTTRN><TRNTYPE>CREDIT<DTPOSTED>20260115<TRNAMT>3000.00<FITID>4<NAME>PAYROLL</STMTTRN>
-</BANKTRANLIST><LEDGERBAL><BALAMT>5432.10<DTASOF>20260131</LEDGERBAL></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>
-`;
-const QIF =
-  "!Account\nNJoint Checking\nTBank\nL-200.00\n^\n!Type:Bank\nD01/05/2026\nT-52.30\nPGrocery Store\nLFood\n^\nD25/10/2025\nT-1200.00\nPRent\n^\n";
 const BALANCES_CSV =
   "Account,Balance,Date\nJoint Checking,5432.10,2026-01-31\nNew Savings,1200,2026-01-31\n";
 const SNAPSHOTS_CSV = "Date,Net worth\n2024-12-31,410000\n2025-06-30,432000\n2025-12-31,455000\n";
 const TRANSACTIONS_CSV =
   "Date,Description,Amount,Category\n2025-02-01,Rent,-1200,Housing\n2025-03-04,Groceries,-80.5,Food\n2025-11-02,Flight,-640,Travel\n";
 
-/** ~35,000 `!Account` headers with a balance at the 2 MB cap, each a new account on apply: the slowest crafted shape the review measured. */
-function hostileQif(size = 2_000_000): string {
-  const parts: string[] = [];
-  let n = 0;
+/** A transactions CSV of about `size` characters, every row its own payee and one of 5,000 categories. */
+function largeTransactionsCsv(size = 2_000_000): string {
+  const parts = ["Date,Description,Amount,Category\n"];
+  let n = parts[0]!.length;
   for (let i = 0; n < size - 60; i++) {
-    const u = `!Account\nNAcct ${i}\nTBank\n$1.00\n^\n!Type:Bank\nD01/05/2026\nT-1.00\nPx\n^\n`;
-    parts.push(u);
-    n += u.length;
+    const row = `2025-${String((i % 12) + 1).padStart(2, "0")}-01,Shop ${i},-1.00,Category ${i % 5_000}\n`;
+    parts.push(row);
+    n += row.length;
+  }
+  return parts.join("");
+}
+
+/** An account-balances CSV of about `size` characters, every row a different account. */
+function largeBalancesCsv(size = 2_000_000): string {
+  const parts = ["Account,Balance,Date\n"];
+  let n = parts[0]!.length;
+  for (let i = 0; n < size - 60; i++) {
+    const row = `Account ${i},1.00,2026-01-31\n`;
+    parts.push(row);
+    n += row.length;
   }
   return parts.join("");
 }
@@ -113,21 +108,6 @@ describe("import tasks: the worker gives what the in-process run gives", () => {
         `document ${name} dryRun=${dryRun}`,
         { op: "document", format: "auto", data, dryRun },
       ]);
-    for (const [name, text, format] of [
-      ["ofx", OFX, "ofx"],
-      ["qif", QIF, "qif"],
-      ["auto ofx", OFX, "auto"],
-    ] as const)
-      tasks.push([
-        `bank-file ${name} dryRun=${dryRun}`,
-        {
-          op: "bank-file",
-          doc: us,
-          text,
-          dryRun,
-          request: { format, balances: { createMissing: true }, transactionsToPlanId: plan },
-        },
-      ]);
     for (const [kind, text] of [
       ["account-balances", BALANCES_CSV],
       ["progress-snapshots", SNAPSHOTS_CSV],
@@ -172,14 +152,13 @@ describe("imports over the API: worker and in-process give the same responses an
       "/api/v1/households/hh-sample/import/csv/analyze",
       { text: BALANCES_CSV, kind: "account-balances" },
     ],
-    ["/api/v1/households/hh-sample/import/bank-file", { text: OFX, dryRun: true }],
     [
-      "/api/v1/households/hh-sample/import/bank-file",
-      { text: OFX, dryRun: false, planId: "plan-main", balances: { createMissing: true } },
+      "/api/v1/households/hh-sample/import/csv",
+      { text: BALANCES_CSV, kind: "account-balances", options: { createMissing: true } },
     ],
     [
-      "/api/v1/households/hh-sample/import/bank-file",
-      { text: QIF, format: "qif", dateFormat: "DMY", dryRun: false },
+      "/api/v1/households/hh-sample/import/csv",
+      { text: TRANSACTIONS_CSV, kind: "transactions", planId: "plan-main", dryRun: true },
     ],
     [
       "/api/v1/households/hh-sample/import/csv",
@@ -241,7 +220,7 @@ describe("imports over the API: worker and in-process give the same responses an
   }, 120_000);
 });
 
-describe("a hostile file at the cap does not hold up /health", () => {
+describe("a large crafted CSV does not hold up /health", () => {
   async function start(importRunner: "inline" | ImportPool): Promise<string> {
     h = setup({ importRunner });
     await new Promise<void>((resolve) => {
@@ -286,53 +265,41 @@ describe("a hostile file at the cap does not hold up /health", () => {
    * event loop, and parsing it here would be counted as the server being slow.
    */
   const post = (base: string, body: unknown) =>
-    fetch(`${base}/api/v1/households/hh-sample/import/bank-file`, {
+    fetch(`${base}/api/v1/households/hh-sample/import/csv`, {
       method: "POST",
       headers: { authorization: `Bearer ${WRITE_KEY}`, "content-type": "application/json" },
       body: JSON.stringify(body),
     }).then(async (r) => ({ status: r.status, text: await r.text() }));
 
-  /**
-   * Cap-size crafted files, and whether /health must keep answering during them. The last shape (each of
-   * ~35,000 `!Account` headers created as an account) is refused in the worker since an apply may create at
-   * most 1,000 accounts (`BANK_FILE_LIMITS`, finding 4's "Still open"), so the request thread never writes it.
-   */
+  /** 2 MB crafted files, and whether /health must keep answering during them. */
   const shapes = (): Array<[string, unknown, boolean, number?]> => {
-    const qif = hostileQif();
+    const transactions = largeTransactionsCsv();
     return [
       [
-        "QIF dry run",
-        { text: qif, format: "qif", dryRun: true, balances: { createMissing: true } },
-        true,
-      ],
-      ["OFX unclosed tags, dry run", { text: `<OFX>${"<A".repeat(999_000)}`, dryRun: true }, false],
-      [
-        "OFX unmatched closing tags, dry run",
-        { text: `<OFX>${"<A>".repeat(285_000)}${"</B>".repeat(285_000)}`, dryRun: true },
+        "transactions dry run",
+        { text: transactions, kind: "transactions", planId: "plan-main", dryRun: true },
         true,
       ],
       [
-        "QIF apply, spending to a plan",
-        { text: qif, format: "qif", dryRun: false, planId: "plan-main", balances: false },
-        true,
-      ],
-      [
-        "QIF apply, creating every account",
+        "balances dry run, every row a new account",
         {
-          text: qif,
-          format: "qif",
-          dryRun: false,
-          planId: "plan-main",
-          balances: { createMissing: true },
+          text: largeBalancesCsv(),
+          kind: "account-balances",
+          options: { createMissing: true },
+          dryRun: true,
         },
         true,
-        400,
+      ],
+      [
+        "transactions apply, spending to a plan",
+        { text: transactions, kind: "transactions", planId: "plan-main", dryRun: false },
+        true,
       ],
     ];
   };
 
-  it("served from the worker: /health stays fast during cap-size imports", async () => {
-    expect(hostileQif().length).toBeLessThanOrEqual(2_000_000);
+  it("served from the worker: /health stays fast during 2 MB imports", async () => {
+    expect(largeTransactionsCsv().length).toBeLessThanOrEqual(2_000_000);
     const p = pool();
     // Warm the thread, so the measurement is of the import and not of loading the importers.
     await p.run({ op: "csv-analyze", text: "a,b\n1,2\n", kind: "account-balances" });
@@ -382,31 +349,40 @@ describe("limits and failures", () => {
     const p = pool({ timeoutMs: 30, maxWorkers: 1 });
     await p.run({ op: "csv-analyze", text: "a,b\n1,2\n", kind: "account-balances" }); // warm, < 30 ms
     h = setup({ importRunner: p });
-    const r = await h.call("/api/v1/households/hh-sample/import/bank-file", {
+    const expenses = h.services.plans.get("plan-main").expenses.length;
+    const r = await h.call("/api/v1/households/hh-sample/import/csv", {
       method: "POST",
-      body: { text: hostileQif(), format: "qif", dryRun: false, balances: { createMissing: true } },
+      body: {
+        text: largeTransactionsCsv(),
+        kind: "transactions",
+        planId: "plan-main",
+        dryRun: false,
+      },
     });
     expect(r.status, r.text.slice(0, 300)).toBe(422);
     expect(r.json.error.code).toBe("IMPORT_TIMEOUT");
     expect(r.json.error.details).toEqual({ limitSeconds: 0 });
     expect(p.stats()).toEqual({ threads: 0, running: 0, queued: 0 }); // terminated, not leaked
     // Nothing was written.
-    const accounts = (await h.call("/api/v1/households/hh-sample")).json.finances.accounts;
-    expect(accounts.some((a: any) => a.name === "Acct 0")).toBe(false);
+    expect(h.services.plans.get("plan-main").expenses).toHaveLength(expenses);
     // A fresh thread serves the next import. On a busy machine a cold thread can miss the 30 ms limit even for
     // this small file (a timeout terminates it and the pool starts another), so allow a few tries.
     let ok = { status: 0, text: "" };
     for (let i = 0; i < 5 && ok.status !== 200; i++)
-      ok = await h.call("/api/v1/households/hh-sample/import/bank-file", {
+      ok = await h.call("/api/v1/households/hh-sample/import/csv", {
         method: "POST",
-        body: { text: QIF, format: "qif" },
+        body: { text: TRANSACTIONS_CSV, kind: "transactions", planId: "plan-main" },
       });
     expect(ok.status, ok.text.slice(0, 300)).toBe(200);
   }, 60_000);
 
   it("the pool runs at most maxWorkers and queues at most maxQueued: the rest is 503 IMPORT_BUSY with Retry-After", async () => {
     const p = pool({ maxWorkers: 1, maxQueued: 1 });
-    const task: ImportTask = { op: "csv-analyze", text: hostileQif(400_000), kind: "transactions" };
+    const task: ImportTask = {
+      op: "csv-analyze",
+      text: largeTransactionsCsv(400_000),
+      kind: "transactions",
+    };
     const runs = [p.run(task), p.run(task), p.run(task)].map((x) =>
       x.then(
         () => "ok",
@@ -421,7 +397,7 @@ describe("limits and failures", () => {
     h = setup({ importRunner: busy });
     const first = h.call("/api/v1/households/hh-sample/import/csv/analyze", {
       method: "POST",
-      body: { text: hostileQif(400_000), kind: "transactions" },
+      body: { text: largeTransactionsCsv(400_000), kind: "transactions" },
     });
     const second = await h.call("/api/v1/households/hh-sample/import/csv/analyze", {
       method: "POST",
@@ -435,10 +411,10 @@ describe("limits and failures", () => {
 
   it("one workspace runs at most 2 imports at once: the third is 429 RATE_LIMITED", async () => {
     h = setup({ importRunner: pool({ maxWorkers: 4 }) });
-    const body = { text: hostileQif(400_000), format: "qif" };
+    const body = { text: largeTransactionsCsv(400_000), kind: "transactions", planId: "plan-main" };
     const rs = await Promise.all(
       [1, 2, 3].map(() =>
-        h!.call("/api/v1/households/hh-sample/import/bank-file", { method: "POST", body }),
+        h!.call("/api/v1/households/hh-sample/import/csv", { method: "POST", body }),
       ),
     );
     expect(rs.map((r) => r.status).sort()).toEqual([200, 200, 429]);
@@ -476,65 +452,6 @@ describe("limits and failures", () => {
     expect(r.status).toBe(400);
     expect(r.json.error.code).toBe("VALIDATION");
   }, 60_000);
-
-  it("one bank-file apply creates at most BANK_FILE_LIMITS.newAccounts accounts; more is 400 VALIDATION and writes nothing", async () => {
-    expect(BANK_FILE_LIMITS.newAccounts).toBe(1_000);
-    const qif = (n: number) =>
-      Array.from(
-        { length: n },
-        (_, i) => `!Account\nNNew ${i}\nTBank\n$1.00\n^\n!Type:Bank\nD01/05/2026\nT-1.00\nPx\n^\n`,
-      ).join("");
-    h = setup({ importRunner: pool() });
-    const url = "/api/v1/households/hh-sample/import/bank-file";
-    const accounts = () => h!.services.households.get("hh-sample").finances.accounts.length;
-    const n = accounts();
-    const over = { text: qif(1_001), format: "qif", balances: { createMissing: true } };
-
-    // A dry run still says how many an apply would create.
-    const dry = await h.call(url, { method: "POST", body: { ...over, dryRun: true } });
-    expect(dry.status, dry.text.slice(0, 300)).toBe(200);
-    expect(dry.json.reconciliation.created).toHaveLength(1_001);
-
-    const refused = await h.call(url, { method: "POST", body: { ...over, dryRun: false } });
-    expect(refused.status, refused.text.slice(0, 300)).toBe(400);
-    expect(refused.json.error.code).toBe("VALIDATION");
-    expect(refused.json.error.message).toContain("would create 1,001 new accounts");
-    expect(refused.json.error.message).toContain("at most 1,000");
-    expect(refused.json.error.details).toEqual({ limit: 1_000, count: 1_001 });
-    expect(accounts()).toBe(n);
-
-    // Without createMissing the same file creates nothing and is not refused.
-    const matchOnly = await h.call(url, {
-      method: "POST",
-      body: { ...over, balances: {}, dryRun: false },
-    });
-    expect(matchOnly.status, matchOnly.text.slice(0, 300)).toBe(200);
-    expect(accounts()).toBe(n);
-
-    const atLimit = await h.call(url, {
-      method: "POST",
-      body: { ...over, text: qif(1_000), dryRun: false },
-    });
-    expect(atLimit.status, atLimit.text.slice(0, 300)).toBe(200);
-    expect(accounts()).toBe(n + 1_000);
-  }, 60_000);
-
-  it("the new-account limit holds in-process too (MCP and tests without a pool)", () => {
-    const doc = migrateDocument(createSampleDocument());
-    const text = Array.from(
-      { length: 1_001 },
-      (_, i) => `!Account\nNNew ${i}\nTBank\n$1.00\n^\n`,
-    ).join("");
-    const task: ImportTask = {
-      op: "bank-file",
-      doc,
-      text,
-      request: { format: "qif", balances: { createMissing: true } } as never,
-      dryRun: false,
-    };
-    expect(() => runImportTask(task, importDeps)).toThrow(/at most 1,000/);
-    expect(() => runImportTask({ ...task, dryRun: true }, importDeps)).not.toThrow();
-  });
 
   it("a blocked apply writes nothing; the household changing meanwhile is a 409 and writes nothing", async () => {
     let release!: () => void;

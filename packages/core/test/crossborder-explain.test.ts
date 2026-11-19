@@ -10,16 +10,16 @@ import {
   taxByCountry,
 } from "../src/insights/crossborder-explain.js";
 
-function mover(residency: unknown[] = [], people?: unknown[]) {
+function household(country = "GB", people?: unknown[]) {
   return SimulationInput.parse({
     household: {
       id: "h",
-      name: "Synthetic movers",
+      name: "Synthetic household",
       planningMode: "individual",
       people: people ?? [
         { id: "me", name: "Alex", role: "primary", birthMonth: "1980-03", citizenships: ["GB"] },
       ],
-      location: { country: "GB", region: "ENG" },
+      location: country === "GB" ? { country: "GB", region: "ENG" } : { country },
       currency: "GBP",
       locale: "en-GB",
     },
@@ -65,7 +65,6 @@ function mover(residency: unknown[] = [], people?: unknown[]) {
       householdId: "h",
       name: "Plan",
       tax: { mode: "estimate" },
-      residency,
       income: [
         {
           id: "pay",
@@ -91,19 +90,13 @@ function mover(residency: unknown[] = [], people?: unknown[]) {
   });
 }
 
-const toUae = {
-  id: "move-ae",
-  from: { kind: "date", date: "2027-01" },
-  location: { country: "AE" },
-};
-
 describe("explainItemTaxation", () => {
   it("UK rental flat while living in the UAE: UK taxes the rent at source, the UAE taxes nothing, treaty Art. 6 cited", () => {
-    const input = mover([toUae]);
+    const input = household("AE");
     const e = explainItemTaxation(input, "flat", 2028);
     expect(e.kind).toBe("realAsset");
     expect(e.country).toBe("GB");
-    expect(e.residence).toEqual([{ personId: "me", country: "AE", months: 12 }]);
+    expect(e.residence).toBe("AE");
     const rent = e.treatments.find((t) => t.category === "rental")!;
     expect(rent.sourceTaxes).toBe(true);
     expect(rent.treaty?.name).toMatch(/UK-UAE/);
@@ -113,49 +106,30 @@ describe("explainItemTaxation", () => {
   });
 
   it("UK pension while living in the UAE: residence-only under the treaty, so the UK does not tax it", () => {
-    const e = explainItemTaxation(mover([toUae]), "sipp", 2028);
+    const e = explainItemTaxation(household("AE"), "sipp", 2028);
     const p = e.treatments.find((t) => t.category === "private-pension")!;
     expect(p.sourceTaxes).toBe(false);
     expect(p.wrapper?.recognised).toBe(true);
   });
 
-  it("a split year reports both residences with their months", () => {
-    const e = explainItemTaxation(mover([toUae]), "flat", 2027);
-    // Fiscal year 2026/27 (labelled 2026) has Apr-Dec in GB; 2027 is Apr 2027-Mar 2028 entirely in AE.
-    const e2026 = explainItemTaxation(mover([toUae]), "flat", 2026);
-    expect(e.residence.map((r) => r.country)).toEqual(["AE"]);
-    expect(e2026.residence.map((r) => r.country).sort()).toEqual(["AE", "GB"]);
-    expect(e2026.residence.reduce((s, r) => s + r.months, 0)).toBe(12);
-  });
-
-  it("with a projection result, residences come from the result", () => {
-    const input = mover([toUae]);
-    const result = simulate(input);
-    const e = explainItemTaxation(input, "flat", result.periods[1]!.year, result);
-    expect(e.residence[0]!.country).toBe("AE");
-  });
-
   it("an unknown treaty pair and an unrecognised foreign wrapper are warnings", () => {
-    const input = mover([
-      { id: "nz", from: { kind: "date", date: "2027-01" }, location: { country: "NZ" } },
-    ]);
+    const input = household("NZ");
     const isa = explainItemTaxation(input, "isa", 2028);
     expect(isa.warnings.some((w) => /No New Zealand-United Kingdom treaty/.test(w))).toBe(true);
     expect(isa.warnings.some((w) => /does not recognise/.test(w))).toBe(true);
   });
 
   it("US citizens abroad get the citizenship note; debts are explained as untaxed; unknown ids throw", () => {
-    const input = mover(
-      [],
-      [{ id: "me", name: "Jo", role: "primary", birthMonth: "1980-03", citizenships: ["US"] }],
-    );
+    const input = household("GB", [
+      { id: "me", name: "Jo", role: "primary", birthMonth: "1980-03", citizenships: ["US"] },
+    ]);
     expect(explainItemTaxation(input, "isa", 2028).citizenship).toMatch(/US/);
     expect(explainItemTaxation(input, "car", 2028).summary).toMatch(/not taxed/);
     expect(() => explainItemTaxation(input, "nope", 2028)).toThrow(/no account/);
   });
 
-  it("a never-moved household: domestic items are taxed only at home", () => {
-    const input = mover([]);
+  it("domestic items are taxed only at home", () => {
+    const input = household();
     const e = explainItemTaxation(input, "isa", 2028);
     expect(e.treatments.every((t) => t.residence === "GB" && t.source === "GB")).toBe(true);
     expect(e.summary).toMatch(/taxed only in United Kingdom/);
@@ -164,7 +138,7 @@ describe("explainItemTaxation", () => {
 
 describe("taxByCountry and crossBorderItems", () => {
   it("single-country plans report residence tax of the home country only", () => {
-    const input = mover([]);
+    const input = household();
     input.plan.income = [];
     const r = simulate(input);
     const t = taxByCountry(r, "real", "GB");
@@ -175,17 +149,16 @@ describe("taxByCountry and crossBorderItems", () => {
     );
   });
 
-  it("a move produces source tax in the UK and lists the foreign items", () => {
-    const input = mover([toUae]);
+  it("a UAE resident with UK items pays source tax in the UK; the foreign items are listed", () => {
+    const input = household("AE");
     const r = simulate(input);
     const t = taxByCountry(r, "real", "GB");
     expect(t.crossBorder).toBe(true);
     expect(t.lifetime.some((x) => x.country === "GB" && x.basis === "source")).toBe(true);
     const total = t.lifetime.reduce((s, x) => s + x.amount, 0);
     expect(total).toBeCloseTo(r.summary.lifetimeTaxesReal, 0);
-    const items = crossBorderItems(input, r).map((i) => i.id);
-    expect(items).toContain("flat");
-    expect(items).toContain("pay");
+    const items = crossBorderItems(input).map((i) => i.id);
+    expect(items.sort()).toEqual(["flat", "isa", "sipp"]);
   });
 
   it("simplifications list the general caveats then each country", () => {
@@ -193,24 +166,5 @@ describe("taxByCountry and crossBorderItems", () => {
     const list = crossBorderSimplificationsFor(["GB", "AE"]);
     expect(list.some((s) => s.startsWith("United Kingdom:"))).toBe(true);
     expect(list.some((s) => s.startsWith("United Arab Emirates:"))).toBe(true);
-  });
-});
-
-describe("plan diff of residency changes", () => {
-  it("reads as moves, not JSON", async () => {
-    const { diffPlans } = await import("../src/insights/diff.js");
-    const { applyPlanPatch } = await import("../src/insights/patch.js");
-    const { relocationScenario } = await import("../src/insights/crossborder.js");
-    const input = mover([]);
-    const t = relocationScenario(input, {
-      to: { country: "AE" },
-      month: "2028-01",
-      returnMonth: "2031-01",
-    });
-    const d = diffPlans(input.plan, applyPlanPatch(input.plan, t.patch));
-    const text = d.changes.map((c) => c.description).join(" | ");
-    expect(text).toMatch(/Everyone moves to United Arab Emirates from/);
-    expect(text).toMatch(/moves to United Kingdom/);
-    expect(text).not.toMatch(/\{"id"/);
   });
 });

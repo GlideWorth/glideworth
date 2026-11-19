@@ -16,7 +16,6 @@ import { create } from "zustand";
 export const SECTIONS = [
   { id: "timeline", label: "Timeline" },
   { id: "milestones", label: "Milestones" },
-  { id: "residency", label: "Where you live" },
   { id: "income", label: "Income" },
   { id: "expenses", label: "Expenses" },
   { id: "flows", label: "Flows" },

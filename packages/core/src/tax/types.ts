@@ -42,11 +42,6 @@ export interface TaxIncomeItem {
    * Lets CA apply the OAS recovery tax and AU/UK identify government benefits.
    */
   incomeType?: string;
-  /**
-   * OPTIONAL (cross-border engine): a charge that belongs to ONE country's residence period in full
-   * (departure tax, UK temporary non-residence gains), not prorated across a split year.
-   */
-  pin?: { country: string; basis: "exit" | "return" };
   /** OPTIONAL (engine): sale details of a real asset gain (non-resident rebasing). */
   sale?: { assetId: string; month: number; proceeds: number; costBasis: number; gain: number };
 }

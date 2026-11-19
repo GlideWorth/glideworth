@@ -3,13 +3,10 @@
  *  - `strategyMetricsMatrix`: tax / drawdown strategies x outcome metrics (lifetime tax, net
  *    legacy, chance of success, final net worth) with per-metric 0..1 scores for a heatmap.
  *  - `incomeByTaxRate`: per year, how much income fell in each tax-rate band (heatmap).
- *  - `compareSeppMethods`: the 72(t) SEPP method comparison table (RMD, fixed amortisation,
- *    fixed annuitisation).
  *  - `netLegacyAtEnd`: net legacy (after estate tax, heirs' tax and costs) of a projection's year.
  * Pure functions; money is reported in today's money unless a field says nominal.
  */
 import { simulate as coreSimulate } from "../engine/simulate.js";
-import { singleLifeExpectancy } from "../engine/tables.js";
 import {
   type PeriodResult,
   type ProjectionResult,
@@ -29,9 +26,7 @@ import {
   ukDrawdownCandidates,
 } from "../solvers/tax-strategy.js";
 import { UK_TAX_YEARS } from "../tax/data/uk.js";
-import { seppAnnuityFactor } from "../tax/data/us-federal.js";
 import { estimateNetLegacy, estimateUkInheritanceTax, estimateUsEstateTax } from "../tax/estate.js";
-import { ukInheritanceTaxScope } from "./crossborder.js";
 import { applyPlanPatch } from "./patch.js";
 
 // ------------------------------------------------------------------------------- net legacy
@@ -96,42 +91,7 @@ export function netLegacyAtEnd(
     .filter((r) => r.owned && homes.has(r.assetId))
     .reduce((s, r) => s + Math.max(0, r.equity), 0);
   const settings = input.plan.tax.estate;
-  let country = input.household.location.country;
-  // Cross-border plans: UK inheritance tax follows the long-term-residence test (from 6 April 2025),
-  // with its tail after leaving; outside it only UK assets are in scope.
-  let ukScope: { worldwide: boolean; ukAssets: number } | null = null;
-  const moves =
-    (input.plan.residency?.length ?? 0) > 0 ||
-    input.plan.milestones.some((m) => m.effects.some((e) => e.kind === "relocate"));
-  if (moves) {
-    const last =
-      [...input.household.people].reverse().find((x) => p.alive[x.id]) ??
-      input.household.people[0]!;
-    const scope = ukInheritanceTaxScope(input, last.id, p.year, result);
-    const ukAccounts = p.accounts
-      .filter((a) => {
-        const d = defs.get(a.accountId);
-        return (
-          d &&
-          (d.jurisdiction ??
-            ACCOUNT_TYPE_INFO[d.type].country ??
-            input.household.location.country) === "GB"
-        );
-      })
-      .reduce((s, a) => s + a.closing, 0);
-    const ukReal = p.realAssets
-      .filter((r) => {
-        const d =
-          fin.realAssets.find((x) => x.id === r.assetId) ??
-          input.plan.plannedRealAssets.find((x) => x.id === r.assetId);
-        return (d?.country ?? input.household.location.country) === "GB";
-      })
-      .reduce((s, r) => s + r.equity, 0);
-    if (scope.inScope || ukAccounts + ukReal > 0) {
-      ukScope = { worldwide: scope.inScope, ukAssets: ukAccounts + ukReal };
-      country = "GB";
-    } else if (country === "GB") country = "XX";
-  }
+  const country = input.household.location.country;
   let estateTax = 0;
   if (country === "GB") {
     const last = UK_TAX_YEARS[UK_TAX_YEARS.length - 1];
@@ -140,10 +100,9 @@ export function netLegacyAtEnd(
       frozen === undefined
         ? undefined
         : [...result.periods].reverse().find((x) => x.year <= frozen);
-    const inScope = ukScope && !ukScope.worldwide ? Math.min(estate, ukScope.ukAssets) : estate;
     estateTax = estimateUkInheritanceTax({
       year: p.year,
-      netEstate: Math.max(0, inScope - ukPensions),
+      netEstate: Math.max(0, estate - ukPensions),
       homeToDescendants: home,
       pensions: ukPensions,
       priceIndex: p.priceIndex,
@@ -414,122 +373,4 @@ export function incomeByTaxRateForInput(
     sim({ ...input, options: { ...input.options, trace: "full", lean: false } }),
     opts,
   );
-}
-
-// ------------------------------------------------------------------ 72(t) SEPP comparison
-
-export type SeppMethodId = "rmd" | "fixed-amortization" | "fixed-annuitization";
-
-export interface SeppMethodRow {
-  method: SeppMethodId;
-  label: string;
-  /** First-year payment (nominal, money of the start year). */
-  firstYearPayment: number;
-  /** Whether the payment is recalculated each year (RMD) or fixed for the whole SEPP. */
-  recalculated: boolean;
-  /** Years the payments must continue: the later of 5 years and age 59.5. */
-  years: number;
-  /** Total withdrawn over the SEPP (nominal; RMD assumes `growthRate`). */
-  totalPayments: number;
-  /** Balance left when the SEPP ends (nominal, at `growthRate`). */
-  endingBalance: number;
-  /** Payment per year (index 0 = first year). */
-  payments: number[];
-  note: string;
-}
-
-export interface SeppComparison {
-  balance: number;
-  startAge: number;
-  interestRate: number;
-  growthRate: number;
-  lifeExpectancy: number;
-  rows: SeppMethodRow[];
-}
-
-/**
- * IRS Notice 2022-6 single-life methods for a 72(t) series starting at `startAge`:
- *   - required minimum distribution: balance / single-life expectancy, recalculated every year;
- *   - fixed amortisation: level payment amortising the balance over the life expectancy at
- *     `interestRate` (up to 5% or 120% of the federal mid-term rate);
- *   - fixed annuitisation: balance / annuity factor, the present value of a life annuity of 1 a
- *     year from the §1.401(a)(9)-9(e) mortality rates at `interestRate` (`seppAnnuityFactor`).
- * Balances grow at `growthRate` (default 5%) for the totals.
- */
-export function compareSeppMethods(opts: {
-  balance: number;
-  startAge: number;
-  interestRate?: number;
-  growthRate?: number;
-}): SeppComparison {
-  const { balance, startAge } = opts;
-  if (!(balance > 0)) throw new ScenarioError("SEPP balance must be positive", { balance });
-  const i = opts.interestRate ?? 0.05;
-  const g = opts.growthRate ?? 0.05;
-  const years = Math.max(5, Math.ceil(59.5 - startAge));
-  const n = singleLifeExpectancy(Math.floor(startAge));
-  const level = i === 0 ? balance / n : (balance * i) / (1 - (1 + i) ** -n);
-  // Annuity factor from the IRS mortality rates (payments at the start of each year).
-  const annuityFactor = seppAnnuityFactor(startAge, i);
-  const annuitised = balance / annuityFactor;
-  const run = (pay: (year: number, bal: number) => number) => {
-    let bal = balance;
-    const payments: number[] = [];
-    for (let y = 0; y < years; y++) {
-      const p = Math.min(bal, pay(y, bal));
-      payments.push(p);
-      bal = (bal - p) * (1 + g);
-    }
-    return { payments, total: payments.reduce((s, x) => s + x, 0), end: bal };
-  };
-  const rmd = run((y, bal) => bal / singleLifeExpectancy(Math.floor(startAge) + y));
-  const amort = run(() => level);
-  const annu = run(() => annuitised);
-  const row = (
-    method: SeppMethodId,
-    label: string,
-    r: { payments: number[]; total: number; end: number },
-    recalculated: boolean,
-    note: string,
-  ): SeppMethodRow => ({
-    method,
-    label,
-    firstYearPayment: r.payments[0] ?? 0,
-    recalculated,
-    years,
-    totalPayments: r.total,
-    endingBalance: r.end,
-    payments: r.payments,
-    note,
-  });
-  return {
-    balance,
-    startAge,
-    interestRate: i,
-    growthRate: g,
-    lifeExpectancy: n,
-    rows: [
-      row(
-        "rmd",
-        "Required minimum distribution",
-        rmd,
-        true,
-        "Smallest payment; changes every year with the balance.",
-      ),
-      row(
-        "fixed-amortization",
-        "Fixed amortisation",
-        amort,
-        false,
-        "Largest level payment for most rates; fixed for the whole series (one switch to RMD allowed).",
-      ),
-      row(
-        "fixed-annuitization",
-        "Fixed annuitisation",
-        annu,
-        false,
-        "Level payment from the IRS mortality-table annuity factor (Notice 2022-6); fixed for the whole series.",
-      ),
-    ],
-  };
 }

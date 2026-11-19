@@ -32,6 +32,8 @@ import { Select } from "../../../components/ui/select";
 import { FieldGrid, FormSection } from "../../../components/ui/sheet";
 import { InlineSwitch, SwitchField } from "../../../components/ui/switch";
 import { COUNTRY_LIST, countryInfo, countryLabel } from "../../../lib/countries";
+import { MethodAdvanced } from "../../chance/method-advanced";
+import { isCrossBorder } from "../../crossborder/model";
 import { TaxSimplifications } from "../../taxes/tax-notes";
 import {
   AccountListEditor,
@@ -587,7 +589,7 @@ function JurisdictionPicker({
       <FieldGrid>
         <EnumField
           label="Tax rules"
-          help="Automatic follows Current finances → Household (and any “Relocate” milestone). Pick a country to use its rules regardless."
+          help="Automatic follows Current finances → Household. Pick a country to use its rules regardless."
           value={value}
           onChange={(c) =>
             pick(
@@ -655,8 +657,9 @@ function JurisdictionPicker({
 export function TaxesSection() {
   const plan = usePlan();
   const update = useUpdatePlan();
-  const household = useEditorStore((s) => s.draft?.household);
-  if (!plan || !household) return null;
+  const doc = useEditorStore((s) => s.draft);
+  const household = doc?.household;
+  if (!plan || !doc || !household) return null;
   const t = plan.tax;
   const set = (v: Partial<TaxConfig>, label: string, key?: string) =>
     update((p) => ({ ...p, tax: { ...p.tax, ...v } }), label, key ? `tax:${key}` : undefined);
@@ -709,6 +712,19 @@ export function TaxesSection() {
               jurisdictions={t.jurisdictions}
               location={household.location}
               onChange={(jurisdictions) => set({ jurisdictions }, "Change tax rules")}
+            />
+          ) : null}
+          {t.mode === "estimate" && (isCrossBorder(doc, plan) || t.crossBorder?.mode === "off") ? (
+            <SwitchField
+              label="Apply cross-border tax rules"
+              hint="For accounts, property and income in another country. Off: everything is taxed only where you live (no tax there, no relief). Useful to compare."
+              checked={t.crossBorder?.mode !== "off"}
+              onCheckedChange={(v) =>
+                set(
+                  { crossBorder: { ...t.crossBorder, mode: v ? undefined : "off" } },
+                  "Cross-border rules on/off",
+                )
+              }
             />
           ) : null}
           <TaxSimplifications tax={t} location={household.location} compact />
@@ -1572,50 +1588,34 @@ export function MonteCarloSection() {
       <Card>
         <CardHeader eyebrow="Chance of success" title="Simulation method" />
         <div className="grid gap-3 p-4">
-          <EnumField
-            label="Market paths"
-            value={mc.method}
-            onChange={(method) => set({ method }, "Change method")}
-            options={[
-              {
-                value: "historical-random-restart",
-                label: "Historical, random start years",
-                hint: "Real sequences of returns, shuffled starting points.",
-              },
-              {
-                value: "historical-sequential",
-                label: "Historical, every start year",
-                hint: "One trial per historical start year; no looping.",
-              },
-              {
-                value: "block-bootstrap",
-                label: "Block bootstrap",
-                hint: "Stitch random runs of consecutive years.",
-              },
-              {
-                value: "normal",
-                label: "Random (normal distributions)",
-                hint: "Draw returns from the means and spreads below.",
-              },
-            ]}
-          />
-          <FieldGrid cols={3}>
-            <FormField label="Trials" hint="1,000 is plenty for planning.">
-              {(id) => (
-                <NumberInput
-                  id={id}
-                  decimals={0}
-                  value={mc.trials}
-                  onValueChange={(v) =>
-                    set(
-                      { trials: Math.min(10_000, Math.max(1, Math.round(v ?? 1000))) },
-                      "Edit trials",
-                      "tr",
-                    )
-                  }
-                />
-              )}
-            </FormField>
+          <MethodAdvanced method={mc.method}>
+            <EnumField
+              label="Market paths"
+              value={mc.method}
+              onChange={(method) => set({ method }, "Change method")}
+              options={[
+                {
+                  value: "historical-random-restart",
+                  label: "Historical, random start years",
+                  hint: "Real sequences of returns, shuffled starting points.",
+                },
+                {
+                  value: "historical-sequential",
+                  label: "Historical, every start year",
+                  hint: "One trial per historical start year; no looping.",
+                },
+                {
+                  value: "block-bootstrap",
+                  label: "Block bootstrap",
+                  hint: "Stitch random runs of consecutive years.",
+                },
+                {
+                  value: "normal",
+                  label: "Random (normal distributions)",
+                  hint: "Draw returns from the means and spreads below.",
+                },
+              ]}
+            />
             {mc.method === "block-bootstrap" ? (
               <FormField label="Block length">
                 {(id) => (
@@ -1635,6 +1635,24 @@ export function MonteCarloSection() {
                 )}
               </FormField>
             ) : null}
+          </MethodAdvanced>
+          <FieldGrid cols={3}>
+            <FormField label="Trials" hint="1,000 is plenty for planning.">
+              {(id) => (
+                <NumberInput
+                  id={id}
+                  decimals={0}
+                  value={mc.trials}
+                  onValueChange={(v) =>
+                    set(
+                      { trials: Math.min(10_000, Math.max(1, Math.round(v ?? 1000))) },
+                      "Edit trials",
+                      "tr",
+                    )
+                  }
+                />
+              )}
+            </FormField>
             {mc.method !== "normal" ? (
               <EnumField
                 label="Data"

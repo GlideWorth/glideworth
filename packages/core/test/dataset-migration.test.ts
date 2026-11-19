@@ -29,6 +29,7 @@ function storedOldDocument(dataset: "uk-1871" | "us-1871"): string {
     plans: { monteCarlo: Record<string, unknown> }[];
   };
   doc.app = "cairn"; // documents written before the rename are still read
+  doc.schemaVersion = 1;
   doc.plans[0]!.monteCarlo.dataset = dataset;
   delete doc.plans[0]!.monteCarlo.replacedDataset;
   return JSON.stringify(doc);
@@ -71,7 +72,7 @@ describe("retired dataset ids", () => {
     const doc = migrateDocument(JSON.parse(storedOldDocument("uk-1871")));
     const plan = doc.plans.find((p) => p.id === UK_SAMPLE_PLAN_ID)!;
     expect(doc.app).toBe("glideworth");
-    expect(doc.schemaVersion).toBe(1);
+    expect(doc.schemaVersion).toBe(2); // migrated from the stored version 1
     expect(plan.monteCarlo.dataset).toBe("uk-1983");
     expect(plan.monteCarlo.replacedDataset).toBe("uk-1871");
 

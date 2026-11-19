@@ -3,7 +3,7 @@ title: Read your results
 description: What each results page shows - Results, Cash flow, Taxes, Chance of success and Estate and legacy - and how to check that the numbers add up.
 section: Planning
 order: 2
-lastChecked: 2026-11-16
+lastChecked: 2026-11-19
 ---
 
 import Callout from '../../../components/Callout.astro';
@@ -41,15 +41,17 @@ Where money comes from and goes, as a Sankey diagram, for **One year** or a **Ra
 ## Taxes
 
 Tax by year, by jurisdiction and by kind, with effective and marginal rates, and income by tax band. These are
-estimates. For a cross-border plan the page first lists what the estimate leaves out, then shows tax by country
-and by reason (residence, source, citizenship, relief, exit tax, return). Each rule has a "How this is taxed, and
-why" explanation with its source.
+estimates. For a plan with accounts, property or income in another country, the page first lists what the estimate
+leaves out, then shows tax by country and by reason (residence, source, citizenship, relief). Each rule has a "How
+this is taxed, and why" explanation with its source. See [Tax settings, countries and
+currency](/docs/planning/tax-and-currency/).
 
 ## Chance of success
 
 The share of replays in which every year's spending was fully funded, with panels:
 
-- **Settings**: method, trials, seed, historical data set, and what "success" means.
+- **Settings**: trials, seed, historical data set, and what "success" means. The method in use is shown as
+  "Market paths: Historical, random start years (default)"; open **Advanced** to choose another.
 - **Failures**, with "When failed trials run short".
 - **Sequence of returns**, with "Early returns vs success".
 - **Milestones**, with "When milestones happen across trials".

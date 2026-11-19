@@ -1,7 +1,7 @@
 /**
  * Milestones: the stones on the trail. A list showing when each resolves in the live projection,
  * and a sheet with an AND/OR criteria builder (ages, dates, other milestones, metric thresholds)
- * and effects (filing status, relocation, withholding, death of a household member).
+ * and effects (filing status, withholding, death of a household member).
  */
 import {
   type Comparator,
@@ -41,11 +41,7 @@ import {
 } from "../../../components/ui/sheet";
 import { Switch, SwitchField } from "../../../components/ui/switch";
 import { cn } from "../../../lib/cn";
-import { COUNTRY_LIST } from "../../../lib/countries";
 import { useFormat } from "../../../lib/workspace";
-import { LocationFields } from "../../crossborder/fields";
-import { suggestedDestination } from "../../crossborder/model";
-import { WhoField } from "../../crossborder/residency-section";
 import { EnumField, FormField, useScope } from "../components/form";
 import { replaceById, usePlan, useUpdatePlan } from "../components/plan-context";
 import { usePreview } from "../preview/use-live-projection";
@@ -577,31 +573,6 @@ function MilestoneSheetBody({ id, onClose }: { id: string; onClose: () => void }
               Change filing status
             </ActionMenuItem>
             <ActionMenuItem
-              hint="Move country or state: taxes follow"
-              onSelect={() =>
-                set(
-                  (x) => ({
-                    ...x,
-                    effects: [
-                      ...x.effects,
-                      {
-                        kind: "relocate",
-                        location: {
-                          country: suggestedDestination(
-                            useEditorStore.getState().draft?.household.location.country ?? "",
-                            COUNTRY_LIST,
-                          ),
-                        },
-                      },
-                    ],
-                  }),
-                  "Add effect",
-                )
-              }
-            >
-              Relocate
-            </ActionMenuItem>
-            <ActionMenuItem
               hint="Tax withheld on withdrawals"
               onSelect={() =>
                 set(
@@ -932,11 +903,9 @@ function EffectEditor({
         <span className="text-[12.5px] font-medium">
           {e.kind === "setFilingStatus"
             ? "Change filing status"
-            : e.kind === "relocate"
-              ? "Relocate"
-              : e.kind === "setWithholding"
-                ? "Change withholding"
-                : "Death of a household member"}
+            : e.kind === "setWithholding"
+              ? "Change withholding"
+              : "Death of a household member"}
         </span>
         <Button
           size="icon"
@@ -961,26 +930,6 @@ function EffectEditor({
             { value: "qualifying-surviving-spouse", label: "Surviving spouse" },
           ]}
         />
-      ) : e.kind === "relocate" ? (
-        <FieldGrid>
-          <LocationFields
-            label="Moves to"
-            value={e.location}
-            onChange={(location) => onChange({ ...e, location })}
-          />
-          <WhoField
-            value={e.personId}
-            people={people}
-            onChange={(personId) => {
-              const { personId: _p, ...rest } = e;
-              onChange(personId ? { ...rest, personId } : rest);
-            }}
-          />
-          <p className="text-[11.5px] text-ink-3 sm:col-span-2">
-            Tax residence changes from the first year starting after the milestone. Dated moves and
-            everyone's residence are under “Where you live”.
-          </p>
-        </FieldGrid>
       ) : e.kind === "setWithholding" ? (
         <FieldGrid cols={3}>
           <FormField label="Pension withdrawals">

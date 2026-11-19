@@ -1,6 +1,6 @@
 /**
- * Income across borders: where an income comes from (pay without a country is earned where its
- * owner lives at the time), government-service pensions (taxed by the paying country under most
+ * Income across borders: where an income comes from (pay without a country is earned where the
+ * household lives), government-service pensions (taxed by the paying country under most
  * treaties), and the UAE end-of-service gratuity on a salary.
  */
 import { AE_GRATUITY, type IncomeEvent, JOINT } from "@glideworth/core";
@@ -24,12 +24,9 @@ const COUNTRIES = COUNTRY_LIST.filter((c) => c.code !== "XX").map((c) => ({
   label: c.label,
 }));
 
-/** Countries a plan touches: home, moves, relocation milestones and items. */
+/** Countries a plan touches: home and its income. */
 function planCountries(home: string, plan: ReturnType<typeof usePlan>): Set<string> {
   const out = new Set([home]);
-  for (const r of plan?.residency ?? []) out.add(r.location.country);
-  for (const m of plan?.milestones ?? [])
-    for (const e of m.effects) if (e.kind === "relocate") out.add(e.location.country);
   for (const e of plan?.income ?? []) if (e.country) out.add(e.country);
   return out;
 }
@@ -57,9 +54,7 @@ export function IncomeCrossBorder({
   const sal = event.type === "salary" ? (event as Extract<IncomeEvent, { type: "salary" }>) : null;
   const eos = sal?.endOfService;
   const country = event.country;
-  const fallback = earned
-    ? "where the earner lives at the time"
-    : `${countryLabel(home)} (household)`;
+  const fallback = `${countryLabel(home)} (household)`;
 
   return (
     <FormSection
@@ -75,7 +70,7 @@ export function IncomeCrossBorder({
           label="Country"
           help={
             earned
-              ? "Pay is taxed where the work is done: leave this to follow where the earner lives, or set it for work done in one country."
+              ? "Pay is taxed where the work is done: leave this for work done where you live, or set it for work done in another country."
               : "The paying country: a foreign pension, rent or other income from abroad."
           }
         >

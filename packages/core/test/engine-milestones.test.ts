@@ -269,7 +269,7 @@ describe("milestones", () => {
     expect(account(r, 2029, "isa").contributions).toBeCloseTo(1_000, 6);
   });
 
-  it("applies filing-status, relocation and withholding effects from the next period", () => {
+  it("applies filing-status and withholding effects from the next period", () => {
     const { reg, seen } = capturing();
     simulate(
       sim({
@@ -285,7 +285,6 @@ describe("milestones", () => {
               criteria: [{ kind: "date", date: "2027-06" }],
               effects: [
                 { kind: "setFilingStatus", filingStatus: "married-joint" },
-                { kind: "relocate", location: { country: "GB", region: "SCT" } },
                 { kind: "setWithholding", taxDeferred: 0.2 },
               ],
             },
@@ -299,7 +298,6 @@ describe("milestones", () => {
     const y28 = seen.findLast((s) => s.year === 2028)!;
     expect(y27.filingStatus).toBe("single");
     expect(y28.filingStatus).toBe("married-joint");
-    expect(y28.location).toEqual({ country: "GB", region: "SCT" });
     expect(y28.config.withholding.taxDeferred).toBe(0.2);
   });
 });

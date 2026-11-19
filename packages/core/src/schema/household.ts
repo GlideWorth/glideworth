@@ -11,38 +11,6 @@ import {
 
 export const PersonRole = z.enum(["primary", "partner"]).meta({ id: "PersonRole" });
 
-/**
- * A past period of tax residence (before the plan starts). Used by rules that look back: the UK
- * long-term-residence test for inheritance tax (10 of the previous 20 tax years), the UK
- * temporary non-residence rule (UK resident in 4 of the 7 tax years before leaving) and the
- * departure date of someone who already lives abroad. `to` absent = still resident there.
- */
-export const PastResidence = z
-  .object({
-    country: CountryCode,
-    from: MonthDate,
-    to: MonthDate.optional(),
-  })
-  .meta({ id: "PastResidence" });
-export type PastResidence = z.infer<typeof PastResidence>;
-
-/** A contribution record in a state pension scheme (UK National Insurance qualifying years...). */
-export const StatePensionRecord = z
-  .object({
-    country: CountryCode,
-    /** Qualifying years already on the record (UK: full new State Pension needs 35, minimum 10). */
-    qualifyingYears: z.number().min(0).max(60),
-    /** Month the record was checked (default: the plan start). */
-    asOf: MonthDate.optional(),
-    /**
-     * Years you plan to buy with voluntary contributions (UK Class 2 / Class 3 NI) before State
-     * Pension age. Counted towards the projected record; add their cost as an expense.
-     */
-    voluntaryYears: z.number().int().min(0).max(35).optional(),
-  })
-  .meta({ id: "StatePensionRecord" });
-export type StatePensionRecord = z.infer<typeof StatePensionRecord>;
-
 export const Person = z
   .object({
     id: Id.refine((v) => v !== "joint", "'joint' is reserved"),
@@ -61,10 +29,6 @@ export const Person = z
     citizenships: z.array(CountryCode).max(5).optional(),
     /** Holds a US green card (taxed by the US like a citizen while it lasts). */
     usGreenCard: z.boolean().optional(),
-    /** Tax residence before the plan starts (most recent last); absent = always the household's country. */
-    residenceHistory: z.array(PastResidence).max(40).optional(),
-    /** State pension contribution records (UK qualifying years...). */
-    statePensionRecords: z.array(StatePensionRecord).max(10).optional(),
   })
   .meta({ id: "Person" });
 export type Person = z.infer<typeof Person>;
@@ -84,8 +48,7 @@ export type Dependent = z.infer<typeof Dependent>;
 
 /**
  * Tax residence. `region` = US state / CA province / AU state code; `locality` = city tax (e.g. NYC).
- * `Household.location` is where the household lives at the plan start; later moves are the plan's
- * residency timeline (`Plan.residency`) and relocation milestone effects.
+ * `Household.location` is where the household lives for the whole plan: moves are not modelled.
  */
 export const Location = z
   .object({

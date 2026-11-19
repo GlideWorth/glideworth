@@ -753,7 +753,7 @@ function FlowSheetBody({ id, onClose }: { id: string; onClose: () => void }) {
         <FormSection title="Overpayment">
           <EnumField<"single" | "avalanche" | "snowball">
             label="Pay off"
-            help="Avalanche pays the highest interest rate first (least interest overall); snowball pays the smallest balance first (quickest wins). Compare them on the Insights page."
+            help="Avalanche pays the highest interest rate first (least interest overall); snowball pays the smallest balance first (quickest wins)."
             value={fl.allocation?.strategy ?? "single"}
             onChange={(k) =>
               patch(

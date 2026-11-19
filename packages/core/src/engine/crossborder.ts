@@ -1,23 +1,23 @@
 /**
- * Cross-border tax for one period (ARCHITECTURE.md §4.6). Replaces the single jurisdiction stack
- * when the run is cross-border (engine/residency.ts):
+ * Taxes for a household with items in another country (ARCHITECTURE.md §4.6). Replaces the single
+ * jurisdiction stack when the run is cross-border (`initCrossBorder`). The household lives at
+ * `Household.location` for the whole plan; moves are not modelled.
  *
- *   per person and residence segment:
- *     residence tax  = the residence country's stack on worldwide income (items exempt there under
- *                      a treaty removed; foreign wrappers seen the residence country's way);
- *     source tax     = each other country's non-resident rules on items sourced there (treaty
- *                      allocation and rate caps applied);
- *     citizenship tax= US federal tax of US citizens / green-card holders living abroad (foreign
- *                      earned income exclusion + foreign tax credit);
- *     relief         = credit in the residence country for source tax on the same income, limited to
- *                      the residence tax on it (difference method).
+ *   residence tax  = the residence country's stack on worldwide income (items exempt there under
+ *                    a treaty removed; foreign wrappers seen the residence country's way);
+ *   source tax     = each other country's non-resident rules on items sourced there (treaty
+ *                    allocation and rate caps applied), per person;
+ *   citizenship tax= US federal tax of US citizens / green-card holders living outside the US
+ *                    (foreign earned income exclusion + foreign tax credit);
+ *   relief         = credit in the residence country for source tax on the same income, limited to
+ *                    the residence tax on it (difference method).
  *
- * Split years are prorated: each residence segment is taxed on its share (months / period months)
- * of every item, with its thresholds prorated by the plug-in (`months`). Exit and return charges
- * (pinned items) go to one country in full. Money is converted into each jurisdiction's currency
- * with the plan's FX table at the period start and the tax converted back.
+ * Money is converted into each jurisdiction's currency with the plan's FX table at the period start
+ * and the tax converted back.
  */
 import type { AccountType, TaxTreatment } from "../schema/accounts.js";
+import { ACCOUNT_TYPE_INFO } from "../schema/account-types.js";
+import { fxPairKey } from "../schema/assumptions.js";
 import type { Location } from "../schema/household.js";
 import { COUNTRY_TAX_CURRENCY } from "../tax/crossborder/currency.js";
 import { NON_RESIDENT_RULES } from "../tax/crossborder/nonresident.js";
@@ -35,16 +35,8 @@ import type {
   TaxYearInput,
   TaxYearOutput,
 } from "../tax/types.js";
-import { resolveWindow } from "./amounts.js";
-import { type EngineContext, type PeriodState, warnOnce } from "./context.js";
+import { type AccountState, type EngineContext, type PeriodState, warnOnce } from "./context.js";
 import { fxAt } from "./indices.js";
-import {
-  isNational,
-  residenceAt,
-  sameLocation,
-  warnFxMissing,
-  wrapperEarningsShare,
-} from "./residency.js";
 import { accountCountryOf } from "./rules.js";
 import type { TaxLine } from "./types.js";
 
@@ -56,10 +48,6 @@ export interface ItemInfo {
   accountId?: string;
   assetId?: string;
   government?: boolean;
-  /** Income events: the months the event runs (a split year gives each residence its months). */
-  window?: { start: number; end: number };
-  /** One-off income paid in this month (goes to the residence of that month). */
-  onceAt?: number;
 }
 
 type Basis = NonNullable<TaxLine["basis"]>;
@@ -71,7 +59,6 @@ export interface CrossBorderResult {
   grossIncome: number;
   taxableIncome: number;
   facts: Record<string, number>;
-  residence: Record<string, { country: string; region?: string; months: number }[]>;
   byCountry: { country: string; basis: Basis; amount: number }[];
   brackets?: BracketFill[];
 }
@@ -84,6 +71,165 @@ const PROPERTY_TYPES = new Set([
   "building",
 ]);
 const GOV_BENEFITS = new Set(["state-pension", "social-security", "ca-cpp", "ca-oas", "ca-gis"]);
+
+// ------------------------------------------------------------------ run state
+
+export interface CrossBorderState {
+  /** Every country involved (the residence, item countries). */
+  countries: Set<string>;
+  /** People taxed by the US on worldwide income wherever they live. */
+  usPersons: Set<string>;
+  /** Citizenships per person (default: the household's country). */
+  citizenships: Map<string, Set<string>>;
+  /** Jurisdiction currencies with no FX pair to the base currency (taxes computed at rate 1). */
+  fxMissing: Set<string>;
+  /** Estimated contribution basis of tax-free wrappers (earnings share when not recognised abroad). */
+  wrapperBasis: Map<string, number>;
+}
+
+const US_PERSON = (p: { citizenships?: string[] | undefined; usGreenCard?: boolean | undefined }) =>
+  !!p.usGreenCard || (p.citizenships ?? []).includes("US");
+
+/**
+ * Decide whether the run is cross-border and prepare its state. Called once after the FX table is
+ * resolved and before the FX path is built (it may add the tax currencies of the countries involved).
+ *
+ * A run is cross-border when the plan is in estimate mode and more than one country is involved (an
+ * account / asset / debt / income in another country) or a US citizen lives outside the US. An
+ * explicit jurisdiction stack is the user's override: foreign items alone do not switch it on.
+ * Single-country runs never touch this module beyond one boolean check, so their results are unchanged.
+ */
+export function initCrossBorder(ctx: EngineContext): void {
+  const { plan, household } = ctx;
+  const mode = plan.tax.crossBorder?.mode ?? "auto";
+  if (plan.tax.mode !== "estimate" || mode === "off") return;
+  const home = household.location.country;
+  const countries = new Set<string>([home]);
+  const excluded = new Set(plan.excludedIds);
+  const accountDefs = [
+    ...ctx.finances.accounts.filter((a) => !a.archived && !excluded.has(a.id)),
+    ...plan.plannedAccounts,
+  ];
+  const typeCountry = (type: string) =>
+    (ACCOUNT_TYPE_INFO as Record<string, { country?: string }>)[type]?.country;
+  for (const a of accountDefs) countries.add(a.jurisdiction ?? (typeCountry(a.type) || home));
+  for (const r of [...ctx.finances.realAssets, ...plan.plannedRealAssets])
+    if (!r.archived && !excluded.has(r.id)) countries.add(r.country ?? home);
+  for (const d of ctx.finances.debts)
+    if (!d.archived && !excluded.has(d.id)) countries.add(d.country ?? home);
+  for (const e of plan.income) if (e.enabled && e.country) countries.add(e.country);
+  const usPersons = new Set(household.people.filter(US_PERSON).map((p) => p.id));
+  const usAbroad = usPersons.size > 0 && home !== "US";
+  const active = usAbroad || (plan.tax.jurisdictions.length === 0 && countries.size > 1);
+  if (!active) return;
+  if (usPersons.size > 0) countries.add("US");
+  ctx.crossBorder = {
+    countries,
+    usPersons,
+    citizenships: new Map(
+      household.people.map((p) => [
+        p.id,
+        new Set(p.citizenships?.length ? p.citizenships : [home]),
+      ]),
+    ),
+    fxMissing: new Set(),
+    wrapperBasis: new Map(),
+  };
+  addTaxCurrencies(ctx, countries);
+}
+
+/** Make the tax currency of every involved country convertible (FX table pair, direct or inverse). */
+function addTaxCurrencies(ctx: EngineContext, countries: Set<string>): void {
+  const baseCurrency = ctx.household.currency;
+  ctx.fx ??= new Map();
+  const table = new Map<string, { from: string; to: string; rate: number; annualDrift: number }>();
+  for (const r of ctx.finances.fxRates ?? []) table.set(fxPairKey(r.from, r.to), r);
+  for (const r of ctx.plan.assumptions.fxRates ?? []) table.set(fxPairKey(r.from, r.to), r);
+  for (const c of countries) {
+    const cur = COUNTRY_TAX_CURRENCY[c];
+    if (!cur || cur === baseCurrency || ctx.fx.has(cur)) continue;
+    const pair = table.get(fxPairKey(cur, baseCurrency));
+    if (!pair) {
+      ctx.crossBorder!.fxMissing.add(cur);
+      continue;
+    }
+    if (pair.from === cur) ctx.fx.set(cur, { rate: pair.rate, drift: pair.annualDrift });
+    else ctx.fx.set(cur, { rate: 1 / pair.rate, drift: 1 / (1 + pair.annualDrift) - 1 });
+  }
+}
+
+/** Period open: taxes this period go through `crossBorderTaxes`. */
+export function openCrossBorderPeriod(ctx: EngineContext, ps: PeriodState): void {
+  if (!ctx.crossBorder) return;
+  ps.crossBorder = true;
+  ps.itemInfo = new Map();
+}
+
+/** Period close (after the settle converged): the contribution basis of tax-free wrappers. */
+export function closeCrossBorderPeriod(ctx: EngineContext): void {
+  const st = ctx.crossBorder;
+  if (!st) return;
+  for (const a of ctx.accounts) {
+    if (a.info.taxTreatment !== "tax-free") continue;
+    const prev = st.wrapperBasis.get(a.def.id) ?? initialWrapperBasis(a);
+    const inflow = a.p.contributions + a.p.transfersIn;
+    const outflow = a.p.withdrawals + a.p.transfersOut;
+    const pool = Math.max(a.p.opening + inflow, 1e-9);
+    st.wrapperBasis.set(
+      a.def.id,
+      Math.max(0, prev + inflow - outflow * Math.min(1, (prev + inflow) / pool)),
+    );
+  }
+}
+
+function initialWrapperBasis(a: AccountState): number {
+  return a.def.contributionBasis ?? a.def.costBasis ?? Math.max(0, a.p.opening);
+}
+
+/** Earnings share of a tax-free wrapper's withdrawals (for residence countries that do not recognise it). */
+function wrapperEarningsShare(ctx: EngineContext, a: AccountState): number {
+  const basis = ctx.crossBorder?.wrapperBasis.get(a.def.id) ?? initialWrapperBasis(a);
+  const value = Math.max(a.p.opening + a.p.contributions + a.p.transfersIn, 1e-9);
+  return Math.max(0, Math.min(1, 1 - basis / value));
+}
+
+/** People's citizenship includes `country` (default: the household's country). */
+function isNational(ctx: EngineContext, personId: string, country: string): boolean {
+  return (
+    ctx.crossBorder?.citizenships.get(personId)?.has(country) ??
+    ctx.household.location.country === country
+  );
+}
+
+/**
+ * Contribution eligibility of a wrapper whose country is not the household's residence: the annual
+ * limit after the country's non-resident wrapper rule (ISA, UK pensions, TFSA, RRSP: none).
+ */
+export function nonResidentContributionCap(
+  ctx: EngineContext,
+  ps: PeriodState,
+  a: AccountState,
+  annual: number,
+): number {
+  if (!ps.crossBorder) return annual;
+  const country = accountCountryOf(ctx, a);
+  if (country === ctx.household.location.country) return annual;
+  const rule = NON_RESIDENT_RULES[country]?.wrappers.find((w) =>
+    w.accountTypes.includes(a.def.type),
+  );
+  return !rule || rule.contributions === "allowed" ? annual : 0;
+}
+
+/** Warn once when a tax currency has no FX pair (tax for that country computed without conversion). */
+function warnFxMissing(ctx: EngineContext, currency: string): void {
+  warnOnce(ctx, `tax-fx:${currency}`, {
+    code: "ASSUMPTION",
+    severity: "warning",
+    message: `No exchange rate between ${currency} and ${ctx.household.currency}: tax thresholds in ${currency} were applied to ${ctx.household.currency} amounts unconverted. Add a ${currency} rate to the FX table.`,
+    periodIndex: null,
+    refs: [],
+  });
+}
 
 // ------------------------------------------------------------------ classification
 
@@ -116,35 +262,6 @@ function base(ctx: EngineContext): string {
   return ctx.household.location.country;
 }
 
-function ownerResidence(ctx: EngineContext, ps: PeriodState, owner: string, at?: number): string {
-  const id = ctx.people.some((p) => p.id === owner)
-    ? owner
-    : (ctx.people.find((p) => p.role === "primary") ?? ctx.people[0]!).id;
-  const m = Math.max(ps.bounds.start, Math.min(ps.bounds.end - 1, at ?? ps.bounds.start));
-  return residenceAt(ctx, id, m).country;
-}
-
-/** Share of a period item that belongs to a residence segment [g.from, g.from + g.months). */
-function fractionIn(
-  info: ItemInfo | undefined,
-  g: { from: number; months: number },
-  ps: PeriodState,
-): number {
-  const lo = g.from;
-  const hi = g.from + g.months;
-  if (g.months >= ps.bounds.months) return 1;
-  if (info?.onceAt !== undefined) {
-    const m = Math.max(ps.bounds.start, Math.min(ps.bounds.end - 1, info.onceAt));
-    return m >= lo && m < hi ? 1 : 0;
-  }
-  if (info?.window) {
-    const a = Math.max(info.window.start, ps.bounds.start);
-    const b = Math.min(info.window.end, ps.bounds.end);
-    if (b > a) return Math.max(0, Math.min(b, hi) - Math.max(a, lo)) / (b - a);
-  }
-  return g.months / ps.bounds.months;
-}
-
 /** Items whose character was changed for one computation keep their original classification. */
 const KEEP_INFO = new WeakMap<TaxIncomeItem, ItemInfo>();
 
@@ -154,13 +271,12 @@ export function classifyIncome(ctx: EngineContext, ps: PeriodState, it: TaxIncom
   const key = `i|${it.sourceId}|${it.character}|${it.owner}`;
   const hit = ps.itemInfo?.get(key);
   if (hit) return hit;
-  const info = classifyIncomeUncached(ctx, ps, it);
+  const info = classifyIncomeUncached(ctx, it);
   ps.itemInfo?.set(key, info);
   return info;
 }
 
-function classifyIncomeUncached(ctx: EngineContext, ps: PeriodState, it: TaxIncomeItem): ItemInfo {
-  if (it.pin) return { country: it.pin.country, category: "gains-securities" };
+function classifyIncomeUncached(ctx: EngineContext, it: TaxIncomeItem): ItemInfo {
   const [prefix, rest = ""] = splitOnce(it.sourceId);
   const asset = (id: string) => ctx.assets.find((r) => r.def.id === id);
   const account = (id: string) => ctx.accountById.get(id);
@@ -208,26 +324,14 @@ function classifyIncomeUncached(ctx: EngineContext, ps: PeriodState, it: TaxInco
             : "private-pension"
           : categoryOfCharacter(it.character);
     if (category === "other" && (e.type === "bonus" || e.type === "rsu")) category = "employment";
-    const earned = category === "employment" || category === "self-employment";
-    const w = resolveWindow(ctx, e.range);
-    const gratuity = it.sourceId.endsWith(":gratuity");
-    const once = gratuity ? w.end : e.frequency === "once" ? w.start : null;
-    // Pay is sourced where the work is done: the owner's residence in the months it is earned.
-    const country =
-      e.country ??
-      (earned ? ownerResidence(ctx, ps, it.owner, once ?? w.start ?? ps.bounds.start) : base(ctx));
+    // Pay without a country is sourced where the work is done: where the household lives.
     return {
-      country,
+      country: e.country ?? base(ctx),
       category,
       ...(e.governmentService ? { government: true } : {}),
-      ...(once !== null && Number.isFinite(once) ? { onceAt: once } : {}),
-      ...(w.start !== null && !db ? { window: { start: w.start, end: w.end } } : {}),
     };
   }
-  return {
-    country: ownerResidence(ctx, ps, it.owner),
-    category: categoryOfCharacter(it.character),
-  };
+  return { country: base(ctx), category: categoryOfCharacter(it.character) };
 }
 
 function classifyWithdrawal(ctx: EngineContext, ps: PeriodState, w: TaxWithdrawalItem): ItemInfo {
@@ -422,16 +526,15 @@ function totalOf(stack: readonly TaxJurisdiction[], input: TaxYearInput, rate: n
 }
 
 function residenceStack(ctx: EngineContext, ps: PeriodState, loc: Location): TaxJurisdiction[] {
-  const config = loc.country === base(ctx) ? ps.tax : { ...ps.tax, jurisdictions: [] as string[] };
   try {
     return ctx.registry
-      .resolveStack({ ...config, mode: "estimate" }, loc)
+      .resolveStack({ ...ps.tax, mode: "estimate" }, loc)
       .filter((j) => j.status === "implemented");
   } catch {
     warnOnce(ctx, `no-preset:${loc.country}`, {
       code: "ASSUMPTION",
       severity: "warning",
-      message: `Glideworth has no tax preset for ${loc.country}: income tax there is not included while you live there.`,
+      message: `Glideworth has no tax preset for ${loc.country}: income tax where you live is not included.`,
       periodIndex: ps.bounds.index,
       refs: [],
     });
@@ -462,29 +565,6 @@ function warnUnknownTreaty(ctx: EngineContext, a: string, b: string): void {
 }
 
 // ------------------------------------------------------------------ the computation
-
-interface Group {
-  people: string[];
-  location: Location;
-  from: number;
-  months: number;
-}
-
-function groupsOf(ctx: EngineContext, ps: PeriodState, alive: string[]): Group[] {
-  const groups: Group[] = [];
-  for (const id of alive) {
-    for (const s of ps.residence?.get(id) ?? []) {
-      const g = groups.find(
-        (x) =>
-          x.from === s.from && x.months === s.to - s.from && sameLocation(x.location, s.location),
-      );
-      if (g) g.people.push(id);
-      else groups.push({ people: [id], location: s.location, from: s.from, months: s.to - s.from });
-    }
-  }
-  void ctx;
-  return groups;
-}
 
 interface Options {
   explain?: boolean;
@@ -519,9 +599,10 @@ export function crossBorderTaxes(
         ],
       }
     : base0;
-  const months = ps.bounds.months;
-  const st = ctx.residency!;
+  const st = ctx.crossBorder!;
   const overrides = ctx.plan.tax.crossBorder?.wrapperRecognition;
+  const location = ps.location;
+  const R = location.country;
 
   const incomeInfo = input.income.map((it) => classifyIncome(ctx, ps, it));
   const wInfo = input.withdrawals.map((w) => classifyWithdrawal(ctx, ps, w));
@@ -532,8 +613,6 @@ export function crossBorderTaxes(
   const brackets: BracketFill[] = [];
   const facts: Record<string, number> = {};
   const byCountry = new Map<string, number>();
-  let gross = 0;
-  let taxable = 0;
   let rasTopUp = 0;
   const add = (country: string, basis: Basis, amount: number) => {
     if (amount === 0) return;
@@ -552,41 +631,21 @@ export function crossBorderTaxes(
       }
   };
   const people = (ids: string[]): TaxPerson[] => alivePeople.filter((p) => ids.includes(p.id));
-  const pinnedUsed = new Set<number>();
 
-  /** Items of `ids` for a computation: `keep` decides inclusion and returns the amount factor. */
+  /** Items of `ids` for a computation: the `keep*` callbacks decide inclusion. */
   const itemsFor = (
     ids: string[],
-    g: { from: number; months: number },
-    R: string,
-    keepIncome: (info: ItemInfo, it: TaxIncomeItem, i: number) => boolean,
+    keepIncome: (info: ItemInfo) => boolean,
     keepWithdrawal: (info: ItemInfo, w: TaxWithdrawalItem) => TaxWithdrawalItem | null,
-    keepDeduction: (info: ItemInfo, d: TaxDeductionItem) => boolean,
-    pinnedBasis: "residence" | "none",
+    keepDeduction: (info: ItemInfo) => boolean,
   ) => {
     const single = ids.length === 1 ? ids[0]! : null;
     const owner = (o: string) => single ?? o;
     const income: TaxIncomeItem[] = [];
     input.income.forEach((it, i) => {
       const s = share(it.owner, ids, alive);
-      if (!(s > 0)) return;
-      const info = incomeInfo[i]!;
-      if (it.pin) {
-        if (
-          pinnedBasis !== "residence" ||
-          it.pin.country !== R ||
-          pinnedUsed.has(i) ||
-          !ids.includes(it.owner)
-        )
-          return;
-        pinnedUsed.add(i);
-        income.push({ ...it, owner: owner(it.owner) });
-        return;
-      }
-      if (!keepIncome(info, it, i)) return;
-      const f = fractionIn(info, g, ps);
-      if (!(f > 0)) return;
-      income.push({ ...it, owner: owner(it.owner), amount: it.amount * s * f });
+      if (!(s > 0) || !keepIncome(incomeInfo[i]!)) return;
+      income.push({ ...it, owner: owner(it.owner), amount: it.amount * s });
     });
     const withdrawals: TaxWithdrawalItem[] = [];
     input.withdrawals.forEach((w0, i) => {
@@ -594,466 +653,380 @@ export function crossBorderTaxes(
       if (!(s > 0)) return;
       const w = keepWithdrawal(wInfo[i]!, w0);
       if (!w) return;
-      const f = g.months / months;
       withdrawals.push({
         ...w,
         owner: owner(w.owner),
-        amount: w.amount * s * f,
-        taxableAmount: w.taxableAmount * s * f,
+        amount: w.amount * s,
+        taxableAmount: w.taxableAmount * s,
       });
     });
     const deductions: TaxDeductionItem[] = [];
     input.deductions.forEach((d, i) => {
       const s = share(d.owner, ids, alive);
-      if (!(s > 0) || !keepDeduction(dInfo[i]!, d)) return;
-      deductions.push({ ...d, owner: owner(d.owner), amount: (d.amount * s * g.months) / months });
+      if (!(s > 0) || !keepDeduction(dInfo[i]!)) return;
+      deductions.push({ ...d, owner: owner(d.owner), amount: d.amount * s });
     });
     return { income, withdrawals, deductions };
   };
 
-  const groups = groupsOf(ctx, ps, alive);
-  const residenceTax = new Map<
-    Group,
-    { total: number; stack: TaxJurisdiction[]; rate: number; input: TaxYearInput }
-  >();
-
   // ---- residence
-  for (const g of groups) {
-    const R = g.location.country;
-    const national = (id: string) => isNational(ctx, id, R);
-    const residenceKeeps = (info: ItemInfo) => {
-      if (!info.category || info.country === R || !info.country) return true;
-      const d = treatyRule(R, info.country, info.category, {
-        nationalOfResidence: national(g.people[0]!),
-      });
-      if (!d.known) warnUnknownTreaty(ctx, R, info.country);
-      return d.residenceTaxes;
-    };
-    const items = itemsFor(
-      g.people,
-      g,
-      R,
-      (info) => residenceKeeps(info),
-      (info, w) => {
-        if (info.country === R) return w;
-        if (!residenceKeeps(info)) return null;
-        const view = wrapperView(R, info.country, w.accountType, w.treatment, overrides);
-        const type = genericType(w.treatment, w.accountType);
-        if (w.treatment === "tax-free" && !view.recognised) {
-          const a = ctx.accountById.get(w.accountId);
-          const share = a ? wrapperEarningsShare(ctx, a) : 1;
-          return {
-            ...w,
-            accountType: "taxable",
-            treatment: "taxable",
-            character: "capital-gains-long",
-            taxableAmount: w.amount * share,
-          };
-        }
-        if (w.treatment === "tax-deferred" && !view.lumpSumTaxFree && w.amount > w.taxableAmount) {
-          const lump = treatyRule(R, info.country, "pension-lump-sum", {});
-          if (lump.residenceTaxes) return { ...w, accountType: type, taxableAmount: w.amount };
-        }
-        return { ...w, accountType: type };
-      },
-      (info) => {
-        if (info.follows === "rental")
-          return info.country === R || residenceKeeps({ ...info, category: "rental" });
-        if (info.accountId) return info.country === R;
-        return true;
-      },
-      "residence",
-    );
-    // Pay for work done abroad is income here but not subject to this country's payroll taxes
-    // (UK National Insurance, US FICA): it enters the residence calculation as ordinary income.
-    items.income = items.income.map((it) => {
-      if (it.character !== "wage" || it.pin) return it;
-      const info = classifyIncome(ctx, ps, it);
-      if (info.country === R) return it;
-      const conv: TaxIncomeItem = { ...it, character: "ordinary" };
-      KEEP_INFO.set(conv, info);
-      return conv;
+  const residenceKeeps = (info: ItemInfo) => {
+    if (!info.category || info.country === R || !info.country) return true;
+    const d = treatyRule(R, info.country, info.category, {
+      nationalOfResidence: isNational(ctx, alive[0]!, R),
     });
-    const stack = residenceStack(ctx, ps, g.location);
-    const rate = taxRate(ctx, ps, R);
-    const whole = g.people.length === alive.length;
-    const fs = base0.filingStatus;
-    const rInput: TaxYearInput = {
-      ...input,
-      ...items,
-      people: people(g.people),
-      months: g.months,
-      location: g.location,
-      filingStatus: whole
-        ? fs
-        : fs === "married-joint" || fs === "married-separate"
-          ? "single"
-          : fs,
-      ...(input.wealth && !whole
-        ? {
-            wealth: Object.fromEntries(
-              Object.entries(input.wealth).map(([k, v]) => [
-                k,
-                typeof v === "number" ? (v * g.people.length) / alive.length : v,
-              ]),
-            ) as TaxYearInput["wealth"],
-          }
-        : {}),
-    };
-    if (R !== "US") delete (rInput as { aca?: unknown }).aca;
-    const r = runStack(
-      stack,
-      rInput,
-      rate,
-      {
-        basis: "residence",
-        country: R,
-        ...(g.people.length === 1 ? { personId: g.people[0] } : {}),
-      },
-      explain,
-    );
-    // Pinned exit / return charges show their own basis.
-    const pinned = items.income.filter((i) => i.pin);
-    collect(r, R, "residence", rate);
-    if (pinned.length > 0 && stack.length > 0) {
-      const without = { ...rInput, income: rInput.income.filter((i) => !i.pin) };
-      const charge = r.total - totalOf(stack, without, rate);
-      if (Math.abs(charge) > 1e-9) {
-        add(R, "residence", -charge);
-        add(R, pinned[0]!.pin!.basis, charge);
+    if (!d.known) warnUnknownTreaty(ctx, R, info.country);
+    return d.residenceTaxes;
+  };
+  const resItems = itemsFor(
+    alive,
+    residenceKeeps,
+    (info, w) => {
+      if (info.country === R) return w;
+      if (!residenceKeeps(info)) return null;
+      const view = wrapperView(R, info.country, w.accountType, w.treatment, overrides);
+      const type = genericType(w.treatment, w.accountType);
+      if (w.treatment === "tax-free" && !view.recognised) {
+        const a = ctx.accountById.get(w.accountId);
+        const earnings = a ? wrapperEarningsShare(ctx, a) : 1;
+        return {
+          ...w,
+          accountType: "taxable",
+          treatment: "taxable",
+          character: "capital-gains-long",
+          taxableAmount: w.amount * earnings,
+        };
       }
-    }
-    gross += r.gross;
-    taxable += r.taxable;
-    residenceTax.set(g, { total: r.total, stack, rate, input: rInput });
-  }
+      if (w.treatment === "tax-deferred" && !view.lumpSumTaxFree && w.amount > w.taxableAmount) {
+        const lump = treatyRule(R, info.country, "pension-lump-sum", {});
+        if (lump.residenceTaxes) return { ...w, accountType: type, taxableAmount: w.amount };
+      }
+      return { ...w, accountType: type };
+    },
+    (info) => {
+      if (info.follows === "rental")
+        return info.country === R || residenceKeeps({ ...info, category: "rental" });
+      if (info.accountId) return info.country === R;
+      return true;
+    },
+  );
+  // Pay for work done abroad is income here but not subject to this country's payroll taxes
+  // (UK National Insurance, US FICA): it enters the residence calculation as ordinary income.
+  resItems.income = resItems.income.map((it) => {
+    if (it.character !== "wage") return it;
+    const info = classifyIncome(ctx, ps, it);
+    if (info.country === R) return it;
+    const conv: TaxIncomeItem = { ...it, character: "ordinary" };
+    KEEP_INFO.set(conv, info);
+    return conv;
+  });
+  const resStack = residenceStack(ctx, ps, location);
+  const resRate = taxRate(ctx, ps, R);
+  const rInput: TaxYearInput = { ...input, ...resItems, people: alivePeople, location };
+  if (R !== "US") delete (rInput as { aca?: unknown }).aca;
+  const res = runStack(
+    resStack,
+    rInput,
+    resRate,
+    { basis: "residence", country: R, ...(alive.length === 1 ? { personId: alive[0] } : {}) },
+    explain,
+  );
+  collect(res, R, "residence", resRate);
+  const residenceTax = { total: res.total, stack: resStack, rate: resRate, input: rInput };
 
   // ---- source
-  const sourceTaxOf = new Map<string, number>(); // `${groupIndex}|${S}` -> tax
+  const sourceTaxOf = new Map<string, number>();
   const sourceItemsOf = new Map<string, (info: ItemInfo) => boolean>();
-  groups.forEach((g, gi) => {
-    const R = g.location.country;
-    const f = g.months / months;
-    const sources = new Set<string>();
-    for (const info of [...incomeInfo, ...wInfo])
-      if (info.country && info.country !== R) sources.add(info.country);
-    for (const S of sources) {
-      const nr = NON_RESIDENT_RULES[S];
-      if (!nr) continue;
-      for (const pid of g.people) {
-        if (S === "US" && st.usPersons.has(pid)) continue; // taxed through citizenship below
-        const nationalR = isNational(ctx, pid, R);
-        const decide = (info: ItemInfo) => {
-          if (info.country !== S || !info.category) return null;
-          const rule = nr.rules[info.category];
-          if (!rule.taxed) return null;
-          const d = treatyRule(R, S, info.category, { nationalOfResidence: nationalR });
-          if (!d.sourceMayTax) return null;
-          return { rule, cap: d.rule.maxSourceRate };
-        };
-        sourceItemsOf.set(`${gi}|${S}`, (info) => decide(info) !== null);
-        const flatTax = { amount: 0, byCat: new Map<IncomeCategory, number>() };
-        const isFlat = (info: ItemInfo) => decide(info)?.rule.method === "flat";
-        const items = itemsFor(
-          [pid],
-          g,
-          R,
-          (info) => {
-            const d = decide(info);
-            return !!d && d.rule.method !== "flat";
-          },
-          (info, w) => {
-            const d = decide(info);
-            if (!d || d.rule.method === "flat") return null;
-            if (w.treatment === "tax-deferred" && !nr.pensionLumpSumTaxFree)
-              return { ...w, taxableAmount: w.amount };
-            return w;
-          },
-          (info) => (info.follows === "rental" || !!info.accountId) && info.country === S,
-          "none",
-        );
-        // Flat-rate items (final withholding).
-        input.income.forEach((it, i) => {
-          const info = incomeInfo[i]!;
-          if (!isFlat(info) || it.pin) return;
-          const s = share(it.owner, [pid], alive);
-          if (!(s > 0)) return;
-          const d = decide(info)!;
-          const rate = Math.min(d.rule.rate ?? 0, d.cap ?? Number.POSITIVE_INFINITY);
-          const t = it.amount * s * fractionIn(info, g, ps) * rate;
-          flatTax.amount += t;
-          flatTax.byCat.set(info.category!, (flatTax.byCat.get(info.category!) ?? 0) + t);
-        });
-        input.withdrawals.forEach((w, i) => {
-          const info = wInfo[i]!;
-          if (!isFlat(info)) return;
-          const s = share(w.owner, [pid], alive);
-          if (!(s > 0)) return;
-          const d = decide(info)!;
-          const rate = Math.min(d.rule.rate ?? 0, d.cap ?? Number.POSITIVE_INFINITY);
-          const amt = (nr.pensionLumpSumTaxFree ? w.taxableAmount : w.amount) * s * f;
-          const t = amt * rate;
-          flatTax.amount += t;
-          flatTax.byCat.set(info.category!, (flatTax.byCat.get(info.category!) ?? 0) + t);
-        });
-        const jid = NATIONAL_JURISDICTION_BY_COUNTRY[S] ?? S.toLowerCase();
-        for (const [cat, t] of flatTax.byCat)
-          if (t !== 0) {
-            const l: TaxLine = {
-              jurisdictionId: jid,
-              kind:
-                cat === "dividends"
-                  ? "dividends"
-                  : cat.startsWith("gains")
-                    ? "capital-gains"
-                    : "income",
-              label: `${nr.label} non-resident tax on ${cat.replace(/-/g, " ")} (${personName(ctx, pid)})`,
-              amount: t,
-              basis: "source",
-              country: S,
-              personId: pid,
+  const sources = new Set<string>();
+  for (const info of [...incomeInfo, ...wInfo])
+    if (info.country && info.country !== R) sources.add(info.country);
+  for (const S of sources) {
+    const nr = NON_RESIDENT_RULES[S];
+    if (!nr) continue;
+    for (const pid of alive) {
+      if (S === "US" && st.usPersons.has(pid)) continue; // taxed through citizenship below
+      const nationalR = isNational(ctx, pid, R);
+      const decide = (info: ItemInfo) => {
+        if (info.country !== S || !info.category) return null;
+        const rule = nr.rules[info.category];
+        if (!rule.taxed) return null;
+        const d = treatyRule(R, S, info.category, { nationalOfResidence: nationalR });
+        if (!d.sourceMayTax) return null;
+        return { rule, cap: d.rule.maxSourceRate };
+      };
+      sourceItemsOf.set(S, (info) => decide(info) !== null);
+      const flatTax = { amount: 0, byCat: new Map<IncomeCategory, number>() };
+      const isFlat = (info: ItemInfo) => decide(info)?.rule.method === "flat";
+      const items = itemsFor(
+        [pid],
+        (info) => {
+          const d = decide(info);
+          return !!d && d.rule.method !== "flat";
+        },
+        (info, w) => {
+          const d = decide(info);
+          if (!d || d.rule.method === "flat") return null;
+          if (w.treatment === "tax-deferred" && !nr.pensionLumpSumTaxFree)
+            return { ...w, taxableAmount: w.amount };
+          return w;
+        },
+        (info) => (info.follows === "rental" || !!info.accountId) && info.country === S,
+      );
+      // Flat-rate items (final withholding).
+      input.income.forEach((it, i) => {
+        const info = incomeInfo[i]!;
+        if (!isFlat(info)) return;
+        const s = share(it.owner, [pid], alive);
+        if (!(s > 0)) return;
+        const d = decide(info)!;
+        const rate = Math.min(d.rule.rate ?? 0, d.cap ?? Number.POSITIVE_INFINITY);
+        const t = it.amount * s * rate;
+        flatTax.amount += t;
+        flatTax.byCat.set(info.category!, (flatTax.byCat.get(info.category!) ?? 0) + t);
+      });
+      input.withdrawals.forEach((w, i) => {
+        const info = wInfo[i]!;
+        if (!isFlat(info)) return;
+        const s = share(w.owner, [pid], alive);
+        if (!(s > 0)) return;
+        const d = decide(info)!;
+        const rate = Math.min(d.rule.rate ?? 0, d.cap ?? Number.POSITIVE_INFINITY);
+        const t = (nr.pensionLumpSumTaxFree ? w.taxableAmount : w.amount) * s * rate;
+        flatTax.amount += t;
+        flatTax.byCat.set(info.category!, (flatTax.byCat.get(info.category!) ?? 0) + t);
+      });
+      const jid = NATIONAL_JURISDICTION_BY_COUNTRY[S] ?? S.toLowerCase();
+      for (const [cat, t] of flatTax.byCat)
+        if (t !== 0) {
+          lines.push({
+            jurisdictionId: jid,
+            kind:
+              cat === "dividends"
+                ? "dividends"
+                : cat.startsWith("gains")
+                  ? "capital-gains"
+                  : "income",
+            label: `${nr.label} non-resident tax on ${cat.replace(/-/g, " ")} (${personName(ctx, pid)})`,
+            amount: t,
+            basis: "source",
+            country: S,
+            personId: pid,
+          });
+          add(S, "source", t);
+        }
+      let total = flatTax.amount;
+      // Resident-rate items through the national plug-in, as a non-resident.
+      if (items.income.length + items.withdrawals.length > 0) {
+        const j = nationalJurisdiction(ctx, S);
+        if (j) {
+          // Non-resident property gains: rebasing / time apportionment.
+          if (nr.propertyGains) applyPropertyRebasing(ctx, ps, items.income, nr.propertyGains);
+          const rate = taxRate(ctx, ps, S);
+          const pa = paEntitled(ctx, pid, nr);
+          const sInput: TaxYearInput = {
+            ...input,
+            ...items,
+            people: people([pid]),
+            location: { country: S },
+            filingStatus: "single",
+            nonResident: { personalAllowance: { [pid]: pa } },
+          };
+          delete (sInput as { wealth?: unknown }).wealth;
+          delete (sInput as { aca?: unknown }).aca;
+          delete (sInput as { transactions?: unknown }).transactions;
+          let r = runStack(
+            [j],
+            sInput,
+            rate,
+            { basis: "source", country: S, personId: pid, suffix: " (non-resident)" },
+            explain,
+          );
+          if (nr.disregardedIncome) {
+            const dis = new Set(nr.disregardedIncome.categories);
+            const limited: TaxYearInput = {
+              ...sInput,
+              income: sInput.income.filter((it) => !dis.has(categoryFor(ctx, ps, it))),
+              nonResident: { personalAllowance: { [pid]: false } },
             };
-            lines.push(l);
-            add(S, "source", t);
-          }
-        let total = flatTax.amount;
-        // Resident-rate items through the national plug-in, as a non-resident.
-        if (items.income.length + items.withdrawals.length > 0) {
-          const j = nationalJurisdiction(ctx, S);
-          if (j) {
-            // Non-resident property gains: rebasing / time apportionment.
-            if (nr.propertyGains) applyPropertyRebasing(ctx, ps, items.income, nr.propertyGains);
-            const rate = taxRate(ctx, ps, S);
-            const pa = paEntitled(ctx, pid, nr);
-            const sInput: TaxYearInput = {
-              ...input,
-              ...items,
-              people: people([pid]),
-              months: g.months,
-              location: { country: S },
-              filingStatus: "single",
-              nonResident: { personalAllowance: { [pid]: pa } },
-            };
-            delete (sInput as { wealth?: unknown }).wealth;
-            delete (sInput as { aca?: unknown }).aca;
-            delete (sInput as { transactions?: unknown }).transactions;
-            let r = runStack(
+            const alt = runStack(
               [j],
-              sInput,
+              limited,
               rate,
-              { basis: "source", country: S, personId: pid, suffix: " (non-resident)" },
+              {
+                basis: "source",
+                country: S,
+                personId: pid,
+                suffix: " (non-resident, disregarded income limit)",
+              },
               explain,
             );
-            if (nr.disregardedIncome) {
-              const dis = new Set(nr.disregardedIncome.categories);
-              const limited: TaxYearInput = {
-                ...sInput,
-                income: sInput.income.filter((it) => !dis.has(categoryFor(ctx, ps, it))),
-                nonResident: { personalAllowance: { [pid]: false } },
-              };
-              const alt = runStack(
-                [j],
-                limited,
-                rate,
-                {
-                  basis: "source",
-                  country: S,
-                  personId: pid,
-                  suffix: " (non-resident, disregarded income limit)",
-                },
-                explain,
-              );
-              if (alt.total < r.total - 1e-9) r = alt;
-            }
-            collect(r, S, "source", rate);
-            total += r.total;
+            if (alt.total < r.total - 1e-9) r = alt;
           }
+          collect(r, S, "source", rate);
+          total += r.total;
         }
-        if (total !== 0)
-          sourceTaxOf.set(`${gi}|${S}`, (sourceTaxOf.get(`${gi}|${S}`) ?? 0) + total);
       }
+      if (total !== 0) sourceTaxOf.set(S, (sourceTaxOf.get(S) ?? 0) + total);
     }
-  });
+  }
 
-  // ---- relief: residence country credits source tax on the same income
-  groups.forEach((g, gi) => {
-    const rt = residenceTax.get(g)!;
-    if (rt.stack.length === 0 || !(rt.total > 0)) return;
-    for (const [k, srcTax] of sourceTaxOf) {
-      const [idx, S] = k.split("|") as [string, string];
-      if (Number(idx) !== gi || !(srcTax > 0)) continue;
-      const taxedThere = sourceItemsOf.get(k)!;
+  // ---- relief: the residence country credits source tax on the same income
+  if (residenceTax.stack.length > 0 && residenceTax.total > 0)
+    for (const [S, srcTax] of sourceTaxOf) {
+      if (!(srcTax > 0)) continue;
+      const taxedThere = sourceItemsOf.get(S)!;
       const without: TaxYearInput = {
-        ...rt.input,
-        income: rt.input.income.filter((it) => it.pin || !taxedThere(classifyIncome(ctx, ps, it))),
-        withdrawals: rt.input.withdrawals.filter((w) => {
-          const info = classifyWithdrawal(ctx, ps, w);
-          return !taxedThere(info);
-        }),
+        ...residenceTax.input,
+        income: residenceTax.input.income.filter((it) => !taxedThere(classifyIncome(ctx, ps, it))),
+        withdrawals: residenceTax.input.withdrawals.filter(
+          (w) => !taxedThere(classifyWithdrawal(ctx, ps, w)),
+        ),
       };
-      const attributable = Math.max(0, rt.total - totalOf(rt.stack, without, rt.rate));
+      const attributable = Math.max(
+        0,
+        residenceTax.total - totalOf(residenceTax.stack, without, residenceTax.rate),
+      );
       const credit = Math.min(srcTax, attributable);
       if (credit > 1e-9) {
-        const R = g.location.country;
         lines.push({
-          jurisdictionId: rt.stack[0]!.id,
+          jurisdictionId: residenceTax.stack[0]!.id,
           kind: "credit",
           label: `Foreign tax credit (${S} tax on ${S} income)`,
           amount: -credit,
           basis: "relief",
           country: R,
-          ...(g.people.length === 1 ? { personId: g.people[0] } : {}),
+          ...(alive.length === 1 ? { personId: alive[0] } : {}),
         });
         add(R, "relief", -credit);
-        rt.total -= credit;
+        residenceTax.total -= credit;
       }
     }
-  });
 
   // ---- citizenship-based taxation (US)
-  const usFed = st.usPersons.size > 0 ? nationalJurisdiction(ctx, "US") : null;
+  const usFed = st.usPersons.size > 0 && R !== "US" ? nationalJurisdiction(ctx, "US") : null;
   if (usFed)
-    for (const g of groups) {
-      if (g.location.country === "US") continue;
-      const R = g.location.country;
-      for (const pid of g.people) {
-        if (!st.usPersons.has(pid)) continue;
-        const rate = taxRate(ctx, ps, "US");
-        const items = itemsFor(
-          [pid],
-          g,
-          "US",
-          () => true,
-          (info, w) => {
-            if (info.country === "US") return w;
-            const view = wrapperView("US", info.country, w.accountType, w.treatment, overrides);
-            if (w.treatment === "tax-free" && !view.recognised) {
-              const a = ctx.accountById.get(w.accountId);
-              const sh = a ? wrapperEarningsShare(ctx, a) : 1;
-              return {
-                ...w,
-                accountType: "taxable",
-                treatment: "taxable",
-                character: "capital-gains-long",
-                taxableAmount: w.amount * sh,
-              };
-            }
-            if (w.treatment === "tax-deferred" && !view.lumpSumTaxFree)
-              return {
-                ...w,
-                accountType: genericType(w.treatment, w.accountType),
-                taxableAmount: w.amount,
-              };
-            return { ...w, accountType: genericType(w.treatment, w.accountType) };
-          },
-          (info) => !info.accountId || info.country === "US",
-          "none",
+    for (const pid of alive) {
+      if (!st.usPersons.has(pid)) continue;
+      const rate = taxRate(ctx, ps, "US");
+      const items = itemsFor(
+        [pid],
+        () => true,
+        (info, w) => {
+          if (info.country === "US") return w;
+          const view = wrapperView("US", info.country, w.accountType, w.treatment, overrides);
+          if (w.treatment === "tax-free" && !view.recognised) {
+            const a = ctx.accountById.get(w.accountId);
+            const earnings = a ? wrapperEarningsShare(ctx, a) : 1;
+            return {
+              ...w,
+              accountType: "taxable",
+              treatment: "taxable",
+              character: "capital-gains-long",
+              taxableAmount: w.amount * earnings,
+            };
+          }
+          if (w.treatment === "tax-deferred" && !view.lumpSumTaxFree)
+            return {
+              ...w,
+              accountType: genericType(w.treatment, w.accountType),
+              taxableAmount: w.amount,
+            };
+          return { ...w, accountType: genericType(w.treatment, w.accountType) };
+        },
+        (info) => !info.accountId || info.country === "US",
+      );
+      const countryOf = (it: TaxIncomeItem) => classifyIncome(ctx, ps, it).country;
+      // Foreign earned income exclusion (prorated by the period's months).
+      const feieRow = NON_RESIDENT_RULES.US!.citizenshipTaxation!.foreignEarnedIncomeExclusion;
+      const feieUsd =
+        [...feieRow].reverse().find((r) => r.year <= ps.bounds.year)?.amount ?? feieRow[0]!.amount;
+      // Later years than the table: the last amount, indexed with the plan's inflation.
+      const lastRow = feieRow[feieRow.length - 1]!;
+      const feie =
+        feieUsd * rate * (ps.bounds.months / 12) * (ps.bounds.year > lastRow.year ? ps.piStart : 1);
+      const isForeignEarned = (it: TaxIncomeItem) =>
+        (it.character === "wage" || it.character === "self-employment") && countryOf(it) !== "US";
+      let foreignEarned = 0;
+      for (const it of items.income) if (isForeignEarned(it)) foreignEarned += it.amount;
+      const excluded = Math.min(foreignEarned, feie);
+      const k = foreignEarned > 0 ? 1 - excluded / foreignEarned : 1;
+      if (k < 1)
+        items.income = items.income.map((it) =>
+          isForeignEarned(it) ? { ...it, amount: it.amount * k } : it,
         );
-        // Pinned charges in this person's residence segment also count for the US.
-        input.income.forEach((it) => {
-          if (it.pin && it.owner === pid && it.pin.country === R) items.income.push({ ...it });
+      const fs = base0.filingStatus;
+      const uInput: TaxYearInput = {
+        ...input,
+        ...items,
+        people: people([pid]),
+        location: { country: "US" },
+        filingStatus:
+          fs === "married-joint" || fs === "married-separate" ? "married-separate" : "single",
+      };
+      delete (uInput as { wealth?: unknown }).wealth;
+      delete (uInput as { aca?: unknown }).aca;
+      const full = runStack(
+        [usFed],
+        uInput,
+        rate,
+        { basis: "citizenship", country: "US", personId: pid, suffix: " (US citizen abroad)" },
+        explain,
+      );
+      const usSourceOnly: TaxYearInput = {
+        ...uInput,
+        income: uInput.income.filter((it) => countryOf(it) === "US"),
+        withdrawals: uInput.withdrawals.filter(
+          (w) => classifyWithdrawal(ctx, ps, w).country === "US",
+        ),
+      };
+      const limit = Math.max(0, full.total - totalOf([usFed], usSourceOnly, rate));
+      // Foreign tax paid by this person: their share of the residence tax plus other source taxes.
+      let foreignPaid = Math.max(0, residenceTax.total) / alive.length;
+      for (const l of lines)
+        if (l.basis === "source" && l.personId === pid && l.country !== "US")
+          foreignPaid += l.amount;
+      const ftc = Math.min(foreignPaid, limit);
+      collect(full, "US", "citizenship", rate);
+      if (excluded > 0) facts[`us.feie.${pid}`] = excluded;
+      if (ftc > 1e-9) {
+        lines.push({
+          jurisdictionId: usFed.id,
+          kind: "credit",
+          label: `Foreign tax credit (${R} and other foreign tax) (${personName(ctx, pid)})`,
+          amount: -ftc,
+          basis: "relief",
+          country: "US",
+          personId: pid,
         });
-        const countryOf = (it: TaxIncomeItem) => classifyIncome(ctx, ps, it).country;
-        // Foreign earned income exclusion (prorated by the months abroad).
-        const feieRow = NON_RESIDENT_RULES.US!.citizenshipTaxation!.foreignEarnedIncomeExclusion;
-        const feieUsd =
-          [...feieRow].reverse().find((r) => r.year <= ps.bounds.year)?.amount ??
-          feieRow[0]!.amount;
-        // Later years than the table: the last amount, indexed with the plan's inflation.
-        const lastRow = feieRow[feieRow.length - 1]!;
-        const feie =
-          feieUsd * rate * (g.months / 12) * (ps.bounds.year > lastRow.year ? ps.piStart : 1);
-        let foreignEarned = 0;
-        for (const it of items.income)
-          if (
-            (it.character === "wage" || it.character === "self-employment") &&
-            countryOf(it) !== "US"
-          )
-            foreignEarned += it.amount;
-        const excluded = Math.min(foreignEarned, feie);
-        const k = foreignEarned > 0 ? 1 - excluded / foreignEarned : 1;
-        if (k < 1)
-          items.income = items.income.map((it) =>
-            (it.character === "wage" || it.character === "self-employment") &&
-            countryOf(it) !== "US"
-              ? { ...it, amount: it.amount * k }
-              : it,
-          );
-        const fs = base0.filingStatus;
-        const uInput: TaxYearInput = {
-          ...input,
-          ...items,
-          people: people([pid]),
-          months: g.months,
-          location: { country: "US" },
-          filingStatus:
-            fs === "married-joint" || fs === "married-separate" ? "married-separate" : "single",
-        };
-        delete (uInput as { wealth?: unknown }).wealth;
-        delete (uInput as { aca?: unknown }).aca;
-        const full = runStack(
-          [usFed],
-          uInput,
-          rate,
-          { basis: "citizenship", country: "US", personId: pid, suffix: " (US citizen abroad)" },
-          explain,
-        );
-        const foreignOnly = (it: TaxIncomeItem) => countryOf(it) !== "US";
-        const usSourceOnly: TaxYearInput = {
-          ...uInput,
-          income: uInput.income.filter((it) => !foreignOnly(it)),
-          withdrawals: uInput.withdrawals.filter(
-            (w) => classifyWithdrawal(ctx, ps, w).country === "US",
+        add("US", "relief", -ftc);
+      }
+      // The residence country credits US tax on US-source income (US tax not on foreign income).
+      const usSourceTax = Math.max(0, Math.min(full.total - ftc, full.total - limit));
+      if (usSourceTax > 1e-9 && residenceTax.stack.length > 0 && residenceTax.total > 0) {
+        const without: TaxYearInput = {
+          ...residenceTax.input,
+          income: residenceTax.input.income.filter((it) => countryOf(it) !== "US"),
+          withdrawals: residenceTax.input.withdrawals.filter(
+            (w) => classifyWithdrawal(ctx, ps, w).country !== "US",
           ),
         };
-        const limit = Math.max(0, full.total - totalOf([usFed], usSourceOnly, rate));
-        // Foreign tax paid by this person: their share of the residence tax plus other source taxes.
-        const rt = residenceTax.get(g)!;
-        const personShare = g.people.length === 1 ? 1 : 1 / g.people.length;
-        let foreignPaid = Math.max(0, rt.total) * personShare;
-        for (const l of lines)
-          if (l.basis === "source" && l.personId === pid && l.country !== "US")
-            foreignPaid += l.amount;
-        const ftc = Math.min(foreignPaid, limit);
-        collect(full, "US", "citizenship", rate);
-        if (excluded > 0) facts[`us.feie.${pid}`] = excluded;
-        if (ftc > 1e-9) {
+        const attributable = Math.max(
+          0,
+          residenceTax.total - totalOf(residenceTax.stack, without, residenceTax.rate),
+        );
+        const credit = Math.min(usSourceTax, attributable);
+        if (credit > 1e-9) {
           lines.push({
-            jurisdictionId: usFed.id,
+            jurisdictionId: residenceTax.stack[0]!.id,
             kind: "credit",
-            label: `Foreign tax credit (${R} and other foreign tax) (${personName(ctx, pid)})`,
-            amount: -ftc,
+            label: `Foreign tax credit (US tax on US income) (${personName(ctx, pid)})`,
+            amount: -credit,
             basis: "relief",
-            country: "US",
+            country: R,
             personId: pid,
           });
-          add("US", "relief", -ftc);
-        }
-        // The residence country credits US tax on US-source income (US tax not on foreign income).
-        const usSourceTax = Math.max(0, Math.min(full.total - ftc, full.total - limit));
-        if (usSourceTax > 1e-9 && rt.stack.length > 0 && rt.total > 0) {
-          const without: TaxYearInput = {
-            ...rt.input,
-            income: rt.input.income.filter((it) => it.pin || countryOf(it) !== "US"),
-            withdrawals: rt.input.withdrawals.filter(
-              (w) => classifyWithdrawal(ctx, ps, w).country !== "US",
-            ),
-          };
-          const attributable = Math.max(0, rt.total - totalOf(rt.stack, without, rt.rate));
-          const credit = Math.min(usSourceTax, attributable);
-          if (credit > 1e-9) {
-            lines.push({
-              jurisdictionId: rt.stack[0]!.id,
-              kind: "credit",
-              label: `Foreign tax credit (US tax on US income) (${personName(ctx, pid)})`,
-              amount: -credit,
-              basis: "relief",
-              country: R,
-              personId: pid,
-            });
-            add(R, "relief", -credit);
-            rt.total -= credit;
-          }
+          add(R, "relief", -credit);
+          residenceTax.total -= credit;
         }
       }
     }
@@ -1061,21 +1034,13 @@ export function crossBorderTaxes(
   if (rasTopUp !== 0) facts["uk.reliefAtSourceTopUp"] = rasTopUp;
   let total = 0;
   for (const l of lines) total += l.amount;
-  const residence: CrossBorderResult["residence"] = {};
-  for (const [id, segs] of ps.residence ?? [])
-    residence[id] = segs.map((s) => ({
-      country: s.location.country,
-      ...(s.location.region ? { region: s.location.region } : {}),
-      months: s.to - s.from,
-    }));
   return {
     total,
     lines,
     outputs,
-    grossIncome: gross,
-    taxableIncome: taxable,
+    grossIncome: res.gross,
+    taxableIncome: res.taxable,
     facts,
-    residence,
     byCountry: [...byCountry].map(([k, amount]) => {
       const [country, basis] = k.split("|") as [string, Basis];
       return { country, basis, amount };
@@ -1096,7 +1061,7 @@ function paEntitled(
   const pa = nr.personalAllowance;
   if (pa.kind === "all") return true;
   if (pa.kind === "none") return false;
-  const cit = ctx.residency?.citizenships.get(pid);
+  const cit = ctx.crossBorder?.citizenships.get(pid);
   return !!cit && (pa.citizens ?? []).some((c) => cit.has(c));
 }
 

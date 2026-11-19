@@ -36,8 +36,8 @@ Glideworth is an original application. How complete it is, feature by feature, i
 - **Track progress**: balance snapshots over time against the plan, scheduled check-ins and notifications
   when the chance of success or a milestone moves.
 - **Share and collaborate**: owner, editor and viewer sign-ins, read-only share links.
-- **Import**: ProjectionLab JSON, bank/budgeting CSV (Monarch, YNAB and generic presets), OFX / QFX / QIF bank
-  statements, and Glideworth's own export. **Export**: JSON, CSV tables, printable report.
+- **Import**: ProjectionLab JSON, bank/budgeting CSV (Monarch, YNAB and generic presets) and Glideworth's own
+  export. **Export**: JSON, CSV tables, printable report.
 - **Integrate**: scoped API keys, signed webhooks, idempotent and conflict-safe writes, MCP over stdio or HTTP.
 
 ## Requirements
@@ -129,7 +129,7 @@ the importer reads.
 
 ## Connecting an AI assistant (MCP)
 
-Glideworth's MCP server has 54 read and compute tools and, only if you enable them, 21 write tools. Plan edits
+Glideworth's MCP server has 49 read and compute tools and, only if you enable them, 18 write tools. Plan edits
 are always proposals you approve; nothing can be deleted.
 
 ```bash

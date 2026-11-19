@@ -1,16 +1,15 @@
 /**
- * Cross-border form pieces shared by the household, plan and finance editors: a country + region
- * picker, an item's country (defaulting to the household's or the account type's), and the
- * currency / exchange-rate prompt when a country implies another currency.
+ * Cross-border form pieces shared by the plan and finance editors: an item's country (defaulting
+ * to the household's or the account type's), and the currency / exchange-rate prompt when a
+ * country implies another currency.
  */
-import type { FxRate, Location } from "@glideworth/core";
+import type { FxRate } from "@glideworth/core";
 import { ArrowRightLeft, Globe2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
 import { NumberInput } from "../../components/ui/number-input";
 import { Select } from "../../components/ui/select";
-import { COUNTRY_LIST, countryInfo, countryLabel, currencyOfCountry } from "../../lib/countries";
+import { COUNTRY_LIST, countryLabel, currencyOfCountry } from "../../lib/countries";
 import { hasPair } from "../currency/fx";
 import { updateFinances, useDraftDoc } from "../finances/use-finances";
 import { FormField } from "../plan-editor/components/form";
@@ -20,68 +19,12 @@ const COUNTRY_SELECT = COUNTRY_LIST.filter((c) => c.code !== "XX").map((c) => ({
   label: c.label,
 }));
 
-/** Country and region (region list when the country has one, else free text). */
-export function LocationFields({
-  value,
-  onChange,
-  label = "Country",
-}: {
-  value: Location;
-  onChange: (v: Location) => void;
-  label?: string;
-}) {
-  const info = countryInfo(value.country);
-  return (
-    <>
-      <FormField label={label}>
-        {(id) => (
-          <Select
-            id={id}
-            value={value.country}
-            onValueChange={(country) => onChange({ country })}
-            options={[...COUNTRY_SELECT, { value: "XX", label: countryLabel("XX") }]}
-          />
-        )}
-      </FormField>
-      {info?.regions ? (
-        <FormField
-          label={info.regionLabel ?? "Region"}
-          hint={info.regionAffectsTax ? "Changes the tax estimate there." : undefined}
-        >
-          {(id) => (
-            <Select
-              id={id}
-              value={value.region ?? ""}
-              placeholder="Not specified"
-              onValueChange={(region) => onChange({ ...value, region })}
-              options={info.regions!}
-            />
-          )}
-        </FormField>
-      ) : (
-        <FormField label="Region" hint="Optional.">
-          {(id) => (
-            <Input
-              id={id}
-              value={value.region ?? ""}
-              maxLength={10}
-              onChange={(e) =>
-                onChange({ ...value, region: e.target.value.toUpperCase() || undefined })
-              }
-            />
-          )}
-        </FormField>
-      )}
-    </>
-  );
-}
-
 const SAME = "__same";
 
 /**
  * Country of an account, property, debt or income. `inherited` is what applies when unset (the
- * household's country, or the account type's). Changing it never moves anything: it says where
- * the item is, which decides who may tax it after a move.
+ * household's country, or the account type's). It says where the item is, which decides whether
+ * that country taxes it as a non-resident's.
  */
 export function ItemCountryField({
   value,
@@ -103,7 +46,7 @@ export function ItemCountryField({
       label={label}
       help={
         help ??
-        "Where it is. It stays there when you move: the country where it is may still tax its income or gains after you leave."
+        "Where it is. If that is not where you live, that country may tax its income or gains too, with credit for that tax where you live."
       }
     >
       {(id) => (

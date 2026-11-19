@@ -10,7 +10,7 @@ are thin adapters over `apps/api/src/services.ts`, so they behave identically.
   page needs internet access, while `/openapi.json` and every API call work fully offline; the hosted service
   serves a server-rendered page with no script and nothing from another origin). Machine-readable:
   `GET /openapi.json` (OpenAPI 3.1, generated from the same Zod schemas as the engine, so request and
-  response shapes cannot drift). It has 265 operations in self-host mode, 306 in cloud mode and 313 in cloud mode with
+  response shapes cannot drift). It has 250 operations in self-host mode, 291 in cloud mode and 298 in cloud mode with
   "Sign in with Google" configured, as the hosted service is (see [Cloud mode](#cloud-mode-the-hosted-service)), each with a unique `operationId`, tags, a scope
   (`x-required-scope`) and an explicit `security` declaration (`[]` for the public auth routes). It passes
   Redocly and swagger-parser validation, and `npx openapi-typescript http://localhost:8787/openapi.json -o glideworth.d.ts`
@@ -67,8 +67,7 @@ webhooks is exempt: their one-time secrets are never stored for replay.)
 
 **Request size.** Bodies over `GLIDEWORTH_MAX_BODY_MB` (default 10 MiB) are refused with `413 PAYLOAD_TOO_LARGE`
 before they are read; this covers `/api/*` and `/mcp`. A full household export is about 12 KB, so the limit
-only matters for CSV text and very large imports. A bank file (`import/bank-file`) has its own, smaller limit:
-2 MB of text.
+only matters for CSV text and very large imports.
 
 **Partial updates.** Two flavours, both id-addressed:
 
@@ -299,31 +298,31 @@ api -X POST $GLIDEWORTH/api/v1/households/hh-sample/balances \
 All paths are under `/api/v1`. The OpenAPI document lists every operation with its schemas; this is
 the map.
 
-| Group                        | Routes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Auth** (public)            | `GET /auth/status`; `POST /auth/setup`, `/auth/login`, `/auth/accept`, `/auth/logout`, `/auth/logout-all`, `/auth/change-passphrase`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| **Users & audit**            | `/users` (invite, role, disable, reset), `GET /audit-log`, `GET /me`, `/me/keys`, `/me/oauth-grants`: see [Household collaboration](#household-collaboration)                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| **Share links**              | `POST /plans/{id}/share-links`, `GET /share-links`, `DELETE /share-links/{id}`, `POST /share-links/{id}/refresh`; public `GET /shared/{token}`: see [Share links](#share-links)                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| **Check-ins**                | `GET/PATCH /schedule`, `POST /plans/{id}/checkins`, `GET /plans/{id}/health`, `GET /plans/{id}/changes-since-checkin`, `GET /notifications`, `POST /notifications/read`: see [Scheduled check-ins](#scheduled-check-ins)                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| **FX rates**                 | `GET/PUT/POST /households/{id}/fx-rates`, `DELETE /households/{id}/fx-rates/{FROM-TO}`: see [Multi-currency](#multi-currency)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| **OAuth**                    | `/.well-known/oauth-*`, `/oauth/*` (protocol), `GET /oauth/clients`, `DELETE /oauth/clients/{id}`: see [OAuth for remote MCP clients](#oauth-for-remote-mcp-clients)                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| **Households & people**      | `GET/POST /households`; `GET/PUT/PATCH/DELETE /households/{id}`; `/households/{id}/people[/{personId}]` and `/dependents[/{id}]` (CRUD; adding a second person switches the household to couple mode)                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| **Finances**                 | `/households/{id}/accounts`, `/real-assets`, `/debts` (list, create, get, PUT, PATCH, DELETE by id; delete is `409 IN_USE` while a plan references the item, unless `force=true`; prefer `archived: true`); `POST /households/{id}/balances` (bulk update); **`PUT /households/{id}/current-finances`** (whole document, atomic); **`PUT /households/{id}/reorder/{accounts\|real-assets\|debts\|plans}`** (display order)                                                                                                                                                                                                               |
-| **Plans**                    | `GET/POST /plans`; `GET/PUT/PATCH/DELETE /plans/{id}`; `POST /plans/{id}/duplicate`, `/archive`, `/unarchive`, `/set-main`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| **Plan collections**         | `/plans/{id}/income`, `/expenses`, `/milestones`, `/flows`, `/planned-accounts`, `/planned-real-assets`, **`/residency`**: list, add (`id` optional, `?index=`), get, PUT, PATCH, DELETE by id; `PUT /plans/{id}/reorder/{collection}` (flows: the order is the funding priority)                                                                                                                                                                                                                                                                                                                                                        |
-| **Plan settings**            | singletons with GET/PUT/PATCH/DELETE: `/assumptions`, `/tax-settings`, `/withdrawal-strategy`, `/drawdown`, `/flex-spending`, `/risk-guardrails`, `/tax-strategy`, `/monte-carlo-settings`, `/leftover` (DELETE removes optional ones, resets the others to defaults)                                                                                                                                                                                                                                                                                                                                                                    |
-| **History & undo**           | `GET /plans/{id}/versions`, `GET .../versions/{n}`, `GET .../versions/{n}/diff?against=current`, `POST .../versions/{n}/restore` (writes the old body as a **new** version; history is append-only)                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| **Branches**                 | `POST /plans/{id}/branches`, `GET /plans/{id}/branches`, `GET /plans/{id}/diff` (branch vs parent, with outcomes), `POST /plans/{id}/merge`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| **Change sets**              | `POST /plans/{id}/change-sets` (propose), `GET /plans/{id}/change-sets`, `GET /change-sets/{id}`, `POST /change-sets/{id}/apply`, `POST /change-sets/{id}/discard`, `POST /plans/{id}/preview` (what-if, stores nothing)                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| **Simulation**               | `POST /plans/{id}/simulate`, `POST /simulate` (stateless), `POST /plans/{id}/monte-carlo`, `/historical`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| **Solvers**                  | `POST /plans/{id}/solve/max-spending`, `/earliest-retirement`, `/required-savings`, `/required-portfolio`, `/safe-withdrawal-rate`, `/goal-seek`, `/tax-strategy`                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| **Insights**                 | `POST /plans/{id}/insights/explain`, `/explain-year`, `/explain-years`, `/explain-difference`, `/audit`, `/sensitivity`, `/guardrails`, `/guyton-klinger`, **`/debt-payoff`**, **`/income-by-tax-rate`**, **`/strategy-matrix`** (job); `GET /plans/{id}/tax-breakdown`; `POST /insights/compare`, **`POST /insights/sepp-comparison`**                                                                                                                                                                                                                                                                                                  |
-| **Moving country**           | `GET /plans/{id}/residency-timeline`, `GET /plans/{id}/cross-border/items`, `POST /plans/{id}/insights/explain-taxation`, `POST /plans/{id}/insights/stay-or-move`, `GET /plans/{id}/tax-breakdown/by-country`; `GET/PUT/PATCH /households/{id}/people/{personId}/cross-border`; rule tables `GET /cross-border/countries`, `/cross-border/non-resident-rules/{country}`, `/cross-border/treaties[?country=]`, `/cross-border/treaties/{a}/{b}`, `/cross-border/wrappers?residence=&accountCountry=`, `/cross-border/simplifications?countries=`, `POST /cross-border/explain`: see [Moving country](#moving-country-cross-border-plans) |
-| **Scenarios**                | `GET /scenarios/templates`; `POST /plans/{id}/scenarios/{templateId}/preview`, `.../branch`; `GET /plans/{id}/scenarios/survivor`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| **Jobs**                     | `GET /jobs`, `GET /jobs/{id}`, `GET /jobs/{id}/result`, `GET /jobs/{id}/events` (SSE), `POST /jobs/{id}/cancel`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| **Progress**                 | `/households/{id}/snapshots` (list, create, get, PUT, PATCH, DELETE), `POST .../snapshots/record` (from current finances), `POST .../snapshots/bulk`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| **Data**                     | `GET /households/{id}/export` (also `/document`), `POST /import` (Glideworth or ProjectionLab; `dryRun`), `POST /households/{id}/import/csv` (+ `/analyze`), **`POST /households/{id}/import/bank-file`** (OFX/QFX/QIF), `GET /plans/{id}/export/tables/{table}`, `GET /households/{id}/export/progress`, `GET /plans/{id}/report`                                                                                                                                                                                                                                                                                                       |
-| **Settings, keys, webhooks** | `GET/PUT/PATCH /settings`; `GET/POST /keys`, `DELETE /keys/{id}` (revoke); `/webhooks` CRUD (owner), `/webhooks/{id}/ping`, `/webhooks/{id}/deliveries`; webhook events: `plan.updated`, `simulation.completed`, `snapshot.created`, `snapshot.updated`, `checkin.completed`, `notification.created`, `webhook.ping`                                                                                                                                                                                                                                                                                                                     |
+| Group                        | Routes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Auth** (public)            | `GET /auth/status`; `POST /auth/setup`, `/auth/login`, `/auth/accept`, `/auth/logout`, `/auth/logout-all`, `/auth/change-passphrase`                                                                                                                                                                                                                                                                                                                                                                          |
+| **Users & audit**            | `/users` (invite, role, disable, reset), `GET /audit-log`, `GET /me`, `/me/keys`, `/me/oauth-grants`: see [Household collaboration](#household-collaboration)                                                                                                                                                                                                                                                                                                                                                 |
+| **Share links**              | `POST /plans/{id}/share-links`, `GET /share-links`, `DELETE /share-links/{id}`, `POST /share-links/{id}/refresh`; public `GET /shared/{token}`: see [Share links](#share-links)                                                                                                                                                                                                                                                                                                                               |
+| **Check-ins**                | `GET/PATCH /schedule`, `POST /plans/{id}/checkins`, `GET /plans/{id}/health`, `GET /plans/{id}/changes-since-checkin`, `GET /notifications`, `POST /notifications/read`: see [Scheduled check-ins](#scheduled-check-ins)                                                                                                                                                                                                                                                                                      |
+| **FX rates**                 | `GET/PUT/POST /households/{id}/fx-rates`, `DELETE /households/{id}/fx-rates/{FROM-TO}`: see [Multi-currency](#multi-currency)                                                                                                                                                                                                                                                                                                                                                                                 |
+| **OAuth**                    | `/.well-known/oauth-*`, `/oauth/*` (protocol), `GET /oauth/clients`, `DELETE /oauth/clients/{id}`: see [OAuth for remote MCP clients](#oauth-for-remote-mcp-clients)                                                                                                                                                                                                                                                                                                                                          |
+| **Households & people**      | `GET/POST /households`; `GET/PUT/PATCH/DELETE /households/{id}`; `/households/{id}/people[/{personId}]` and `/dependents[/{id}]` (CRUD; adding a second person switches the household to couple mode)                                                                                                                                                                                                                                                                                                         |
+| **Finances**                 | `/households/{id}/accounts`, `/real-assets`, `/debts` (list, create, get, PUT, PATCH, DELETE by id; delete is `409 IN_USE` while a plan references the item, unless `force=true`; prefer `archived: true`); `POST /households/{id}/balances` (bulk update); **`PUT /households/{id}/current-finances`** (whole document, atomic); **`PUT /households/{id}/reorder/{accounts\|real-assets\|debts\|plans}`** (display order)                                                                                    |
+| **Plans**                    | `GET/POST /plans`; `GET/PUT/PATCH/DELETE /plans/{id}`; `POST /plans/{id}/duplicate`, `/archive`, `/unarchive`, `/set-main`                                                                                                                                                                                                                                                                                                                                                                                    |
+| **Plan collections**         | `/plans/{id}/income`, `/expenses`, `/milestones`, `/flows`, `/planned-accounts`, `/planned-real-assets`: list, add (`id` optional, `?index=`), get, PUT, PATCH, DELETE by id; `PUT /plans/{id}/reorder/{collection}` (flows: the order is the funding priority)                                                                                                                                                                                                                                               |
+| **Plan settings**            | singletons with GET/PUT/PATCH/DELETE: `/assumptions`, `/tax-settings`, `/withdrawal-strategy`, `/drawdown`, `/flex-spending`, `/risk-guardrails`, `/tax-strategy`, `/monte-carlo-settings`, `/leftover` (DELETE removes optional ones, resets the others to defaults)                                                                                                                                                                                                                                         |
+| **History & undo**           | `GET /plans/{id}/versions`, `GET .../versions/{n}`, `GET .../versions/{n}/diff?against=current`, `POST .../versions/{n}/restore` (writes the old body as a **new** version; history is append-only)                                                                                                                                                                                                                                                                                                           |
+| **Branches**                 | `POST /plans/{id}/branches`, `GET /plans/{id}/branches`, `GET /plans/{id}/diff` (branch vs parent, with outcomes), `POST /plans/{id}/merge`                                                                                                                                                                                                                                                                                                                                                                   |
+| **Change sets**              | `POST /plans/{id}/change-sets` (propose), `GET /plans/{id}/change-sets`, `GET /change-sets/{id}`, `POST /change-sets/{id}/apply`, `POST /change-sets/{id}/discard`, `POST /plans/{id}/preview` (what-if, stores nothing)                                                                                                                                                                                                                                                                                      |
+| **Simulation**               | `POST /plans/{id}/simulate`, `POST /simulate` (stateless), `POST /plans/{id}/monte-carlo`, `/historical`                                                                                                                                                                                                                                                                                                                                                                                                      |
+| **Solvers**                  | `POST /plans/{id}/solve/max-spending`, `/earliest-retirement`, `/required-savings`, `/required-portfolio`, `/safe-withdrawal-rate`, `/goal-seek`, `/tax-strategy`                                                                                                                                                                                                                                                                                                                                             |
+| **Insights**                 | `POST /plans/{id}/insights/explain`, `/explain-year`, `/explain-years`, `/explain-difference`, `/audit`, `/sensitivity`, `/guardrails`, `/guyton-klinger`, **`/income-by-tax-rate`**, **`/strategy-matrix`** (job); `GET /plans/{id}/tax-breakdown`; `POST /insights/compare`                                                                                                                                                                                                                                 |
+| **Assets abroad**            | `GET /plans/{id}/cross-border/items`, `POST /plans/{id}/insights/explain-taxation`, `GET /plans/{id}/tax-breakdown/by-country`; rule tables `GET /cross-border/countries`, `/cross-border/non-resident-rules/{country}`, `/cross-border/treaties[?country=]`, `/cross-border/treaties/{a}/{b}`, `/cross-border/wrappers?residence=&accountCountry=`, `/cross-border/simplifications?countries=`, `POST /cross-border/explain`: see [Assets in another country](#assets-in-another-country-cross-border-plans) |
+| **Scenarios**                | `GET /scenarios/templates`; `POST /plans/{id}/scenarios/{templateId}/preview`, `.../branch`; `GET /plans/{id}/scenarios/survivor`                                                                                                                                                                                                                                                                                                                                                                             |
+| **Jobs**                     | `GET /jobs`, `GET /jobs/{id}`, `GET /jobs/{id}/result`, `GET /jobs/{id}/events` (SSE), `POST /jobs/{id}/cancel`                                                                                                                                                                                                                                                                                                                                                                                               |
+| **Progress**                 | `/households/{id}/snapshots` (list, create, get, PUT, PATCH, DELETE), `POST .../snapshots/record` (from current finances), `POST .../snapshots/bulk`                                                                                                                                                                                                                                                                                                                                                          |
+| **Data**                     | `GET /households/{id}/export` (also `/document`), `POST /import` (Glideworth or ProjectionLab; `dryRun`), `POST /households/{id}/import/csv` (+ `/analyze`), `GET /plans/{id}/export/tables/{table}`, `GET /households/{id}/export/progress`, `GET /plans/{id}/report`                                                                                                                                                                                                                                        |
+| **Settings, keys, webhooks** | `GET/PUT/PATCH /settings`; `GET/POST /keys`, `DELETE /keys/{id}` (revoke); `/webhooks` CRUD (owner), `/webhooks/{id}/ping`, `/webhooks/{id}/deliveries`; webhook events: `plan.updated`, `simulation.completed`, `snapshot.created`, `snapshot.updated`, `checkin.completed`, `notification.created`, `webhook.ping`                                                                                                                                                                                          |
 
 ## Web app endpoints
 
@@ -498,58 +497,36 @@ api "$GLIDEWORTH/api/v1/plans/plan-main/scenarios/survivor?ages=70,80,90&evaluat
 ```
 
 Templates: `market-crash`, `job-loss`, `career-break`, `early-retirement`, `downsizing`, `child`,
-`inheritance`, `long-term-care`, `survivor`, `relocation` (`{to: {country, region?}, month, returnMonth?,
-personId?}`: adds residency entries; `returnMonth` must be after `month`). Unknown template `404`; bad parameters `400`. Survivor
+`inheritance`, `long-term-care`, `survivor`. Unknown template `404`; bad parameters `400`. Survivor
 scenarios cover each partner at each age (couples only; empty for one person) and carry notes: survivor
 benefits are **not** added automatically.
 
-## Moving country (cross-border plans)
+## Assets in another country (cross-border plans)
 
-Glideworth is generic: any household can move between the countries it has rules for, partners can live in
-different countries, and every account, property, debt and income has a country of its own. See
-docs/ARCHITECTURE.md §4.6 for the model and docs/USER-GUIDE.md for the user's view.
+The household lives in one country, `Household.location`, for the whole plan; Glideworth does not model moving
+country. Every account, property, debt and income can have a country of its own, so a household in Spain can keep
+a UK pension and a let flat in London. When the plan estimates taxes and something is in another country (or a US
+citizen or green-card holder lives outside the US), the other country taxes it as a non-resident and the household's
+country gives relief under the treaty. See docs/ARCHITECTURE.md §4.6 for the model and docs/USER-GUIDE.md for the
+user's view.
 
-**Residency timeline.** Dated moves are a plan collection, `/plans/{id}/residency`
-(`{id?, personId?, from: DateRef, location: {country, region?}}`; no `personId` = everyone). Relocation
-milestone effects (`relocate`, optional `personId`) still work. Writes are checked against the household
-and the errors say how to fix them: an unknown `personId` (lists the valid ids), a move dated before the
-plan starts (points at the person's residence history), an unknown milestone, two moves for the same person
-in one month. The same check runs for change sets, branches and full-plan writes.
-
-```bash
-api -X POST $GLIDEWORTH/api/v1/plans/uk-plan-main/residency \
-  -d '{"personId":"p-sam","from":{"kind":"date","date":"2030-01"},"location":{"country":"AE"}}'
-api $GLIDEWORTH/api/v1/plans/uk-plan-main/residency-timeline
-# => people[].steps (household / residency / milestone), years[] (residence per person with months in split
-#    years), countries, crossBorder, warnings (countries without rules, unknown treaty pairs, moves that never happen)
-```
-
-**Person fields.** `Person.citizenships`, `usGreenCard`, `residenceHistory` (before the plan, oldest first)
-and `statePensionRecords` (`{country, qualifyingYears, asOf?, voluntaryYears?}`) are on the person routes
-and, checked as a unit, on `GET/PUT/PATCH /households/{id}/people/{personId}/cross-border` (overlapping or
-out-of-order history, entries after the plan start, duplicate schemes and duplicate citizenships are 400s
-naming the field). Account `jurisdiction`, `RealAsset.country` / `acquiredOn` / `valuations`,
-`Debt.country`, income `country` / `governmentService` and salary `endOfService` go through the usual
-finance and plan routes.
+**Where it is set.** Account `jurisdiction`, `RealAsset.country` / `acquiredOn` / `valuations`, `Debt.country`,
+income `country` / `governmentService` and salary `endOfService` go through the usual finance and plan routes.
+`Person.citizenships` and `usGreenCard` are fields of the person
+(`PUT/PATCH /households/{id}/people/{personId}`).
 
 **Tax by country and basis.** `GET /plans/{id}/tax-breakdown/by-country?basis=real&fromYear=&toYear=`:
-lifetime `totals.rows` (`{country, basis, amount}`), `totals.byCountry`, `totals.byBasis`, per-year rows
-with each person's residence, the basis glossary and the simplifications that apply. `basis` is one of
-`residence`, `source`, `citizenship`, `relief` (negative: the credit for tax paid elsewhere), `exit`,
-`return`. Single-country plans answer `crossBorder: false` with one residence row.
+lifetime `totals.rows` (`{country, basis, amount}`), `totals.byCountry`, `totals.byBasis`, per-year rows,
+the basis glossary and the simplifications that apply. `basis` is one of `residence` (the household's country),
+`source` (another country taxing a non-resident), `citizenship` (US persons abroad) and `relief` (negative: the
+credit for tax paid elsewhere). Plans with nothing abroad answer `crossBorder: false` with one residence row.
 
 **How is this taxed and why.** `POST /plans/{id}/insights/explain-taxation {itemId, year?}` for an
-account, real asset, debt or income: the item's country and currency, the owner's residence that year
-(both, with months, in a split year), and per income category the non-resident rule, the treaty article,
-the residence country's view of a foreign wrapper, whether each side taxes and the relief; `warnings` for
-unknown treaty pairs and unrecognised wrappers; `citizenship` for US persons abroad. Unknown ids are a 404
-listing the plan's cross-border items (`GET /plans/{id}/cross-border/items`).
-
-**Stay or move.** `POST /plans/{id}/insights/stay-or-move` with `{to, month, returnMonth?, personId?}` (the
-relocation template) or `{movePlanId}` (an existing branch): outcome for both, deltas in today's money,
-lifetime tax by country and basis for both, an attribution of the end-net-worth difference, the plan
-changes, the ops and the template notes. Two deterministic projections, answered inline (tens of
-milliseconds); for a chance-of-success comparison branch it and use the Monte Carlo endpoints.
+account, real asset, debt or income: the item's country and currency, the country the household lives in,
+and per income category the non-resident rule, the treaty article, the residence country's view of a foreign
+wrapper, whether each side taxes and the relief; `warnings` for unknown treaty pairs and unrecognised wrappers;
+`citizenship` for US persons abroad. Unknown ids are a 404 listing the plan's cross-border items
+(`GET /plans/{id}/cross-border/items`).
 
 **Rule tables** (read scope, no plan needed): `GET /cross-border/countries`,
 `/cross-border/non-resident-rules/{country}` (404 lists the countries that have rules),
@@ -559,15 +536,17 @@ category, or `known: false` with the fallback), `/cross-border/wrappers?residenc
 `/cross-border/simplifications?countries=GB,AE`.
 
 **Audit.** `POST /plans/{id}/insights/audit` includes the cross-border checks: `XB_FOREIGN_ASSET_BASE_CURRENCY`,
-`XB_MISSING_FX`, `XB_TAX_FX_MISSING`, `XB_WRAPPER_NON_RESIDENT_CONTRIBUTIONS`,
-`XB_UK_TEMPORARY_NON_RESIDENCE`, `XB_STATE_PENSION_GAP` (counts planned voluntary years),
-`XB_UNKNOWN_TREATY`.
+`XB_MISSING_FX`, `XB_TAX_FX_MISSING`, `XB_WRAPPER_NON_RESIDENT_CONTRIBUTIONS`, `XB_UNKNOWN_TREATY`.
 
-**Caching.** Results are cached per plan version, options, household version and engine version (0.5.0);
+**Caching.** Results are cached per plan version, options, household version and engine version (0.6.0);
 rows from another engine version are never served.
 
-Validation messages now name the failing fields everywhere (`validation failed: residency.0.location.country:
-...`), and a Glideworth import whose plans name another household is a 422 saying which `householdId` to set.
+**Stored plans from before 2026-11-19.** Plans, documents and branch patches saved with a residency timeline,
+relocation milestone effects, past residence or state-pension records are migrated when they are read
+(document schema version 2): those fields are dropped and the household stays at its location.
+
+Validation messages name the failing fields everywhere (`validation failed: income.0.amount.value: ...`), and
+a Glideworth import whose plans name another household is a 422 saying which `householdId` to set.
 
 ## Change sets: how agents make safe edits
 
@@ -657,7 +636,7 @@ The same flow over MCP (`preview_changes` -> `propose_change_set` -> `apply_chan
 ## Export and import
 
 ```bash
-# Full backup of one household (GlideworthDocument v1: household, finances, plans, progress, settings)
+# Full backup of one household (GlideworthDocument, schema version 2: household, finances, plans, progress, settings)
 api $GLIDEWORTH/api/v1/households/hh-sample/export > backup.json
 
 # Restore into a clean database (409 if the household exists, unless "mode": "replace")
@@ -675,7 +654,7 @@ that already exists keeps every earlier version and the import is recorded as it
 replaced or merged keeps counting its version (ETag) upward.
 
 **Imports run in a worker thread.** The document import (`POST /import`), the CSV routes (`import/csv`,
-`import/csv/analyze`) and the bank-file import are parsed, analysed and previewed in a separate thread (and so are
+`import/csv/analyze`) are parsed, analysed and previewed in a separate thread (and so are
 the MCP import tools), so a large or crafted file does not hold up other requests. The request waits for the result;
 an apply is then written in one transaction. Limits:
 
@@ -688,21 +667,6 @@ an apply is then written in one transaction. Limits:
 | The household changed between reading it and writing the import (`dryRun: false`)                                                               | `409 VERSION_CONFLICT`; nothing is written. Run the import again                                                                           |
 
 The two `422`s depend on the file, so retrying the same file does not help; `503` and `429` are worth retrying.
-
-### OFX / QFX / QIF import (dry run first)
-
-`POST /households/{id}/import/bank-file` takes `{ text, format?: ofx|qif|auto, dateFormat?, accountName?, balances?, planId?, annualise?, categoryMap?, excludeCategories?, dryRun? }`
-(`dryRun` defaults to `true`). Bank and card statements: balances are reconciled against current finances exactly like the CSV
-balance import (match by name or `balances.accountMap`; `balances.createMissing` creates accounts and debts; foreign-currency
-accounts keep their `currency`, add an FX rate), and spending is summarised into annual expense events on `planId` (transfers,
-income and card payments are excluded). Account numbers are masked to their last four digits. `text` is limited to
-2 MB (2,000,000 characters), which holds years of statements; a larger file is refused with `400 VALIDATION` before it
-is parsed, so export a shorter date range. One apply may create at most 1,000 new accounts and debts with
-`balances.createMissing`; a file that would create more is refused with `400 VALIDATION` (the message names the
-limit, `details` carries `limit` and `count`) and nothing is written. A dry run still reports how many it would
-create in `reconciliation.created`. The response is
-`{ format, dryRun, applied, accounts, reconciliation, summary, issues, issueCount, changes? }`; blocking errors are `422 IMPORT_FAILED`
-and change nothing. MCP: `preview_bank_file_import` / `apply_bank_file_import`.
 
 ### CSV import (dry run first)
 
@@ -862,12 +826,10 @@ the engine itself refuses such a plan).
 
 ## More analysis
 
-| Route                                                                                                                | Purpose                                                                                                                                                      |
-| -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `POST /plans/{id}/insights/debt-payoff` `{ extraPerMonth? \| flowId?, targetIds?, rollover? }`                       | minimum payments vs **avalanche** vs **snowball** with the same extra budget: interest paid/saved, debt-free date, per-debt payoff dates, `best`             |
-| `POST /plans/{id}/insights/strategy-matrix` `{ candidates?, successRate = true }` (job)                              | **strategies x metrics** (lifetime tax, net legacy, chance of success, final net worth) with per-column scores 0..1, deltas and `best` per column: a heatmap |
-| `POST /plans/{id}/insights/income-by-tax-rate` `{ jurisdictionId?, basis?, schedules? }`                             | income taxed at each marginal rate per year: `{ columns: [{ rate, labels }], years, cells[year][column], detail }`                                           |
-| `POST /insights/sepp-comparison` `{ balance, startAge, interestRate?, growthRate? }` or `{ householdId, accountId }` | **72(t)**: RMD vs fixed amortisation vs fixed annuitisation: first-year payment, total, balance left                                                         |
+| Route                                                                                    | Purpose                                                                                                                                                      |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `POST /plans/{id}/insights/strategy-matrix` `{ candidates?, successRate = true }` (job)  | **strategies x metrics** (lifetime tax, net legacy, chance of success, final net worth) with per-column scores 0..1, deltas and `best` per column: a heatmap |
+| `POST /plans/{id}/insights/income-by-tax-rate` `{ jurisdictionId?, basis?, schedules? }` | income taxed at each marginal rate per year: `{ columns: [{ rate, labels }], years, cells[year][column], detail }`                                           |
 
 ## Webhooks
 

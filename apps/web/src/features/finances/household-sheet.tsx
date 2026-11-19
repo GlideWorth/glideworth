@@ -376,7 +376,6 @@ function HouseholdSheetBody() {
             <PersonCrossBorderFields
               person={p}
               home={h.location.country}
-              asOf={doc.finances.asOf}
               onChange={(patch, label, key) => setPerson(p.id, patch, label, key)}
             />
           </FormSection>
@@ -499,7 +498,7 @@ function HouseholdSheetBody() {
 
       <FormSection
         title="Tax residence"
-        description="Where you live now; it drives which tax rules apply when a plan uses tax estimation. Plan a move abroad in each plan's “Where you live” section."
+        description="Where you live, for the whole plan; it decides which tax rules apply when a plan estimates taxes. Accounts, property and income in another country can be taxed there too, with credit here for that tax."
       >
         <FieldGrid>
           <EnumField

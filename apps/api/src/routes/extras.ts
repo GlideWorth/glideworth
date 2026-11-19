@@ -1,4 +1,4 @@
-/** FX rates, debt payoff strategies, income-by-tax-rate matrix and 72(t) SEPP comparison. */
+/** FX rates and the income-by-tax-rate matrix. */
 import { FxRate } from "@glideworth/core";
 import { z } from "@hono/zod-openapi";
 import { parseIfMatch } from "../middleware.js";
@@ -118,56 +118,6 @@ export function extraRoutes({ app, svc }: RouteCtx) {
   app.openapi(
     route("simulate", {
       method: "post",
-      path: "/api/v1/plans/{id}/insights/debt-payoff",
-      operationId: "compareDebtPayoff",
-      tags: ["Insights"],
-      summary: "Debt payoff strategies: minimum payments vs avalanche vs snowball",
-      description:
-        "Runs the plan three ways with the same extra budget: minimum payments only, avalanche (highest rate first) and snowball (smallest balance first). Reports interest paid and saved, the debt-free date and when each debt is cleared. Give an existing `debtPaydown` flow (`flowId`, its budget is reallocated) or an `extraPerMonth` amount.",
-      request: {
-        params: IdParam,
-        body: {
-          content: {
-            "application/json": {
-              schema: z
-                .object({
-                  flowId: z
-                    .string()
-                    .optional()
-                    .describe("A debtPaydown flow whose budget each strategy reallocates."),
-                  extraPerMonth: z
-                    .number()
-                    .positive()
-                    .optional()
-                    .describe("Otherwise: extra monthly payment (nominal)."),
-                  targetIds: z
-                    .array(z.string())
-                    .max(50)
-                    .optional()
-                    .describe("Debts / financed assets in scope (default all)."),
-                  rollover: z
-                    .boolean()
-                    .optional()
-                    .describe("Snowball rollover of freed payments (default true)."),
-                })
-                .meta({ id: "DebtPayoffRequest", examples: [{ extraPerMonth: 500 }] }),
-            },
-          },
-          required: true,
-        },
-      },
-      responses: { 200: json(Any("DebtPayoffComparison"), "Comparison") },
-    }),
-    async (c) =>
-      c.json(
-        (await svc(c).sim.debtPayoff(c.req.valid("param").id, c.req.valid("json"))) as never,
-        200,
-      ),
-  );
-
-  app.openapi(
-    route("simulate", {
-      method: "post",
       path: "/api/v1/plans/{id}/insights/income-by-tax-rate",
       operationId: "incomeByTaxRate",
       tags: ["Insights"],
@@ -208,41 +158,5 @@ export function extraRoutes({ app, svc }: RouteCtx) {
         .parse((await c.req.json().catch(() => ({}))) ?? {});
       return c.json(svc(c).sim.incomeByTaxRate(c.req.valid("param").id, body) as never, 200);
     },
-  );
-
-  app.openapi(
-    route("simulate", {
-      method: "post",
-      path: "/api/v1/insights/sepp-comparison",
-      operationId: "compareSepp",
-      tags: ["Insights"],
-      summary: "72(t) SEPP methods side by side (RMD, fixed amortisation, fixed annuitisation)",
-      description:
-        "Stateless: give `balance` and `startAge`, or `householdId` + `accountId` to take them from an account and its owner. Shows the first-year payment, the total withdrawn and the balance left for each method.",
-      request: {
-        body: {
-          content: {
-            "application/json": {
-              schema: z
-                .object({
-                  balance: z.number().positive().optional(),
-                  startAge: z.number().min(18).max(100).optional(),
-                  interestRate: z.number().min(0).max(0.2).optional().describe("Default 5%."),
-                  growthRate: z.number().min(-0.5).max(0.5).optional().describe("Default 5%."),
-                  householdId: z.string().optional(),
-                  accountId: z.string().optional(),
-                })
-                .meta({
-                  id: "SeppComparisonRequest",
-                  examples: [{ balance: 800000, startAge: 52 }],
-                }),
-            },
-          },
-          required: true,
-        },
-      },
-      responses: { 200: json(Any("SeppComparison"), "Comparison") },
-    }),
-    (c) => c.json(svc(c).sim.seppComparison(c.req.valid("json")) as never, 200),
   );
 }

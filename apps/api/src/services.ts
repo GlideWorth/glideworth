@@ -15,7 +15,7 @@
  *   oauth        OAuth 2.1 authorization server for remote MCP clients
  *   shares       expiring, revocable read-only links to a plan's results
  *   checkins     scheduler, plan health history, notifications
- *   crossBorder  residency timeline, cross-border person profile, tax by country, rule tables
+ *   crossBorder  items held in another country, how they are taxed, tax by country, rule tables
  *   keys / webhooks / settings / imports
  */
 import type { Actor } from "@glideworth/core";
@@ -139,15 +139,7 @@ export class Services {
       this.sim,
       opts.checkins,
     );
-    this.crossBorder = new CrossBorderService(this.ctx, this.plans, this.households, this.sim);
-    // Residency entries are checked against the household (people, plan start) on every plan write
-    // that changes them (REST, change sets, branches, imports).
-    this.plans.checks.push((next, current) => {
-      if (!next.residency?.length) return;
-      if (JSON.stringify(next.residency) === JSON.stringify(current?.residency)) return;
-      const rec = this.households.get(next.householdId);
-      this.crossBorder.checkResidency(next, rec.household, rec.finances.asOf, next.residency);
-    });
+    this.crossBorder = new CrossBorderService(this.sim);
   }
 }
 

@@ -7,7 +7,6 @@
  */
 import {
   type Actor,
-  CROSS_BORDER_TEMPLATES,
   careerBreakScenario,
   childScenario,
   downsizingScenario,
@@ -17,7 +16,6 @@ import {
   longTermCareScenario,
   marketCrashScenario,
   type Plan,
-  relocationScenario,
   type ScenarioTemplate,
   type SimulationInput,
   survivorScenario,
@@ -156,52 +154,7 @@ export const TEMPLATES: Record<string, TemplateDef> = {
     z.object({ personId: Id.describe("Who dies."), age: z.number().min(30).max(120) }),
     (i, p) => survivorScenario(i, p),
   ),
-  relocation: def(
-    z
-      .object({
-        to: z
-          .object({
-            country: z
-              .string()
-              .regex(/^[A-Z]{2}$/, "a two-letter ISO country code in capitals, e.g. AE, GB, US")
-              .describe("Country moved to (ISO alpha-2)."),
-            region: z
-              .string()
-              .max(10)
-              .optional()
-              .describe("State, province or nation code, when it matters."),
-          })
-          .describe("Where tax residence moves."),
-        month: Month.describe("First month living in the new country."),
-        returnMonth: Month.optional().describe(
-          "Optional: first month back in the current country.",
-        ),
-        personId: Id.optional().describe("Who moves (default: everyone in the household)."),
-      })
-      .refine((p) => !p.returnMonth || p.returnMonth > p.month, {
-        message: "returnMonth must be after month (the move back comes after the move out)",
-        path: ["returnMonth"],
-      }),
-    (i, p) => {
-      if (p.to.country === i.household.location.country)
-        throw new ApiError(
-          400,
-          "VALIDATION",
-          `the household already lives in ${p.to.country}; pick the country you would move to.`,
-          { field: "to.country" },
-        );
-      return relocationScenario(i, {
-        to: { country: p.to.country, ...(p.to.region ? { region: p.to.region } : {}) },
-        month: p.month,
-        ...(p.returnMonth ? { returnMonth: p.returnMonth } : {}),
-        ...(p.personId ? { personId: p.personId } : {}),
-      });
-    },
-  ),
 };
-
-/** Every template the API can run: core's catalogue plus the cross-border ones. */
-const CATALOGUE = [...WHAT_IF_TEMPLATES, ...CROSS_BORDER_TEMPLATES];
 
 export class ScenariosService {
   constructor(
@@ -212,7 +165,7 @@ export class ScenariosService {
 
   /** The catalogue: id, title and the parameters each template takes (JSON Schema). */
   list() {
-    return CATALOGUE.map((t) => ({
+    return WHAT_IF_TEMPLATES.map((t) => ({
       ...t,
       paramsSchema: TEMPLATES[t.id]
         ? cleanSchema(z.toJSONSchema(TEMPLATES[t.id]!.params))

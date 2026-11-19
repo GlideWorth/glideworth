@@ -1,9 +1,9 @@
 ---
 title: API - simulation, solvers, insights and jobs
-description: Deterministic projections with compact views, Monte Carlo and solver jobs with polling, server-sent events and cancellation, insights, and moving-country routes.
+description: Deterministic projections with compact views, Monte Carlo and solver jobs with polling, server-sent events and cancellation, insights, and tax by country.
 section: API and MCP
 order: 14
-lastChecked: 2026-11-16
+lastChecked: 2026-11-19
 ---
 
 import Callout from '../../../components/Callout.astro';
@@ -73,17 +73,18 @@ All are jobs with the same `?wait=` and a `monteCarlo` override such as `{"monte
 | `POST /plans/{id}/insights/audit` | Modelling mistakes, with severities and ready-made fixes. |
 | `POST /plans/{id}/insights/sensitivity` | Tornado data; `metric` can be `successRate` (a job). |
 | `POST /plans/{id}/insights/guardrails`, `/guyton-klinger` | Spending guardrails. |
-| `POST /plans/{id}/insights/debt-payoff`, `/income-by-tax-rate`, `/strategy-matrix` | Debt strategies, income by marginal rate, strategies against metrics (a job). |
+| `POST /plans/{id}/insights/income-by-tax-rate`, `/strategy-matrix` | Income by marginal rate, strategies against metrics (a job). |
 | `GET /plans/{id}/tax-breakdown` | Taxes by year, jurisdiction and kind. |
-| `POST /insights/compare`, `POST /insights/sepp-comparison` | Compare 2 to 6 plans; 72(t) methods. |
+| `POST /insights/compare` | Compare 2 to 6 plans. |
 
-## Moving country
+## Items in another country
 
-`GET /plans/{id}/residency-timeline`, `GET /plans/{id}/cross-border/items`, `POST /plans/{id}/insights/explain-taxation`,
-`POST /plans/{id}/insights/stay-or-move`, `GET /plans/{id}/tax-breakdown/by-country`, and the rule tables `GET
-/cross-border/countries`, `/cross-border/non-resident-rules/{country}`, `/cross-border/treaties`,
-`/cross-border/treaties/{a}/{b}`, `/cross-border/wrappers` and `/cross-border/simplifications`, plus
-`POST /cross-border/explain`. Stay-or-move runs two deterministic projections and answers inline.
+For a plan with accounts, property or income in another country (the household lives in one country for the whole
+plan): `GET /plans/{id}/cross-border/items`, `POST /plans/{id}/insights/explain-taxation`,
+`GET /plans/{id}/tax-breakdown/by-country`, and the rule tables `GET /cross-border/countries`,
+`/cross-border/non-resident-rules/{country}`, `/cross-border/treaties`, `/cross-border/treaties/{a}/{b}`,
+`/cross-border/wrappers` and `/cross-border/simplifications`, plus `POST /cross-border/explain`. There are no routes for
+a change of residence: moving country is not modelled.
 
 <Callout type="note" title="What this does not do">
   A solver's single evaluation runs in one thread; only plain Monte Carlo is split. The `NOT_IMPLEMENTED` error (501)

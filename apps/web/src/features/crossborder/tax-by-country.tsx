@@ -1,8 +1,8 @@
 /**
  * Taxes page, cross-border plans only: what the estimate leaves out (shown first), tax by country
- * and by reason (residence, source, citizenship, relief, exit, return) for the plan and the selected
- * year, with relief shown as its own negative line so it is visible that nothing is taxed twice, and
- * a "how this is taxed and why" panel per account, property and income.
+ * and by reason (residence, source, citizenship, relief) for the plan and the selected year, with
+ * relief shown as its own negative line so it is visible that nothing is taxed twice, and a "how
+ * this is taxed and why" panel per account, property and income.
  */
 import {
   crossBorderItems,
@@ -29,7 +29,7 @@ import { Card, CardBody, CardHeader } from "../../components/ui/card";
 import { Select } from "../../components/ui/select";
 import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/table";
 import { cn } from "../../lib/cn";
-import { countryLabel, locationLabel } from "../../lib/countries";
+import { countryLabel } from "../../lib/countries";
 import { periodShortLabel } from "../../lib/period";
 import { useViewFormat as useFormat } from "../results/format-context";
 import { countrySlot } from "./model";
@@ -47,7 +47,7 @@ function pivot(rows: Row[], include: string[] = []) {
     by.set(r.country, m);
     used.add(r.basis);
   }
-  // Countries you live in that tax nothing (the UAE) still get a row, so a zero is visible.
+  // The country you live in still gets a row when it taxes nothing (the UAE), so a zero is visible.
   for (const c of include) if (!by.has(c)) by.set(c, {});
   const bases = TAX_BASES.filter((b) => used.has(b));
   const countries = [...by.entries()]
@@ -156,46 +156,13 @@ export function CrossBorderCaveats({ countries }: { countries: string[] }) {
   );
 }
 
-/** One year's residence per person ("Alex: United Kingdom 3 months, United Arab Emirates 9 months"). */
-export function ResidenceLine({
-  p,
-  people,
-}: {
-  p: PeriodResult;
-  people: { id: string; name: string }[];
-}) {
-  if (!p.taxes.residence) return null;
-  return (
-    <ul className="flex flex-col gap-0.5 text-[12px] text-ink-2">
-      {people.map((x) => {
-        const segs = p.taxes.residence?.[x.id];
-        if (!segs?.length) return null;
-        return (
-          <li key={x.id}>
-            <span className="font-medium text-ink">{x.name}</span> lives in{" "}
-            {segs
-              .map((s) =>
-                segs.length > 1 || s.months < p.months
-                  ? `${locationLabel(s)} (${s.months} month${s.months === 1 ? "" : "s"})`
-                  : locationLabel(s),
-              )
-              .join(", then ")}
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
 /** The selected year's tax by country and reason (also used in the Results year drill-down). */
 export function YearTaxByCountry({
   p,
-  people,
   basis,
   home,
 }: {
   p: PeriodResult;
-  people: { id: string; name: string }[];
   basis: ValueBasis;
   home: string;
 }) {
@@ -207,16 +174,7 @@ export function YearTaxByCountry({
   const relief = rows.filter((r) => r.basis === "relief").reduce((s, r) => s + r.amount, 0);
   return (
     <div className="flex flex-col gap-2">
-      <ResidenceLine p={p} people={people} />
-      <BasisTable
-        rows={rows}
-        caption={`Tax by country and reason in ${p.year}`}
-        include={[
-          ...new Set(
-            Object.values(p.taxes.residence ?? {}).flatMap((x) => x.map((s) => s.country)),
-          ),
-        ]}
-      />
+      <BasisTable rows={rows} caption={`Tax by country and reason in ${p.year}`} include={[home]} />
       {relief < -0.5 ? <ReliefNote /> : null}
     </div>
   );
@@ -292,13 +250,7 @@ export function CrossBorderTaxCard({
             <BasisTable
               rows={t.lifetime}
               caption="Lifetime tax by country and reason"
-              include={[
-                ...new Set(
-                  t.years.flatMap((y) =>
-                    Object.values(y.residence ?? {}).flatMap((x) => x.map((s) => s.country)),
-                  ),
-                ),
-              ]}
+              include={[home]}
             />
             {relief < -0.5 ? <ReliefNote /> : null}
           </div>
@@ -307,7 +259,7 @@ export function CrossBorderTaxCard({
               {p.year}
               {p.months < 12 ? ` (${p.months} months)` : ""}
             </div>
-            <YearTaxByCountry p={p} people={doc.household.people} basis={basis} home={home} />
+            <YearTaxByCountry p={p} basis={basis} home={home} />
           </div>
         </div>
         <dl className="grid gap-x-4 gap-y-1 text-[11.5px] text-ink-3 sm:grid-cols-2">
@@ -392,19 +344,18 @@ export function ItemTaxationPanel({
   yearIdx: number;
   onPick: (i: number) => void;
 }) {
-  const items = useMemo(() => crossBorderItems(input, result), [input, result]);
+  const items = useMemo(() => crossBorderItems(input), [input]);
   const [pick, setPick] = useState<string | null>(null);
   const id = pick && items.some((i) => i.id === pick) ? pick : (items[0]?.id ?? null);
   const p = result.periods[yearIdx]!;
   const e = useMemo(() => {
     if (!id) return null;
     try {
-      return { value: explainItemTaxation(input, id, p.year, result) };
+      return { value: explainItemTaxation(input, id, p.year) };
     } catch (err) {
       return { error: err instanceof Error ? err.message : String(err) };
     }
-  }, [input, id, p.year, result]);
-  const people = input.household.people;
+  }, [input, id, p.year]);
   return (
     <Card>
       <CardHeader
@@ -441,7 +392,7 @@ export function ItemTaxationPanel({
       <CardBody className="flex flex-col gap-3">
         {items.length === 0 ? (
           <p className="text-[12.5px] text-ink-2">
-            Nothing in this plan is in a country other than where its owner lives.
+            Nothing in this plan is in a country other than where you live.
           </p>
         ) : null}
         {e && "error" in e ? <p className="text-[12.5px] text-negative">{e.error}</p> : null}
@@ -449,14 +400,8 @@ export function ItemTaxationPanel({
           <>
             <p className="text-[13px]">{e.value.summary}</p>
             <div className="text-[12px] text-ink-2">
-              In {countryLabel(e.value.country)}, held in {e.value.currency}.{" "}
-              {e.value.residence
-                .map(
-                  (r) =>
-                    `${people.find((x) => x.id === r.personId)?.name ?? r.personId} lives in ${locationLabel(r)}${r.months < 12 ? ` for ${r.months} months` : ""}`,
-                )
-                .join("; ")}
-              .
+              In {countryLabel(e.value.country)}, held in {e.value.currency}. You live in{" "}
+              {countryLabel(e.value.residence)}.
             </div>
             {e.value.warnings.length ? (
               <ul className="flex flex-col gap-1 rounded-md bg-ochre-soft px-3 py-2 text-[12px] text-ochre">

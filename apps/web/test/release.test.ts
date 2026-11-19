@@ -1,6 +1,5 @@
 import { buildSimulationInput, defaultsForCountry, simulate } from "@glideworth/core";
 import { createUkSampleDocument } from "@glideworth/core/samples";
-import { importBankFileInto } from "@glideworth/importers";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { createElement } from "react";
@@ -13,7 +12,6 @@ import {
   withFxVolatility,
 } from "../src/features/chance/fx-risk";
 import { NotificationCentre } from "../src/features/checkins/notification-centre";
-import { bankApplyRequest, spendingPlanId } from "../src/features/import/bank-import";
 import { countryDefaults } from "../src/features/plan-editor/state/defaults";
 import {
   buildEntityIndex,
@@ -29,50 +27,6 @@ import {
   periodShortLabel,
   periodSpan,
 } from "../src/lib/period";
-
-describe("W4-1: bank files are applied as previewed", () => {
-  const dayFirst =
-    "!Account\nNHousehold Current\nTBank\n^\n!Type:Bank\nD03/02/2026\nT-40.00\nLGroceries\n^\nD04/02/2026\nT-60.00\nLGroceries\n^\n";
-  it("a day-first QIF sends its date order to the server", () => {
-    const req = bankApplyRequest({
-      text: dayFirst,
-      format: "qif",
-      dateFormat: "DD/MM/YYYY",
-      balances: false,
-      createMissing: false,
-      planId: "uk-plan-main",
-      excluded: [],
-    });
-    expect(req).toMatchObject({ dateFormat: "DD/MM/YYYY", planId: "uk-plan-main", dryRun: false });
-    // The browser preview reads the same file with the same option as the server will.
-    const o = importBankFileInto(createUkSampleDocument(), dayFirst, { dateFormat: "DD/MM/YYYY" });
-    expect(o.summary.range).toEqual({ from: "2026-02-03", to: "2026-02-04" });
-  });
-  it("detection and OFX files send no date order", () => {
-    const base = { text: "", balances: true, createMissing: true, planId: undefined, excluded: [] };
-    expect(bankApplyRequest({ ...base, format: "qif", dateFormat: "auto" })).not.toHaveProperty(
-      "dateFormat",
-    );
-    expect(
-      bankApplyRequest({ ...base, format: "ofx", dateFormat: "DD/MM/YYYY" }),
-    ).not.toHaveProperty("dateFormat");
-  });
-  it("sends the exchange rate the user typed, and spending follows the open plan", () => {
-    const req = bankApplyRequest({
-      text: "",
-      format: "ofx",
-      dateFormat: "auto",
-      balances: true,
-      createMissing: true,
-      planId: spendingPlanId(undefined, "uk-plan-main"),
-      excluded: [],
-      fxRates: [{ from: "USD", to: "GBP", rate: 0.8 }],
-    });
-    expect(req.planId).toBe("uk-plan-main");
-    expect(req.fxRates).toEqual([{ from: "USD", to: "GBP", rate: 0.8 }]);
-    expect(spendingPlanId("other", "uk-plan-main")).toBe("other");
-  });
-});
 
 // ------------------------------------------------------------------------------------------------
 // Partial plan years, Monte Carlo FX control, country defaults, notification bell

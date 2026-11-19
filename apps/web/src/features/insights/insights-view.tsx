@@ -55,13 +55,12 @@ import { total } from "../../lib/money";
 import { useFormat } from "../../lib/workspace";
 import { runChanceOfSuccess } from "../chance/mc-pool";
 import { CrossBorderFix } from "../crossborder/audit-fix";
-import { RelocationPanel } from "../crossborder/relocation-panel";
 import { attempt, bridge } from "../results/core-bridge";
 import { exampleExplanation, exampleFindings, exampleGoalSeek } from "../results/fixtures";
 import type { EntityIndex } from "../results/model";
 import { yearNarrative } from "../results/narrative";
 import { useAnalysis } from "../results/use-analysis";
-import { DebtPayoffPanel, SeppPanel, StrategyMatrixPanel } from "./analysis-panels";
+import { StrategyMatrixPanel } from "./analysis-panels";
 import {
   DRIVERS,
   outcomeOf,
@@ -1167,14 +1166,11 @@ export function InsightsView() {
           <StrategyMatrixPanel input={input} plan={plan} />
           <ScenarioGallery input={input} result={result} plan={plan} />
           <TemplateGallery input={input} result={result} />
-          <RelocationPanel input={input} result={result} />
           <SurvivorPanel input={input} result={result} />
           <div className="grid gap-5 xl:grid-cols-2">
             <SensitivityPanel input={input} result={result} />
             <GuardrailsPanel input={input} plan={plan} />
           </div>
-          <DebtPayoffPanel input={input} plan={plan} />
-          <SeppPanel input={input} />
         </>
       ) : null}
     </Page>

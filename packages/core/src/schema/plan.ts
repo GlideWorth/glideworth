@@ -19,7 +19,6 @@ import {
   withReplacedDataset,
 } from "./montecarlo.js";
 import { Appearance, Id, MonthDate, Notes, Timestamp } from "./primitives.js";
-import { ResidencyChange } from "./residency.js";
 import {
   DrawdownSettings,
   FlexSpending,
@@ -84,11 +83,6 @@ export const Plan = z
     startingConditions: StartingConditions.default({ kind: "live" }),
 
     milestones: z.array(Milestone).default([]),
-    /**
-     * Residency timeline: dated changes of tax residence per person (or everyone). Absent = everyone
-     * stays at `Household.location` (relocation milestone effects still apply).
-     */
-    residency: z.array(ResidencyChange).max(50).optional(),
     income: z.array(IncomeEvent).default([]),
     expenses: z.array(ExpenseEvent).default([]),
     /** Ordered savings waterfall: index 0 has highest priority. */

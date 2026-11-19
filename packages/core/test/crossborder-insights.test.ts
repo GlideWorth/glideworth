@@ -1,32 +1,20 @@
-/** Cross-border insights and data tables: audit checks, relocation template, stay-or-move, IHT scope, treaties. */
+/** Cross-border insights and data tables: audit checks, treaties, wrappers, analytics for foreign items. */
 import { describe, expect, it } from "vitest";
 import { simulate } from "../src/engine/simulate.js";
 import { SimulationInput, type SimulationInputInput } from "../src/engine/types.js";
-import { incomeByTaxRateForInput, netLegacyAtEnd } from "../src/insights/analytics.js";
+import { incomeByTaxRateForInput } from "../src/insights/analytics.js";
 import { auditAssumptions } from "../src/insights/audit.js";
-import {
-  CROSS_BORDER_TEMPLATES,
-  compareStayingVersusMoving,
-  crossBorderFindings,
-  relocationScenario,
-  residencyTimelineOf,
-  ukInheritanceTaxScope,
-} from "../src/insights/crossborder.js";
-import { applyPlanPatch } from "../src/insights/patch.js";
+import { crossBorderFindings } from "../src/insights/crossborder.js";
 import { explainCrossBorderTreatment } from "../src/tax/crossborder/explain.js";
 import { NON_RESIDENT_RULES } from "../src/tax/crossborder/nonresident.js";
 import { TREATIES, treatyRule } from "../src/tax/crossborder/treaties.js";
 import { INCOME_CATEGORIES } from "../src/tax/crossborder/types.js";
-import {
-  ukIhtTailYears,
-  ukIhtWorldwideScope,
-  ukStatePensionUprated,
-} from "../src/tax/crossborder/uk.js";
 import { wrapperView } from "../src/tax/crossborder/wrappers.js";
 
 function ukHousehold(
   plan: Partial<SimulationInputInput["plan"]> = {},
   people?: unknown[],
+  home: { location?: { country: string; region?: string }; currency?: string } = {},
 ): SimulationInput {
   return SimulationInput.parse({
     household: {
@@ -36,8 +24,8 @@ function ukHousehold(
       people: people ?? [
         { id: "me", name: "Sam", role: "primary", birthMonth: "1975-05", citizenships: ["GB"] },
       ],
-      location: { country: "GB", region: "ENG" },
-      currency: "GBP",
+      location: home.location ?? { country: "GB", region: "ENG" },
+      currency: home.currency ?? "GBP",
       locale: "en-GB",
     },
     finances: {
@@ -70,12 +58,6 @@ function ukHousehold(
     options: { trace: "summary" },
   });
 }
-
-const move = (country: string, date: string) => ({
-  id: `m-${country}-${date}`,
-  from: { kind: "date", date },
-  location: { country },
-});
 
 describe("data tables", () => {
   it("every supported country has a non-resident table covering every income category, with a depth label", () => {
@@ -149,47 +131,12 @@ describe("data tables", () => {
     });
     expect(p.sourceTaxes).toBe(false);
   });
-
-  it("UK State Pension uprating abroad and the IHT long-term residence tail (gov.uk; IHTM47020)", () => {
-    expect(ukStatePensionUprated("ES")).toBe(true);
-    expect(ukStatePensionUprated("US")).toBe(true);
-    expect(ukStatePensionUprated("AE")).toBe(false);
-    expect(ukStatePensionUprated("CA")).toBe(false);
-    expect(ukIhtTailYears(9)).toBe(0);
-    expect(ukIhtTailYears(12)).toBe(3);
-    expect(ukIhtTailYears(15)).toBe(5);
-    expect(ukIhtTailYears(20)).toBe(10);
-    const years = new Set(Array.from({ length: 15 }, (_, i) => 2012 + i)); // resident 2012-2026
-    expect(ukIhtWorldwideScope(years, 2026).inScope).toBe(true);
-    expect(ukIhtWorldwideScope(years, 2031).inScope).toBe(true); // 5-year tail: 2027-2031
-    expect(ukIhtWorldwideScope(years, 2032).inScope).toBe(false);
-  });
 });
 
 describe("insights", () => {
-  it("residency timeline as data", () => {
-    const input = ukHousehold({ residency: [move("AE", "2028-04")] } as never);
-    expect(residencyTimelineOf(input)).toEqual([
-      {
-        personId: "me",
-        from: null,
-        location: { country: "GB", region: "ENG" },
-        source: "household",
-      },
-      {
-        personId: "me",
-        from: "2028-04",
-        location: { country: "AE" },
-        source: "residency",
-        refId: "m-AE-2028-04",
-      },
-    ]);
-  });
-
-  it("audit: wrapper funded while abroad, return within five years, State Pension gap, unknown treaty, missing FX", () => {
+  it("audit: wrapper funded from abroad, unknown treaty, foreign asset without a currency, missing tax FX", () => {
     const input = ukHousehold(
       {
-        residency: [move("AE", "2027-04"), move("GB", "2030-04"), move("NZ", "2032-04")],
         flows: [
           {
             kind: "contribution",
@@ -202,53 +149,19 @@ describe("insights", () => {
           },
         ],
       } as never,
-      [
-        {
-          id: "me",
-          name: "Sam",
-          role: "primary",
-          birthMonth: "1975-05",
-          citizenships: ["GB"],
-          statePensionRecords: [{ country: "GB", qualifyingYears: 18 }],
-        },
-      ],
+      undefined,
+      { location: { country: "NZ" }, currency: "NZD" },
     );
-    const codes = auditAssumptions(input).map((f) => f.code);
+    const findings = auditAssumptions(input);
+    const codes = findings.map((f) => f.code);
     expect(codes).toContain("XB_WRAPPER_NON_RESIDENT_CONTRIBUTIONS");
-    expect(codes).toContain("XB_UK_TEMPORARY_NON_RESIDENCE");
-    expect(codes).toContain("XB_STATE_PENSION_GAP");
-    expect(codes).toContain("XB_UNKNOWN_TREATY");
-    expect(codes).toContain("XB_TAX_FX_MISSING"); // no NZD rate
-    const gap = crossBorderFindings(input).find((f) => f.code === "XB_STATE_PENSION_GAP")!;
-    expect(gap.message).toMatch(/Class 3/);
-    // Planned voluntary years count towards the projected record (and can close the gap).
-    const withVoluntary = SimulationInput.parse({
-      ...input,
-      household: {
-        ...input.household,
-        people: [
-          {
-            ...input.household.people[0]!,
-            statePensionRecords: [{ country: "GB", qualifyingYears: 18, voluntaryYears: 3 }],
-          },
-        ],
-      },
-    });
-    const gap2 = crossBorderFindings(withVoluntary).find((f) => f.code === "XB_STATE_PENSION_GAP");
-    expect(gap2?.message ?? "").toMatch(/3 voluntary years/);
-    const full = SimulationInput.parse({
-      ...withVoluntary,
-      household: {
-        ...withVoluntary.household,
-        people: [
-          {
-            ...withVoluntary.household.people[0]!,
-            statePensionRecords: [{ country: "GB", qualifyingYears: 18, voluntaryYears: 17 }],
-          },
-        ],
-      },
-    });
-    expect(crossBorderFindings(full).some((f) => f.code === "XB_STATE_PENSION_GAP")).toBe(false);
+    expect(codes).toContain("XB_UNKNOWN_TREATY"); // no NZ-GB treaty in the tables
+    expect(codes).toContain("XB_FOREIGN_ASSET_BASE_CURRENCY"); // the ISA and GIA have no currency
+    expect(codes).toContain("XB_TAX_FX_MISSING"); // no GBP/NZD rate
+    expect(findings.find((f) => f.code === "XB_WRAPPER_NON_RESIDENT_CONTRIBUTIONS")!.refs).toEqual([
+      "f-isa",
+      "isa",
+    ]);
   });
 
   it("the unknown-treaty finding names countries in words, never the 'XX' placeholder", () => {
@@ -265,92 +178,82 @@ describe("insights", () => {
       expect(x.message).not.toMatch(/\bXX\b/);
       expect(x.title).toContain("United Kingdom");
     }
-    const moved = ukHousehold({ residency: [move("NZ", "2032-04")] } as never);
-    const nz = crossBorderFindings(moved).find((x) => x.code === "XB_UNKNOWN_TREATY");
-    if (nz) expect(nz.title).not.toMatch(/\b[A-Z]{2}-[A-Z]{2}\b/);
+    const nzHome = ukHousehold({}, undefined, { location: { country: "NZ" } });
+    const nz = crossBorderFindings(nzHome).find((x) => x.code === "XB_UNKNOWN_TREATY")!;
+    expect(nz.title).toBe("No New Zealand-United Kingdom treaty in Glideworth's tables");
   });
 
   it("audit adds nothing for a single-country plan", () => {
     expect(crossBorderFindings(ukHousehold())).toEqual([]);
   });
 
-  it("relocation what-if template and the stay-or-move comparison", () => {
-    expect(CROSS_BORDER_TEMPLATES.some((t) => t.id === "relocation")).toBe(true);
-    const input = ukHousehold({
-      income: [
-        {
-          id: "pay",
-          name: "Pay",
-          type: "salary",
-          owner: "me",
-          amount: { value: 80_000 },
-          frequency: "yearly",
-          range: { start: { kind: "planStart" }, end: { kind: "planEnd" } },
-        },
-      ],
-    } as never);
-    const t = relocationScenario(input, {
-      to: { country: "AE" },
-      month: "2028-04",
-      returnMonth: "2033-04",
-    });
-    const plan = applyPlanPatch(input.plan, t.patch);
-    expect(plan.residency).toHaveLength(2);
-    expect(t.notes.join(" ")).toMatch(/5 years or less/);
-    const c = compareStayingVersusMoving(input, { to: { country: "AE" }, month: "2028-04" });
-    expect(c.diff.patch.length).toBeGreaterThan(0);
-    // UK pay keeps being taxed in the UK (sourced where earned is the residence: default) - here the
-    // salary has no country, so after the move it is UAE pay and the UK residence tax disappears.
-    expect(c.deltas.lifetimeTaxesReal).toBeLessThan(0);
-    const ukResidence = c.taxesByCountry.find(
-      (r) => r.country === "GB" && r.basis === "residence",
-    )!;
-    expect(ukResidence.delta).toBeLessThan(0);
-    expect(c.attribution.reduce((s, a) => s + a.delta, 0)).toBeCloseTo(c.deltas.endNetWorthReal, 6);
-  });
-
-  it("UK inheritance tax after leaving: worldwide estate within the tail, UK assets only after it", () => {
-    const input = ukHousehold({ residency: [move("AE", "2027-04")] } as never);
-    // Resident since birth (1975) to 2026: 20 of the last 20 years -> 10-year tail (to 2036-37).
-    expect(ukInheritanceTaxScope(input, "me", 2030).inScope).toBe(true);
-    expect(ukInheritanceTaxScope(input, "me", 2037).inScope).toBe(false);
-    const r = simulate(input);
-    const legacy = netLegacyAtEnd(input, r);
-    expect(legacy.estateTax).toBeGreaterThanOrEqual(0);
-  });
-
   it("Monte Carlo trials of a cross-border plan run in lean mode", () => {
-    const input = ukHousehold({ residency: [move("AE", "2027-04")] } as never);
+    const input = ukHousehold({}, undefined, { location: { country: "AE" } });
     const r = simulate({ ...input, options: { ...input.options, lean: true, trace: "off" } });
     expect(r.periods.length).toBe(10);
   });
 
-  it("analytics keep working with several jurisdictions in a year: brackets per country, effective and marginal rates", () => {
-    const input = ukHousehold({
-      residency: [move("AE", "2027-10")],
+  it("analytics keep working with several jurisdictions in a year: brackets, effective and marginal rates", () => {
+    // UK resident with UK pay and a rented flat in Spain (synthetic). Spain: IRNR 24% of gross rent;
+    // the UK taxes the rent too and credits the Spanish tax up to the UK tax on it (UK-ES treaty Art. 6).
+    const base = ukHousehold({
       income: [
         {
           id: "pay",
           name: "Pay",
           type: "salary",
           owner: "me",
-          country: "GB",
-          amount: { value: 60_000 },
+          amount: { value: 30_000, basis: "nominal" },
           frequency: "yearly",
+          change: { kind: "none" },
           range: { start: { kind: "planStart" }, end: { kind: "planEnd" } },
         },
       ],
     } as never);
+    const input = SimulationInput.parse({
+      ...base,
+      finances: {
+        ...base.finances,
+        // Cash only (its interest is inside the £1,000 Personal Savings Allowance), no dividends.
+        accounts: base.finances.accounts.filter((a) => a.id === "cash"),
+        fxRates: [{ from: "EUR", to: "GBP", rate: 0.85, annualDrift: 0 }],
+        realAssets: [
+          {
+            id: "es-flat",
+            name: "Flat in Spain",
+            type: "rental-property",
+            owner: "me",
+            currentValue: 200_000,
+            country: "ES",
+            behaviour: {
+              usage: "investment",
+              appreciation: { kind: "none" },
+              rental: {
+                enabled: true,
+                income: { kind: "amountPerYear", amount: { value: 10_000, basis: "nominal" } },
+                taxSettings: { estimateDeductions: false },
+              },
+            },
+          },
+        ],
+      },
+    });
     const m = incomeByTaxRateForInput(input, { jurisdictionId: "uk" });
-    const y = m.years.indexOf(2027);
+    const y = m.years.indexOf(2026);
     expect(m.cells[y]!.reduce((s, x) => s + x, 0)).toBeGreaterThan(0);
     const r = simulate({ ...input, options: { ...input.options, trace: "full" } });
-    const p = r.periods.find((x) => x.year === 2027)!;
-    // UK pay is UK-sourced: taxed as resident for 6 months and as non-resident for 6 (both 'uk').
-    expect(p.taxes.byCountry!.map((b) => b.basis).sort()).toEqual(["residence", "source"]);
-    expect(p.taxes.brackets!.filter((b) => b.jurisdictionId === "uk").length).toBeGreaterThan(1);
+    const p = r.periods.find((x) => x.year === 2026)!;
+    expect(p.taxes.byCountry!.map((b) => `${b.country}|${b.basis}`).sort()).toEqual([
+      "ES|source",
+      "GB|relief",
+      "GB|residence",
+    ]);
+    // UK income tax on pay and rent (40,000 - 12,570) x 20% = 5,486, NI 8% x (30,000 - 12,570) = 1,394.40; Spain
+    // 10,000 x 24% = 2,400; credit = the UK tax on the rent, 10,000 x 20% = 2,000 (less than 2,400).
+    expect(p.taxes.total).toBeCloseTo(5_486 + 1_394.4 + 2_400 - 2_000, 4);
+    expect(p.taxes.brackets!.some((b) => b.jurisdictionId === "uk")).toBe(true);
     expect(p.taxes.effectiveRate).toBeCloseTo(p.taxes.total / p.taxes.grossIncome, 12);
-    // One more unit of income spread over the year: half while UK-resident (40% band), half in the UAE.
+    // One more pound of UK income is taxed at 20%; the credit is unchanged.
     expect(p.taxes.marginalRate).toBeCloseTo(0.2, 6);
   });
 });

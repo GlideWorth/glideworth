@@ -231,7 +231,7 @@ export function sellAsset(
         character: "capital-gains-long",
         amount: taxable,
         exemptIn: [],
-        ...(ctx.residency?.active
+        ...(ctx.crossBorder
           ? {
               sale: {
                 assetId: r.def.id,
@@ -316,7 +316,7 @@ export function sellAsset(
 
 /** Main-home gain exclusion from the household's tax rules (US §121, UK private residence relief). */
 function mainHomeExclusion(ctx: EngineContext, ps: PeriodState, r: AssetState): number {
-  // Cross-border plans: the relief of the country the home is in (a move abroad does not change it).
+  // Cross-border plans: the relief of the country the home is in.
   const rules = ps.crossBorder
     ? countryRules(ctx, r.def.country ?? ctx.household.location.country)
     : householdRules(ctx, ps);

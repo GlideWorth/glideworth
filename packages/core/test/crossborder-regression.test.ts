@@ -1,5 +1,5 @@
 /**
- * Regression guard for the cross-border model: never-moved single-country households produce
+ * Regression guard for the cross-border model: single-country households produce
  * projections byte-identical to the engine before it existed (engine 0.3.0, commit 513d348). The
  * hashes below were computed from that engine's output (full trace, `meta.engineVersion` removed)
  * for the corpus in fixtures/single-country-corpus.ts.
@@ -14,6 +14,9 @@
  * changed. US-CA (California 2026 brackets, deduction and credits) and IE (CGT 31% from 7 October
  * 2026) change numbers; US-TX, CA-ON, AU, IL and NZ change only in the cited sources carried in
  * `meta.taxSources` (checked by diffing the full output with those fields removed: identical).
+ *
+ * 2026-11-19 (engine 0.6.0, schema 2: moving country removed): all 31 hashes unchanged once
+ * `meta.schemaVersion` is set back to 1, so the removal did not change any single-country result.
  */
 import { describe, expect, it } from "vitest";
 import { simulate } from "../src/engine/simulate.js";
@@ -68,11 +71,12 @@ describe("single-country households are unchanged by the cross-border model", ()
   for (const { name, input } of singleCountryCorpus())
     it(name, () => {
       const r = simulate(structuredClone(input));
-      expect(
-        r.periods.every((p) => p.taxes.residence === undefined && p.taxes.byCountry === undefined),
-      ).toBe(true);
+      expect(r.periods.every((p) => p.taxes.byCountry === undefined)).toBe(true);
       expect(r.periods.some((p) => p.taxes.lines.some((l) => l.basis !== undefined))).toBe(false);
       delete (r.meta as { engineVersion?: string }).engineVersion;
+      // Results carry the document schema version (2 since moving country was removed); the
+      // baseline was recorded at version 1, so hash the result as that engine wrote it.
+      (r.meta as { schemaVersion?: number }).schemaVersion = 1;
       expect(fnv(JSON.stringify(r))).toBe(BEFORE[name]);
     });
 });

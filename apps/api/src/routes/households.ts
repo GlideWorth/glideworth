@@ -18,12 +18,7 @@ import {
   type FinanceKind,
   SnapshotCreate,
 } from "../services/households.js";
-import {
-  BankFileImportBody,
-  CsvAnalyzeBody,
-  CsvImportBody,
-  ImportBody,
-} from "../services/imports.js";
+import { CsvAnalyzeBody, CsvImportBody, ImportBody } from "../services/imports.js";
 import { type Page, PageQuery, pageOf, paginate } from "../util.js";
 import {
   actorOf,
@@ -945,35 +940,6 @@ export function householdRoutes({ app, svc }: RouteCtx) {
     async (c) =>
       c.json(
         (await svc(c).imports.importCsv(
-          c.req.valid("param").id,
-          c.req.valid("json"),
-          actorOf(c),
-        )) as never,
-        200,
-      ),
-  );
-  app.openapi(
-    route("write", {
-      method: "post",
-      path: `${H}/{id}/import/bank-file`,
-      operationId: "importBankFile",
-      tags: ["Data"],
-      summary: "OFX / QFX / QIF import: balances and spending. dryRun (the default) previews only",
-      description:
-        "Bank and card statements: balances are reconciled against current finances like the CSV balance import (match by name or `balances.accountMap`, optionally create missing accounts; foreign-currency accounts keep their currency), and transactions are summarised into annual expense events on `planId` (transfers, income and card payments are excluded; an expense keeps the statement currency). Account numbers are masked to their last four digits. A currency with no rate to the household currency is a warning (`bank.fx-missing`); pass `fxRates` to store one with the import. Without a rate the plan cannot be simulated and the balance is left out of net worth. " +
-        "Preview first (`dryRun: true`, the default); repeat with `dryRun: false` to apply atomically. Blocking errors are `422 IMPORT_FAILED` and nothing is written. " +
-        "`text` is limited to 2 MB (2,000,000 characters); a larger file is refused with `400 VALIDATION` before it is parsed. " +
-        "One apply may create at most 1,000 new accounts and debts with `balances.createMissing`; more is a `400 VALIDATION` naming the limit, and nothing is written. A dry run still reports how many it would create (`reconciliation.created`). " +
-        IMPORT_THREAD,
-      request: {
-        params: IdParam,
-        body: { content: { "application/json": { schema: BankFileImportBody } }, required: true },
-      },
-      responses: { 200: json(z.record(z.string(), z.unknown()), "Preview or result") },
-    }),
-    async (c) =>
-      c.json(
-        (await svc(c).imports.importBankFile(
           c.req.valid("param").id,
           c.req.valid("json"),
           actorOf(c),

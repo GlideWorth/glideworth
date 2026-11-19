@@ -10,7 +10,7 @@ import type { AccountType } from "../schema/accounts.js";
 import { US_LIMITS_2026 } from "../tax/data/us-federal.js";
 import type { AccountState, EngineContext, PeriodState } from "./context.js";
 import { ownerAge } from "./context.js";
-import { nonResidentContributionCap } from "./residency.js";
+import { nonResidentContributionCap } from "./crossborder.js";
 import { rulesFor } from "./rules.js";
 
 export interface LimitGroup {

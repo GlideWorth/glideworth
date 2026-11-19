@@ -44,7 +44,7 @@ import {
 import { parseMonth } from "./dates.js";
 import { fxAt } from "./indices.js";
 import { annualLimit, limitGroupOf, lisaCap, US_415C } from "./limits.js";
-import { nonResidentContributionCap } from "./residency.js";
+import { nonResidentContributionCap } from "./crossborder.js";
 import { rulesFor } from "./rules.js";
 import { ownerCutoff } from "./survivor.js";
 

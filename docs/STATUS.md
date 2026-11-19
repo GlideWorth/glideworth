@@ -5,20 +5,37 @@ Where Glideworth stands, how to run it, and what not to trust yet. Feature-by-fe
 
 ## What is built
 
-| Area                                                                             | State                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Domain schema (`packages/core/src/schema`)                                       | Household, accounts, real assets, debts, income and expense events, flows, milestones, assumptions, tax settings, strategies, Monte Carlo settings; Zod, versioned, with migrations.                                                                                                                                                                                                                                                                                                                                                                                                                |
-| Engine (`packages/core/src/engine`)                                              | Annual deterministic projection with a full ledger, taxes, withdrawals, RMDs, Roth conversions, real assets and loans, survivor transfer, multi-currency.                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| Tax plug-ins (`packages/core/src/tax`)                                           | UK, US (federal, payroll, 50 states and DC, some cities), Canada, Australia, Germany, Netherlands, France, Spain, Israel, Ireland, New Zealand, United Arab Emirates, flat and custom.                                                                                                                                                                                                                                                                                                                                                                                                              |
-| Cross-border (`tax/crossborder`, `engine/residency.ts`, `engine/crossborder.ts`) | Residency timeline per person (split years prorated), source-country taxation of non-residents (UK high fidelity, US citizenship-based taxation with FEIE/FTC, others basic), treaty table with credit relief (UK-UAE from the convention; UK-US/AU/CA/ES/FR and US-CA basic), foreign-wrapper recognition, departure tax (CA, AU) and arrival rebasing, UK temporary non-residence, UK State Pension frozen abroad, non-resident contribution bars, UK IHT long-term residence; audit checks, relocation what-if and stay-or-move comparison. Engine 0.4.0; single-country results byte-identical. |
-| Stochastic (`packages/core/src/stochastic`)                                      | Monte Carlo (historical restart, sequential, block bootstrap, normal, lognormal, fat-tail), seeded, optional FX risk, failure analysis, milestone timing.                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| Solvers and insights                                                             | Spending solver, earliest retirement, required savings, safe withdrawal rate, guardrails, tax-strategy comparison, explain, audit, branches, diff and merge, survivor scenarios.                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| Importers (`packages/importers`)                                                 | ProjectionLab JSON (with a key-path coverage report), CSV (Monarch, YNAB, generic), OFX/QFX/QIF, Glideworth JSON; exports JSON, CSV, report.                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| API (`apps/api`)                                                                 | Hono REST + OpenAPI 3.1 (265 operations self-hosted, 313 on the hosted service), SQLite, worker-thread jobs (time and heap limits), scoped keys, sessions, OAuth 2.1, webhooks, scheduler, backup CLI. Cloud mode (`GLIDEWORTH_MODE=cloud`) integrated: one database per workspace, `@glideworth/cloud` loaded by dynamic import only, isolation sweep over every operation (`test/cloud-isolation.test.ts`).                                                                                                                                                                                       |
-| MCP                                                                              | 75 tools (54 read/compute, 21 write behind a switch), resources, prompts; stdio and HTTP.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| Web (`apps/web`)                                                                 | React app: onboarding, plan editor, results, chance of success, cash flow, taxes, estate, compare, insights, progress, import, reports, settings, PWA; cross-border: residency editor, person citizenship / past residence / state-pension records, item countries, tax by country and basis, "how this is taxed and why", stay or move.                                                                                                                                                                                                                                                            |
+| Area                                                      | State                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Domain schema (`packages/core/src/schema`)                | Household, accounts, real assets, debts, income and expense events, flows, milestones, assumptions, tax settings, strategies, Monte Carlo settings; Zod, versioned, with migrations.                                                                                                                                                                                                                                                                                                                                                  |
+| Engine (`packages/core/src/engine`)                       | Annual deterministic projection with a full ledger, taxes, withdrawals, RMDs, Roth conversions, real assets and loans, survivor transfer, multi-currency.                                                                                                                                                                                                                                                                                                                                                                             |
+| Tax plug-ins (`packages/core/src/tax`)                    | UK, US (federal, payroll, 50 states and DC, some cities), Canada, Australia, Germany, Netherlands, France, Spain, Israel, Ireland, New Zealand, United Arab Emirates, flat and custom.                                                                                                                                                                                                                                                                                                                                                |
+| Cross-border (`tax/crossborder`, `engine/crossborder.ts`) | Fixed residence (the household's location, for the whole plan) with accounts, property, debts and income in other countries: source-country taxation of non-residents (UK high fidelity, US citizenship-based taxation with FEIE/FTC, others basic), treaty table with credit relief (UK-UAE from the convention; UK-US/AU/CA/ES/FR and US-CA basic), foreign-wrapper recognition, non-resident contribution bars; audit checks, tax by country and basis, per-item explanation. Engine 0.6.0; single-country results byte-identical. |
+| Stochastic (`packages/core/src/stochastic`)               | Monte Carlo (historical restart, sequential, block bootstrap, normal, lognormal, fat-tail), seeded, optional FX risk, failure analysis, milestone timing.                                                                                                                                                                                                                                                                                                                                                                             |
+| Solvers and insights                                      | Spending solver, earliest retirement, required savings, safe withdrawal rate, guardrails, tax-strategy comparison, explain, audit, branches, diff and merge, survivor scenarios.                                                                                                                                                                                                                                                                                                                                                      |
+| Importers (`packages/importers`)                          | ProjectionLab JSON (with a key-path coverage report), CSV (Monarch, YNAB, generic), Glideworth JSON; exports JSON, CSV, report.                                                                                                                                                                                                                                                                                                                                                                                                       |
+| API (`apps/api`)                                          | Hono REST + OpenAPI 3.1 (250 operations self-hosted, 298 on the hosted service), SQLite, worker-thread jobs (time and heap limits), scoped keys, sessions, OAuth 2.1, webhooks, scheduler, backup CLI. Cloud mode (`GLIDEWORTH_MODE=cloud`) integrated: one database per workspace, `@glideworth/cloud` loaded by dynamic import only, isolation sweep over every operation (`test/cloud-isolation.test.ts`).                                                                                                                         |
+| MCP                                                       | 67 tools (49 read/compute, 18 write behind a switch), resources, prompts; stdio and HTTP.                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Web (`apps/web`)                                          | React app: onboarding, plan editor, results, chance of success, cash flow, taxes, estate, compare, insights, progress, import, reports, settings, PWA; cross-border: citizenships and US green card per person, item countries, tax by country and basis, "how this is taxed and why".                                                                                                                                                                                                                                                |
 
-PARITY.md counts: 210 features checked, 171 implemented, 34 partial, 5 missing.
+PARITY.md counts: 210 features checked, 167 implemented, 35 partial, 5 missing, 3 removed.
+
+### Removed on 2026-11-19 (no evidence of demand)
+
+- **Moving country**: the residency timeline (`Plan.residency`), the `relocate` milestone effect (it also
+  switched US state or Canadian province mid-plan), past residence and state-pension records on a person, the
+  relocation what-if and the stay-or-move comparison, departure taxes and arrival rebasing, UK temporary
+  non-residence, the UK State Pension freeze abroad, UK IHT long-term-residence scope, the State Pension gap /
+  voluntary NI finding and split-year proration. The household now lives at its location for the whole plan;
+  items in other countries are still taxed there (ARCHITECTURE.md §4.6). Stored data migrates on read (document
+  schema version 2).
+- **Debt payoff comparison** (minimum vs avalanche vs snowball). The avalanche / snowball allocation on a debt
+  paydown flow remains.
+- **72(t) method comparison**. 72(t) SEPP distributions on an account remain.
+- **OFX / QFX / QIF bank-statement import**. CSV (including the bank-statement presets), ProjectionLab JSON and
+  Glideworth JSON imports remain.
+- In the web app, the Monte Carlo method picker moved under a collapsed "Advanced" disclosure; the default
+  ("Historical, random start years") is stated in one line. API and MCP are unchanged.
 
 ## How to run
 
@@ -70,19 +87,19 @@ automatically. Crypto has no history and is sampled from a distribution.
 Later years carry the last known rates forward and index thresholds with inflation (or per the threshold policy);
 that is wrong whenever the rules change. Someone must add new years each spring.
 
-| Country                             | Years in the tables                                                                                                        |
-| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| UK                                  | 2025/26, 2026/27, announced 2027/28 and 2029/30                                                                            |
-| US federal, payroll, states, cities | 2026 (OBBBA); a TCJA-sunset what-if is an **estimate** (2017 law x 1.33)                                                   |
-| Canada                              | 2026                                                                                                                       |
-| Australia                           | 2025-26, 2026-27, legislated 2027-28                                                                                       |
-| Germany, Netherlands, Israel        | 2026                                                                                                                       |
-| Ireland                             | 2026; from 2027 the 2026 tables with CGT at 31%                                                                            |
-| New Zealand                         | 2026-27                                                                                                                    |
-| France                              | 2026 finance law (taxes 2025 income), 2026 social rates                                                                    |
-| Spain                               | **2025** IRPF scales, 2026 social security                                                                                 |
-| United Arab Emirates                | 2026 (no personal tax; gratuity, DEWS, savings scheme, GPSSA Law 57 of 2023)                                               |
-| Cross-border tables                 | UK non-resident rules 2026-27 (gov.uk); IHT long-term residence from 6 April 2025; voluntary NI 2026-27; US FEIE 2025-2026 |
+| Country                             | Years in the tables                                                          |
+| ----------------------------------- | ---------------------------------------------------------------------------- |
+| UK                                  | 2025/26, 2026/27, announced 2027/28 and 2029/30                              |
+| US federal, payroll, states, cities | 2026 (OBBBA); a TCJA-sunset what-if is an **estimate** (2017 law x 1.33)     |
+| Canada                              | 2026                                                                         |
+| Australia                           | 2025-26, 2026-27, legislated 2027-28                                         |
+| Germany, Netherlands, Israel        | 2026                                                                         |
+| Ireland                             | 2026; from 2027 the 2026 tables with CGT at 31%                              |
+| New Zealand                         | 2026-27                                                                      |
+| France                              | 2026 finance law (taxes 2025 income), 2026 social rates                      |
+| Spain                               | **2025** IRPF scales, 2026 social security                                   |
+| United Arab Emirates                | 2026 (no personal tax; gratuity, DEWS, savings scheme, GPSSA Law 57 of 2023) |
+| Cross-border tables                 | UK non-resident rules 2026-27 (gov.uk); US FEIE 2025-2026                    |
 
 Figures that could not be confirmed or are provisional:
 
@@ -111,10 +128,9 @@ Figures that could not be confirmed or are provisional:
   or total wage is not settled on the government portal (basic is used); the DEWS voluntary-savings cap and GPSSA
   eligibility ages could not be confirmed and are not modelled.
 - Treaties other than UK-UAE are basic: the main allocation rules, not checked article by article (rows marked
-  "not verified" use the credit method). The UK State Pension uprating list comes from a gov.uk page that may be
-  dated.
-- Cross-border tax is an estimate of the tax mechanics only: residence status is what you enter (no statutory
-  residence test, no 183-day rules), split years are prorated by months, and treaty relief assumes it is claimed.
+  "not verified" use the credit method).
+- Cross-border tax is an estimate of the tax mechanics only: residence is the household's location for the whole
+  plan (no statutory residence test, no 183-day rules, no moves), and treaty relief assumes it is claimed.
 
 Tax sources, checked 2026-11-16 (the status of each country's sourcing; licences are in `DATA-LICENSES.md`):
 
@@ -158,7 +174,7 @@ end-to-end encrypted sync; per-person privacy within a household.
 ### Partial features (see PARITY.md)
 
 US federal tax, Canada CPP/OAS/GIS, Germany, Netherlands, France, Spain, Israel, Ireland and New Zealand (basic
-level); debt payoff strategies; datasets; drawdown-order editor graphs; Flex vs No-Flex table; tax optimizer depth;
+level); debt payoff strategies (allocation only); datasets; drawdown-order editor graphs; Flex vs No-Flex table; tax optimizer depth;
 strategy and income-by-rate heatmaps; table export (four tables, not any plot); reports (browser print only);
 share links; re-run on plan change (on request, not on every edit); household collaboration (roles are
 instance-wide); onboarding data-quality checks; scheduled re-runs (no e-mail; use webhooks); open test vectors
@@ -166,23 +182,19 @@ instance-wide); onboarding data-quality checks; scheduled re-runs (no e-mail; us
 
 ## Cross-border plans: what is exposed
 
-Core (engine 0.4.0) plus API, MCP and web. API: `/plans/{id}/residency` (CRUD, checked against the household),
-`/residency-timeline`, `/cross-border/items`, `insights/explain-taxation`, `insights/stay-or-move` (inline: two
-deterministic runs), `tax-breakdown/by-country` (and country/basis in `tax-breakdown`),
-`/households/{id}/people/{personId}/cross-border`, rule tables under `/cross-border/*`, the `relocation`
-template with a parameter schema; the result cache keys on the engine version. MCP: `get_residency_timeline`,
-`cross_border_rules`, `tax_by_country`, `explain_item_taxation`, `compare_stay_or_move`, `propose_move`,
-`set_person_cross_border`. Web: see USER-GUIDE.md "Where to find it in the app". Core additions in this round:
-`explainItemTaxation`, `crossBorderItems`, `taxByCountry`, `CROSS_BORDER_SIMPLIFICATIONS`,
-`summariseStayOrMove`, `StatePensionRecord.voluntaryYears` (counted by `XB_STATE_PENSION_GAP`), readable plan
-diffs for residency changes, country names (not codes) in explanations and person names (not ids) in
-cross-border tax-line labels.
+Core plus API, MCP and web. API: `/plans/{id}/cross-border/items`, `insights/explain-taxation`,
+`tax-breakdown/by-country` (and country/basis in `tax-breakdown`), rule tables under `/cross-border/*`; citizenships
+and the US green card are fields of the person routes; the result cache keys on the engine version. MCP:
+`cross_border_rules`, `tax_by_country`, `explain_item_taxation`, `list_fx_rates`, `set_fx_rate`, `unset_fx_rate`.
+Web: see USER-GUIDE.md "Where to find it in the app". Core: `explainItemTaxation`, `crossBorderItems`,
+`taxByCountry`, `CROSS_BORDER_SIMPLIFICATIONS`, country names (not codes) in explanations and person names (not ids)
+in cross-border tax-line labels.
 
-Known gaps for cross-border users: residence is what you enter (no statutory residence test); the bracket and
-marginal-rate analytics on the Taxes page describe the household country's calculation only; stay-or-move is
-deterministic (branch it for chance of success); planned real assets and plan-level account overrides have no
-country field in the plan editor (set it on the item in Current finances); the gratuity is UAE-only; voluntary
-contributions are not added as an expense automatically.
+Known gaps for cross-border users: residence is the household's location for the whole plan (no statutory
+residence test, no moves); the bracket and marginal-rate analytics on the Taxes page describe the household
+country's calculation only; planned real assets and plan-level account overrides have no country field in the plan
+editor (set it on the item in Current finances); the gratuity is UAE-only; the UK's 5-year pension relief after
+leaving is not modelled (contributions to UK pensions stop while you live abroad).
 
 ## What remains, in priority order
 

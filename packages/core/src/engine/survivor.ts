@@ -121,11 +121,6 @@ export function applyEffects(ctx: EngineContext, ps: PeriodState): void {
         case "setFilingStatus":
           ctx.filingStatus = e.filingStatus;
           break;
-        case "relocate":
-          // A move of one partner only changes that person's residence (engine/residency.ts).
-          if (!e.personId || ctx.people.find((p) => p.id === e.personId)?.role === "primary")
-            ctx.location = e.location;
-          break;
         case "setWithholding":
           ctx.withholdingRates = {
             taxDeferred: e.taxDeferred ?? ctx.withholdingRates.taxDeferred,

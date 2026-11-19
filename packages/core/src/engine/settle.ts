@@ -24,11 +24,10 @@ import {
   traceEvent,
   warnOnce,
 } from "./context.js";
-import { type CrossBorderResult, crossBorderTaxes } from "./crossborder.js";
+import { closeCrossBorderPeriod, type CrossBorderResult, crossBorderTaxes } from "./crossborder.js";
 import { monthOfYear, yearOf } from "./dates.js";
 import { drawdown, payTargeted } from "./drawdown.js";
 import { leftover, runFlows } from "./flows.js";
-import { closeResidencyPeriod } from "./residency.js";
 import type { TaxLine } from "./types.js";
 
 interface Snapshot {
@@ -427,9 +426,9 @@ export function runSettle(ctx: EngineContext, ps: PeriodState): void {
     withheld,
     settlement,
     facts,
-    ...(cb ? { residence: cb.residence, byCountry: cb.byCountry } : {}),
+    ...(cb ? { byCountry: cb.byCountry } : {}),
   };
-  if (cb) closeResidencyPeriod(ctx, ps);
+  if (cb) closeCrossBorderPeriod(ctx);
   if (cb && ctx.options.trace === "full" && !ctx.options.lean) {
     ps.taxes.brackets =
       crossBorderTaxes(ctx, ps, buildTaxInput(ctx, ps), { explain: true }).brackets ?? [];

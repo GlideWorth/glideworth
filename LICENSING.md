@@ -34,7 +34,7 @@ its copyright holders (see [`CLA.md`](CLA.md) for how contributions allow that).
 
 ## The importers package: MIT
 
-`packages/importers` (ProjectionLab, CSV, OFX/QFX/QIF import and the JSON / CSV / report exporters, and
+`packages/importers` (ProjectionLab and CSV import and the JSON / CSV / report exporters, and
 any future client SDK) is MIT-licensed so that other software can read and write these formats, or call
 the API, without taking on the AGPL's network clause. The package depends on `packages/core`, which is
 AGPL-3.0-only. Check with your own lawyer how that dependency affects what you build on it; the MIT

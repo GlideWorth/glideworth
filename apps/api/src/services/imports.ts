@@ -1,5 +1,4 @@
 import type { Actor, GlideworthDocument } from "@glideworth/core";
-import type { BankImportRequest, QifDateFormat, TransactionOptions } from "@glideworth/importers";
 import { z } from "zod";
 import { type ImportDeps, importDeps } from "../deps.js";
 import { ApiError } from "../errors.js";
@@ -108,103 +107,6 @@ export const CsvAnalyzeBody = z
   })
   .meta({ id: "CsvAnalyzeRequest" });
 export type CsvAnalyzeBody = z.infer<typeof CsvAnalyzeBody>;
-
-/**
- * Largest bank file the import accepts, in characters (2 MB of text; years of statements fit). The
- * file is parsed in an import worker thread (`jobs/import-pool.ts`); the limit bounds that thread's time and
- * memory (security review finding 4). The MCP bank-file tools declare the same limit.
- */
-export const MAX_BANK_FILE_CHARS = 2_000_000;
-const BANK_FILE_TOO_LARGE = `the file is larger than the 2 MB limit (${MAX_BANK_FILE_CHARS.toLocaleString("en-US")} characters); export a shorter date range`;
-
-export const BankFileImportBody = z
-  .object({
-    text: z
-      .string()
-      .max(MAX_BANK_FILE_CHARS, BANK_FILE_TOO_LARGE)
-      .describe(
-        "The OFX / QFX / QIF file contents. At most 2 MB of text (2,000,000 characters); a larger file is a `400 VALIDATION`.",
-      ),
-    format: z.enum(["ofx", "qif", "auto"]).default("auto").describe("'auto' sniffs the header."),
-    dateFormat: z
-      .enum(["auto", "MM/DD/YYYY", "DD/MM/YYYY", "MDY", "DMY", "YMD"])
-      .optional()
-      .describe(
-        "QIF only: date order. 'DD/MM/YYYY' (alias 'DMY') for day-first files, 'MM/DD/YYYY' (alias 'MDY') for month-first; 'auto' (default) reads month-first unless a day above 12 proves day-first. ISO dates (YYYY-MM-DD, alias 'YMD') are always recognised.",
-      ),
-    accountName: z
-      .string()
-      .max(120)
-      .optional()
-      .describe("QIF only: name for a file without an !Account header."),
-    balances: z
-      .union([
-        z.literal(false),
-        z.object({
-          accountMap: z
-            .record(z.string(), z.string())
-            .optional()
-            .describe("File account name -> Glideworth account id."),
-          createMissing: z
-            .boolean()
-            .optional()
-            .describe(
-              "Create accounts / debts that do not exist yet. One apply may create at most 1,000; more is a `400 VALIDATION`.",
-            ),
-        }),
-      ])
-      .optional()
-      .describe("Update balances from the file (default: match by name). `false` skips balances."),
-    planId: z.string().optional().describe("Add the annual expense summary to this plan."),
-    fxRates: z
-      .array(
-        z.object({
-          from: z.string().regex(/^[A-Z]{3}$/),
-          to: z.string().regex(/^[A-Z]{3}$/),
-          rate: z.number().positive(),
-        }),
-      )
-      .max(20)
-      .optional()
-      .describe(
-        "Exchange rates to store with the import (1 from = rate to). A statement in another currency needs a rate to the household currency; without one the plan cannot be simulated and the balance is left out of net worth.",
-      ),
-    annualise: z
-      .union([z.enum(["last-12-months", "all", "latest-full-year"]), z.boolean()])
-      .optional()
-      .describe(
-        "How each category's yearly figure is derived: 'last-12-months' (default; a shorter file is scaled up), 'all' (total over the whole span, scaled to a year) or 'latest-full-year'. The legacy boolean maps true to 'all' and false to 'last-12-months'.",
-      ),
-    categoryMap: z
-      .record(z.string(), z.string())
-      .optional()
-      .describe("Payee/category text -> expense type."),
-    excludeCategories: z.array(z.string()).max(100).optional(),
-    dryRun: z
-      .boolean()
-      .default(true)
-      .describe("true (default) = preview only: nothing is written."),
-  })
-  .meta({ id: "BankFileImportRequest" });
-export type BankFileImportBody = z.infer<typeof BankFileImportBody>;
-
-type Annualise = NonNullable<TransactionOptions["annualise"]>;
-
-/** The route accepts the importer's vocabulary and short aliases; the importer only understands its own. */
-export function bankDateFormat(v: BankFileImportBody["dateFormat"]): QifDateFormat | undefined {
-  if (v === undefined) return undefined;
-  if (v === "DMY") return "DD/MM/YYYY";
-  if (v === "MDY") return "MM/DD/YYYY";
-  // ISO dates are recognised whatever the setting; YMD leaves the order of slash dates to detection.
-  if (v === "YMD") return "auto";
-  return v;
-}
-
-export function bankAnnualise(v: BankFileImportBody["annualise"]): Annualise | undefined {
-  if (v === undefined) return undefined;
-  if (typeof v === "boolean") return v ? "all" : "last-12-months";
-  return v;
-}
 
 /** Imports one workspace may have running at once; more are `429 RATE_LIMITED` (security review finding 4). */
 const MAX_IMPORTS_PER_WORKSPACE = 2;
@@ -329,51 +231,16 @@ export class ImportsService {
     );
   }
 
-  /**
-   * OFX / QFX / QIF import into a household: balances (reconciled like the CSV balance import) and spending
-   * (summarised into annual expense events on `planId`). `dryRun` (the default) previews only. Account numbers
-   * are already masked to their last four digits by the parser. Input errors are thrown at once (not as a
-   * rejected promise), before anything is handed to a worker.
-   */
-  importBankFile(householdId: string, body: BankFileImportBody, actor: Actor) {
-    if (body.text.length > MAX_BANK_FILE_CHARS)
-      throw new ApiError(413, "PAYLOAD_TOO_LARGE", BANK_FILE_TOO_LARGE);
-    const doc = this.households.getDocument(householdId);
-    if (body.planId) this.plans.get(body.planId);
-    const dateFormat = bankDateFormat(body.dateFormat);
-    const annualise = bankAnnualise(body.annualise);
-    const request: BankImportRequest = {
-      format: body.format,
-      ...(dateFormat ? { dateFormat } : {}),
-      ...(body.accountName ? { accountName: body.accountName } : {}),
-      ...(annualise ? { annualise } : {}),
-      ...(body.categoryMap
-        ? { categoryMap: body.categoryMap as BankImportRequest["categoryMap"] }
-        : {}),
-      ...(body.excludeCategories ? { excludeCategories: body.excludeCategories } : {}),
-      ...(body.balances !== undefined ? { balances: body.balances } : {}),
-      ...(body.planId ? { transactionsToPlanId: body.planId } : {}),
-      ...(body.fxRates?.length ? { fxRates: body.fxRates } : {}),
-    };
-    return this.applyHousehold(
-      householdId,
-      doc,
-      { op: "bank-file", doc, text: body.text, request, dryRun: body.dryRun },
-      actor,
-      "the file has blocking errors; run with dryRun=true to inspect them",
-    );
-  }
-
   private requirePlan(planId: string | undefined): string {
     if (!planId) throw new ApiError(400, "VALIDATION", "kind 'transactions' needs `planId`");
     return planId;
   }
 
-  /** Run a CSV / bank-file task, then (apply) write its result unless the household changed meanwhile. */
+  /** Run a CSV task, then (apply) write its result unless the household changed meanwhile. */
   private async applyHousehold(
     householdId: string,
     before: GlideworthDocument,
-    task: Extract<ImportTask, { op: "csv" | "bank-file" }>,
+    task: Extract<ImportTask, { op: "csv" }>,
     actor: Actor,
     blockingMessage: string,
   ): Promise<Record<string, unknown>> {

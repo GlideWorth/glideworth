@@ -1,39 +1,21 @@
-/** Web cross-border helpers: when to show cross-border UI, residence segments, currencies, onboarding. */
-import { simulate } from "@glideworth/core";
-import {
-  createUaeSampleDocument,
-  createUkSampleDocument,
-  UAE_RETURN_PLAN_ID,
-} from "@glideworth/core/samples";
+/** Web cross-border helpers: when to show cross-border UI, currencies, onboarding. */
+import { createUkSampleDocument } from "@glideworth/core/samples";
 import { describe, expect, it } from "vitest";
-import {
-  hasMoves,
-  isCrossBorder,
-  residenceSegments,
-  usPersonAbroad,
-} from "../src/features/crossborder/model";
+import { isCrossBorder, usPersonAbroad } from "../src/features/crossborder/model";
 import { buildSetupDocument, defaultAnswers } from "../src/features/onboarding/build-document";
-import { timeContext } from "../src/features/plan-editor/state/resolve";
-import { COUNTRY_OPTIONS, currencyOfCountry, locationLabel } from "../src/lib/countries";
+import { COUNTRY_OPTIONS, currencyOfCountry } from "../src/lib/countries";
 
 describe("cross-border relevance", () => {
-  it("a never-moved UK household shows no cross-border UI", () => {
+  it("a single-country UK household shows no cross-border UI", () => {
     const d = createUkSampleDocument();
     expect(isCrossBorder(d, d.plans[0]!)).toBe(false);
-    expect(hasMoves(d.plans[0]!)).toBe(false);
   });
 
-  it("a move, a foreign item or a US citizen abroad turns it on", () => {
+  it("a foreign item, a foreign income or a US citizen abroad turns it on", () => {
     const d = createUkSampleDocument();
     const plan = {
       ...d.plans[0]!,
-      residency: [
-        {
-          id: "m",
-          from: { kind: "date" as const, date: "2030-01", offsetMonths: 0 },
-          location: { country: "AE" },
-        },
-      ],
+      income: d.plans[0]!.income.map((e, i) => (i === 0 ? { ...e, country: "AE" } : e)),
     };
     expect(isCrossBorder(d, plan)).toBe(true);
     const foreign = {
@@ -61,27 +43,12 @@ describe("cross-border relevance", () => {
     expect(usPersonAbroad(us.household)).toBe(true);
     expect(isCrossBorder(us, d.plans[0]!)).toBe(true);
   });
-
-  it("residence segments follow dated moves and relocation milestones per person", () => {
-    const d = createUaeSampleDocument();
-    const plan = d.plans.find((p) => p.id === UAE_RETURN_PLAN_ID)!;
-    const result = simulate({
-      household: d.household,
-      finances: d.finances,
-      plan,
-      options: { trace: "off" },
-    } as never);
-    const segs = residenceSegments(plan, d.household, timeContext(d, plan, result));
-    const noor = segs.filter((s) => s.personId === "p-noor").map((s) => s.location.country);
-    expect(noor).toEqual(["AE", "GB"]);
-  });
 });
 
 describe("UAE in pickers and onboarding", () => {
-  it("lists the UAE, its currency and emirates", () => {
+  it("lists the UAE and its currency", () => {
     expect(COUNTRY_OPTIONS.some((c) => c.value === "AE")).toBe(true);
     expect(currencyOfCountry("AE")).toBe("AED");
-    expect(locationLabel({ country: "AE", region: "DU" })).toBe("Dubai, United Arab Emirates");
   });
 
   it("a UAE household starts with the dirham peg in its exchange-rate table", () => {

@@ -3,7 +3,7 @@ title: Import from ProjectionLab
 description: Export from ProjectionLab as JSON and import it with a report of what mapped exactly, what was approximated and what has no equivalent. Re-import safely.
 section: Importing
 order: 1
-lastChecked: 2026-11-16
+lastChecked: 2026-11-19
 ---
 
 import Callout from '../../../components/Callout.astro';
@@ -62,8 +62,8 @@ ids are kept when they fit and otherwise slugged.
 
 These are reported as approximated:
 
-- A Move milestone's destination becomes a relocation effect on the milestone. The keys for it are inferred, because
-  the checked export carried none. A country code `UK` is read as `GB`.
+- A Move milestone is kept as a marker with no effect. Glideworth does not model moving country, so its destination is
+  ignored and reported. The keys for it are inferred, because the checked export carried none.
 - Withdraw and liquid values such as "after a given age" map to Glideworth's rules for when an account can be drawn.
 - Rental management fees: ProjectionLab applies the fee to rental income, Glideworth to asset value. A rental income
   given as an amount is read as per year.

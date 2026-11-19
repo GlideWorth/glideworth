@@ -3,12 +3,11 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ShieldCheck } from "lucide-react";
 import { Page } from "../../components/layout/app-shell";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
-import { BankFileImport } from "./bank-import";
 import { CsvImport } from "./csv-import";
 import { BackupCard, RestoreCard, TablesCard } from "./data-export";
 import { ProjectionLabImport } from "./pl-import";
 
-const TABS = ["projectionlab", "csv", "bank", "backup"] as const;
+const TABS = ["projectionlab", "csv", "backup"] as const;
 type Tab = (typeof TABS)[number];
 
 export function ImportPage() {
@@ -34,7 +33,6 @@ export function ImportPage() {
         <TabsList aria-label="Import and export" className="overflow-x-auto">
           <TabsTrigger value="projectionlab">From ProjectionLab</TabsTrigger>
           <TabsTrigger value="csv">CSV files</TabsTrigger>
-          <TabsTrigger value="bank">Bank files</TabsTrigger>
           <TabsTrigger value="backup">Backup & export</TabsTrigger>
         </TabsList>
         <TabsContent value="projectionlab">
@@ -42,9 +40,6 @@ export function ImportPage() {
         </TabsContent>
         <TabsContent value="csv">
           <CsvImport />
-        </TabsContent>
-        <TabsContent value="bank">
-          <BankFileImport />
         </TabsContent>
         <TabsContent value="backup" className="grid gap-5 lg:grid-cols-2">
           <BackupCard />

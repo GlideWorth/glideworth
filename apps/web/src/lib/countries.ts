@@ -198,12 +198,3 @@ export function currencyOfCountry(code: string): string | undefined {
   if (code === "XX") return undefined;
   return COUNTRY_TAX_CURRENCY[code] ?? defaultsForCountry(code).currency;
 }
-
-/** Label for a location ("Dubai, United Arab Emirates" / "United Kingdom"). */
-export function locationLabel(loc: { country: string; region?: string | undefined }): string {
-  const info = countryInfo(loc.country);
-  const region = loc.region
-    ? (info?.regions?.find((r) => r.value === loc.region)?.label ?? loc.region)
-    : null;
-  return region ? `${region}, ${info?.label ?? loc.country}` : (info?.label ?? loc.country);
-}

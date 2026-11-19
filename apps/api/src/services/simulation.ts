@@ -420,21 +420,6 @@ export class SimulationService {
     });
   }
 
-  /** Minimum payments vs avalanche vs snowball for the plan's debts and loans. */
-  async debtPayoff(
-    planId: string,
-    opts: {
-      flowId?: string | undefined;
-      extraPerMonth?: number | undefined;
-      targetIds?: string[] | undefined;
-      rollover?: boolean | undefined;
-    },
-  ) {
-    const { input } = this.inputFor(planId, { trace: "off" });
-    const o = Object.fromEntries(Object.entries(opts).filter(([, v]) => v !== undefined));
-    return this.deps.compareDebtPayoffStrategies(input, o, { simulate: this.deps.simulate });
-  }
-
   /** How much income falls in each tax-rate band per year (needs a full-trace projection; computed here). */
   incomeByTaxRate(
     planId: string,
@@ -447,46 +432,6 @@ export class SimulationService {
     const { input } = this.inputFor(planId, { trace: "off" });
     const o = Object.fromEntries(Object.entries(opts).filter(([, v]) => v !== undefined));
     return this.deps.incomeByTaxRateForInput(input, o, { simulate: this.deps.simulate });
-  }
-
-  /** 72(t) SEPP methods side by side, from a stated balance/age, or derived from an account of a household. */
-  seppComparison(q: {
-    balance?: number | undefined;
-    startAge?: number | undefined;
-    interestRate?: number | undefined;
-    growthRate?: number | undefined;
-    householdId?: string | undefined;
-    accountId?: string | undefined;
-  }) {
-    let { balance, startAge } = q;
-    if (q.accountId) {
-      const rec = this.households.get(q.householdId ?? "");
-      const acct = rec.finances.accounts.find((a) => a.id === q.accountId);
-      if (!acct) throw new ApiError(404, "NOT_FOUND", `account '${q.accountId}' not found`);
-      const person = rec.household.people.find((p) => p.id === acct.owner);
-      if (!person)
-        throw new ApiError(
-          422,
-          "SCENARIO",
-          `account '${acct.id}' is owned by '${acct.owner}', not one person: pass startAge and balance explicitly`,
-        );
-      const [y, m] = rec.finances.asOf.split("-").map(Number) as [number, number];
-      const [by, bm] = person.birthMonth.split("-").map(Number) as [number, number];
-      balance ??= acct.balance;
-      startAge ??= Math.floor((y * 12 + m - (by * 12 + bm)) / 12);
-    }
-    if (balance === undefined || startAge === undefined)
-      throw new ApiError(
-        400,
-        "VALIDATION",
-        "give balance and startAge, or householdId and accountId",
-      );
-    const o = Object.fromEntries(
-      Object.entries({ interestRate: q.interestRate, growthRate: q.growthRate }).filter(
-        ([, v]) => v !== undefined,
-      ),
-    );
-    return this.deps.compareSeppMethods({ balance, startAge, ...o });
   }
 
   /**

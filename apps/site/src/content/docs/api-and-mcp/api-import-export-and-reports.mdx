@@ -1,9 +1,9 @@
 ---
 title: API - import, export and reports
-description: Export a household as JSON, import Glideworth or ProjectionLab files, import CSV and bank files with a dry run, and fetch table and report data.
+description: Export a household as JSON, import Glideworth, ProjectionLab or CSV files (bank statements too) with a dry run, and fetch table and report data.
 section: API and MCP
 order: 16
-lastChecked: 2026-11-16
+lastChecked: 2026-11-19
 ---
 
 All paths are under `/api/v1`. Imports need `write` scope. For the app's screens see [Importing](/docs/importing/projectionlab/).
@@ -39,13 +39,6 @@ api -X POST $GLIDEWORTH/api/v1/households/hh-sample/import/csv -d '{
 }'
 ```
 
-## Bank files
-
-`POST /households/{id}/import/bank-file` takes `{ text, format?, dateFormat?, accountName?, balances?, planId?, annualise?,
-categoryMap?, excludeCategories?, dryRun? }`, with `format` of `ofx`, `qif` or `auto`, and `dryRun` defaulting to `true`.
-Account numbers are masked to their last four digits. `text` is limited to 2 MB (2,000,000 characters); a larger file
-is refused with `400 VALIDATION` before it is parsed.
-
 ## Tables and reports
 
 ```bash
@@ -61,4 +54,5 @@ caveats as data; the web app renders it.
 
 ## What this does not do
 
-There is no server-side PDF. A household export is not a full instance backup: it holds no users or keys.
+There is no OFX, QFX or QIF import: export a bank statement as CSV and use the CSV route. There is no server-side
+PDF. A household export is not a full instance backup: it holds no users or keys.

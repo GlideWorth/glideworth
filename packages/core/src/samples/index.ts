@@ -4,7 +4,11 @@
  * and the web app's first-run experience. Never copy real user data into this file.
  */
 import { planDefaultsForHousehold } from "../defaults/country.js";
-import { GlideworthDocument, type GlideworthDocumentInput } from "../schema/document.js";
+import {
+  GlideworthDocument,
+  type GlideworthDocumentInput,
+  SCHEMA_VERSION,
+} from "../schema/document.js";
 import type { HouseholdInput } from "../schema/household.js";
 import type { PlanInput } from "../schema/plan.js";
 
@@ -228,7 +232,7 @@ function basePlan(id: string, name: string, retireAge: number, isMain: boolean):
 
 const sampleInput: GlideworthDocumentInput = {
   app: "glideworth",
-  schemaVersion: 1,
+  schemaVersion: SCHEMA_VERSION,
   household: {
     id: HOUSEHOLD_ID,
     name: "Avery & Jordan (sample)",
@@ -377,7 +381,7 @@ const ukDefaults = planDefaultsForHousehold(ukHousehold);
 
 const ukSampleInput: GlideworthDocumentInput = {
   app: "glideworth",
-  schemaVersion: 1,
+  schemaVersion: SCHEMA_VERSION,
   household: ukHousehold,
   finances: {
     asOf: "2026-11",
@@ -610,7 +614,7 @@ function euroSample(s: EuroSampleSpec): GlideworthDocumentInput {
   const retire = `${s.planId}-retire`;
   return {
     app: "glideworth",
-    schemaVersion: 1,
+    schemaVersion: SCHEMA_VERSION,
     household,
     finances: { asOf: "2026-11", accounts: s.accounts },
     plans: [
@@ -834,17 +838,16 @@ export const NL_SAMPLE_PLAN_ID = "nl-plan-main";
 
 // ---------------------------------------------------------------------------------------------
 // United Arab Emirates sample (SYNTHETIC). An expatriate couple in Dubai; every name and number is
-// invented. Shows AED with the USD peg, the end-of-service gratuity, DEWS, a UK pension kept from
-// before the move (GBP, sourced in the UK) and a second plan that moves back to the UK.
+// invented. Shows AED with the USD peg, the end-of-service gratuity, DEWS and a UK pension kept from
+// before the move (GBP, sourced in the UK).
 // ---------------------------------------------------------------------------------------------
 
 const AE_HOUSEHOLD = "hh-ae-sample";
 const NOOR = "p-noor";
 const ELLIS = "p-ellis";
 const AE_PLAN = "ae-plan-main";
-const AE_RETURN_PLAN = "ae-plan-return";
 
-function aePlan(id: string, name: string, isMain: boolean, moveBack: boolean): PlanInput {
+function aePlan(id: string, name: string, isMain: boolean): PlanInput {
   const household = {
     location: { country: "AE" },
     people: [{ role: "primary", birthMonth: "1984-02" }],
@@ -855,9 +858,7 @@ function aePlan(id: string, name: string, isMain: boolean, moveBack: boolean): P
     householdId: AE_HOUSEHOLD,
     name,
     isMain,
-    description: moveBack
-      ? "Both stop work when Noor turns 58 and move back to the UK when Noor turns 60."
-      : "Both stop work when Noor turns 58 and stay in the UAE.",
+    description: "Both stop work when Noor turns 58 and stay in the UAE.",
     ...d,
     tax: { ...d.tax, filingStatus: "married-joint" },
     milestones: [
@@ -878,17 +879,6 @@ function aePlan(id: string, name: string, isMain: boolean, moveBack: boolean): P
         criteria: [{ kind: "age", personId: NOOR, age: 92 }],
       },
     ],
-    ...(moveBack
-      ? {
-          residency: [
-            {
-              id: `${id}-to-uk`,
-              from: { kind: "age", personId: NOOR, age: 60 },
-              location: { country: "GB", region: "ENG" },
-            },
-          ],
-        }
-      : {}),
     income: [
       {
         id: `${id}-noor-pay`,
@@ -984,7 +974,7 @@ function aePlan(id: string, name: string, isMain: boolean, moveBack: boolean): P
 
 const aeSampleInput: GlideworthDocumentInput = {
   app: "glideworth",
-  schemaVersion: 1,
+  schemaVersion: SCHEMA_VERSION,
   household: {
     id: AE_HOUSEHOLD,
     name: "Noor and Ellis (UAE sample)",
@@ -1026,16 +1016,12 @@ const aeSampleInput: GlideworthDocumentInput = {
       { from: "GBP", to: "AED", rate: 4.9, annualDrift: 0 },
     ],
   },
-  plans: [
-    aePlan(AE_PLAN, "Stay in the UAE", true, false),
-    aePlan(AE_RETURN_PLAN, "Move back to the UK at 60", false, true),
-  ],
+  plans: [aePlan(AE_PLAN, "Stay in the UAE", true)],
 };
 
-/** A fresh, parsed copy of the synthetic UAE sample (AED, gratuity, DEWS, UK pension, move-back plan). */
+/** A fresh, parsed copy of the synthetic UAE sample (AED, gratuity, DEWS, UK pension and State Pension). */
 export function createUaeSampleDocument(): GlideworthDocument {
   return GlideworthDocument.parse(structuredClone(aeSampleInput));
 }
 
 export const UAE_SAMPLE_PLAN_ID = AE_PLAN;
-export const UAE_RETURN_PLAN_ID = AE_RETURN_PLAN;

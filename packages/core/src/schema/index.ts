@@ -12,7 +12,6 @@ export * from "./montecarlo.js";
 export * from "./plan.js";
 export * from "./primitives.js";
 export * from "./progress-settings.js";
-export * from "./residency.js";
 export * from "./sparse.js";
 export * from "./strategies.js";
 export * from "./tax.js";

@@ -122,7 +122,6 @@ function paramFor(path: string, name: string): string {
     "flows/{itemId}": "flow-1",
     "planned-accounts/{itemId}": "pa-1",
     "planned-real-assets/{itemId}": "pra-1",
-    "residency/{itemId}": "res-1",
     // Not workspace data: reference tables and enumerations.
     "versions/{version}": "1",
     "reorder/{collection}": "accounts",
@@ -253,7 +252,7 @@ describe("T-ISO targeted cases", () => {
       name: string;
       inputSchema: Record<string, unknown>;
     }>;
-    expect(tools.length).toBeGreaterThanOrEqual(70);
+    expect(tools.length).toBeGreaterThanOrEqual(65);
     const before = await dumpTenant(cloud, A.accountId);
     for (const t of tools) {
       const props = (t.inputSchema.properties ?? {}) as Record<string, Record<string, unknown>>;

@@ -4,10 +4,8 @@ import type { ExpenseEvent, IncomeEvent } from "../schema/events.js";
 import type { Flow } from "../schema/flows.js";
 import type { Milestone, MilestoneCriterion } from "../schema/milestones.js";
 import type { Plan } from "../schema/plan.js";
-import type { ResidencyChange } from "../schema/residency.js";
 import type { DrawdownEntry } from "../schema/strategies.js";
 import type { DateRef, RateSpec } from "../schema/time.js";
-import { countryName } from "../tax/crossborder/explain.js";
 import {
   ASSUMPTION_LABELS,
   capitalise,
@@ -359,28 +357,6 @@ export function describeChange(op: PatchOp, input: DescribeInput): PlanChange | 
     return mk("changed", `Plan renamed from "${String(before)}" to "${String(after)}"`);
   if (top === "description" || top === "notes")
     return mk(kind, `Plan ${top} ${kind === "removed" ? "removed" : "updated"}`);
-
-  // --- residency: "Everyone moves to United Arab Emirates from Sep 2027"
-  if (top === "residency") {
-    const move = (v: unknown): string => {
-      if (!isPlainObject(v)) return "a move";
-      const r = v as unknown as ResidencyChange;
-      const who = r.personId ? (f.people?.[r.personId] ?? r.personId) : "everyone";
-      const where = `${countryName(r.location?.country ?? "?")}${r.location?.region ? ` (${r.location.region})` : ""}`;
-      return `${capitalise(who)} moves to ${where} ${r.from?.kind === "date" ? "from " : "at "}${r.from ? fmtDateRef(r.from, f) : "?"}`;
-    };
-    if (segs.length === 1) {
-      const list = (v: unknown) =>
-        Array.isArray(v) && v.length ? v.map(move).join("; ") : "no moves";
-      return mk(kind, `Where you live: ${list(after)} (was ${list(before)})`);
-    }
-    if (segs.length === 2 && op.op === "add") return mk("added", `Added move: ${move(op.value)}`);
-    if (segs.length === 2 && op.op === "remove")
-      return mk("removed", `Removed move: ${move(before)}`);
-    const b = lookup(input.base, segs.slice(0, 2));
-    const a = lookup(input.other, segs.slice(0, 2));
-    return mk("changed", `Move changed: ${move(a)} (was ${move(b)})`);
-  }
 
   // --- generic fallback
   // Flat tax rates (tax.flat.ordinary, .capitalGains, ...) are rates even where the key does not say so.

@@ -3,7 +3,7 @@ title: API - households, finances and plans
 description: Routes for households and people, accounts, real assets and debts, plan collections and settings, version history and undo, and branches.
 section: API and MCP
 order: 13
-lastChecked: 2026-11-16
+lastChecked: 2026-11-19
 ---
 
 All paths are under `/api/v1`. Read scope covers `GET`; writes need `write` scope and the editor or owner role. For
@@ -15,8 +15,7 @@ conventions see [API overview](/docs/api-and-mcp/api-overview/).
 | --- | --- |
 | `GET/POST /households` | List or create. |
 | `GET/PUT/PATCH/DELETE /households/{id}` | One household. `PUT` also accepts the whole current-finances body. |
-| `/households/{id}/people[/{personId}]`, `/households/{id}/dependents[/{id}]` | CRUD. Adding a second person switches the household to couple mode. |
-| `GET/PUT/PATCH /households/{id}/people/{personId}/cross-border` | Citizenships, US green card, residence history and state-pension records, checked as a unit. |
+| `/households/{id}/people[/{personId}]`, `/households/{id}/dependents[/{id}]` | CRUD. Adding a second person switches the household to couple mode. A person's `citizenships` and `usGreenCard` are set here too. |
 | `PUT /households/{id}/reorder/{collection}` | Display order. `collection` is `accounts`, `real-assets`, `debts` or `plans`. |
 
 ## Current finances
@@ -39,7 +38,7 @@ A balance write that moves a balance creates or updates today's automatic snapsh
 | `GET/POST /plans` | List or create. |
 | `GET/PUT/PATCH/DELETE /plans/{id}` | One plan. `PUT` requires `If-Match`. `PATCH` takes JSON Patch with id-addressed items. |
 | `POST /plans/{id}/duplicate`, `/archive`, `/unarchive`, `/set-main` | Plan actions. |
-| `/plans/{id}/income`, `/expenses`, `/milestones`, `/flows`, `/planned-accounts`, `/planned-real-assets`, `/residency` | Collections: list, add, get, `PUT`, `PATCH`, `DELETE` by id. |
+| `/plans/{id}/income`, `/expenses`, `/milestones`, `/flows`, `/planned-accounts`, `/planned-real-assets` | Collections: list, add, get, `PUT`, `PATCH`, `DELETE` by id. |
 | `PUT /plans/{id}/reorder/{collection}` | Reorder. For flows, the order is the funding priority. |
 | `/plans/{id}/assumptions`, `/tax-settings`, `/withdrawal-strategy`, `/drawdown`, `/flex-spending`, `/risk-guardrails`, `/tax-strategy`, `/monte-carlo-settings`, `/leftover` | Singletons with `GET`, `PUT`, `PATCH`, `DELETE`. `DELETE` removes optional ones and resets the others to defaults. |
 
@@ -74,7 +73,7 @@ parent changes, and can be merged back or promoted.
 | `GET /plans/{id}/scenarios/survivor?ages=70,80,90&evaluate=true` | Survivor scenarios (couples only). |
 
 Templates: `market-crash`, `job-loss`, `career-break`, `early-retirement`, `downsizing`, `child`, `inheritance`,
-`long-term-care`, `survivor`, `relocation`. An unknown template is `404`; bad parameters are `400`.
+`long-term-care` and `survivor`. An unknown template is `404`; bad parameters are `400`.
 
 ## What this does not do
 

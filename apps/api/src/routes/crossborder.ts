@@ -1,13 +1,10 @@
 /**
- * Cross-border routes: residency timeline, per-person cross-border profile, "how is this taxed and
- * why", stay or move, tax by country and basis, and the read-only rule tables.
- * (Plan residency entries themselves are a nested plan collection: /plans/{id}/residency.)
+ * Cross-border routes for items held in another country than the one the household lives in: which
+ * items, "how is this taxed and why", tax by country and basis, and the read-only rule tables.
  */
 import { INCOME_CATEGORIES } from "@glideworth/core";
 import { z } from "@hono/zod-openapi";
-import { parseIfMatch } from "../middleware.js";
-import { PersonCrossBorder, StayOrMoveRequest } from "../services/crossborder.js";
-import { IdParam, IfMatch, json, pathId, type RouteCtx, route } from "./helpers.js";
+import { IdParam, json, type RouteCtx, route } from "./helpers.js";
 
 const Obj = z.record(z.string(), z.unknown());
 const CountryParam = (name: string) =>
@@ -57,26 +54,11 @@ export function crossBorderRoutes({ app, svc }: RouteCtx) {
   app.openapi(
     route("read", {
       method: "get",
-      path: `${P}/residency-timeline`,
-      operationId: "getResidencyTimeline",
-      tags: ["Plan: residency"],
-      summary:
-        "Each person's residency over the plan: household location, dated moves and relocation milestones",
-      description:
-        "Steps per person (`source`: household, residency entry or milestone), the residence of each projected year with its months (split years), each person’s citizenships and past residence, and warnings (countries without tax rules, unknown treaty pairs, entries that never happen). Edit the entries with `/plans/{id}/residency`.",
-      request: { params: IdParam },
-      responses: { 200: json(Obj, "Timeline") },
-    }),
-    (c) => c.json(svc(c).crossBorder.timeline(c.req.valid("param").id) as never, 200),
-  );
-  app.openapi(
-    route("read", {
-      method: "get",
       path: `${P}/cross-border/items`,
       operationId: "listCrossBorderItems",
-      tags: ["Plan: residency"],
+      tags: ["Insights"],
       summary:
-        "Accounts, assets and income whose country differs from where their owner lives at some point",
+        "Accounts, real assets and income held in another country than the one the household lives in",
       request: { params: IdParam },
       responses: { 200: json(Obj, "Items") },
     }),
@@ -90,7 +72,7 @@ export function crossBorderRoutes({ app, svc }: RouteCtx) {
       tags: ["Insights"],
       summary: "How one account, asset, debt or income is taxed in a year, and why",
       description:
-        "The item's country, its owner's residence that year (split years list both), and per income category the non-resident rule, the treaty article, how the residence country sees a foreign wrapper and the relief. Unknown treaty pairs and unrecognised wrappers are warnings.",
+        "The item's country, the country the household lives in, and per income category the non-resident rule, the treaty article, how the residence country sees a foreign wrapper and the relief. Unknown treaty pairs and unrecognised wrappers are warnings.",
       request: {
         params: IdParam,
         body: {
@@ -110,36 +92,14 @@ export function crossBorderRoutes({ app, svc }: RouteCtx) {
   );
   app.openapi(
     route("simulate", {
-      method: "post",
-      path: `${P}/insights/stay-or-move`,
-      operationId: "compareStayOrMove",
-      tags: ["Insights"],
-      summary:
-        "Compare staying with moving country: plan diff, outcome deltas, tax by country and basis, attribution",
-      description:
-        "Give `to` and `month` (optionally `returnMonth`, `personId`) to build the move with the relocation template, or `movePlanId` to compare with an existing plan (a relocation branch). Two deterministic projections; answered inline. Amounts are in today’s money.",
-      request: {
-        params: IdParam,
-        body: { content: { "application/json": { schema: StayOrMoveRequest } }, required: true },
-      },
-      responses: { 200: json(Obj, "Comparison") },
-    }),
-    (c) =>
-      c.json(
-        svc(c).crossBorder.stayOrMove(c.req.valid("param").id, c.req.valid("json")) as never,
-        200,
-      ),
-  );
-  app.openapi(
-    route("simulate", {
       method: "get",
       path: `${P}/tax-breakdown/by-country`,
       operationId: "taxBreakdownByCountry",
       tags: ["Insights"],
       summary:
-        "Tax by country and basis (residence, source, citizenship, relief, exit, return), lifetime and per year",
+        "Tax by country and basis (residence, source, citizenship, relief), lifetime and per year",
       description:
-        "Relief rows are negative: they are the credit the residence country gives for tax paid elsewhere, so the sum per year is what is actually paid. Single-country plans report everything as residence tax of the household country (`crossBorder: false`).",
+        "Source rows are tax a country charges as a non-resident on accounts, property or income held there; relief rows are negative: they are the credit the household's country gives for tax paid elsewhere, so the sum per year is what is actually paid. Plans with nothing abroad report everything as residence tax of the household country (`crossBorder: false`).",
       request: { params: IdParam, query: TaxByCountryQuery },
       responses: { 200: json(Obj, "Tax by country") },
     }),
@@ -149,58 +109,6 @@ export function crossBorderRoutes({ app, svc }: RouteCtx) {
         200,
       ),
   );
-
-  // ----------------------------------------------------------------------------- person profile
-  const PersonParams = IdParam.extend({ personId: pathId("personId") });
-  app.openapi(
-    route("read", {
-      method: "get",
-      path: "/api/v1/households/{id}/people/{personId}/cross-border",
-      operationId: "getPersonCrossBorder",
-      tags: ["People"],
-      summary:
-        "A person's citizenships, US green card, residence before the plan and state-pension records",
-      request: { params: PersonParams },
-      responses: { 200: json(PersonCrossBorder, "Profile") },
-    }),
-    (c) => {
-      const p = c.req.valid("param");
-      return c.json(svc(c).crossBorder.getPersonProfile(p.id, p.personId) as never, 200);
-    },
-  );
-  for (const mode of ["replace", "merge"] as const)
-    app.openapi(
-      route("write", {
-        method: mode === "replace" ? "put" : "patch",
-        path: "/api/v1/households/{id}/people/{personId}/cross-border",
-        operationId: mode === "replace" ? "setPersonCrossBorder" : "patchPersonCrossBorder",
-        tags: ["People"],
-        summary:
-          mode === "replace"
-            ? "Replace a person's cross-border profile (absent fields are removed)"
-            : "Update some of a person's cross-border fields (the others are kept)",
-        description:
-          "Checked as a unit: residence history oldest first, no overlaps, only the last entry open-ended, nothing after the plan start (future moves go in the plan residency timeline); one state-pension record per country; each citizenship once. Errors name the field and the fix.",
-        request: {
-          params: PersonParams,
-          headers: IfMatch,
-          body: { content: { "application/json": { schema: PersonCrossBorder } }, required: true },
-        },
-        responses: { 200: json(Obj, "Saved profile and the household version") },
-      }),
-      (c) => {
-        const p = c.req.valid("param");
-        const out = svc(c).crossBorder.setPersonProfile(
-          p.id,
-          p.personId,
-          c.req.valid("json"),
-          mode,
-          parseIfMatch(c),
-        );
-        c.header("ETag", `"${out.version}"`);
-        return c.json(out as never, 200);
-      },
-    );
 
   // ----------------------------------------------------------------------------- rule tables
   app.openapi(
@@ -222,7 +130,7 @@ export function crossBorderRoutes({ app, svc }: RouteCtx) {
       operationId: "getNonResidentRules",
       tags: ["Cross-border rules"],
       summary:
-        "How a country taxes non-residents, per income category, with its wrappers, exit rules and sources",
+        "How a country taxes non-residents, per income category, with its wrappers and sources",
       request: { params: z.object({ country: CountryParam("country") }) },
       responses: { 200: json(Obj, "Rules") },
     }),

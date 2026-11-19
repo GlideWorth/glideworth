@@ -45,25 +45,9 @@ export interface WrapperRule {
   accountTypes: readonly AccountType[];
   /** Income and gains inside stay free of THIS country's tax. */
   keepsShelter: boolean;
-  /**
-   * New contributions while non-resident: 'allowed'; 'none' (blocked from the first tax year of
-   * non-residence); 'relief-capped' (allowed up to `capGross` a year for `yearsAfterDeparture`
-   * tax years after leaving, then none).
-   */
-  contributions: "allowed" | "none" | "relief-capped";
-  capGross?: number;
-  yearsAfterDeparture?: number;
+  /** New contributions while non-resident: 'allowed' or 'none'. */
+  contributions: "allowed" | "none";
   note: string;
-}
-
-export interface DepartureRule {
-  kind: "deemed-disposal";
-  /** What is taxed: Glideworth applies it to taxable (non-registered) investment accounts. */
-  scope: string;
-  /** The individual may elect to defer (CA T1244 security; AU choose to disregard). */
-  deferrable: boolean;
-  note: string;
-  sources: readonly Source[];
 }
 
 export interface NonResidentRules {
@@ -92,17 +76,6 @@ export interface NonResidentRules {
     note: string;
   };
   wrappers: readonly WrapperRule[];
-  departure?: DepartureRule;
-  /** Cost basis of investments steps up to market value when someone becomes resident. */
-  arrivalRebasing?: { note: string; sources: readonly Source[] };
-  /** Gains realised during a short absence are taxed on return (UK: 5 years). */
-  temporaryNonResidence?: {
-    maxYears: number;
-    priorResidentYears: number;
-    ofYears: number;
-    note: string;
-    sources: readonly Source[];
-  };
   /** Country taxes its citizens wherever they live (US). */
   citizenshipTaxation?: {
     foreignEarnedIncomeExclusion: { year: number; amount: number }[];

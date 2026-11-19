@@ -5,8 +5,6 @@ import {
   type MonteCarloResult,
   MonteCarloSettings,
   type ProjectionResult,
-  SAMPLING_METHOD_LABEL,
-  type SamplingMethod,
 } from "@glideworth/core";
 import { Dices, Loader2, Play, Square } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -52,6 +50,7 @@ import {
 import { FxRiskSettings } from "./fx-risk";
 import { McCancelled, poolSize, runChanceOfSuccess, runTrialDetail } from "./mc-pool";
 import { useMcStore } from "./mc-store";
+import { MethodAdvanced, SAMPLING_METHOD_OPTIONS } from "./method-advanced";
 
 type Status = "idle" | "running" | "done" | "error" | "cancelled";
 
@@ -146,19 +145,34 @@ function SettingsPanel({
     set({ distributions: { ...dist, [k]: { ...dist[k], [field]: pct / 100 } } });
   return (
     <fieldset disabled={disabled} className="flex flex-col gap-3">
-      <Field label="Method">
-        {(id) => (
-          <Select
-            id={id}
-            value={value.method}
-            onValueChange={(m) => set({ method: m })}
-            options={(Object.keys(SAMPLING_METHOD_LABEL) as SamplingMethod[]).map((m) => ({
-              value: m,
-              label: SAMPLING_METHOD_LABEL[m],
-            }))}
-          />
-        )}
-      </Field>
+      <MethodAdvanced method={value.method}>
+        <Field label="Method">
+          {(id) => (
+            <Select
+              id={id}
+              value={value.method}
+              onValueChange={(m) => set({ method: m })}
+              options={SAMPLING_METHOD_OPTIONS}
+            />
+          )}
+        </Field>
+        {value.method === "block-bootstrap" ? (
+          <Field label="Block length (years)">
+            {(id) => (
+              <Input
+                id={id}
+                type="number"
+                min={1}
+                max={30}
+                value={value.blockLength}
+                onChange={(e) =>
+                  set({ blockLength: Math.max(1, Math.min(30, Number(e.target.value) || 1)) })
+                }
+              />
+            )}
+          </Field>
+        ) : null}
+      </MethodAdvanced>
       {value.method !== "normal" ? <DatasetChooser value={value} set={set} /> : null}
       <div className="grid grid-cols-2 gap-3">
         <Field
@@ -197,22 +211,6 @@ function SettingsPanel({
           )}
         </Field>
       </div>
-      {value.method === "block-bootstrap" ? (
-        <Field label="Block length (years)">
-          {(id) => (
-            <Input
-              id={id}
-              type="number"
-              min={1}
-              max={30}
-              value={value.blockLength}
-              onChange={(e) =>
-                set({ blockLength: Math.max(1, Math.min(30, Number(e.target.value) || 1)) })
-              }
-            />
-          )}
-        </Field>
-      ) : null}
       {value.method === "normal" ? (
         <div className="flex flex-col gap-2 rounded-md bg-surface-2 p-2.5">
           <div className="eyebrow">Distributions (% per year)</div>

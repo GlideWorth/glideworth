@@ -448,7 +448,6 @@ function YearDetailBody({
               <div className="mt-3">
                 <YearTaxByCountry
                   p={p}
-                  people={index.people}
                   basis={basis}
                   home={input?.household.location.country ?? ""}
                 />

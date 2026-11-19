@@ -532,8 +532,8 @@ export const ACCOUNT_TYPE_INFO: Record<AccountType, AccountTypeInfo> = {
     assetClass: "portfolio",
   }),
   // UAE: end-of-service savings schemes replacing the gratuity. The UAE taxes nothing, so the
-  // treatment only matters after a move: 'tax-free' wrappers are not recognised by most other
-  // countries (see tax/crossborder/wrappers.ts).
+  // treatment only matters to a household living elsewhere: 'tax-free' wrappers are not recognised
+  // by most other countries (see tax/crossborder/wrappers.ts).
   "ae-dews": T({
     label: "DIFC Employee Workplace Savings (DEWS)",
     category: "retirement",

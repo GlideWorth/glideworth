@@ -1,10 +1,7 @@
 /**
- * Cross-border plans: the residency timeline (plan entries, relocation milestones, each person's
- * history), the per-person cross-border profile (citizenships, US green card, past residence,
- * state-pension records), "how is this item taxed and why", stay-or-move, tax by country and
- * basis, and the read-only rule tables (non-resident rules, treaties, wrapper recognition).
- *
- * Validation here explains itself: every error names the field, what was wrong and what to do.
+ * Items held in another country: which accounts, assets and income are abroad, "how is this item
+ * taxed and why", tax by country and basis, and the read-only rule tables (non-resident rules,
+ * treaties, wrapper recognition). The household lives in one country for the whole plan.
  */
 import {
   ACCOUNT_TYPE_INFO,
@@ -16,16 +13,9 @@ import {
   crossBorderSimplificationsFor,
   explainCrossBorderTreatment,
   explainItemTaxation,
-  type Household,
   INCOME_CATEGORIES,
   type IncomeCategory,
   NON_RESIDENT_RULES,
-  PastResidence,
-  type Person,
-  type Plan,
-  type ResidencyChange,
-  residencyTimelineOf,
-  StatePensionRecord,
   TAX_BASIS_LABEL,
   TREATIES,
   taxByCountry,
@@ -35,327 +25,17 @@ import {
   WRAPPER_RECOGNITION,
   wrapperView,
 } from "@glideworth/core";
-import { z } from "zod";
 import { ApiError } from "../errors.js";
-import { outcomeOf, roundMoney } from "../views.js";
-import type { ServiceCtx } from "./context.js";
-import type { HouseholdsService } from "./households.js";
-import type { PlansService } from "./plans.js";
+import { roundMoney } from "../views.js";
 import type { SimulationService } from "./simulation.js";
 
-const Month = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "a month as YYYY-MM");
-const Country = z
-  .string()
-  .regex(/^[A-Za-z]{2}$/, "a two-letter ISO country code, e.g. GB, AE, US")
-  .transform((s) => s.toUpperCase());
-
-/** The cross-border fields of one person, read and written as a unit. */
-export const PersonCrossBorder = z
-  .object({
-    citizenships: z
-      .array(Country)
-      .max(5)
-      .optional()
-      .describe("ISO alpha-2 codes. Absent = a citizen of the household country only."),
-    usGreenCard: z
-      .boolean()
-      .optional()
-      .describe("Holds a US green card (taxed like a US citizen)."),
-    residenceHistory: z
-      .array(PastResidence)
-      .max(40)
-      .optional()
-      .describe(
-        "Tax residence before the plan starts, oldest first; only the last entry may have no `to`.",
-      ),
-    statePensionRecords: z
-      .array(StatePensionRecord)
-      .max(10)
-      .optional()
-      .describe("Qualifying years per state pension scheme, with planned voluntary years."),
-  })
-  .meta({ id: "PersonCrossBorder" });
-export type PersonCrossBorder = z.infer<typeof PersonCrossBorder>;
-
-export const StayOrMoveRequest = z
-  .object({
-    to: z
-      .object({ country: Country, region: z.string().max(10).optional() })
-      .optional()
-      .describe(
-        "Where to move (with `month`). Omit when comparing with an existing plan (`movePlanId`).",
-      ),
-    month: Month.optional().describe("First month living in the new country."),
-    returnMonth: Month.optional().describe("Optional: first month back home."),
-    personId: z.string().max(64).optional().describe("Who moves (default: everyone)."),
-    movePlanId: z
-      .string()
-      .max(64)
-      .optional()
-      .describe("Compare with this plan (e.g. a relocation branch) instead of building a move."),
-    basis: z.enum(["real", "nominal"]).default("real"),
-  })
-  .meta({ id: "StayOrMoveRequest" });
-
-const ym = (s: string) => {
-  const [y, m] = s.split("-").map(Number) as [number, number];
-  return y * 12 + m - 1;
-};
-
 export class CrossBorderService {
-  constructor(
-    private readonly ctx: ServiceCtx,
-    private readonly plans: PlansService,
-    private readonly households: HouseholdsService,
-    private readonly sim: SimulationService,
-  ) {}
-
-  // ----------------------------------------------------------------------------- validation
-  /**
-   * Check residency entries against the household and plan. Throws a 400 whose message says what
-   * is wrong and how to fix it (unknown person, a move before the plan start, an unknown
-   * milestone, two moves for the same person in the same month).
-   */
-  checkResidency(
-    plan: Pick<Plan, "milestones">,
-    household: Household,
-    asOf: string,
-    entries: ResidencyChange[],
-  ) {
-    const people = household.people.map((p) => p.id);
-    const seen = new Map<string, string>();
-    for (const [i, r] of entries.entries()) {
-      const at = `residency[${i}] ('${r.id}')`;
-      if (r.personId && !people.includes(r.personId))
-        throw new ApiError(
-          400,
-          "VALIDATION",
-          `${at}: personId '${r.personId}' is not a person in this household. Use one of ${people.map((p) => `'${p}'`).join(", ")}, or omit personId to move everyone.`,
-          { field: `residency.${i}.personId`, validPersonIds: people },
-        );
-      const f = r.from;
-      if (f.kind === "date" && ym(f.date) + f.offsetMonths < ym(asOf))
-        throw new ApiError(
-          400,
-          "VALIDATION",
-          `${at}: the move is dated ${f.date}, before the plan starts (${asOf}). Residence before the plan belongs in the person's residence history (PUT /households/{id}/people/{personId}/cross-border), or set the household location to where you live now.`,
-          { field: `residency.${i}.from`, planStart: asOf },
-        );
-      if (f.kind === "milestone" && !plan.milestones.some((m) => m.id === f.milestoneId))
-        throw new ApiError(
-          400,
-          "VALIDATION",
-          `${at}: milestone '${f.milestoneId}' does not exist in this plan. Use one of ${plan.milestones.map((m) => `'${m.id}'`).join(", ") || "(none)"}, or date the move.`,
-          {
-            field: `residency.${i}.from.milestoneId`,
-            validMilestoneIds: plan.milestones.map((m) => m.id),
-          },
-        );
-      if (f.kind === "age" && !people.includes(f.personId))
-        throw new ApiError(
-          400,
-          "VALIDATION",
-          `${at}: the age-based date refers to person '${f.personId}', who is not in this household (${people.join(", ")}).`,
-          { field: `residency.${i}.from.personId`, validPersonIds: people },
-        );
-      if (f.kind === "date") {
-        const key = `${r.personId ?? "*"}|${ym(f.date) + f.offsetMonths}`;
-        const prev = seen.get(key);
-        if (prev)
-          throw new ApiError(
-            400,
-            "VALIDATION",
-            `${at}: ${r.personId ? `'${r.personId}'` : "the household"} already moves in ${f.date} (entry '${prev}'). Edit that entry instead of adding a second move in the same month.`,
-            { field: `residency.${i}.from`, conflictsWith: prev },
-          );
-        seen.set(key, r.id);
-      }
-    }
-  }
-
-  /** Check a person's cross-border profile (dates in order, no overlaps, one record per scheme). */
-  checkPersonProfile(
-    p: PersonCrossBorder,
-    person: Pick<Person, "birthMonth" | "name">,
-    asOf: string,
-  ) {
-    const h = p.residenceHistory ?? [];
-    for (const [i, r] of h.entries()) {
-      if (r.to && ym(r.to) < ym(r.from))
-        throw new ApiError(
-          400,
-          "VALIDATION",
-          `residenceHistory[${i}]: ends (${r.to}) before it starts (${r.from}). Swap the dates.`,
-          { field: `residenceHistory.${i}.to` },
-        );
-      if (ym(r.from) < ym(person.birthMonth))
-        throw new ApiError(
-          400,
-          "VALIDATION",
-          `residenceHistory[${i}]: starts in ${r.from}, before ${person.name} was born (${person.birthMonth}).`,
-          { field: `residenceHistory.${i}.from` },
-        );
-      if (ym(r.from) > ym(asOf))
-        throw new ApiError(
-          400,
-          "VALIDATION",
-          `residenceHistory[${i}]: starts in ${r.from}, after the plan starts (${asOf}). Future moves belong in the plan's residency timeline (POST /plans/{id}/residency).`,
-          { field: `residenceHistory.${i}.from` },
-        );
-      const next = h[i + 1];
-      if (next) {
-        if (!r.to)
-          throw new ApiError(
-            400,
-            "VALIDATION",
-            `residenceHistory[${i}]: only the most recent entry may have no end date; set 'to' (the month before ${next.from}).`,
-            { field: `residenceHistory.${i}.to` },
-          );
-        if (ym(next.from) <= ym(r.to))
-          throw new ApiError(
-            400,
-            "VALIDATION",
-            `residenceHistory[${i + 1}]: starts in ${next.from}, overlapping the previous entry (to ${r.to}). List entries oldest first without overlaps.`,
-            { field: `residenceHistory.${i + 1}.from` },
-          );
-      }
-    }
-    const schemes = new Set<string>();
-    for (const [i, r] of (p.statePensionRecords ?? []).entries()) {
-      if (schemes.has(r.country))
-        throw new ApiError(
-          400,
-          "VALIDATION",
-          `statePensionRecords[${i}]: there is already a record for ${r.country}; keep one record per country.`,
-          { field: `statePensionRecords.${i}.country` },
-        );
-      schemes.add(r.country);
-    }
-    const c = p.citizenships ?? [];
-    if (new Set(c).size !== c.length)
-      throw new ApiError(400, "VALIDATION", "citizenships: each country may appear once.", {
-        field: "citizenships",
-      });
-  }
-
-  // ----------------------------------------------------------------------------- person profile
-  getPersonProfile(
-    householdId: string,
-    personId: string,
-  ): PersonCrossBorder & { personId: string } {
-    const rec = this.households.get(householdId);
-    const p = rec.household.people.find((x) => x.id === personId);
-    if (!p)
-      throw new ApiError(404, "NOT_FOUND", `person '${personId}' not found`, {
-        validPersonIds: rec.household.people.map((x) => x.id),
-      });
-    return {
-      personId,
-      ...(p.citizenships ? { citizenships: p.citizenships } : {}),
-      ...(p.usGreenCard !== undefined ? { usGreenCard: p.usGreenCard } : {}),
-      ...(p.residenceHistory ? { residenceHistory: p.residenceHistory } : {}),
-      ...(p.statePensionRecords ? { statePensionRecords: p.statePensionRecords } : {}),
-    };
-  }
-
-  /** Replace (PUT) or merge (PATCH) a person's cross-border profile. */
-  setPersonProfile(
-    householdId: string,
-    personId: string,
-    body: unknown,
-    mode: "replace" | "merge",
-    expected?: number,
-  ) {
-    const rec = this.households.get(householdId);
-    const p = rec.household.people.find((x) => x.id === personId);
-    if (!p)
-      throw new ApiError(404, "NOT_FOUND", `person '${personId}' not found`, {
-        validPersonIds: rec.household.people.map((x) => x.id),
-      });
-    const parsed = PersonCrossBorder.parse(body);
-    const current = this.getPersonProfile(householdId, personId);
-    const next: PersonCrossBorder = mode === "merge" ? { ...current, ...parsed } : { ...parsed };
-    this.checkPersonProfile(next, p, rec.finances.asOf);
-    // Explicit nulls in a replace: absent fields are removed.
-    const patch: Record<string, unknown> = {
-      citizenships: next.citizenships ?? null,
-      usGreenCard: next.usGreenCard ?? null,
-      residenceHistory: next.residenceHistory ?? null,
-      statePensionRecords: next.statePensionRecords ?? null,
-    };
-    const out = this.households.updatePerson(householdId, personId, patch, expected);
-    return { profile: this.getPersonProfile(householdId, personId), version: out.record.version };
-  }
-
-  // ----------------------------------------------------------------------------- timeline
-  timeline(planId: string) {
-    const { input, plan } = this.sim.inputFor(planId, { trace: "off" });
-    let result: ReturnType<SimulationService["projection"]>["result"] | undefined;
-    try {
-      result = this.sim.projection(planId, { trace: "summary" }).result;
-    } catch {
-      result = undefined;
-    }
-    const steps = residencyTimelineOf(input, result);
-    const milestones = new Map(plan.milestones.map((m) => [m.id, m.name]));
-    const people = input.household.people.map((p) => ({
-      personId: p.id,
-      name: p.name,
-      citizenships: p.citizenships ?? [input.household.location.country],
-      ...(p.usGreenCard ? { usGreenCard: true } : {}),
-      residenceHistory: p.residenceHistory ?? [],
-      steps: steps
-        .filter((s) => s.personId === p.id)
-        .map((s) => ({
-          from: s.from,
-          location: s.location,
-          source: s.source,
-          ...(s.refId ? { refId: s.refId } : {}),
-          ...(s.source === "milestone" && s.refId ? { milestone: milestones.get(s.refId) } : {}),
-        })),
-    }));
-    const unresolved = (plan.residency ?? [])
-      .filter((r) => !steps.some((s) => s.refId === r.id))
-      .map((r) => r.id);
-    const countries = [...new Set(steps.map((s) => s.location.country))];
-    const crossBorder = result?.periods.some((p) => p.taxes.byCountry !== undefined) ?? false;
-    const warnings: string[] = [];
-    for (const c of countries)
-      if (!NON_RESIDENT_RULES[c])
-        warnings.push(
-          `${c}: Glideworth has no tax rules for this country; while living there taxes use the plan's flat or custom settings.`,
-        );
-    for (let i = 0; i < countries.length; i++)
-      for (let j = i + 1; j < countries.length; j++)
-        if (!treatyBetween(countries[i]!, countries[j]!))
-          warnings.push(
-            `No ${countries[i]}-${countries[j]} treaty in Glideworth's tables: both countries tax under their own rules with a credit.`,
-          );
-    if (unresolved.length)
-      warnings.push(
-        `Entries ${unresolved.join(", ")} could not be dated (a milestone that never happens, or a date after the plan ends).`,
-      );
-    return {
-      planId,
-      planVersion: plan.version,
-      household: input.household.location,
-      entries: plan.residency ?? [],
-      people,
-      countries,
-      crossBorder,
-      years: result
-        ? result.periods
-            .filter((p) => p.taxes.residence)
-            .map((p) => ({ year: p.year, startMonth: p.startMonth, residence: p.taxes.residence }))
-        : [],
-      warnings,
-    };
-  }
+  constructor(private readonly sim: SimulationService) {}
 
   // ----------------------------------------------------------------------------- explain one item
   explainItem(planId: string, itemId: string, year?: number) {
     const { input, plan } = this.sim.inputFor(planId, { trace: "off" });
-    const { result } = this.sim.projection(planId, { trace: "summary" });
+    const { result } = this.sim.projection(planId, { trace: "off" });
     const y = year ?? result.periods.find((p) => p.months === 12)?.year ?? result.periods[0]?.year;
     if (y === undefined) throw new ApiError(422, "SCENARIO", "the plan projects no years");
     if (!result.periods.some((p) => p.year === y))
@@ -367,22 +47,21 @@ export class CrossBorderService {
       return {
         planId,
         planVersion: plan.version,
-        ...explainItemTaxation(input, itemId, y, result),
+        ...explainItemTaxation(input, itemId, y),
       };
     } catch (e) {
       if (e instanceof Error && /no account, real asset/.test(e.message))
         throw new ApiError(404, "NOT_FOUND", e.message, {
-          validItemIds: crossBorderItems(input, result).map((i) => i.id),
+          validItemIds: crossBorderItems(input).map((i) => i.id),
         });
       throw e;
     }
   }
 
-  /** Items whose country differs from where their owner lives at some point. */
+  /** Accounts, real assets and income in another country than the one the household lives in. */
   items(planId: string) {
     const { input, plan } = this.sim.inputFor(planId, { trace: "off" });
-    const { result } = this.sim.projection(planId, { trace: "summary" });
-    return { planId, planVersion: plan.version, items: crossBorderItems(input, result) };
+    return { planId, planVersion: plan.version, items: crossBorderItems(input) };
   }
 
   // ----------------------------------------------------------------------------- tax by country
@@ -422,91 +101,8 @@ export class CrossBorderService {
         byBasis: Object.fromEntries(Object.entries(byBasis).map(([k, v]) => [k, roundMoney(v)])),
         rows: round(t.lifetime),
       },
-      years: years.map((y) => ({
-        year: y.year,
-        rows: round(y.rows),
-        ...(y.residence ? { residence: y.residence } : {}),
-      })),
+      years: years.map((y) => ({ year: y.year, rows: round(y.rows) })),
       simplifications: t.crossBorder ? crossBorderSimplificationsFor(countries) : [],
-    };
-  }
-
-  // ----------------------------------------------------------------------------- stay or move
-  stayOrMove(planId: string, req: z.infer<typeof StayOrMoveRequest>) {
-    const { input, plan } = this.sim.inputFor(planId, { trace: "off" });
-    let opts: Parameters<ServiceCtx["deps"]["compareStayingVersusMoving"]>[1];
-    let notes: string[] = [];
-    if (req.movePlanId) {
-      const other = this.plans.get(req.movePlanId);
-      if (other.householdId !== plan.householdId)
-        throw new ApiError(
-          422,
-          "SCENARIO",
-          `plan '${req.movePlanId}' belongs to another household; compare plans of one household (a plan and its relocation branch).`,
-        );
-      opts = { movePlan: { ...other, lineage: undefined } };
-    } else {
-      if (!req.to || !req.month)
-        throw new ApiError(
-          400,
-          "VALIDATION",
-          "give `to` (country, optional region) and `month` (YYYY-MM) for the move, or `movePlanId` to compare with an existing plan.",
-          { required: ["to", "month"] },
-        );
-      if (req.returnMonth && ym(req.returnMonth) <= ym(req.month))
-        throw new ApiError(
-          400,
-          "VALIDATION",
-          `returnMonth (${req.returnMonth}) must be after month (${req.month}).`,
-          { field: "returnMonth" },
-        );
-      if (req.to.country === input.household.location.country)
-        throw new ApiError(
-          400,
-          "VALIDATION",
-          `the household already lives in ${req.to.country}; choose another country to compare a move.`,
-          { field: "to.country" },
-        );
-      if (req.personId && !input.household.people.some((p) => p.id === req.personId))
-        throw new ApiError(
-          400,
-          "VALIDATION",
-          `personId '${req.personId}' is not in this household.`,
-          {
-            validPersonIds: input.household.people.map((p) => p.id),
-          },
-        );
-      const move = {
-        to: { country: req.to.country, ...(req.to.region ? { region: req.to.region } : {}) },
-        month: req.month,
-        ...(req.returnMonth ? { returnMonth: req.returnMonth } : {}),
-        ...(req.personId ? { personId: req.personId } : {}),
-      };
-      opts = move;
-      notes = this.ctx.deps.relocationScenario(input, move).notes;
-    }
-    const out = this.ctx.deps.compareStayingVersusMoving(input, opts);
-    const r = (n: number) => roundMoney(n);
-    return {
-      planId,
-      planVersion: plan.version,
-      currency: out.stay.meta.currency,
-      basis: "real" as const,
-      stay: outcomeOf(out.stay),
-      move: outcomeOf(out.move),
-      moveSuccess: out.move.summary.success,
-      deltas: {
-        endNetWorthReal: r(out.deltas.endNetWorthReal),
-        lifetimeTaxesReal: r(out.deltas.lifetimeTaxesReal),
-        totalShortfallReal: r(out.deltas.totalShortfallReal),
-      },
-      taxesByCountry: out.taxesByCountry
-        .map((x) => ({ ...x, stay: r(x.stay), move: r(x.move), delta: r(x.delta) }))
-        .filter((x) => x.stay !== 0 || x.move !== 0),
-      attribution: out.attribution.map((a) => ({ label: a.label, delta: r(a.delta) })),
-      changes: out.diff.changes.map((c) => c.description),
-      ops: out.diff.patch,
-      notes,
     };
   }
 
@@ -528,7 +124,6 @@ export class CrossBorderService {
           t.pair.find((x) => x !== c)!,
         ),
         ...(peg ? { peg } : {}),
-        ...(nr?.departure ? { departureTax: true } : {}),
         ...(nr?.citizenshipTaxation ? { citizenshipTaxation: true } : {}),
       };
     });

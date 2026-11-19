@@ -8,10 +8,7 @@ import { ChevronDown, ChevronRight, Flag, UserRound } from "lucide-react";
 import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
 import { AppearanceDot, appearanceColor } from "../../../components/ui/appearance-picker";
 import { cn } from "../../../lib/cn";
-import { countryLabel } from "../../../lib/countries";
 import { useFormat } from "../../../lib/workspace";
-import { countryColor, hasMoves, residenceSegments } from "../../crossborder/model";
-import { useEditorStore } from "../state/doc-store";
 import { monthIndex } from "../state/finance-math";
 import { amountUnit } from "../state/labels";
 import { formatMonthIndex, resolveRef, type TimeContext } from "../state/resolve";
@@ -142,13 +139,7 @@ export function Timeline({
     msRows.push(prev && x(ms.at) - x(prev.at) < 110 ? 1 - (msRows[k - 1] ?? 0) : 0);
   });
 
-  // Residence per person, only when the plan moves someone (single-country plans look as before).
-  const location = useEditorStore((s) => s.draft?.household.location);
-  const moving = !!location && hasMoves(plan);
-  const residence = moving
-    ? residenceSegments(plan, { people: tctx.people, location }, { ...tctx, end })
-    : [];
-  const personRowH = moving ? 34 : 24;
+  const personRowH = 24;
 
   const retire = plan.milestones.find((m) => m.kind === "retirement" && m.enabled);
   const retireAt = retire ? tctx.milestoneMonth[retire.id] : null;
@@ -269,15 +260,6 @@ export function Timeline({
             <span className="inline-flex items-center gap-1">
               <span className="h-3 w-px bg-ochre" /> Today
             </span>
-            {moving ? (
-              <span className="inline-flex items-center gap-1">
-                <span
-                  className="h-2 w-4 rounded-sm"
-                  style={{ background: "color-mix(in oklab, var(--chart-1) 45%, transparent)" }}
-                />{" "}
-                Country of residence
-              </span>
-            ) : null}
             <span>Click anything to edit</span>
           </div>
         ) : null}
@@ -357,30 +339,6 @@ export function Timeline({
                         {a}
                       </span>
                     ))}
-                    {residence
-                      .filter((r) => r.personId === p.id)
-                      .map((r, ri) => (
-                        <div
-                          key={`${r.from}-${r.location.country}`}
-                          className="absolute bottom-1 flex h-[9px] items-center overflow-visible"
-                          title={`${p.name} lives in ${countryLabel(r.location.country)} from ${formatMonthIndex(r.from, f.locale)}`}
-                          style={{
-                            left: x(r.from),
-                            width: Math.max(2, x(r.to) - x(r.from)),
-                            background: `color-mix(in oklab, ${countryColor(r.location.country, location!.country)} 45%, transparent)`,
-                            borderLeft:
-                              ri > 0
-                                ? `2px solid ${countryColor(r.location.country, location!.country)}`
-                                : undefined,
-                          }}
-                        >
-                          {x(r.to) - x(r.from) > 26 ? (
-                            <span className="num pl-1 text-[9.5px] leading-none font-semibold text-ink">
-                              {r.location.country}
-                            </span>
-                          ) : null}
-                        </div>
-                      ))}
                     {leAt != null && leAt <= end ? (
                       <span
                         className="absolute top-1 -translate-x-full pr-1 text-[10.5px] text-ink-3"

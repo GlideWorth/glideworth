@@ -7,10 +7,9 @@
  */
 import type { GlideworthDocument, Plan, ProgressSnapshot } from "@glideworth/core";
 import { migrateDocument } from "@glideworth/core";
-import type { BankImportRequest, CsvImportRequest, ImportIssue } from "@glideworth/importers";
+import type { CsvImportRequest, ImportIssue } from "@glideworth/importers";
 import type { ImportDeps } from "../deps.js";
 import {
-  checkBankFileNewAccounts,
   checkImportSize,
   IMPORT_LIMITS,
   validationProbe,
@@ -33,13 +32,6 @@ export type ImportTask =
       request: CsvImportRequest;
       dryRun: boolean;
       replaceProgress: boolean;
-    }
-  | {
-      op: "bank-file";
-      doc: GlideworthDocument;
-      text: string;
-      request: BankImportRequest;
-      dryRun: boolean;
     };
 
 /** What an apply writes, worked out by comparing the household before and after the import. */
@@ -71,7 +63,7 @@ export interface DocumentImportResult {
 }
 
 export interface HouseholdImportResult {
-  op: "csv" | "bank-file";
+  op: "csv";
   /** The response body of a dry run (and the base of an apply's). */
   preview: Record<string, unknown>;
   /** Blocking errors, at most 50 (apply only): the request answers 422 and writes nothing. */
@@ -102,8 +94,6 @@ export function runImportTask(task: ImportTask, deps: ImportDeps): ImportTaskRes
       };
     case "csv":
       return csvImport(task, deps);
-    case "bank-file":
-      return bankFileImport(task, deps);
   }
 }
 
@@ -179,26 +169,8 @@ function csvImport(task: Extract<ImportTask, { op: "csv" }>, deps: ImportDeps) {
   return finishHousehold("csv", task, preview, out.issues, out.document, task.replaceProgress);
 }
 
-function bankFileImport(task: Extract<ImportTask, { op: "bank-file" }>, deps: ImportDeps) {
-  const out = deps.importBankFileInto(task.doc, task.text, task.request, { dryRun: task.dryRun });
-  // An apply that would create too many accounts is refused before its writes are worked out; a dry run
-  // still shows how many it would create.
-  if (!task.dryRun) checkBankFileNewAccounts(out.reconciliation?.created.length ?? 0);
-  const preview = {
-    format: out.format,
-    dryRun: out.dryRun,
-    applied: false,
-    accounts: out.accounts,
-    issues: out.issues.slice(0, 200),
-    issueCount: out.issues.length,
-    ...(out.reconciliation ? { reconciliation: out.reconciliation } : {}),
-    summary: { ...out.summary, issues: undefined },
-  };
-  return finishHousehold("bank-file", task, preview, out.issues, out.document, false);
-}
-
 function finishHousehold(
-  op: "csv" | "bank-file",
+  op: "csv",
   task: { doc: GlideworthDocument; dryRun: boolean },
   preview: Record<string, unknown>,
   issues: ImportIssue[],

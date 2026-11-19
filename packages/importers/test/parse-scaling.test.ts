@@ -1,20 +1,13 @@
 /**
- * Security review finding 4: the bank-file and CSV importers run on the API's request thread, so the
+ * Security review finding 4: the CSV importer runs on the API's request thread, so the
  * time they take must grow in proportion to the input and not to its square. Each case builds a
  * crafted input at two sizes, 8x apart, and compares the times: a linear parser takes about 8x as
  * long, a quadratic one about 64x.
  *
  * Set GW_PARSE_TIMINGS=1 to print the measured times.
  */
-import { createUkSampleDocument } from "@glideworth/core/samples";
 import { describe, expect, it } from "vitest";
-import {
-  analyzeCsv,
-  importBankFileInto,
-  parseOfx,
-  parseQif,
-  summariseBankFile,
-} from "../src/index.js";
+import { analyzeCsv } from "../src/index.js";
 
 const SMALL = 50_000;
 const LARGE = 400_000;
@@ -78,98 +71,6 @@ function expectLinear(
 const TIMEOUT = 300_000;
 
 describe("parse time grows linearly with the input (security review finding 4)", () => {
-  it(
-    "OFX: tags that never close",
-    () => {
-      expectLinear("ofx unclosed tags", (n) => fill(() => "<A", n, "<OFX>"), parseOfx);
-    },
-    TIMEOUT,
-  );
-
-  it(
-    "OFX: many opening tags followed by closing tags that match none of them",
-    () => {
-      const build = (n: number) =>
-        `<OFX>${"<A>".repeat(Math.floor(n / 7))}${"</B>".repeat(Math.floor(n / 7))}`;
-      expectLinear("ofx unmatched closing tags", build, parseOfx);
-      // 57,000 levels deep: the tree walk must not overflow the call stack.
-      expect(() => parseOfx(build(LARGE))).not.toThrow();
-    },
-    TIMEOUT,
-  );
-
-  it(
-    "OFX: statements nested in each other's transaction lists",
-    () => {
-      const build = (n: number) =>
-        `<OFX>${"<STMTRS><BANKTRANLIST>".repeat(Math.floor(n / 44))}${fill(
-          () => "<STMTTRN><DTPOSTED>20260105<TRNAMT>-1</STMTTRN>",
-          n / 2,
-        )}`;
-      expectLinear("ofx nested statements", build, parseOfx);
-      // A transaction belongs to the statement that directly contains it, not to every ancestor too.
-      expect(parseOfx(build(SMALL)).transactions.length).toBeLessThan(SMALL / 40);
-    },
-    TIMEOUT,
-  );
-
-  it(
-    "QIF: many !Account headers",
-    () => {
-      expectLinear("qif account headers", (n) => fill((i) => `!Account\nNa${i}\n^\n`, n), parseQif);
-    },
-    TIMEOUT,
-  );
-
-  it(
-    "QIF: many accounts and many transactions",
-    () => {
-      const build = (n: number) =>
-        fill((i) => `!Account\nNa${i}\n^\n`, n / 2) +
-        fill(() => "!Type:Bank\nD1/5/26\nT-1\n^\n", n / 2, "");
-      expectLinear("qif accounts x transactions", build, parseQif);
-    },
-    TIMEOUT,
-  );
-
-  it(
-    "bank file: a large categoryMap with many uncategorised transactions",
-    () => {
-      // The map comes from the same request, so it grows with the file: one entry per 40 characters.
-      const maps = new Map<number, Record<string, "living">>();
-      expectLinear(
-        "bank file categoryMap",
-        (n) => {
-          const text = fill(() => "D1/5/26\nT-1\nPShop\n^\n", n, "!Type:Bank\n");
-          maps.set(
-            text.length,
-            Object.fromEntries(
-              Array.from({ length: Math.floor(n / 40) }, (_, i) => [`payee ${i}`, "living"]),
-            ),
-          );
-          return text;
-        },
-        (text) => summariseBankFile(text, { format: "qif", categoryMap: maps.get(text.length)! }),
-      );
-    },
-    TIMEOUT,
-  );
-
-  it(
-    "bank file: creating many accounts whose names shorten to the same id",
-    () => {
-      const doc = createUkSampleDocument();
-      const prefix = "x".repeat(60);
-      expectLinear(
-        "bank file colliding account ids",
-        (n) => fill((i) => `!Account\nN${prefix}${i}\n$1\n^\n`, n),
-        (text) =>
-          importBankFileInto(doc, text, { format: "qif", balances: { createMissing: true } }),
-      );
-    },
-    TIMEOUT,
-  );
-
   it(
     "CSV: a wide header row above many short rows",
     () => {

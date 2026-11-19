@@ -378,14 +378,3 @@ describe("ProjectionLab exports", () => {
     }
   }, 120_000);
 });
-
-describe("bank files", () => {
-  it("a QIF section named like an Object.prototype member is reported, not a 500", async () => {
-    h = setup();
-    const r = await h.call("/api/v1/households/hh-sample/import/bank-file", {
-      method: "POST",
-      body: { text: "!Type:constructor\nD01/05/2026\nT-5\nPShop\n^\n", format: "qif" },
-    });
-    expect(r.status, r.text.slice(0, 200)).toBe(200);
-  });
-});

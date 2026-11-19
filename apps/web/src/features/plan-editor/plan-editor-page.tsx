@@ -25,7 +25,6 @@ import { formatMonth } from "../../lib/format";
 import { useMediaQuery } from "../../lib/use-media";
 import { useFormat } from "../../lib/workspace";
 import { useUi } from "../../stores/ui";
-import { ResidencySection } from "../crossborder/residency-section";
 import { PlanDetailsFields } from "../plans/plans-page";
 import { ConflictBanner, EditorFrame, SaveIndicator, UndoRedo } from "./components/editor-chrome";
 import { type EditorScope, ScopeProvider } from "./components/form";
@@ -278,9 +277,6 @@ function PlanEditorBody({ plan }: { plan: PlanT }) {
               <T.Content value="milestones" className="flex flex-col gap-5 outline-none">
                 <MilestonesSection onOpen={(id) => setOpen({ kind: "milestone", id })} />
               </T.Content>
-              <T.Content value="residency" className="flex flex-col gap-5 outline-none">
-                <ResidencySection onOpenMilestone={(id) => setOpen({ kind: "milestone", id })} />
-              </T.Content>
               <T.Content value="income" className="flex flex-col gap-5 outline-none">
                 <EventsSection kind="income" onOpen={(id) => setOpen({ kind: "income", id })} />
               </T.Content>
@@ -355,9 +351,7 @@ function SectionCount({ plan, id }: { plan: PlanT; id: SectionId }) {
           ? plan.expenses.length
           : id === "flows"
             ? plan.flows.length
-            : id === "residency"
-              ? (plan.residency?.length ?? 0)
-              : null;
+            : null;
   return n ? <span className="num text-[11px] font-normal text-ink-3">{n}</span> : null;
 }
 
@@ -388,7 +382,6 @@ function CompactPreview({ plan }: { plan: PlanT }) {
 
 const PATH_SECTION: Record<string, SectionId> = {
   milestones: "milestones",
-  residency: "residency",
   income: "income",
   expenses: "expenses",
   flows: "flows",

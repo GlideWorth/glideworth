@@ -6,8 +6,6 @@
 import { describe, expect, it } from "vitest";
 import {
   buildSimulationInput,
-  compareDebtPayoffStrategies,
-  compareSeppMethods,
   incomeByTaxRate,
   incomeByTaxRateForInput,
   MonteCarloSettings,
@@ -15,7 +13,6 @@ import {
   ScenarioError,
   SimulationInput,
   simulate,
-  singleLifeExpectancy,
   strategyMetricsMatrix,
   toBasis,
 } from "../src/index.js";
@@ -253,24 +250,6 @@ describe("debt payoff strategies", () => {
     expect(extra(sb, "car")).toBeGreaterThan(1_000);
     expect(extra(sb, "car") + extra(sb, "card")).toBeCloseTo(1_500, 6);
   });
-
-  it("compares strategies: interest saved and payoff dates", async () => {
-    const c = await compareDebtPayoffStrategies(input, { extraPerMonth: 150 });
-    const by = (id: string) => c.strategies.find((s) => s.id === id)!;
-    expect(by("minimum").interestSaved).toBe(0);
-    expect(by("avalanche").interestSaved).toBeGreaterThan(0);
-    expect(by("snowball").interestSaved).toBeGreaterThan(0);
-    expect(by("avalanche").totalInterest).toBeLessThanOrEqual(by("snowball").totalInterest + 1e-6);
-    expect(c.best).toBe("avalanche");
-    expect(by("avalanche").debtFreeBy).not.toBeNull();
-    expect(by("avalanche").debtFreeBy! < (by("minimum").debtFreeBy ?? "9999-12")).toBe(true);
-    expect(
-      by("snowball").debts.find((d) => d.id === "car")!.paidOffBy! <=
-        by("snowball").debts.find((d) => d.id === "card")!.paidOffBy!,
-    ).toBe(true);
-    expect(c.explanation).toMatch(/avalanche/);
-    expect(c.extraPerYear).toBe(1_800);
-  });
 });
 
 describe("UK: State Pension deferral, cash ISA sub-limit, CGT on rebalancing", () => {
@@ -474,23 +453,5 @@ describe("analytics data", () => {
     }
     expect(mx.rows[0]!.deltas.every((d) => d === 0)).toBe(true);
     expect(mx.best[0]).not.toBeNull();
-  });
-
-  it("72(t) method comparison table", () => {
-    const t = compareSeppMethods({ balance: 500_000, startAge: 50, interestRate: 0.05 });
-    const by = (id: string) => t.rows.find((r) => r.method === id)!;
-    expect(t.lifeExpectancy).toBeCloseTo(singleLifeExpectancy(50), 9);
-    expect(by("rmd").firstYearPayment).toBeCloseTo(500_000 / singleLifeExpectancy(50), 6);
-    expect(by("fixed-amortization").firstYearPayment).toBeGreaterThan(by("rmd").firstYearPayment);
-    expect(by("fixed-annuitization").firstYearPayment).toBeLessThan(
-      by("fixed-amortization").firstYearPayment,
-    );
-    expect(by("rmd").years).toBe(10);
-    expect(
-      by("fixed-amortization").payments.every(
-        (p) => p === by("fixed-amortization").firstYearPayment,
-      ),
-    ).toBe(true);
-    expect(compareSeppMethods({ balance: 1, startAge: 57 }).rows[0]!.years).toBe(5);
   });
 });

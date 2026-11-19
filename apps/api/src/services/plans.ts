@@ -40,8 +40,6 @@ const norm = (p: Plan) => JSON.stringify({ ...p, version: 0, updatedAt: "" });
 
 export class PlansService {
   households!: HouseholdsService;
-  /** Semantic checks run on every write after schema validation (throw an ApiError to reject). */
-  readonly checks: ((next: Plan, current: Plan | undefined) => void)[] = [];
   constructor(private readonly ctx: ServiceCtx) {}
   private get db() {
     return this.ctx.db;
@@ -294,7 +292,6 @@ export class PlansService {
       updatedAt: nowIso(),
     });
     if (!o.dropLineage && !o.recompute && norm(current) === norm(next)) return current;
-    for (const check of this.checks) check(next, current);
     if (next.lineage) {
       const parent = this.parentSource(current);
       next = Plan.parse({

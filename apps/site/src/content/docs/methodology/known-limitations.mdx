@@ -3,13 +3,13 @@ title: Known limitations
 description: What Glideworth does not model, where its tax estimates are simplified, which figures could not be confirmed, and what is partial, from the project's status document.
 section: Reference
 order: 4
-lastChecked: 2026-11-16
+lastChecked: 2026-11-19
 ---
 
 import Callout from '../../../components/Callout.astro';
 import { facts } from '../../../lib/facts';
 
-This is the complete list, taken from the project's status document and checked against the code on 2026-11-16.
+This is the complete list, taken from the project's status document and checked against the code on 2026-11-19.
 Read it before you rely on a number.
 
 <Callout type="warning" title="Estimator, not advice">
@@ -20,6 +20,10 @@ Read it before you rely on a number.
 ## Not modelled
 
 - Monthly or daily resolution. The engine steps by year, so nothing within a year is seen.
+- Moving country. The household lives in one country (and, in the US, one state) for the whole plan. There is no
+  change of residence, so no departure or exit tax, no rule for returning after a short time abroad, no State Pension
+  frozen abroad and no change in UK inheritance tax scope after leaving. Accounts, property and income can still be in
+  another country.
 - Randomised lifespan and care-cost shocks inside the Monte Carlo (you set a life expectancy; a care scenario is a
   what-if).
 - Account aggregation, by design, and live sync with budgeting apps.
@@ -37,8 +41,8 @@ Read it before you rely on a number.
 ## Partial
 
 US federal tax; Canada CPP, OAS and GIS; Germany, the Netherlands, France, Spain, Israel, Ireland and New Zealand (a
-basic level); debt payoff strategies; datasets; drawdown-order graphs; the Flex versus No-Flex table; the depth of the
-tax optimiser; strategy and income-by-rate heatmaps; table export (four tables, not any plot); reports (browser print
+basic level); debt paydown (a flow pays debts by avalanche or snowball, with no side-by-side comparison); datasets;
+drawdown-order graphs; the Flex versus No-Flex table; the depth of the tax optimiser; strategy and income-by-rate heatmaps; table export (four tables, not any plot); reports (browser print
 only); share links; re-run on plan change (on request, not on every edit); household collaboration (roles are
 instance-wide); onboarding data-quality checks; scheduled re-runs (no email; use webhooks); open test vectors (no
 published validation report).
@@ -96,22 +100,22 @@ results say so; Australian Medicare levy low-income thresholds are the 2024-25 v
 Pension uprating list comes from a government page that may be dated. No preset has been checked against every
 official calculator for every case.
 
-## Cross-border limits
+## Assets and income in another country
 
-- Residence is what you enter: no statutory residence test, no 183-day rules, split years prorated by months, and treaty
-  relief assumed claimed.
+- Residence is the household's country, for everyone, for the whole plan: no statutory residence test, no 183-day
+  rules, and treaty relief assumed claimed.
 - Only UK-UAE is implemented article by article. UK-US, UK-Australia, UK-Canada, UK-Spain, UK-France and US-Canada are
   basic. Other pairs use the credit method with a warning.
 - Non-resident rules are detailed for the UK and basic elsewhere (no withholding on interest or dividends; resident
   rates are used for non-residents).
-- Departure taxes cover taxable investment accounts only, at their value at the start of the year you leave. One cost
-  basis is kept per account.
-- Temporary non-residence covers capital gains only. US citizens abroad pay federal tax only, with one foreign-tax-credit
-  basket in the model and no carry-forward of unused credit.
+- While you live outside a wrapper's country, the model stops contributions to it (ISA, UK pensions, TFSA, RRSP). It
+  does not model the UK relief on pension contributions of up to 3,600 pounds a year in the five tax years after
+  leaving, which UK law allows.
+- US citizens abroad pay federal tax only, with one foreign-tax-credit basket in the model and no carry-forward of
+  unused credit.
 - The bracket and marginal-rate analytics on the Taxes page describe the household country's calculation only.
-  Stay-or-move is deterministic: branch it for a chance of success. Planned real assets and plan-level account overrides
-  have no country field in the plan editor. The gratuity is UAE-only, and voluntary contributions are not added as an
-  expense automatically.
+  Planned real assets and plan-level account overrides have no country field in the plan editor. The gratuity is
+  UAE-only.
 
 ## Data
 

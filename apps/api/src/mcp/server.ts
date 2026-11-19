@@ -57,11 +57,11 @@ export const SERVER_INSTRUCTIONS = [
   'Amounts have a basis: "real" = today\'s money, "nominal" = future money. Tool outputs default to REAL (today\'s money) unless they say otherwise.',
   "START: get_plan_summary (one compact call: plan + outcome; planId defaults to the main plan, householdId to the only household). Use ids exactly as returned by list_* tools.",
   'COMMON QUESTIONS: "chance of success / why does it fail" -> run_monte_carlo (read failureAnalysis) then explain_year on the first failing year; "how much can I spend" -> solve_max_spending; "retire N years earlier" -> preview_whatif early-retirement, create_branch_from_template, compare_plans; "problems with my assumptions" -> audit_plan (each finding may carry a suggested change you can preview with preview_changes); "update balances" -> update_account_balances.',
-  "MORE ANALYSIS: compare_debt_payoff (avalanche vs snowball), strategy_matrix, income_by_tax_rate, compare_sepp_methods (72(t)). MULTI-CURRENCY: list_fx_rates / set_fx_rate. CHECK-INS: what_changed_since_checkin, get_plan_health_history, list_notifications; create_share_link for read-only sharing.",
+  "MORE ANALYSIS: strategy_matrix, income_by_tax_rate. MULTI-CURRENCY: list_fx_rates / set_fx_rate. CHECK-INS: what_changed_since_checkin, get_plan_health_history, list_notifications; create_share_link for read-only sharing.",
   "ANALYSE: simulate_plan (deterministic), run_monte_carlo (chance of success), explain_projection / explain_year(s) / explain_difference, audit_plan, sensitivity, compare_plans, solve_* (max spending, earliest retirement, required savings / portfolio, safe withdrawal rate), evaluate_guardrails / guyton_klinger, optimise_tax_strategy.",
   "WHAT-IF: list_whatif_templates -> preview_whatif (nothing stored) -> create_branch_from_template; survivor_scenarios for couples.",
-  "MOVING COUNTRY: get_residency_timeline (who lives where, when); compare_stay_or_move (outcome and tax by country); tax_by_country (residence / source / citizenship / relief rows); explain_item_taxation (how one account, property or income is taxed and why); cross_border_rules (non-resident rules, treaties, wrapper recognition); propose_move and set_person_cross_border to edit.",
-  "DATA: export_table / export_report for tables and report data; preview_csv_import (dry run) before apply_csv_import; preview_bank_file_import before apply_bank_file_import for OFX/QFX/QIF statements.",
+  "ASSETS ABROAD: the household lives in one country for the whole plan; accounts, property and income in another country are taxed there as a non-resident, with treaty relief at home. tax_by_country (rows by country and basis), explain_item_taxation (how one item is taxed and why), cross_border_rules (non-resident rules, treaties, wrapper recognition).",
+  "DATA: export_table / export_report for tables and report data; preview_csv_import (dry run) before apply_csv_import.",
   "EDITS: plan changes are never overwrites. Use preview_changes for what-ifs, then propose_change_set -> show the user the diff + before/after -> apply_change_set only after they agree. Edits are RFC 6902 ops; address list items by id: /income/[id=salary]/amount/value.",
   "Household data (balances, snapshots, CSV imports) is written directly by update_account_balances / record_progress_snapshot / apply_csv_import; plan edits always go through change sets or branches.",
   "Read-only unless the server enables writes; write tools are absent otherwise.",
@@ -91,8 +91,7 @@ const HINTS: Record<string, string> = {
   NOT_IMPLEMENTED:
     "The plan uses an engine feature that is not available yet; details.feature names it. Remove that feature or skip this analysis.",
   RATE_LIMITED: "Slow down and retry after the delay in details.retryAfterSeconds.",
-  IMPORT_FAILED:
-    "Run preview_csv_import (or preview_bank_file_import) first and fix the blocking issues it lists.",
+  IMPORT_FAILED: "Run preview_csv_import first and fix the blocking issues it lists.",
 };
 const asError = (err: unknown, validIds?: (message: string) => string[]) => {
   const e = describeError(err);
@@ -703,43 +702,6 @@ export function createMcpServer(ctx: McpContext): McpServer {
     );
   }
 
-  if (canRead) {
-    tool(
-      "preview_bank_file_import",
-      {
-        title: "Preview an OFX/QIF import",
-        description:
-          "Parse a bank or card statement (OFX, QFX or QIF text) and show what importing it would do: accounts found (numbers masked), balance reconciliation against current finances, spending summarised into annual expense events, issues. Writes nothing. Use apply_bank_file_import to apply.",
-        input: {
-          householdId,
-          text: z.string().max(2_000_000).describe("The file contents."),
-          format: z.enum(["ofx", "qif", "auto"]).default("auto"),
-          planId: z
-            .string()
-            .optional()
-            .describe("Plan that would receive the annual expense events."),
-          createMissing: z
-            .boolean()
-            .default(false)
-            .describe("Create accounts that do not exist yet."),
-        },
-        hint: { readOnly: true },
-      },
-      ({ householdId, text, format, planId, createMissing }) =>
-        services.imports.importBankFile(
-          householdId,
-          {
-            text,
-            format,
-            dryRun: true,
-            ...(planId ? { planId } : {}),
-            balances: { createMissing },
-          },
-          actor,
-        ),
-    );
-  }
-
   // =============================================================================== compute tools
   if (canSim) {
     tool(
@@ -1172,7 +1134,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
       {
         title: "Tax by country and basis",
         description:
-          "Cross-border plans: lifetime and per-year tax per country and basis (residence = where you live, source = charged as a non-resident, citizenship = US citizens abroad, relief = credit for tax paid elsewhere (negative), exit = departure tax, return = UK temporary non-residence). Single-country plans show one residence row. Includes the simplifications that apply.",
+          "Plans with accounts, property or income in another country: lifetime and per-year tax per country and basis (residence = the household's country, source = charged by another country as a non-resident, citizenship = US citizens abroad, relief = credit for tax paid elsewhere (negative)). Plans with nothing abroad show one residence row. Includes the simplifications that apply.",
         input: {
           planId,
           basis: z.enum(["real", "nominal"]).default("real"),
@@ -1203,7 +1165,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
       {
         title: "How is this item taxed, and why",
         description:
-          "For one account, real asset, debt or income: its country, the owner's residence that year (split years list both), and per income category whether the source country taxes it (non-resident rule), the treaty article, whether the residence country taxes it and the relief (credit / exemption). Warnings flag unknown treaty pairs and unrecognised foreign wrappers. Ids from get_household / get_plan.",
+          "For one account, real asset, debt or income: its country, the country the household lives in, and per income category whether the source country taxes it (non-resident rule), the treaty article, whether the household's country taxes it and the relief (credit / exemption). Warnings flag unknown treaty pairs and unrecognised foreign wrappers. Ids from get_household / get_plan.",
         input: {
           planId,
           itemId: z.string().describe("Account, real asset, debt or income id."),
@@ -1217,46 +1179,6 @@ export function createMcpServer(ctx: McpContext): McpServer {
           ...e,
           treatments: e.treatments.map(({ sources: _s, ...t }) => t),
         };
-      },
-    );
-
-    tool(
-      "compare_stay_or_move",
-      {
-        title: "Compare staying with moving country",
-        description:
-          "Simulates the plan as is and with a move (to + month, optional returnMonth and personId), or against an existing plan (movePlanId, e.g. a relocation branch). Returns outcome deltas (today's money), lifetime tax by country and basis for both, an attribution of the difference and the plan changes. Nothing is stored; follow with create_branch_from_template templateId=relocation to keep it.",
-        input: {
-          planId,
-          to: z
-            .object({ country: z.string().length(2), region: z.string().max(10).optional() })
-            .optional()
-            .describe('Destination, e.g. {"country":"AE"}.'),
-          month: z.string().optional().describe("YYYY-MM, first month living there."),
-          returnMonth: z.string().optional().describe("YYYY-MM, first month back (optional)."),
-          personId: z.string().optional().describe("Who moves (default: everyone)."),
-          movePlanId: z.string().optional(),
-        },
-        hint: { readOnly: true },
-      },
-      ({ planId, ...req }) => {
-        const out = services.crossBorder.stayOrMove(planId, {
-          ...(req.to
-            ? {
-                to: {
-                  country: req.to.country.toUpperCase(),
-                  ...(req.to.region ? { region: req.to.region } : {}),
-                },
-              }
-            : {}),
-          ...(req.month ? { month: req.month } : {}),
-          ...(req.returnMonth ? { returnMonth: req.returnMonth } : {}),
-          ...(req.personId ? { personId: req.personId } : {}),
-          ...(req.movePlanId ? { movePlanId: req.movePlanId } : {}),
-          basis: "real",
-        });
-        const { ops: _ops, ...rest } = out;
-        return { ...rest, changes: out.changes.slice(0, 30) };
       },
     );
 
@@ -1449,24 +1371,6 @@ export function createMcpServer(ctx: McpContext): McpServer {
     );
 
     tool(
-      "compare_debt_payoff",
-      {
-        title: "Compare debt payoff strategies",
-        description:
-          "Minimum payments vs avalanche (highest rate first) vs snowball (smallest balance first) with the same extra budget: interest paid and saved, debt-free date, when each debt is cleared. Give extraPerMonth (nominal) or flowId (an existing debt paydown flow).",
-        input: {
-          planId,
-          extraPerMonth: z.number().positive().optional(),
-          flowId: z.string().optional(),
-          targetIds: z.array(z.string()).optional(),
-        },
-        hint: { readOnly: true, idempotent: true },
-      },
-      async ({ planId, extraPerMonth, flowId, targetIds }) =>
-        services.sim.debtPayoff(planId, { extraPerMonth, flowId, targetIds }),
-    );
-
-    tool(
       "strategy_matrix",
       {
         title: "Strategy matrix",
@@ -1516,37 +1420,6 @@ export function createMcpServer(ctx: McpContext): McpServer {
           basis: m.basis,
           columns: m.columns,
           years: keep.map((i) => ({ year: m.years[i], cells: m.cells[i]!.map(roundMoney) })),
-        };
-      },
-    );
-
-    tool(
-      "compare_sepp_methods",
-      {
-        title: "Compare 72(t) SEPP methods",
-        description:
-          "US early retirement 72(t) / SEPP: required minimum distribution vs fixed amortisation vs fixed annuitisation: first-year payment, total withdrawn, balance left. Give balance and startAge, or householdId and accountId (balance and the owner’s age are taken from the account).",
-        input: {
-          balance: z.number().positive().optional(),
-          startAge: z.number().min(18).max(100).optional(),
-          interestRate: z.number().min(0).max(0.2).optional(),
-          growthRate: z.number().min(-0.5).max(0.5).optional(),
-          householdId: z.string().optional(),
-          accountId: z.string().optional(),
-        },
-        hint: { readOnly: true },
-      },
-      (q) => {
-        const c = services.sim.seppComparison(q);
-        return {
-          ...c,
-          rows: c.rows.map((r) => ({
-            ...r,
-            payments: undefined,
-            firstYearPayment: roundMoney(r.firstYearPayment),
-            totalPayments: roundMoney(r.totalPayments),
-            endingBalance: roundMoney(r.endingBalance),
-          })),
         };
       },
     );
@@ -1941,42 +1814,6 @@ export function createMcpServer(ctx: McpContext): McpServer {
     );
 
     tool(
-      "apply_bank_file_import",
-      {
-        title: "Apply an OFX/QIF import",
-        description:
-          "Apply an OFX/QFX/QIF import atomically (balances and/or annual expense events). Run preview_bank_file_import first and show the user the reconciliation. Blocking errors change nothing.",
-        input: {
-          householdId,
-          text: z.string().max(2_000_000),
-          format: z.enum(["ofx", "qif", "auto"]).default("auto"),
-          planId: z.string().optional(),
-          createMissing: z.boolean().default(false),
-        },
-        hint: { readOnly: false },
-      },
-      async ({ householdId, text, format, planId, createMissing }) => {
-        const out = (await services.imports.importBankFile(
-          householdId,
-          {
-            text,
-            format,
-            dryRun: false,
-            ...(planId ? { planId } : {}),
-            balances: { createMissing },
-          },
-          actor,
-        )) as { issueCount: number; changes: unknown; format: string };
-        return {
-          format: out.format,
-          applied: true,
-          issueCount: out.issueCount,
-          changes: out.changes,
-        };
-      },
-    );
-
-    tool(
       "apply_csv_import",
       {
         title: "Apply a CSV import",
@@ -2006,102 +1843,6 @@ export function createMcpServer(ctx: McpContext): McpServer {
         return { kind: out.kind, applied: true, issueCount: out.issueCount, changes: out.changes };
       },
     );
-
-    tool(
-      "set_person_cross_border",
-      {
-        title: "Set a person's cross-border details",
-        description:
-          "Update a person's citizenships (ISO codes), US green card, residence before the plan (residenceHistory, oldest first) and state-pension records (country, qualifyingYears, asOf, voluntaryYears). Only the fields you pass change. Writes the household directly (not a plan). Errors explain what to fix.",
-        input: {
-          householdId,
-          personId: z.string(),
-          citizenships: z.array(z.string().length(2)).max(5).optional(),
-          usGreenCard: z.boolean().optional(),
-          residenceHistory: z
-            .array(
-              z.object({
-                country: z.string().length(2),
-                from: z.string(),
-                to: z.string().optional(),
-              }),
-            )
-            .max(40)
-            .optional(),
-          statePensionRecords: z
-            .array(
-              z.object({
-                country: z.string().length(2),
-                qualifyingYears: z.number().min(0).max(60),
-                asOf: z.string().optional(),
-                voluntaryYears: z.number().int().min(0).max(35).optional(),
-              }),
-            )
-            .max(10)
-            .optional(),
-        },
-        hint: { readOnly: false, idempotent: true },
-      },
-      ({ householdId, personId, ...fields }) => {
-        const body: Record<string, unknown> = Object.fromEntries(
-          Object.entries(fields).filter(([, v]) => v !== undefined),
-        );
-        if (body.residenceHistory)
-          body.residenceHistory = (body.residenceHistory as { country: string }[]).map((r) => ({
-            ...r,
-            country: r.country.toUpperCase(),
-          }));
-        if (body.statePensionRecords)
-          body.statePensionRecords = (body.statePensionRecords as { country: string }[]).map(
-            (r) => ({
-              ...r,
-              country: r.country.toUpperCase(),
-            }),
-          );
-        return services.crossBorder.setPersonProfile(householdId, personId, body, "merge");
-      },
-    );
-
-    tool(
-      "propose_move",
-      {
-        title: "Propose a move (residency change)",
-        description:
-          "Propose (as a change set, nothing applied) that one person or everyone becomes tax resident in `country` from `month`, optionally coming back in `returnMonth`. Accounts, property and pensions keep their country. Show the user the diff and before/after, then apply_change_set. To compare without changing anything use compare_stay_or_move.",
-        input: {
-          planId,
-          country: z.string().length(2),
-          region: z.string().max(10).optional(),
-          month: z.string().describe("YYYY-MM"),
-          returnMonth: z.string().optional().describe("YYYY-MM"),
-          personId: z.string().optional(),
-        },
-        hint: { readOnly: false },
-      },
-      ({ planId, country, region, month, returnMonth, personId }) => {
-        const { template } = services.scenarios.instantiate(planId, "relocation", {
-          to: { country: country.toUpperCase(), ...(region ? { region } : {}) },
-          month,
-          ...(returnMonth ? { returnMonth } : {}),
-          ...(personId ? { personId } : {}),
-        });
-        return {
-          ...readable(
-            services.changeSets.propose(
-              planId,
-              {
-                ops: template.patch,
-                summary: template.title,
-                rationale: template.description,
-                preview: true,
-              },
-              actor,
-            ),
-          ),
-          notes: template.notes,
-        };
-      },
-    );
   }
 
   // =============================================================================== multi-currency
@@ -2119,34 +1860,11 @@ export function createMcpServer(ctx: McpContext): McpServer {
     );
 
     tool(
-      "get_residency_timeline",
-      {
-        title: "Residency timeline",
-        description:
-          "Where each person lives over the plan: the household location, dated moves (plan residency entries, per person or everyone) and relocation milestones, plus each person's citizenships and past residence, the residence of every projected year (months per country in split years) and warnings. Edit moves with propose_move (or propose_change_set on /residency); person fields with set_person_cross_border.",
-        input: { planId, everyNYears: z.number().int().min(1).max(50).default(1) },
-        hint: { readOnly: true },
-      },
-      ({ planId, everyNYears }) => {
-        const t = services.crossBorder.timeline(planId);
-        // Only years whose residence changes (or every Nth), to stay compact.
-        let last = "";
-        const years = t.years.filter((y, i) => {
-          const k = JSON.stringify(y.residence);
-          const keep = k !== last || (i % everyNYears === 0 && everyNYears > 1);
-          last = k;
-          return keep;
-        });
-        return { ...t, years };
-      },
-    );
-
-    tool(
       "cross_border_rules",
       {
         title: "Cross-border rule tables",
         description:
-          "The tables the engine uses. kind='countries' (which countries have rules, tax currency, treaties, pegs); 'non-resident' (how `country` taxes non-residents per income category, its wrappers and exit rules); 'treaty' (the `country`-`otherCountry` treaty with each category's allocation both ways, or the fallback); 'wrappers' (how `country` as residence treats accounts of `otherCountry`); 'simplifications' (known limitations for the countries given).",
+          "The tables the engine uses. kind='countries' (which countries have rules, tax currency, treaties, pegs); 'non-resident' (how `country` taxes non-residents per income category and its wrappers); 'treaty' (the `country`-`otherCountry` treaty with each category's allocation both ways, or the fallback); 'wrappers' (how `country` as residence treats accounts of `otherCountry`); 'simplifications' (known limitations for the countries given).",
         input: {
           kind: z.enum(["countries", "non-resident", "treaty", "wrappers", "simplifications"]),
           country: z.string().length(2).optional(),

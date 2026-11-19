@@ -226,9 +226,9 @@ export const ACCOUNT_TYPE_HINT: Partial<Record<AccountType, string>> = {
   "nz-kiwisaver":
     "KiwiSaver: employer and government contributions; locked until 65 (first-home exception).",
   "ae-dews":
-    "DIFC Employee Workplace Savings: employer contributions replace the end-of-service gratuity. Untaxed in the UAE; other countries may tax it after you move.",
+    "DIFC Employee Workplace Savings: employer contributions replace the end-of-service gratuity. Untaxed in the UAE; if you live elsewhere, your country may tax its earnings.",
   "ae-savings-scheme":
-    "An employer end-of-service savings scheme (instead of the gratuity). Untaxed in the UAE; other countries may tax it after you move.",
+    "An employer end-of-service savings scheme (instead of the gratuity). Untaxed in the UAE; if you live elsewhere, your country may tax its earnings.",
 };
 
 export const REAL_ASSET_TYPES_LABEL: Record<string, string> = {
@@ -286,7 +286,7 @@ export const MILESTONE_KIND_LABEL: Record<string, string> = {
   "fat-fi": "Fat FI",
   "barista-fi": "Barista FI",
   "debt-free": "Debt free",
-  move: "Move / relocate",
+  move: "Move house",
   custom: "Custom",
 };
 

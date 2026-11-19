@@ -1,7 +1,25 @@
 /** Tax configuration stored on a plan. The computation lives in src/tax (TaxJurisdiction plug-ins). */
 import { z } from "zod";
 import { Fraction, Money, NonNegativeMoney, Rate } from "./primitives.js";
-import { CrossBorderSettings } from "./residency.js";
+
+/**
+ * Plan-level switches for items in another country (TaxConfig.crossBorder). The household lives
+ * at `Household.location` for the whole plan; an account, property, debt or income in another
+ * country is taxed there as a non-resident (treaty permitting) and where the household lives, with
+ * a credit for double tax (ARCHITECTURE.md §4.6). Every field is optional.
+ */
+export const CrossBorderSettings = z
+  .object({
+    /** 'auto' (default): the rules apply when an item's country differs from the residence. */
+    mode: z.enum(["auto", "off"]).optional(),
+    /**
+     * Per-pair override of how the residence country treats a foreign wrapper: key
+     * `<residence>:<accountCountry>:<accountType>` -> recognised (true) or not (false).
+     */
+    wrapperRecognition: z.record(z.string(), z.boolean()).optional(),
+  })
+  .meta({ id: "CrossBorderSettings" });
+export type CrossBorderSettings = z.infer<typeof CrossBorderSettings>;
 
 export const FilingStatus = z
   .enum([
@@ -193,7 +211,7 @@ export const TaxConfig = z
     /** Optional local income-tax rate on taxable income (US localities not in the built-in table). */
     localIncomeTaxRate: Rate.optional(),
     uk: UkTaxOptions.optional(),
-    /** Cross-border model switches (residency timeline, source taxation, treaties). Absent = defaults. */
+    /** Items in another country (source taxation, treaties). Absent = defaults. */
     crossBorder: CrossBorderSettings.optional(),
     estate: EstateSettings.default({
       liquidationCostRate: 0.06,

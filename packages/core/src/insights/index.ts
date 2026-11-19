@@ -8,7 +8,6 @@ export * from "./branch.js";
 export * from "./contracts.js";
 export * from "./crossborder.js";
 export * from "./crossborder-explain.js";
-export * from "./debt-payoff.js";
 export { describeChange, fmtCriterion } from "./describe.js";
 export { type DiffOptions, diffJson, diffPlans, type PlanDiffOptions } from "./diff.js";
 export * from "./difference.js";

@@ -498,25 +498,6 @@ export function createApiClient(opts: ApiClientOptions = {}) {
       request("GET", "/api/v1/oauth/clients", z.object({ items: z.array(OAuthClient) })),
     deleteOAuthClient: (id: string) =>
       request("DELETE", `/api/v1/oauth/clients/${encodeURIComponent(id)}`, z.unknown()),
-    // --- Bank files (OFX / QFX / QIF).
-    importBankFile: (householdId: string, body: BankFileRequest) =>
-      request(
-        "POST",
-        `/api/v1/households/${encodeURIComponent(householdId)}/import/bank-file`,
-        z.record(z.string(), z.unknown()),
-        body,
-      ),
-    // --- Server-side analysis (the web normally runs these in a worker).
-    debtPayoff: (
-      planId: string,
-      body: { extraPerMonth?: number; flowId?: string; rollover?: boolean },
-    ) =>
-      request(
-        "POST",
-        `/api/v1/plans/${encodeURIComponent(planId)}/insights/debt-payoff`,
-        z.record(z.string(), z.unknown()),
-        body,
-      ),
     /** Add one item to a plan collection (`expenses`, `income`, `milestones`, `flows`...). */
     addPlanItem: (planId: string, collection: string, item: unknown) =>
       request(
@@ -795,21 +776,6 @@ export const ChangesSinceCheckin = z
   })
   .passthrough();
 export type ChangesSinceCheckin = z.infer<typeof ChangesSinceCheckin>;
-
-export interface BankFileRequest {
-  text: string;
-  format?: "ofx" | "qif" | "auto";
-  /** QIF only. The server also accepts the aliases MDY / DMY / YMD. */
-  dateFormat?: "auto" | "MM/DD/YYYY" | "DD/MM/YYYY";
-  accountName?: string;
-  annualise?: "last-12-months" | "all" | "latest-full-year";
-  balances?: false | { accountMap?: Record<string, string>; createMissing?: boolean };
-  planId?: string;
-  excludeCategories?: string[];
-  /** Rates stored with the import: 1 `from` = `rate` `to`. */
-  fxRates?: { from: string; to: string; rate: number }[];
-  dryRun?: boolean;
-}
 
 export const ImportResponse = z.object({
   format: z.string(),

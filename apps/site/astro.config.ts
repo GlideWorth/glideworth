@@ -98,13 +98,16 @@ export default defineConfig({
   // Off: compression drops the space between text and an inline element that a line break separates
   // ("under the<a>licence</a>"), which many pages rely on.
   compressHTML: false,
-  // Pages that were merged into another: the old address forwards to the new one.
+  // Pages that were merged into another or removed: the old address forwards to the closest page.
   redirects: {
     "/docs/api-and-mcp/connect-an-ai-assistant/": "/docs/api-and-mcp/mcp-setup/",
     // Moving-country planning was removed from the product (2026-11); its pages forward to the nearest topic.
     "/planning/moving-country/": "/planning/",
     "/features/cross-border/": "/features/tax-estimates/",
     "/blog/planning-a-move-abroad-taxes-pensions/": "/blog/",
+    // Docs pages for moving country and bank-file import (both removed) forward to the nearest topic.
+    "/docs/planning/moving-country/": "/docs/planning/tax-and-currency/",
+    "/docs/importing/bank-files/": "/docs/importing/csv/",
   },
   // No telemetry from the dev toolbar either; the scripts also set ASTRO_TELEMETRY_DISABLED.
   devToolbar: { enabled: false },

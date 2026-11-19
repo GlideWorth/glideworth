@@ -66,7 +66,7 @@ function isGlideworthLike(err: unknown): err is GlideworthError {
   );
 }
 
-/** "validation failed: residency.0.location.country: ..." — the first issues, with their paths. */
+/** "validation failed: income.0.amount.value: ..." — the first issues, with their paths. */
 export function zodMessage(err: z.ZodError): string {
   const parts = err.issues
     .slice(0, 3)

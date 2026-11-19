@@ -498,7 +498,7 @@ export interface TransactionRow {
   spend: number;
   category: string;
   description: string;
-  /** Statement currency, when the row came from a bank file that names one. */
+  /** Currency of the row, when its source names one (absent: the household currency). */
   currency?: string;
 }
 
@@ -607,7 +607,7 @@ function monthIndex(date: string): number {
   return Number(date.slice(0, 4)) * 12 + Number(date.slice(5, 7)) - 1;
 }
 
-/** Aggregate bank/budget transactions into per-category annual spending. Pure; changes nothing. */
+/** Aggregate bank/budget CSV transactions into per-category annual spending. Pure; changes nothing. */
 export function summariseTransactions(
   text: string,
   options: TransactionOptions = {},
@@ -710,8 +710,8 @@ export function summariseTransactions(
       spend = outflow === "negative" ? -amount : amount;
     }
     const given = p.cell(r, "category");
-    // Money in with no category is income (a salary, interest), not a refund to net against spending;
-    // the OFX/QIF importer treats it the same way. A categorised credit still nets (a refund).
+    // Money in with no category is income (a salary, interest), not a refund to net against spending.
+    // A categorised credit still nets (a refund).
     if (!given && spend < 0) {
       skip("Income", -spend);
       return;
@@ -732,12 +732,12 @@ export function summariseTransactions(
   return { analysis: p.analysis, ...summariseTransactionRows(rows, excludedMap, issues, options) };
 }
 
-/** Spending rows (from CSV, OFX or QIF) -> per-category annual figures and expense events. */
+/** Spending rows -> per-category annual figures and expense events. */
 export type TransactionsSummary = Omit<ExpenseSummary, "analysis">;
 
 /**
- * Aggregate parsed spending rows into per-category annual spending (shared by the CSV, OFX and QIF
- * importers). `excluded` lists categories counted as neither spending nor income.
+ * Aggregate parsed spending rows into per-category annual spending. `excluded` lists categories
+ * counted as neither spending nor income.
  */
 export function summariseTransactionRows(
   rows: TransactionRow[],

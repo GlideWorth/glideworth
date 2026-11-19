@@ -1,7 +1,7 @@
 /**
  * Milestones: named points in time defined by criteria (time-based and/or metric-based),
- * combined with AND ('all') or OR ('any'), optionally carrying effects (tax consequences,
- * relocation, death of a household member).
+ * combined with AND ('all') or OR ('any'), optionally carrying effects (tax consequences, death
+ * of a household member).
  *
  * Resolution semantics (engine/milestones.ts):
  *   - Time criteria (age/date/milestone) resolve before the year loop where possible.
@@ -12,7 +12,6 @@
  *   - A milestone that never satisfies its criteria resolves to `never`.
  */
 import { z } from "zod";
-import { Location } from "./household.js";
 import { Amount, Appearance, Comparator, Id, MonthDate, Rate } from "./primitives.js";
 import { FilingStatus } from "./tax.js";
 
@@ -82,8 +81,6 @@ export type MilestoneCriterion = z.infer<typeof MilestoneCriterion>;
 export const MilestoneEffect = z
   .discriminatedUnion("kind", [
     z.object({ kind: z.literal("setFilingStatus"), filingStatus: FilingStatus }),
-    /** Move tax residence (from the next period start). `personId` absent = the whole household. */
-    z.object({ kind: z.literal("relocate"), location: Location, personId: Id.optional() }),
     z.object({
       kind: z.literal("setWithholding"),
       taxDeferred: Rate.optional(),

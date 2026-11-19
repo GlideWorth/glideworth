@@ -38,8 +38,7 @@ export function countryRules(ctx: EngineContext, country: string | undefined): T
 
 /**
  * Country whose rules govern an account (explicit jurisdiction, the type's country, else the
- * household's country at the plan start). A move abroad never changes an account's country: a UK
- * pension keeps the UK access age wherever its owner lives.
+ * household's country). A UK pension keeps the UK access age wherever its owner lives.
  */
 export function accountCountryOf(ctx: EngineContext, a: AccountState): string {
   return a.def.jurisdiction ?? a.info.country ?? ctx.household.location.country;

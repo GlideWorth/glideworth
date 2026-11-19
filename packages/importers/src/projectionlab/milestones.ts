@@ -181,17 +181,13 @@ export function mapMilestones(ctx: PlContext, plan: Obj, basePath: string): Obj[
     if (person && builtin) m.personId = person;
     const move = relocationOf(src);
     if (move) {
-      const location = toLocation(ctx, move.raw, `${path}.${move.key}`);
-      if (location) {
-        m.effects = [{ kind: "relocate", location }];
-        if (!builtin) m.kind = "move";
-        approximated(
-          ctx,
-          `${path}.${move.key}`,
-          "relocation read onto the residency timeline (a relocate effect from this milestone); the export checked had no relocation fields, so the key shape is inferred - check the move",
-          "pl.relocation",
-        );
-      }
+      if (!builtin) m.kind = "move";
+      approximated(
+        ctx,
+        `${path}.${move.key}`,
+        `Move milestone kept as a marker only: Glideworth does not model moving country, so the household stays where it lives today and the destination (${str(move.raw.country)}) is ignored`,
+        "pl.relocation",
+      );
     }
     const appearance = appearanceOf(src);
     if (appearance) m.appearance = appearance;
@@ -243,11 +239,11 @@ export function mapMilestones(ctx: PlContext, plan: Obj, basePath: string): Obj[
 }
 
 /**
- * A Move milestone's destination, if the export carries one. ProjectionLab documents Move
- * milestones that switch the country / state / province taxes; the export checked has no such
- * keys, so the accepted shapes are inferred: `location`, `relocation` (or `relocation.location`)
- * and `taxResidence`, each an object with `country` and optional `state` / `province` / `region`
- * / `city` / `locality`.
+ * A Move milestone's destination, if the export carries one (reported, not imported: Glideworth
+ * does not model moving country). ProjectionLab documents Move milestones that switch the country /
+ * state / province taxes; the export checked has no such keys, so the accepted shapes are inferred:
+ * `location`, `relocation` (or `relocation.location`) and `taxResidence`, each an object with
+ * `country`.
  */
 function relocationOf(src: Obj): { key: string; raw: Obj } | undefined {
   for (const key of ["location", "relocation", "taxResidence"]) {
@@ -257,19 +253,4 @@ function relocationOf(src: Obj): { key: string; raw: Obj } | undefined {
     if (str(inner.country)) return { key: `${key}.location`, raw: inner };
   }
   return undefined;
-}
-
-function toLocation(ctx: PlContext, loc: Obj, path: string): Obj | undefined {
-  const raw = str(loc.country);
-  const country = raw === "UK" ? "GB" : raw && /^[A-Z]{2}$/.test(raw) ? raw : undefined;
-  if (!country) {
-    invalid(ctx, `${path}.country`, `unrecognised country '${String(raw)}'; relocation dropped`);
-    return undefined;
-  }
-  const out: Obj = { country };
-  const region = str(loc.region ?? loc.state ?? loc.province);
-  if (region) out.region = region.slice(0, 10);
-  const locality = str(loc.locality ?? loc.city);
-  if (locality) out.locality = locality.slice(0, 40);
-  return out;
 }

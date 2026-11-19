@@ -1,9 +1,9 @@
 ---
 title: Tax settings, countries and currency
-description: Choose how tax is estimated, which countries are covered, what each estimate leaves out, and how accounts in several currencies work.
+description: Choose how tax is estimated, which countries are covered, what each estimate leaves out, and how other currencies and assets abroad work.
 section: Planning
 order: 3
-lastChecked: 2026-11-16
+lastChecked: 2026-11-19
 ---
 
 import Callout from '../../../components/Callout.astro';
@@ -65,6 +65,32 @@ Accounts, real assets, debts and events can be in another currency from your hou
 A missing rate is a problem: the engine refuses to run a plan that needs it, and the audit lists missing pairs.
 In the chance-of-success settings, "Exchange-rate risk" lets a foreign currency vary with a yearly volatility
 (about 8 to 10 percent is typical). By default exchange rates follow their drift.
+
+## Assets and income in another country
+
+The household lives in one country for the whole plan: the one set under **Tax residence** in Current finances.
+Accounts, property, debts and income can sit in another country, and the tax estimate follows them there.
+
+- **Where each thing is.** Every account, property, debt and income has a country. It defaults to the household's
+  country, or the account type's (an ISA is British).
+- **Which country may tax what.** Your country of residence taxes worldwide income. The country where something is
+  may also tax it as a non-resident (rent and property gains almost everywhere). A treaty table says who keeps the
+  right to tax each kind of income, and your country of residence gives a credit for tax paid elsewhere.
+- **Wrappers abroad.** Your country of residence may not recognise a foreign tax-free account; by default its growth
+  is taxed on withdrawal. You cannot pay into an ISA, a UK pension, a TFSA or an RRSP while you live outside its
+  country.
+- **Citizenship.** In Current finances, open **About you**, then **Citizenship**, to add citizenships or a US green
+  card. US citizens and green-card holders also pay US federal tax wherever they live, after the foreign earned
+  income exclusion and a credit.
+
+In the **Taxes** results, a plan with anything abroad shows tax by country and by reason (residence, source,
+citizenship, relief), and "How this is taxed, and why" explains any item with its source.
+
+<Callout type="note" title="Moving country is not modelled">
+  There is no change of residence during a plan, so no departure tax, no State Pension frozen abroad and no change
+  in UK inheritance tax scope. Only UK-UAE is implemented article by article; other treaty pairs are basic or use
+  the credit method with a warning. See [Known limitations](/docs/methodology/known-limitations/).
+</Callout>
 
 ## What this does not do
 

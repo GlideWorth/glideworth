@@ -210,8 +210,8 @@ function valueAtMonth(
 
 /**
  * Nominal value of one occurrence-unit of an event (per `frequency`) at month m, ignoring
- * recurrence scaling, part-time shares and the owner's death (cross-border helpers: the last basic
- * wage of a salary for the UAE gratuity, a state pension's level when it is frozen abroad).
+ * recurrence scaling, part-time shares and the owner's death (the last basic wage of a salary for
+ * the UAE gratuity).
  */
 export function eventValueAt(ctx: EngineContext, a: PeriodAmountArgs, m: MonthIndex): number {
   const w = a.window ?? resolveWindow(ctx, a.range);

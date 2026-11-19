@@ -10,6 +10,7 @@ import { ScenarioError } from "../errors.js";
 import { isWithdrawable } from "./accounts.js";
 import { runClose } from "./close.js";
 import { addNode, type EngineContext, type PeriodState, POOL } from "./context.js";
+import { openCrossBorderPeriod } from "./crossborder.js";
 import { ageAt } from "./dates.js";
 import { runDistributions } from "./distributions.js";
 import { runExpenses } from "./expenses.js";
@@ -17,7 +18,6 @@ import { runGrowth } from "./growth.js";
 import { runIncome } from "./income.js";
 import { collectTimeMilestones } from "./milestones.js";
 import { runDebts, runRealAssets } from "./realAssets.js";
-import { openResidencyPeriod } from "./residency.js";
 import { runSettle } from "./settle.js";
 import { runSpendingStrategy } from "./strategy.js";
 import { applyEffects, deathMonthOf } from "./survivor.js";
@@ -39,7 +39,7 @@ const openPhase: Phase = {
   owner: "a",
   status: "implemented",
   description:
-    "Ages and survival; milestone effects (filing status, relocation, withholding) and deaths (survivor transfer, basis step-up); effective tax settings; reset accumulators.",
+    "Ages and survival; milestone effects (filing status, withholding) and deaths (survivor transfer, basis step-up); effective tax settings; reset accumulators.",
   run(ctx, ps) {
     for (const p of ctx.people) {
       ps.ages[p.id] = ageAt(p.birth, ps.bounds.start);
@@ -49,8 +49,15 @@ const openPhase: Phase = {
     applyEffects(ctx, ps);
     ps.location = ctx.location;
     ps.tax = { ...ctx.plan.tax, filingStatus: ctx.filingStatus, withholding: ctx.withholdingRates };
-    if (ctx.residency?.active) openResidencyPeriod(ctx, ps);
-    else ps.stack = ctx.registry.resolveStack(ps.tax, ps.location);
+    try {
+      ps.stack = ctx.registry.resolveStack(ps.tax, ps.location);
+    } catch (e) {
+      // Cross-border plans in a country without a preset still tax the foreign items at source
+      // (`crossBorderTaxes` warns that residence tax is not included).
+      if (!ctx.crossBorder) throw e;
+      ps.stack = [];
+    }
+    openCrossBorderPeriod(ctx, ps);
     for (const a of ctx.accounts) {
       a.p = {
         opening: a.balance,

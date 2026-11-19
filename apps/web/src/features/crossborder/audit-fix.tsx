@@ -1,6 +1,6 @@
 /**
  * Cross-border audit findings (codes XB_*) link to the place they concern: the exchange-rate table,
- * the person's state-pension record, the plan's flows or residency, or the tax explanation.
+ * the plan's flows, or the tax explanation.
  */
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
@@ -11,20 +11,10 @@ const FIX: Record<string, { label: string; to: "finances" | "plan" | "taxes"; in
   XB_FOREIGN_ASSET_BASE_CURRENCY: { label: "Open Finances: currency", to: "finances" },
   XB_MISSING_FX: { label: "Open the exchange rates in Finances", to: "finances" },
   XB_TAX_FX_MISSING: { label: "Open the exchange rates in Finances", to: "finances" },
-  XB_STATE_PENSION_GAP: {
-    label: "Open the pension record",
-    to: "finances",
-    intent: { kind: "edit-household" },
-  },
   XB_WRAPPER_NON_RESIDENT_CONTRIBUTIONS: {
     label: "Open flows",
     to: "plan",
     intent: { kind: "section", section: "flows" },
-  },
-  XB_UK_TEMPORARY_NON_RESIDENCE: {
-    label: "Open where you live",
-    to: "plan",
-    intent: { kind: "section", section: "residency" },
   },
   XB_UNKNOWN_TREATY: { label: "How it is taxed", to: "taxes" },
 };

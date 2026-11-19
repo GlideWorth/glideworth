@@ -81,11 +81,10 @@ Every key path in an export is classified, and the importer reports every droppe
 
 ## Judgement calls (reported as `approximated` issues)
 
-- **Moving country.** A Move milestone's destination becomes a `relocate` effect on that milestone, which
-  the engine reads into each person's residency timeline (from the first period after the milestone). The
-  v4.6 export checked carries no relocation keys, so the accepted shapes are inferred: `location`,
-  `relocation` (or `relocation.location`) and `taxResidence`, each with `country` (`UK` is read as
-  `GB`) and optional `state` / `province` / `region` / `city`. Each one is reported (`pl.relocation`).
+- **Moving country.** Glideworth does not model moving country: a Move milestone is kept as a marker
+  (kind `move`) and its destination is ignored and reported (`pl.relocation`). The v4.6 export checked
+  carries no relocation keys, so the shapes recognised are inferred: `location`, `relocation` (or
+  `relocation.location`) and `taxResidence`, each with `country`.
   An account's `country` becomes `Account.jurisdiction`, the account's country for cross-border tax.
 
 - **Withdraw / liquid values.** `withdraw: true|false` is always or never. `'after'` is `from`

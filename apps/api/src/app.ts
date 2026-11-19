@@ -304,11 +304,6 @@ export function createApp(opts: AppOptions) {
       },
       { name: "Households", description: "Household, people and dependents." },
       {
-        name: "Plan: residency",
-        description:
-          "Where each person lives over the plan (dated moves, per person or everyone) and the resulting timeline.",
-      },
-      {
         name: "Cross-border rules",
         description:
           "Read-only tables the engine uses: non-resident rules, treaties, foreign-wrapper recognition, simplifications.",

@@ -37,13 +37,9 @@ export interface CoreDeps {
   createBranch: typeof core.createBranch;
   branchPatch: typeof core.branchPatch;
   mergeBranchIntoParent: typeof core.mergeBranchIntoParent;
-  compareDebtPayoffStrategies: typeof core.compareDebtPayoffStrategies;
   strategyMetricsMatrix: typeof core.strategyMetricsMatrix;
   defaultStrategyCandidates: typeof core.defaultStrategyCandidates;
   incomeByTaxRateForInput: typeof core.incomeByTaxRateForInput;
-  compareSeppMethods: typeof core.compareSeppMethods;
-  compareStayingVersusMoving: typeof core.compareStayingVersusMoving;
-  relocationScenario: typeof core.relocationScenario;
 }
 
 export const coreDeps: CoreDeps = {
@@ -77,13 +73,9 @@ export const coreDeps: CoreDeps = {
   createBranch: core.createBranch,
   branchPatch: core.branchPatch,
   mergeBranchIntoParent: core.mergeBranchIntoParent,
-  compareDebtPayoffStrategies: core.compareDebtPayoffStrategies,
   strategyMetricsMatrix: core.strategyMetricsMatrix,
   defaultStrategyCandidates: core.defaultStrategyCandidates,
   incomeByTaxRateForInput: core.incomeByTaxRateForInput,
-  compareSeppMethods: core.compareSeppMethods,
-  compareStayingVersusMoving: core.compareStayingVersusMoving,
-  relocationScenario: core.relocationScenario,
 };
 
 export interface ImportDeps {
@@ -95,8 +87,6 @@ export interface ImportDeps {
   tableBuilders: typeof importers.TABLE_BUILDERS;
   progressTable: typeof importers.progressTable;
   tableToCsv: typeof importers.tableToCsv;
-  importBankFileInto: typeof importers.importBankFileInto;
-  detectBankFileFormat: typeof importers.detectBankFileFormat;
 }
 
 export const importDeps: ImportDeps = {
@@ -108,6 +98,4 @@ export const importDeps: ImportDeps = {
   tableBuilders: importers.TABLE_BUILDERS,
   progressTable: importers.progressTable,
   tableToCsv: importers.tableToCsv,
-  importBankFileInto: importers.importBankFileInto,
-  detectBankFileFormat: importers.detectBankFileFormat,
 };

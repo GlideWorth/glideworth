@@ -3,7 +3,7 @@ title: Monte Carlo and historical replay
 description: How the chance of success is computed, with sampling methods, seeds, what counts as success, failure analysis, and a comparison with FIRECalc.
 section: Reference
 order: 2
-lastChecked: 2026-11-16
+lastChecked: 2026-11-19
 ---
 
 import Callout from '../../../components/Callout.astro';
@@ -23,9 +23,13 @@ it from a distribution.
 | In the app | Method | How a trial is built |
 | --- | --- | --- |
 | Historical, random start years | `historical-random-restart` (the default) | Starts in a random historical year and restarts at a random year when the data runs out. |
-| Historical, every start year | `historical-sequential` | One trial per historical start year, with no looping. The number of trials is set by the data. |
-| Block bootstrap | `block-bootstrap` | Stitches random blocks of consecutive historical years (block length 1 to 30 years, default 5). |
-| Random (normal distributions) | `normal` | Independent draws from correlated normal distributions for stocks, bonds and inflation. Optional log-normal shape (returns cannot fall below minus 100 percent) and fat tails (a Student-t with 2.5 to 1,000 degrees of freedom, keeping the standard deviation). |
+| Historical, every start year once | `historical-sequential` | One trial per historical start year, with no looping. The number of trials is set by the data. |
+| Block bootstrap of history | `block-bootstrap` | Stitches random blocks of consecutive historical years (block length 1 to 30 years, default 5). |
+| Random returns (normal) | `normal` | Independent draws from correlated normal distributions for stocks, bonds and inflation. Optional log-normal shape (returns cannot fall below minus 100 percent) and fat tails (a Student-t with 2.5 to 1,000 degrees of freedom, keeping the standard deviation). |
+
+The app states the method in use in one line, such as "Market paths: Historical, random start years (default)". To
+choose another, open **Advanced** under that line, in the Chance of success settings or the plan editor's Chance of
+success section. The API and MCP take the method as `method`.
 
 Trials run from 1 to 10,000, default 1,000. A series switched off for variation uses the deterministic
 projection's rates. Datasets are described on [Historical data](/docs/methodology/historical-data/).

@@ -369,8 +369,7 @@ describe("DE and NL samples", () => {
 
 describe("72(t) fixed annuitisation uses the IRS mortality rates", () => {
   it("the §1.401(a)(9)-9(e) rates reproduce the 2022 Single Life Table (truncated to 0.1)", async () => {
-    const { IRS_MORTALITY_RATES, seppAnnuityFactor, compareSeppMethods } =
-      await import("../src/index.js");
+    const { IRS_MORTALITY_RATES, seppAnnuityFactor } = await import("../src/index.js");
     expect(IRS_MORTALITY_RATES).toHaveLength(121);
     const le = (x: number) => {
       let l = 1;
@@ -385,8 +384,5 @@ describe("72(t) fixed annuitisation uses the IRS mortality rates", () => {
     // Annuity due of 1 a year for life from 50 at 5%.
     expect(seppAnnuityFactor(50, 0.05)).toBeCloseTo(16.8615, 3);
     expect(seppAnnuityFactor(50, 0)).toBeCloseTo(le(50) + 0.5, 0);
-    const c = compareSeppMethods({ balance: 500_000, startAge: 50, interestRate: 0.05 });
-    const annu = c.rows.find((r) => r.method === "fixed-annuitization")!;
-    expect(annu.firstYearPayment).toBeCloseTo(500_000 / seppAnnuityFactor(50, 0.05), 6);
   });
 });

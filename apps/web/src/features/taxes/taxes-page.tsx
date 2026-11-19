@@ -537,15 +537,11 @@ function TaxesBody({
   const kindColor = (k: string) => (t: ChartTokens) => taxKindColor(t.theme, k);
   const jurColor = (i: number) => (t: ChartTokens) => slotColor(t.theme, [2, 4, 6, 1, 5][i % 5]!);
   const value = yearA && "value" in yearA ? yearA.value : undefined;
-  // Cross-border plans only (a never-moved, single-country plan shows none of this).
+  // Cross-border plans only (a single-country plan shows none of this).
   const crossCountries = useMemo(() => {
     if (!result.periods.some((x) => x.taxes.byCountry !== undefined)) return null;
     const c = new Set<string>([doc.household.location.country]);
-    for (const x of result.periods) {
-      for (const r of x.taxes.byCountry ?? []) c.add(r.country);
-      for (const segs of Object.values(x.taxes.residence ?? {}))
-        for (const sg of segs) c.add(sg.country);
-    }
+    for (const x of result.periods) for (const r of x.taxes.byCountry ?? []) c.add(r.country);
     return [...c];
   }, [result, doc]);
 

@@ -16,7 +16,6 @@ import {
   type Plan,
   PlannedAccount,
   PlannedRealAsset,
-  ResidencyChange,
   RiskGuardrails,
   TaxConfig,
   TaxStrategy,
@@ -28,14 +27,7 @@ import { mergePatch, newId } from "../util.js";
 import type { PlansService } from "./plans.js";
 
 export interface CollectionDef {
-  key:
-    | "income"
-    | "expenses"
-    | "milestones"
-    | "flows"
-    | "plannedAccounts"
-    | "plannedRealAssets"
-    | "residency";
+  key: "income" | "expenses" | "milestones" | "flows" | "plannedAccounts" | "plannedRealAssets";
   /** Singular label for messages/OpenAPI. */
   label: string;
   prefix: string;
@@ -73,13 +65,6 @@ export const COLLECTIONS: CollectionDef[] = [
     prefix: "passet",
     schema: PlannedRealAsset,
     tag: "Plan: planned assets",
-  },
-  {
-    key: "residency",
-    label: "residency change",
-    prefix: "res",
-    schema: ResidencyChange,
-    tag: "Plan: residency",
   },
 ];
 

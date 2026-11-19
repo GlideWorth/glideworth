@@ -140,6 +140,11 @@ same steps in the web app, or use the API/MCP calls shown.
   years) or from a statistical distribution. A trial succeeds if every year's spending was funded (you can
   choose stricter or looser definitions). Results are reproducible: the same seed gives the same answer, and
   by default Glideworth uses a fixed seed so "same plan, change one number" compares like with like.
+- The settings say which market paths are used in one line: "Market paths: Historical, random start years
+  (default)". The other methods (every start year once, block bootstrap, random returns from a normal
+  distribution) are under **Advanced**, which is closed unless you open it, both on the Chance of success page
+  and in the Plan editor's Chance of success settings. A plan that already uses another method keeps it, and the
+  line names it. The API and MCP offer every method as before.
 - Only the market varies (and, if you switch it on, exchange rates: Chance of success → Settings →
   Exchange-rate risk, a yearly volatility per foreign currency, about 8–10% is typical). Your income,
   spending, tax rules and dates are the plan's, in every trial.
@@ -181,42 +186,36 @@ Not modelled, or only roughly:
   what-if; the scenario says so).
 - Investment fees beyond the percentage or amount you set; product charges you did not enter.
 
-### Moving country, and money in more than one country
+### Money in more than one country
 
-Glideworth works for anyone, wherever they live and however often they move. Three things drive it:
+Glideworth plans for a household that lives in one country, its location in Current finances, for the whole
+plan. It does not model moving country. (A residency timeline, relocation milestones and a "stay or move"
+comparison existed until 2026-11-19; they were removed because there was no evidence anyone needed them. Plans saved with them
+open with the moves dropped, at the household's location.) What can be abroad is your money. Two things drive
+it:
 
-1. **Where you live, over time.** Your household's location is where you live at the start. Add moves to the
-   plan's residency timeline (a month, a country and region, and whether it is one of you or both of you), or put
-   a relocation effect on a milestone (for example "move back home when I retire"). Partners can live in
-   different countries. A move part-way through a tax year splits it: each country taxes its share of the year by
-   months, and pay is taxed by the country you live in while you earn it.
-2. **Where each thing is.** Every account, property, debt and income has a country. It defaults to your
-   household's country (or the account type's: an ISA is British), and it does not change when you move: a UK
-   pension stays a UK pension, a flat in Manchester stays in the UK. Set the country when you add something abroad
-   (a UAE salary, a Spanish house, a US brokerage account).
-3. **Which country may tax what.** The country you live in taxes your worldwide income. A country where something
+1. **Where each thing is.** Every account, property, debt and income has a country. It defaults to your
+   household's country (or the account type's: an ISA is British). Set the country when you hold something
+   abroad (a UK pension while you live in Spain, a let flat in Manchester while you live in Dubai, a US brokerage
+   account).
+2. **Which country may tax what.** The country you live in taxes your worldwide income. A country where something
    is may also tax it under its rules for non-residents (rent and property gains almost everywhere; UK pensions
    unless a treaty says otherwise). Glideworth's treaty table says who keeps the right to tax each kind of income, and
-   your country of residence gives a credit for tax already paid elsewhere, so the same income is not taxed twice.
-   US citizens and green-card holders also pay US tax wherever they live, after the foreign earned income
+   your country gives a credit for tax already paid elsewhere, so the same income is not taxed twice.
+   US citizens and green-card holders living outside the US also pay US tax, after the foreign earned income
    exclusion and a credit for foreign tax. The tax results show every line by country and by reason (residence,
-   source, citizenship, relief, exit tax, return), and each rule has a "how this is taxed and why" explanation
-   with its official source.
+   source, citizenship, relief), and each rule has a "how this is taxed and why" explanation with its official
+   source.
 
-What else changes when you move:
+What else applies to things held abroad:
 
-- **Wrappers.** An ISA keeps its UK shelter but you cannot pay in while you live abroad (from the tax year after you
-  leave); UK pension contributions get relief on up to £3,600 a year for five tax years after leaving, then Glideworth
-  stops them; Canadian TFSA and RRSP contributions stop. The new country may not recognise a foreign tax-free
-  account at all: by default Glideworth taxes the growth when you take money out.
-- **Exit and arrival.** Leaving Canada or Australia triggers a deemed sale of your investments (you can choose to
-  defer it); arriving there resets their cost to market value. Coming back to the UK within five years makes gains
-  you realised abroad taxable in the year you return.
-- **State pensions.** A UK State Pension is frozen if you live where it is not uprated (the UAE, Canada,
-  Australia...), and goes back to the current rate if you return. The audit tells you when you are short of
-  qualifying years and what voluntary Class 3 contributions would cost.
-- **Inheritance tax.** After leaving the UK you stay in scope of UK inheritance tax on your worldwide estate for 3
-  to 10 years, depending on how long you lived there; after that only UK assets are.
+- **Wrappers.** A foreign wrapper keeps its own country's shelter there, but you cannot pay into an ISA, a LISA,
+  a UK pension, a Canadian TFSA, RRSP, FHSA or LIRA while you live in another country, so Glideworth stops those
+  contributions. (The UK allows relief on up to £3,600 a year into a pension for five tax years after leaving;
+  Glideworth does not know when you left, so it does not model this.) The country you live in may not recognise
+  a foreign tax-free account at all: by default Glideworth taxes the growth when you take money out.
+- **Rules that follow the account.** Contribution limits and access ages come from the account's country, so a
+  UK pension keeps its UK minimum pension age. Main-home relief follows the home's country.
 - **Exchange rates.** Taxes in each country are worked out in its currency with your exchange-rate table, so add a
   rate for every currency involved (the audit lists missing ones).
 
@@ -226,51 +225,36 @@ years, 30 after, capped at two years); DEWS and the federal savings scheme as ac
 nationals at a basic level; the dirham's US-dollar peg pre-filled. Corporate Tax on a business or freelance
 licence above AED 1 million of turnover, and VAT, are out of scope.
 
-Try the **relocation** what-if (move to a country in a given month, optionally coming back) or **compare staying
-with moving**: Glideworth shows the plan difference, the change in lifetime tax by country and where the difference in
-your final wealth comes from.
-
 Where to find it in the app:
 
-- **Plan editor → Where you live**: each person's residence as a strip over the plan, dated moves (who, when,
-  where: country and region), moves that come from milestones, warnings for countries without rules, unknown
-  treaty pairs and missing exchange rates (with an inline box to add the rate), and the plan's cross-border
-  switches (rules on/off, departure tax, UK temporary non-residence, State Pension freeze). Moves also show on
-  the plan timeline under each person. A milestone's "Relocate" effect can move one of you or both.
-- **Current finances → About you**: per person, "Citizenship, past residence and state pension" (collapsed
-  until you use it): citizenships, a US green card, where you lived before the plan starts, and state-pension
-  records with qualifying years and the voluntary years you plan to buy.
+- **Current finances → About you**: "Tax residence" is where you live, for the whole plan. Per person,
+  "Citizenship" (collapsed until you use it): citizenships and a US green card.
 - **Accounts, property, debts and income** each have a **Country** field. When it implies another currency
   Glideworth offers to switch (and asks for an exchange rate if it has none). Property abroad also takes the month you
   bought it and past valuations (the UK taxes non-residents only on the gain since April 2015 for homes when you
   give that value). A salary in the UAE can carry the **end-of-service gratuity** (service start, basic-wage
   share). A pension can be marked as a government pension.
-- **Taxes**: for a cross-border plan, what the estimate leaves out comes first, then tax by country and reason
-  for the whole plan and the selected year (with each person's residence and months), relief shown as its own
-  negative column so you can see nothing is taxed twice, and **How this is taxed, and why** for any account,
-  property or income in any year: the non-resident rule, the treaty article with its source, how the country
-  you live in sees a foreign account, and warnings. The Results year drill-down shows the same table.
-- **Insights → Stay or move?**: choose where, when, who and whether you come back; the move runs in the
-  background and you see lifetime tax by country for both, where the difference in end net worth comes from,
-  the plan changes, and buttons to save it as a branch or compare. Cross-border audit findings link to the
+- **Plan editor → Taxes**: with tax estimation on and something abroad, a switch turns the cross-border rules on
+  or off.
+- **Taxes**: for a plan with something abroad, what the estimate leaves out comes first, then tax by country and
+  reason for the whole plan and the selected year, relief shown as its own negative column so you can see nothing
+  is taxed twice, and **How this is taxed, and why** for any account, property or income in any year: the
+  non-resident rule, the treaty article with its source, how the country you live in sees a foreign account, and
+  warnings. The Results year drill-down shows the same table. Cross-border audit findings (Insights) link to the
   place to fix them.
 
-A household that never moves and holds nothing abroad sees none of this except the country fields and an empty
-"Where you live" section.
+A household that holds nothing abroad sees none of this except the country fields.
 
 ## 4. Limitations
 
-- **Moving country is an estimate of the tax mechanics, not of your status.** Glideworth does not apply any
+- **Money abroad is an estimate of the tax mechanics, not of your status.** Glideworth does not apply any
   residence test (the UK statutory residence test, 183-day rules, tie-breakers): you are resident where your
-  timeline says. Split years are prorated by months (the real UK split-year treatment keeps a full personal
-  allowance). Treaty relief is assumed claimed. Only UK-UAE is implemented article by article; UK-US, UK-Australia,
+  household's location says, for the whole plan, and moving country is not modelled. Treaty relief is assumed
+  claimed. Only UK-UAE is implemented article by article; UK-US, UK-Australia,
   UK-Canada, UK-Spain, UK-France and US-Canada are basic; any other pair uses the credit method with a warning.
   Non-resident rules are detailed for the UK, basic for the US and the other countries (no withholding on
-  interest or dividends, resident rates used for non-residents). Departure taxes cover taxable investment
-  accounts only, at their value at the start of the year you leave. One cost basis is kept per account (after a
-  deemed sale it is the market value everywhere). Temporary non-residence covers capital gains only (not pension
-  lump sums taken abroad). A gratuity or bonus paid after you move is taxed where you then live. US citizens
-  abroad pay federal tax only (no state tax), with one foreign-tax-credit basket and no carry-forward.
+  interest or dividends, resident rates used for non-residents). US citizens abroad pay federal tax only (no
+  state tax), with one foreign-tax-credit basket and no carry-forward.
 
 - **UK history starts in 1983 and uses US shares in sterling.** The UK set (1983-2025) has UK inflation (ONS),
   Bank Rate and 10-year gilts (Bank of England), all openly licensed, but no openly licensed UK share history

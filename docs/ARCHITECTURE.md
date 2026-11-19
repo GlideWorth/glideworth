@@ -41,13 +41,13 @@ Production builds (`tsconfig.build.json`) clear `customConditions` and use `dist
 
 All domain types are Zod schemas in `packages/core/src/schema/*`. The TS types are inferred from
 them (`z.infer` for the stored/parsed shape, `z.input` for what callers may send, with defaults
-omitted). The API generates its OpenAPI 3.1 document from these same schemas: 137 named components
-come from `.meta({ id })`. The web client validates responses with them too.
+omitted). The API generates its OpenAPI 3.1 document from these same schemas, named with `.meta({ id })`:
+252 named components in self-host mode. The web client validates responses with them too.
 
 ```
-GlideworthDocument (schemaVersion = 1)       ← export/backup/import unit; what the web loads
-├── household: Household               people (1–2, primary/partner; citizenships, past residence, state-pension
-│                                      records), dependents, location (residence at the plan start), currency, locale
+GlideworthDocument (schemaVersion = 2)       ← export/backup/import unit; what the web loads
+├── household: Household               people (1–2, primary/partner; citizenships, US green card), dependents,
+│                                      location (where the household lives for the whole plan), currency, locale
 ├── finances: CurrentFinances          asOf month; accounts[], realAssets[], debts[]  (starting conditions)
 │   ├── Account                        type (43 types: US/UK/CA/AU/generic), owner, balance, cost/contribution basis,
 │   │                                  behaviour: growth, dividends, fees, bonds, withdrawal & liquidity rules,
@@ -59,7 +59,6 @@ GlideworthDocument (schemaVersion = 1)       ← export/backup/import unit; what
 │   ├── startingConditions             live (reads CurrentFinances) | snapshot (fixed-date plan)
 │   ├── lineage?                       branching: parentPlanId + RFC 6902 patch (+ pinned parent version)
 │   ├── milestones[]                   criteria (age/date/milestone/metric) combined all|any; effects
-│   ├── residency?[]                   dated tax-residence changes per person (or everyone): §4.6
 │   ├── income[] / expenses[]          discriminated by type; Amount{value,basis}; Frequency; TimeRange of DateRefs;
 │   │                                  Change (none/inflation±/rate/schedule); recurrence; tax character/withholding
 │   ├── flows[] + leftover             ordered savings waterfall: contribution / debtPaydown / transfer
@@ -92,7 +91,11 @@ records its version. `migrateDocument(raw)` walks `MIGRATIONS` from the blob's v
 current one, then validates; `migratePlan(raw, schemaVersion?)` does the same for a single stored
 plan body (it is wrapped in a minimal document so one migration list serves both). To add a breaking change, bump the version and append
 `{ from: N, describe, up }`. The DB stores `schema_version` per row so rows can be upgraded lazily
-on read (workstream e).
+on read (workstream e). The one migration so far, 1 → 2 (2026-11-19), removed moving country: it drops
+`Plan.residency`, `relocate` milestone effects, the departure-tax / UK temporary non-residence / State
+Pension freeze switches in `tax.crossBorder`, and `Person.residenceHistory` / `statePensionRecords`, from
+documents, plans and branch patches. Stored plan rows migrate when read (`apps/api/src/services/migrate.ts`);
+household rows drop the removed person fields when parsed. No SQL migration was needed.
 
 ## 3. Money and units (project-wide decision)
 
@@ -162,8 +165,8 @@ basis, measure)`. Core (insights, solvers, Monte Carlo percentiles, `summary.lif
   IL, IE, NZ and AE have their own entries; other countries get flat rates. AE pre-fills the AED/USD peg
   (`fxRates`, zero drift, from `CURRENCY_PEGS`) and onboarding `notes` (no expatriate state pension, gratuity).
   An account, real asset, debt or income event also has a **country** (`Account.jurisdiction`, `country`
-  elsewhere): absent means the type's country (uk-isa -> GB), else the household's country at the plan start,
-  never the current residence; pay without a country is sourced where its owner lives when it is earned.
+  elsewhere): absent means the type's country (uk-isa -> GB), else the household's country; pay without a
+  country is sourced where the household lives.
   `planDefaultsForHousehold(household)` returns the plan fields to spread into a new plan;
   `monthOf(now)` / `emptyFinances(now)` date a new household (core has no clock).
 
@@ -241,7 +244,7 @@ Per period, in order:
 
 | #   | Phase id                 | Does                                                                                                                                                                                                                                                                             | Status      |
 | --- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| 1   | `period.open`            | ages, survival; milestone effects (filing status, relocation, withholding) and deaths (survivor transfer, basis step-up); effective tax settings; reset accumulators                                                                                                             | implemented |
+| 1   | `period.open`            | ages, survival; milestone effects (filing status, withholding) and deaths (survivor transfer, basis step-up); effective tax settings; reset accumulators                                                                                                                         | implemented |
 | 2   | `milestones.time`        | record time-resolved milestones falling in this period                                                                                                                                                                                                                           | implemented |
 | 3   | `accounts.growth`        | bond allocation (glide path, per-account overrides, asset location); growth (stocks/bonds blend, cash, crypto; fixed/schedule/historical rates), dividends/interest, fees on **opening** balances; DRIP window; qualified/ordinary split; taxable dividends/interest → tax items | implemented |
 | 4   | `income`                 | every income type; recurrence, part-time, change limits; DB pensions; RSU vesting; Social Security estimate (claim age, earnings test, spousal, survivor); State Pension triple lock; benefit COLA; survivor share; route to pool or accounts                                    | implemented |
@@ -366,9 +369,7 @@ strategies and flex cuts are pure exports of `engine/strategy.ts`.
 'snowball', targetIds?, rollover }` spreads its payment across debts and financed assets: the
   avalanche pays the highest APR first, the snowball the smallest balance first; with `rollover`
   the scheduled payments of debts already paid off join the budget. Extra payments are reported
-  per debt as `DebtPeriod.extraPayments`. `compareDebtPayoffStrategies(input, { extraPerMonth |
-flowId })` (insights) compares minimum payments, avalanche and snowball: interest paid and saved
-  (nominal and today's money) and payoff dates per debt.
+  per debt as `DebtPeriod.extraPayments`.
 - **State-pension deferral and contribution sub-limits are plug-in hooks.** Deferral uplift
   (`deferral` on `state-pension` events) comes from the country plug-in's `statePensionAge` +
   `statePensionDeferralUplift`: GB +1% per 9 weeks deferred past State Pension age (at least 9 weeks),
@@ -514,78 +515,71 @@ The insights contracts:
 - Analytics data (`insights/analytics.ts`): `strategyMetricsMatrix` (tax/drawdown strategies ×
   lifetime tax, net legacy, chance of success, final net worth, with 0..1 heatmap scores and
   deltas to the baseline), `incomeByTaxRate` / `incomeByTaxRateForInput` (per year, income in each
-  rate band from the bracket fill of a `trace: 'full'` run), `compareSeppMethods` (72(t) RMD /
-  amortisation / annuitisation table) and `netLegacyAtEnd`.
-- Importers: CSV (balances, progress, transactions), ProjectionLab JSON (including optional
-  per-entity `currency` and `settings.ci.exchangeRates`), and OFX / QIF bank files
-  (`importBankFileInto`: balances reconciled like the CSV balance import, transactions summarised
-  into annual expense events; account numbers masked to the last four digits).
+  rate band from the bracket fill of a `trace: 'full'` run) and `netLegacyAtEnd`.
+- Importers: CSV (balances, progress, transactions; generic, Monarch and YNAB presets), ProjectionLab JSON
+  (including optional per-entity `currency` and `settings.ci.exchangeRates`) and Glideworth JSON.
 
-### 4.6 Residency, source taxation and treaties (cross-border plans)
+### 4.6 Items in another country: source taxation and treaties
 
-Code: `schema/residency.ts`, `engine/residency.ts` (timeline, activation, exit/arrival), `engine/crossborder.ts`
-(the per-period computation), `tax/crossborder/*` (data: `NON_RESIDENT_RULES`, `TREATIES`, `WRAPPER_RECOGNITION`,
-`COUNTRY_TAX_CURRENCY`, `CURRENCY_PEGS`, UK helpers, `explainCrossBorderTreatment`), `insights/crossborder.ts`.
+Code: `engine/crossborder.ts` (`initCrossBorder`, `crossBorderTaxes`, `nonResidentContributionCap`),
+`engine/rules.ts` (`accountCountryOf`), `tax/crossborder/*` (data: `NON_RESIDENT_RULES`, `TREATIES` and
+`treatyRule`, `WRAPPER_RECOGNITION` and `wrapperView`, `COUNTRY_TAX_CURRENCY`, `CURRENCY_PEGS`,
+`explainCrossBorderTreatment`), `insights/crossborder.ts` (audit), `insights/crossborder-explain.ts` (tax by
+country, explain one item, simplifications).
 
-- **Residency timeline.** Each person starts resident at `Household.location`. `Plan.residency` entries
-  (`{id, personId?, from: DateRef, location}`) move a person (or everyone) from an exact month; relocation
-  milestone effects (`relocate`, optional `personId`) move them from the first period starting at or after the
-  milestone, as before. `Person.residenceHistory` records residence before the plan (UK look-back tests).
-- **Activation.** A run is cross-border when the plan is in estimate mode, `tax.crossBorder.mode` is not `off`, and
-  more than one country is involved (a move abroad, or an account / asset / debt / income in another country) or
-  a US citizen or green-card holder lives outside the US. An explicit `tax.jurisdictions` stack counts only moves
-  and US persons. Otherwise nothing below runs: single-country results are byte-identical to the engine before
-  this model existed (test `crossborder-regression`, 31 households, full trace); the only cost is one boolean check
-  per period.
-- **Per period, per person** (`crossBorderTaxes`, inside the settle fixpoint):
-  1. _Residence segments_: each person's residences inside the period; people sharing a residence for the same
-     months are taxed together (joint filing only when the whole household is in the group, else single).
-  2. _Items_ are classified by source country and category (employment, rental, private / state / government
+- **Fixed residence.** The household lives at `Household.location` for the whole plan; moving country is not
+  modelled (it was removed on 2026-11-19 for lack of demand; see §2 for the migration). What can be in another
+  country is the household's money: an account (`Account.jurisdiction`, else the country of its type), a real
+  asset (`country`), a debt (`country`) or an income event (`country`), each with its own currency and the FX
+  table of §3. People carry `citizenships` and `usGreenCard`.
+- **Activation** (`initCrossBorder`). A run is cross-border when the plan is in estimate mode,
+  `tax.crossBorder.mode` is not `off`, and either more than one country is involved (an account / asset / debt /
+  income in another country) or a US citizen or green-card holder lives outside the US. An explicit
+  `tax.jurisdictions` stack counts only US persons abroad. Otherwise nothing below runs: single-country results
+  are byte-identical to the engine before this model existed (test `crossborder-regression`, 31 households, full
+  trace); the only cost is one boolean check per period. A household in a country with no tax preset can still
+  be cross-border: its foreign items are taxed at source, and a warning says income tax where the household lives is not included.
+- **Per period** (`crossBorderTaxes`, inside the settle fixpoint):
+  1. _Items_ are classified by source country and category (employment, rental, private / state / government
      pension, pension lump sum, interest, dividends, property gains, securities gains, other) from their source id:
      rent and sale gains follow the asset's country, dividends / interest / withdrawals the account's, income the
-     event's. A split year gives each segment the months an event actually runs in it (pay stops at the move);
-     other items are prorated by months; departure and return charges are pinned to one country in full.
-  3. _Residence tax_: the residence country's stack on worldwide income, minus items a treaty gives only to the
-     source country; foreign wrappers are seen through `wrapperView` (conservative: foreign tax-free wrappers not
-     recognised, so the earnings share of a withdrawal is a gain; a foreign pension's tax-free lump sum is
-     taxable), foreign account types are mapped to generic ones, foreign pay is ordinary income (no local payroll
-     tax).
-  4. _Source tax_: for every other country with items of the person, its `NON_RESIDENT_RULES` decide what it taxes
-     (flat final withholding or the national plug-in with `nonResident`), subject to the treaty
-     (`treatyRule(residence, source, category)`: residence / source / shared / government-pension rule, rate caps).
-     UK: personal allowance only for British / EEA citizens; the disregarded-income limit (lower of the full
-     calculation and tax on non-disregarded income without allowance); non-resident CGT on UK property from the
-     April 2015 / 2019 value, time-apportioned or whole (lowest); ISA and pension rules.
-  5. _Relief_: the residence country credits each source country's tax, limited to its own tax on the same items
+     event's.
+  2. _Residence tax_: the residence country's stack on the household's worldwide income, minus items a treaty
+     gives only to the source country; foreign wrappers are seen through `wrapperView` (conservative: foreign
+     tax-free wrappers are not recognised by default, so the earnings share of a withdrawal is a gain; a foreign
+     pension's tax-free lump sum is taxable), foreign account types are mapped to generic ones, and foreign pay
+     is ordinary income (no local payroll tax). `tax.crossBorder.wrapperRecognition` overrides recognition per
+     pair and account type.
+  3. _Source tax_, per person: for every other country with items, its `NON_RESIDENT_RULES` decide what it taxes
+     (flat final withholding, or the national plug-in run with `nonResident`), subject to the treaty
+     (`treatyRule(residence, source, category)`: residence / source / shared / government-pension allocation,
+     rate caps). UK: personal allowance only for British / EEA citizens; the disregarded-income limit (lower of
+     the full calculation and tax on non-disregarded income without allowance); non-resident CGT on UK property
+     from the April 2015 / 2019 value, time-apportioned or whole (lowest).
+  4. _Relief_: the residence country credits each source country's tax, limited to its own tax on the same items
      (with-and-without difference). Unknown pairs fall back to this credit method with a warning.
-  6. _Citizenship_: a US person abroad also pays US federal tax on worldwide income after the foreign earned income
-     exclusion (prorated by months abroad), less a foreign tax credit limited to the US tax on foreign income; the
+  5. _Citizenship_: a US person living outside the US also pays US federal tax on worldwide income after the
+     foreign earned income exclusion, less a foreign tax credit limited to the US tax on foreign income; the
      residence country credits US tax on US-source income.
-     Money is converted to each jurisdiction's currency (`COUNTRY_TAX_CURRENCY`) with the plan's FX table at the
-     period start and back; a missing pair is a warning (rate 1) and an audit finding. Tax lines keep their plug-in
-     `jurisdictionId` and add `basis` (`residence | source | citizenship | relief | exit | return`), `country` and
-     `personId`; `taxes.residence` and `taxes.byCountry` summarise the period. The marginal rate is a finite
-     difference of the whole computation; bracket fill (`trace: 'full'`) comes from each computation's `explainYear`.
-- **Exit and arrival** (period open, `engine/residency.ts`): departure taxes (`NonResidentRules.departure`: Canada
-  deemed disposition, Australia CGT event I1; `crossBorder.departureTax: 'defer'` models the elections) tax the
-  unrealised gain of taxable accounts in the departure country and step the basis up; arrival rebasing (CA, AU)
-  steps it up without tax; UK temporary non-residence remembers gains realised abroad and taxes them in the year
-  of return when the absence was 5 years or less (and the person was UK resident in 4 of the 7 prior tax years).
-- **Rules that follow the account's country, not the residence**: contribution limits and access ages
-  (`accountCountryOf` uses the household's original country for generic accounts); non-resident contribution bars
-  (`nonResidentContributionCap`, applied in flows whatever the flow's limit setting: ISA none, UK pensions £3,600
-  gross for 5 tax years, TFSA / RRSP none); main-home relief of the home's country; UK State Pension frozen while
-  living where it is not uprated, back to the current rate on return.
+
+  Money is converted to each jurisdiction's currency (`COUNTRY_TAX_CURRENCY`) with the plan's FX table at the
+  period start and back; a missing pair is a warning (rate 1) and an audit finding. Tax lines keep their plug-in
+  `jurisdictionId` and add `basis` (`residence | source | citizenship | relief`), `country` and `personId`;
+  `taxes.byCountry` summarises the period. The marginal rate is a finite difference of the whole computation;
+  bracket fill (`trace: 'full'`) comes from each computation's `explainYear`.
+
+- **Rules that follow the account's country, not the household's**: contribution limits and access ages
+  (`accountCountryOf`); main-home relief of the home's country; non-resident contribution bars
+  (`nonResidentContributionCap`, applied in flows whatever the flow's limit setting): ISA, LISA, UK pensions,
+  TFSA, RRSP, FHSA and LIRA take no contributions from a household living elsewhere. The UK's relief on £3,600
+  gross a year for 5 tax years after leaving is not modelled, because the engine does not know when you left.
 - **UAE gratuity**: `endOfService` on a salary pays `aeGratuity(years, last monthly basic)` in the month the salary
   ends (`engine/income.ts`).
 - **Insights**: `crossBorderFindings` (in `auditAssumptions`: `XB_FOREIGN_ASSET_BASE_CURRENCY`, `XB_MISSING_FX`,
-  `XB_TAX_FX_MISSING`, `XB_WRAPPER_NON_RESIDENT_CONTRIBUTIONS`, `XB_UK_TEMPORARY_NON_RESIDENCE`,
-  `XB_STATE_PENSION_GAP`, `XB_UNKNOWN_TREATY`), `relocationScenario` (template catalogue `CROSS_BORDER_TEMPLATES`),
-  `compareStayingVersusMoving` (plan diff, deltas, taxes by country and basis, attribution),
-  `residencyTimelineOf`, `ukInheritanceTaxScope` (used by `netLegacyAtEnd`: worldwide estate while a long-term UK
-  resident or inside the 3-10 year tail, UK assets only after it).
-- **Performance**: 500 normal-method trials, same machine: US sample 784 ms before / 750 ms after, UK sample
-  1,513 / 1,521 ms (noise); the cross-border UAE move-back sample 4,047 ms (several jurisdiction runs a year).
+  `XB_TAX_FX_MISSING`, `XB_WRAPPER_NON_RESIDENT_CONTRIBUTIONS`, `XB_UNKNOWN_TREATY`), `taxByCountry` (lifetime
+  and per-year rows by country and basis), `explainItemTaxation(input, itemId, year)` (one item's country, the
+  household's residence country and, per income category, the non-resident rule, treaty article, wrapper view
+  and relief), `crossBorderItems(input)` and `crossBorderSimplificationsFor(countries)`.
 
 ## 5. Persistence (apps/api)
 
@@ -629,8 +623,8 @@ Self-host auth is single-household. Two ways in, which never interfere (full det
 
 ## 6. API surface (v1)
 
-OpenAPI 3.1 is served at `/openapi.json` (265 operations in self-host mode, 306 in cloud mode: the 12
-passphrase and instance-user operations are replaced by 53 account, workspace, billing and email ones; 313 with
+OpenAPI 3.1 is served at `/openapi.json` (250 operations in self-host mode, 291 in cloud mode: the 12
+passphrase and instance-user operations are replaced by 53 account, workspace, billing and email ones; 298 with
 the 7 "Sign in with Google" operations, which exist only when it is configured, as on the hosted service), with a
 Scalar docs UI at `/docs` (cloud: a server-rendered page without third-party script). The route
 groups are: households and people, accounts/assets/debts, plans and their collections and singletons,
@@ -666,7 +660,7 @@ Planned by workstream (e):
 
 ## 7. MCP surface
 
-The same 75 tools (54 read/compute, 21 write) are exposed over Streamable HTTP at `/mcp` (bearer auth) and
+The same 67 tools (49 read/compute, 18 write) are exposed over Streamable HTTP at `/mcp` (bearer auth) and
 over stdio (`apps/api/dist/mcp/stdio.js`). The server instructions spell out units. The tool list, the
 resources and prompts, client set-up and the safety model are in [MCP.md](MCP.md).
 

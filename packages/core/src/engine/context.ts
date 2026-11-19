@@ -229,8 +229,6 @@ export interface PeriodState {
   } | null;
   /** Qualified expenses still available this period for HSA (healthcare) and 529 (education) use. */
   qualified: { healthcare: number; education: number };
-  /** Cross-border plans: each person's residence segments in this period (engine/residency.ts). */
-  residence?: Map<string, import("./residency.js").ResidenceSegment[]>;
   /** Cross-border plans: taxes are computed per residence / source country (engine/crossborder.ts). */
   crossBorder?: boolean;
   /** Cross-border plans: per-period classification cache of tax items by source id. */
@@ -317,8 +315,8 @@ export interface EngineContext {
    * foreign currency, its rate at each period start and the period's annual growth factor.
    */
   fxPath?: Map<string, { start: number[]; growth: number[] }>;
-  /** Residency timeline and cross-border state (engine/residency.ts); absent = single-country plan. */
-  residency?: import("./residency.js").ResidencyState;
+  /** Items in other countries (engine/crossborder.ts); absent = single-country plan. */
+  crossBorder?: import("./crossborder.js").CrossBorderState;
 }
 
 /**

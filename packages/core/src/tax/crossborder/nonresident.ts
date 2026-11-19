@@ -92,32 +92,6 @@ const UK_SOURCES = {
     "https://www.gov.uk/tax-uk-income-live-abroad/pensions",
     "Non-residents usually pay UK tax on UK pensions (relief where a double-taxation agreement applies) but not usually on the State Pension",
   ),
-  statePensionAbroad: GOVUK(
-    "https://www.gov.uk/state-pension-if-you-retire-abroad/rates-of-state-pension",
-    "Yearly increases only in the EEA, Gibraltar, Switzerland and countries with a social security agreement (not Canada or New Zealand); frozen elsewhere, back to the current rate on return to the UK",
-  ),
-  voluntaryNi: GOVUK(
-    "https://www.gov.uk/voluntary-national-insurance-contributions/if-you-live-or-work-abroad",
-    "From 2026-27 Class 2 cannot be paid for time abroad; Class 3 needs 10 years of UK residence or 10 qualifying years",
-  ),
-  voluntaryNiRates: GOVUK(
-    "https://www.gov.uk/voluntary-national-insurance-contributions/rates",
-    "Class 3: £18.40 a week (2026-27); Class 2: £3.65 a week",
-  ),
-  tnr: GOVUK(
-    "https://www.gov.uk/government/publications/temporary-non-residents-and-capital-gains-tax-hs278-self-assessment-helpsheet/hs278-temporary-non-residents-and-capital-gains-tax-2026",
-    "HS278: sole UK residence in 4 of the 7 tax years before leaving and non-residence of 5 years or less: gains of the non-resident period are taxed in the year of return",
-  ),
-  iht: GOVUK(
-    "https://www.gov.uk/guidance/inheritance-tax-if-youre-a-long-term-uk-resident",
-    "From 6 April 2025: worldwide assets in scope for long-term UK residents (UK resident 10 of the previous 20 tax years); after leaving, in scope for 3 to 10 tax years",
-    "2025",
-  ),
-  ihtManual: GOVUK(
-    "https://www.gov.uk/hmrc-internal-manuals/inheritance-tax-manual/ihtm47020",
-    "IHTM47020: long-term residence test; tail of 3 tax years for 10-13 years of residence, +1 per extra year, at most 10",
-    "2025",
-  ),
 };
 
 export const UK_NON_RESIDENT_SOURCES = UK_SOURCES;
@@ -153,9 +127,7 @@ const UK: NonResidentRules = {
     "gains-property": T(
       "Non-resident capital gains tax on UK land and property, on the gain since 5 April 2015 (residential) or 5 April 2019 (non-residential), or time-apportioned.",
     ),
-    "gains-securities": N(
-      "Non-residents pay no UK CGT on shares and funds (except under the temporary non-residence rule).",
-    ),
+    "gains-securities": N("Non-residents pay no UK CGT on shares and funds."),
     other: N("Other income of a non-resident from UK sources is not modelled as taxable."),
   },
   personalAllowance: {
@@ -183,26 +155,15 @@ const UK: NonResidentRules = {
     {
       accountTypes: ["uk-sipp", "uk-pension", "uk-workplace-pension"],
       keepsShelter: true,
-      contributions: "relief-capped",
-      capGross: 3600,
-      yearsAfterDeparture: 5,
-      note: "Relief on up to £3,600 gross a year for the 5 tax years after leaving (if UK resident when the scheme was joined), then no relief; Glideworth stops contributions after that.",
+      contributions: "none",
+      note: "Pensions keep their UK tax treatment. Relief on up to £3,600 gross a year continues for the 5 tax years after leaving (if UK resident when the scheme was joined); Glideworth does not know when you left, so it blocks contributions while you live abroad.",
     },
   ],
-  temporaryNonResidence: {
-    maxYears: 5,
-    priorResidentYears: 4,
-    ofYears: 7,
-    note: "Gains realised while non-resident on assets held before leaving are taxed in the tax year of return when non-residence lasts 5 years or less (and the person was UK resident in 4 of the 7 tax years before leaving).",
-    sources: [UK_SOURCES.tnr],
-  },
   simplifications: [
-    "Split-year treatment is approximated by prorating the year by months in each country; the UK personal allowance is prorated the same way (the real split year keeps a full allowance).",
     "Non-residents who are not British or EEA citizens lose the Personal Allowance; treaty-based entitlements are not modelled.",
     "Disregarded income: interest, dividends and the State Pension; other disregarded items (some social security benefits) are not separated.",
     "Property gains of non-residents: rebasing needs a valuation at 5 April 2015 / 2019 on the asset; otherwise time apportionment from the acquisition month; otherwise the whole gain. Private residence relief for a former home (90-day test) is not modelled.",
-    "Temporary non-residence covers capital gains only; pension lump sums and flexi-access drawdown taken abroad, and close-company dividends, are not brought back into charge.",
-    "Statutory residence test not evaluated: residence follows the timeline you enter.",
+    "Statutory residence test not evaluated: you are non-resident when the household lives in another country.",
   ],
   sources: Object.values(UK_SOURCES),
 };
@@ -361,32 +322,8 @@ const CA: NonResidentRules = {
       note: "RRSPs keep their deferral; no new room from foreign earnings (Glideworth blocks contributions).",
     },
   ],
-  departure: {
-    kind: "deemed-disposal",
-    scope:
-      "Taxable (non-registered) investment accounts; Canadian real property and registered plans (RRSP, RRIF, TFSA, pensions) are excluded.",
-    deferrable: true,
-    note: "Emigrants are deemed to sell most property at fair market value the day before leaving; the tax can be deferred with security (form T1244).",
-    sources: [
-      {
-        url: "https://www.canada.ca/en/revenue-agency/services/tax/international-non-residents/individuals-leaving-entering-canada-non-residents/dispositions-property.html",
-        year: "2026",
-        note: "Dispositions of property for emigrants of Canada",
-      },
-    ],
-  },
-  arrivalRebasing: {
-    note: "Immigrants are deemed to acquire their property (other than taxable Canadian property) at fair market value on arrival.",
-    sources: [
-      {
-        url: "https://www.canada.ca/en/revenue-agency/services/tax/international-non-residents/individuals-leaving-entering-canada-non-residents/newcomers-canada-immigrants/completing-return-newcomers.html",
-        year: "2026",
-      },
-    ],
-  },
   simplifications: [
     "Part XIII withholding is treated as the final tax on rent, pensions and dividends (no section 216/217 elections).",
-    "Departure tax applies to taxable investment accounts at their opening balance in the year of departure; the security election is the `departureTax: defer` switch.",
   ],
   sources: [
     {
@@ -435,29 +372,6 @@ const AU: NonResidentRules = {
       note: "Super keeps its concessional treatment; contributions are possible but not deductible without Australian income.",
     },
   ],
-  departure: {
-    kind: "deemed-disposal",
-    scope:
-      "Assets that are not taxable Australian property (Glideworth: taxable investment accounts).",
-    deferrable: true,
-    note: "CGT event I1: ceasing residence is a deemed disposal of assets that are not taxable Australian property; individuals may choose to disregard it (the assets then stay taxable Australian property).",
-    sources: [
-      {
-        url: "https://www.ato.gov.au/individuals-and-families/investments-and-assets/capital-gains-tax/foreign-residents-and-capital-gains-tax/how-changing-residency-affects-cgt",
-        year: "2026",
-        note: "How changing residency affects CGT",
-      },
-    ],
-  },
-  arrivalRebasing: {
-    note: "On becoming resident, assets other than taxable Australian property are taken to be acquired at market value.",
-    sources: [
-      {
-        url: "https://www.ato.gov.au/individuals-and-families/investments-and-assets/capital-gains-tax/foreign-residents-and-capital-gains-tax/how-changing-residency-affects-cgt",
-        year: "2026",
-      },
-    ],
-  },
   simplifications: [
     "Foreign-resident rates are approximated with the resident calculation (the tax-free threshold and Medicare levy differences are not modelled).",
   ],

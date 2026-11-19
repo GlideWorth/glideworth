@@ -3,7 +3,7 @@ title: MCP tools reference
 description: "All {{mcpTools}} Glideworth MCP tools by purpose, with one line each: {{mcpReadTools}} that read and compute, and {{mcpWriteTools}} write tools that exist only when writes are enabled."
 section: API and MCP
 order: 22
-lastChecked: 2026-11-16
+lastChecked: 2026-11-19
 ---
 
 import { facts } from '../../../lib/facts';
@@ -39,11 +39,10 @@ names the candidates.
 | `export_table` | A projection table (`year-by-year`, `cash-flow`, `taxes`, `account-balances`) as thinned rows or CSV text. |
 | `export_report` | The printable report as data. |
 
-### Moving country
+### Items in another country
 
 | Tool | What it does |
 | --- | --- |
-| `get_residency_timeline` | Who lives where, when, with warnings. |
 | `cross_border_rules` | The rule tables: countries, non-resident rules, treaties, wrapper recognition, simplifications. |
 
 ### Check-ins
@@ -60,7 +59,6 @@ names the candidates.
 | Tool | What it does |
 | --- | --- |
 | `preview_csv_import` | Dry run of a CSV import. Writes nothing. |
-| `preview_bank_file_import` | Dry run of an OFX, QFX or QIF import. Writes nothing. |
 
 ## Compute tools (scope `simulate` or `read`)
 
@@ -111,8 +109,6 @@ that apply it. `trials` and `maxEvaluations` trade accuracy for speed.
 | `explain_item_taxation` | How one account, property, debt or income is taxed in a year, and why. |
 | `strategy_matrix` | Strategies against metrics (lifetime tax, net legacy, chance of success, final net worth). A job. |
 | `income_by_tax_rate` | Income taxed at each marginal rate per year. |
-| `compare_sepp_methods` | 72(t): RMD against fixed amortisation against fixed annuitisation. |
-| `compare_debt_payoff` | Minimum payments against avalanche against snowball. |
 
 ### What-ifs
 
@@ -122,7 +118,6 @@ that apply it. `trials` and `maxEvaluations` trade accuracy for speed.
 | `preview_whatif` | Apply a template in memory: operations, readable changes, before and after. Stores nothing. |
 | `survivor_scenarios` | For couples: what if each partner dies at 70, 80 and 90 (or your ages). |
 | `preview_changes` | Apply operations in memory and return the diff and before and after. Stores nothing. |
-| `compare_stay_or_move` | Stay against a move (or an existing branch): deltas, tax by country, attribution. Stores nothing. |
 
 Long-running tools (`run_monte_carlo`, solvers, guardrails, tax strategy, and success-rate attribution and sensitivity)
 wait up to `wait` seconds (default 30). If the job is not ready they return `{ jobId, status, progress, hint }` and the
@@ -140,7 +135,6 @@ assistant calls `get_job`. Clients that send a `progressToken` receive progress 
 | `propose_revert` | Propose a change set that turns the plan back into version N. |
 | `create_branch` | Create a what-if branch, optionally with initial operations. The parent is untouched. |
 | `create_branch_from_template` | Store a what-if template as a branch. The parent is untouched. |
-| `propose_move` | Propose, as a change set, that one person or everyone moves to a country from a month. |
 | `cancel_job` | Cancel a running job. |
 
 ### Household data
@@ -150,8 +144,6 @@ assistant calls `get_job`. Clients that send a `progressToken` receive progress 
 | `update_account_balances` | Set many balances at once, all or nothing, including mortgage and loan balances. Updates today's automatic snapshot. |
 | `record_progress_snapshot` | Snapshot today's net worth from current balances. |
 | `apply_csv_import` | Apply a CSV import atomically (preview first). |
-| `apply_bank_file_import` | Apply an OFX, QFX or QIF import atomically (preview first). |
-| `set_person_cross_border` | Update a person's citizenships, green card, residence history and state-pension records. |
 | `set_fx_rate`, `unset_fx_rate` | Add, update or remove an exchange-rate pair. |
 
 ### Check-ins and sharing

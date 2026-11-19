@@ -14,7 +14,12 @@
  * carry key paths and enum values, never names, ids or amounts. `settings.plugins.apiKey` is
  * discarded and never read.
  */
-import { defaultsForCountry, GlideworthDocument, ValidationError } from "@glideworth/core";
+import {
+  defaultsForCountry,
+  GlideworthDocument,
+  SCHEMA_VERSION,
+  ValidationError,
+} from "@glideworth/core";
 import type {
   ImportCount,
   ImportIssue,
@@ -889,7 +894,7 @@ export function importProjectionLab(
 
   const candidate = {
     app: "glideworth" as const,
-    schemaVersion: 1 as const,
+    schemaVersion: SCHEMA_VERSION,
     household,
     finances,
     plans,

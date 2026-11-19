@@ -1,66 +1,82 @@
 ---
 title: Retirement planning in Spain
-description: "How Glideworth estimates Spanish tax at a basic level: IRPF scales (2025), social security (2026), pension plans, wealth tax, and the gaps to know about."
+description: "How Glideworth estimates Spanish tax at a basic level: IRPF scales, social security (2026), pension plans, the wealth and solidarity taxes, and the gaps to know about."
 ogTitle: Retirement planning in Spain
 countryCode: ES
 countryName: Spain
 taxYears:
-  - 2025 (IRPF scales and minimums)
+  - 2025 and 2026 (state IRPF scales and minimums)
+  - 2025 (regional IRPF scales, used for 2026)
   - 2026 (social security)
 modelled:
-  - IRPF with the state and regional general scales and the savings scale, and personal and family minimums
+  - IRPF with the state and regional general scales, the savings scale, and personal and family minimums
   - Own regional scales for Madrid, Cataluña, Andalucía and Comunitat Valenciana
   - Work income with the 2,000 euro other-expenses allowance and the reduction for low earners
   - Employee social security up to the 2026 maximum base
-  - Pensions and pension-plan withdrawals taxed as work income, and pension plan contribution limits
-  - The wealth tax, as an optional setting that is off by default
+  - Pensions and pension-plan withdrawals taxed as work income, and the 1,500 euro pension plan contribution limit
+  - The wealth tax and the solidarity tax on large fortunes, as an optional setting that is off by default
 notModelled:
-  - Regional scales for regions other than the four above; other regions use a scale equal to the state scale
+  - Regional scales for regions other than the four above; other regions are assumed to have a scale equal to the state scale
+  - Navarra and the País Vasco
   - The joint-return option, regional personal and family minimums and all regional deductions
   - Ascendant and disability minimums
+  - The extra 8,500 euro pension plan limit for employer contributions
   - Rental income reductions and expenses; self-employed social contributions (RETA) and expense deductions
+  - The solidarity contribution on salary above the maximum base, and the contribution exemption past state pension age
   - The 40% reduction for pre-2007 pension contributions withdrawn as capital
-  - The main-home exemption for wealth tax, the combined income and wealth tax cap and the large-fortunes solidarity tax
+  - The main-home exemption for wealth tax and the combined income and wealth tax cap
   - The exclusion of main-home sale gains
 ---
 
 import { facts } from '../../lib/facts';
 
 Spain is estimated at a **basic level**: the main rules are in, with {facts.simplificationCount('es')} written
-simplifications, and it has had less checking than the United Kingdom or the United States. The income tax scales are for
-**2025**, the latest the tax agency has published; the 2026 regional scales were not yet consolidated. They are carried
-forward with the plan's threshold policy. Social security uses 2026 rates. The model covers the territorio común and
-not Navarra or the País Vasco.
+simplifications, and it has had less checking than the United Kingdom or the United States. Every figure below was
+checked against the BOE, the tax agency (AEAT) and the Seguridad Social on 19 November 2026.
+
+The state income tax scales and minimums are the law in force for both 2025 and 2026. The regional scales are the
+2025 tables, the latest the tax agency has published, and are used for 2026 as well: the 2026 regional scales could not
+be confirmed. Later years carry the tables forward with the plan's threshold policy. Social security uses 2026 rates.
+The model covers the territorio común, not Navarra or the País Vasco.
+
+**Which region is assumed.** Set your region in the plan to use its scale. Madrid, Cataluña, Andalucía and Comunitat
+Valenciana have their own scales. Any other region, or a plan with no region, is assumed to have a regional scale
+equal to the state scale. That is a simplification, not any region's real scale.
 
 ## What is modelled
 
-- **State general scale (2025)**: 9.5% to €12,450; 12% to €20,200; 15% to €35,200; 18.5% to €60,000; 22.5% to €300,000;
-  24.5% above. Each region applies its own scale to the other half of the tax. Madrid, Cataluña, Andalucía and
-  Comunitat Valenciana have their own scales; every other region uses a scale equal to the state one.
-- **Savings scale**: each half runs 9.5% to €6,000; 10.5% to €50,000; 11.5% to €200,000; 13.5% to €300,000; 15% above, so the
-  combined scale runs from 19% to 30%.
-- **Minimums**: personal €5,550, with €1,150 more from 65 and €1,400 more from 75; descendants €2,400, €2,700,
-  €4,000 and €4,500, and €2,800 more for a child under three.
-- **Work income**: €2,000 of other expenses and a reduction for low earners (up to €19,747.50 of net income).
-- **Social security (employee)**: 6.5% (4.70% contingencias comunes, 1.55% unemployment, 0.10% training and 0.15% MEI) up to a
-  maximum base of €5,101.20 a month.
-- **Pension plans** (planes de pensiones): a personal limit of €1,500, with up to €8,500 more through an employer. Withdrawals
-  are taxed as work income. The default state pension age is 67; you enter the pension amount yourself.
-- **Wealth tax** (off by default): above €700,000 of net worth per person, on the state scale, with Valencia's own scale
-  and a 100% bonus for Madrid and Andalucía.
+- **State general scale**: 9.5% to €12,450; 12% to €20,200; 15% to €35,200; 18.5% to €60,000; 22.5% to €300,000;
+  24.5% above. Each region applies its own scale to the other half of the tax.
+- **Savings scale** (2025 and 2026): each half runs 9.5% to €6,000; 10.5% to €50,000; 11.5% to €200,000; 13.5% to
+  €300,000; 15% above, so the combined scale runs from 19% to 30%.
+- **Minimums**: personal €5,550, with €1,150 more from age 65 and €1,400 more from 75; descendants under 25 €2,400,
+  €2,700, €4,000 and €4,500, and €2,800 more for a child under three.
+- **Work income**: €2,000 of other expenses, and a reduction for low earners. The reduction is measured on net work
+  income after social security but before the €2,000: €7,302 up to €14,852, tapering to nothing at €19,747.50.
+- **Social security (employee)**: 6.5% (4.70% contingencias comunes, 1.55% unemployment, 0.10% training and 0.15% for
+  the intergenerational equity mechanism, MEI) up to a maximum base of €5,101.20 a month.
+- **Pension plans** (planes de pensiones): contributions reduce the taxable base up to €1,500 a year, or 30% of net work
+  and business income if lower. Withdrawals are taxed as work income. The default state pension age is 67; you enter
+  the pension amount yourself.
+- **Wealth tax and solidarity tax** (off by default): net worth is split evenly between the people in the household.
+  The wealth tax uses the state scale above a €700,000 exemption per person, except in Cataluña (its own scale, €500,000
+  exempt) and Comunitat Valenciana (its own scale, €1,000,000 exempt). The solidarity tax on large fortunes applies to
+  wealth above €3,000,000 after a €700,000 exemption (1.7%, 2.1% and 3.5%), and only where it is larger than the wealth
+  tax. Madrid and Andalucía have a 100% wealth tax bonus, but while the solidarity tax is in force the bonus only removes
+  the wealth tax above it, so residents there pay the solidarity tax amount.
 
 ## Worked example
 
 <Callout type="note" title="Illustrative">
-  Made-up figures, to show the arithmetic with the 2025 scale and 2026 social security, for a person in a region with
+  Made-up figures, to show the arithmetic with the state scale and 2026 social security, for a person in a region with
   no scale of its own. It is not a forecast or advice.
 </Callout>
 
 An employee has a gross salary of €30,000.
 
 - Social security: 6.5% × €30,000 = **€1,950**.
-- Net work income: €30,000 − €1,950 − €2,000 other expenses = **€26,050**. (This is above the €19,747.50 limit, so no
-  low-earner reduction applies.)
+- Net work income before other expenses: €30,000 − €1,950 = €28,050. This is above €19,747.50, so no low-earner
+  reduction applies. After the €2,000 other expenses: **€26,050**.
 - State scale on €26,050: 9.5% × €12,450 = €1,182.75; 12% × €7,750 = €930.00; 15% × (€26,050 − €20,200 = €5,850) =
   €877.50. Total €2,990.25.
 - Less the scale applied to the personal minimum: 9.5% × €5,550 = €527.25. State half of the tax: **€2,463.00**.
@@ -74,20 +90,27 @@ No Spanish or euro-area market history is bundled. Spanish households are tested
 
 ## What to treat with care
 
-- The 2025 scales are carried forward into later years, and only four regions have their own.
+- The 2026 regional scales could not be confirmed, so the 2025 ones are used. Only four regions have their own.
+- Spain does not index its scales by law; later years follow the plan's threshold policy.
 - Only individual returns are modelled, and regional minimums and deductions are not.
 - Descendant minimums are split evenly between two parents and count dependants under 25.
-- The wealth tax uses period-start net worth and ignores the main-home exemption.
+- The wealth and solidarity taxes use period-start net worth and ignore the main-home exemption. The 2026 regional
+  wealth tax rules could not be confirmed, so the 2025 rules are used.
 - No preset has been checked line by line against an official calculator for every case.
 
 ## Official sources
 
+- [BOE: Ley 35/2006 del IRPF, consolidated text](https://www.boe.es/buscar/act.php?id=BOE-A-2006-20764) (articles 19,
+  20, 52, 57, 58, 63, 66 and 76)
 - [AEAT: Manual práctico de Renta 2025](https://sede.agenciatributaria.gob.es/Sede/ayuda/manuales-videos-folletos/manuales-practicos/irpf-2025),
   including the [state general scale](https://sede.agenciatributaria.gob.es/Sede/ayuda/manuales-videos-folletos/manuales-practicos/irpf-2025/c15-calculo-impuesto-determinacion-cuotas-integras/gravamen-base-liquidable-general/gravamen-estatal.html),
-  the [state savings scale](https://sede.agenciatributaria.gob.es/Sede/ayuda/manuales-videos-folletos/manuales-practicos/irpf-2025/c15-calculo-impuesto-determinacion-cuotas-integras/gravamen-base-liquidable-ahorro/gravamen-estatal.html)
-  and the [personal and family minimum](https://sede.agenciatributaria.gob.es/Sede/ayuda/manuales-videos-folletos/manuales-practicos/irpf-2025/c14-adecuacion-impuesto-circunstancias-personales/minimo-contribuyente.html)
-- [Seguridad Social: contributions, Régimen General](https://www.seg-social.es/wps/portal/wss/internet/Trabajadores/CotizacionRecaudacionTrabajadores/36537)
-- [AEAT: wealth tax state scale 2025](https://sede.agenciatributaria.gob.es/Sede/ayuda/manuales-videos-folletos/manuales-practicos/patrimonio-2025/c-4-determinacion-base-liquidable-integra/determinacion-cuota-integra/regla-general/escala-estatal.html)
+  the regional scales, the [personal minimum](https://sede.agenciatributaria.gob.es/Sede/ayuda/manuales-videos-folletos/manuales-practicos/irpf-2025/c14-adecuacion-impuesto-circunstancias-personales/minimo-contribuyente.html)
+  and the [low-earner reduction](https://sede.agenciatributaria.gob.es/Sede/ayuda/manuales-videos-folletos/manuales-practicos/irpf-2025/c03-rendimientos-trabajo/rendimiento-neto-trabajo-integrar-base-imponible/fase-3-determinacion-rendimiento-neto-reducido.html)
+- [Seguridad Social: bases and rates, Régimen General](https://www.seg-social.es/wps/portal/wss/internet/Trabajadores/CotizacionRecaudacionTrabajadores/36537)
+- [AEAT: wealth tax state scale 2025](https://sede.agenciatributaria.gob.es/Sede/ayuda/manuales-videos-folletos/manuales-practicos/patrimonio-2025/c-4-determinacion-base-liquidable-integra/determinacion-cuota-integra/regla-general/escala-estatal.html),
+  [exemptions by region](https://sede.agenciatributaria.gob.es/Sede/ayuda/manuales-videos-folletos/manuales-practicos/patrimonio-2025/c-4-determinacion-base-liquidable-integra/determinacion-base-liquidable-patrimonio-no-gravamen/sujetos-pasivos-residentes-ccaa.html)
+  and [regional bonuses](https://sede.agenciatributaria.gob.es/Sede/ayuda/manuales-videos-folletos/manuales-practicos/patrimonio-2025/c-5-determinacion-cuota-ingresar/deducciones-bonificaciones-autonomicas/bonificaciones-autonomicas.html)
+- [BOE: Ley 38/2022, article 3](https://www.boe.es/buscar/act.php?id=BOE-A-2022-22684) (solidarity tax on large fortunes)
 
 <Callout type="note" title="Estimates, not advice">
   Glideworth is planning software. Its tax figures help you compare choices under your own assumptions; they

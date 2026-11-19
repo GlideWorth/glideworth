@@ -1,6 +1,6 @@
 ---
 title: Retirement planning in Israel
-description: "How Glideworth estimates Israeli tax at a basic level for 2026: brackets, credit points, National Insurance, pensions, and the figures it could not confirm."
+description: "How Glideworth estimates Israeli tax at a basic level for 2026: brackets, credit points, surtax, National Insurance, pensions, and the figures it could not confirm."
 ogTitle: Retirement planning in Israel
 countryCode: IL
 countryName: Israel
@@ -9,36 +9,43 @@ taxYears:
 modelled:
   - Income tax on the 2026 brackets, with credit points and a surtax on high incomes
   - National Insurance and health tax on wages, until age 67
-  - A 25% tax on capital income (interest, dividends and real gains), with an extra 2% surtax on capital income at the top
+  - A 25% tax on capital income (interest, dividends and gains), with an extra 2% surtax on large capital income
   - Pension contributions with a tax credit on the employee share, and keren hishtalmut as a tax-free account
-  - Pension access from age 67 and a default old-age pension age of 67
+  - Pension access from age 67 and a default old-age allowance age of 67
 notModelled:
   - The partial exemption for qualifying pension annuities, which could not be confirmed from an official source; pensions are taxed in full
   - Removal of the inflationary part of capital gains; gains are taxed on the nominal amount
   - The 15% rate on some unlinked deposits, the 30% rate for substantial shareholders and the 31% minimum rate on passive income under 60
   - Credit points other than the basic 2.25 for a resident
-  - Self-employed National Insurance, health tax on pensions, and the insured-salary ceiling
-  - The lower, rising pension age for women, and any exemption on the sale of a main home
+  - Self-employed National Insurance, health tax on pensions, and contributions for employees aged 67 to 70 who defer the old-age allowance
+  - The lower, rising retirement age for women, and any exemption on the sale of a main home
 ---
 
 import { facts } from '../../lib/facts';
 
 Israel is estimated at a **basic level**: the main rules are in, with {facts.simplificationCount('il')} written
-simplifications, and it has had less checking than the United Kingdom or the United States. The tables are for 2026, and
-later years index them with the plan's threshold policy.
+simplifications, and it has had less checking than the United Kingdom or the United States. The tables are for 2026.
+They were checked on 19 November 2026 against the Knesset's Book of Laws, the Knesset Research and Information
+Center and the National Insurance Institute. The Tax Authority's own site could not be read automatically. The law
+freezes the tax brackets, credit point and surtax threshold for 2025 to 2027, so 2027 uses the 2026 amounts. From 2028
+they follow the plan's threshold policy.
 
 ## What is modelled
 
 - **Brackets (2026)**, annual, after the Economic Efficiency Law 2026: 10% to ₪84,120; 14% to ₪120,720; 20% to
-  ₪228,000; 31% to ₪301,200; 35% to ₪560,280; 47% above. A surtax of 3% applies above ₪721,560, with 2% more on
-  capital income.
-- **Credit points**: each is worth ₪2,904 a year, and a resident gets 2.25, which is ₪6,534.
-- **National Insurance and health tax (employee)**: 4.27% (1.04% plus 3.23%) up to ₪92,436 a year, and 12.17% (7% plus 5.17%)
-  from there to ₪622,920, until age 67.
-- **Capital income**: 25% on interest, dividends and real gains.
-- **Pensions**: a 35% credit on the employee contribution up to 7% of salary. Keren hishtalmut is modelled as a
-  tax-free account; the six-year holding rule is not checked. Pension funds open at 67 and the default old-age pension age is 67; you enter
-  the amount yourself.
+  ₪228,000; 31% to ₪301,200; 35% to ₪560,280; 47% above.
+- **Surtax** (mas yesef): 3% on taxable income above ₪721,560. Since 2025 there is a further 2% on income from capital
+  (interest, dividends and gains) above ₪721,560, measured on capital income alone.
+- **Credit points**: each is worth ₪2,904 a year (₪242 a month), and a resident gets 2.25, which is ₪6,534.
+- **National Insurance and health tax (employee)**: 4.27% (1.04% plus 3.23%) up to ₪7,703 a month (₪92,436 a year),
+  and 12.17% (7% plus 5.17%) from there to ₪51,910 a month (₪622,920 a year), until age 67. Glideworth assumes the
+  old-age allowance is claimed at 67; an employee receiving it pays no employee share.
+- **Capital income**: 25% on interest, dividends and gains.
+- **Pensions**: a 35% credit on the employee contribution up to 7% of salary and ₪658 a month, so at most ₪230.30 a
+  month. Keren hishtalmut is modelled as a tax-free account; the six-year holding rule is not checked. Pension funds
+  open at 67.
+- **Old-age allowance** (Bituach Leumi): the default age is 67, the retirement age for men; you enter the amount
+  yourself.
 
 ## Worked example
 
@@ -62,21 +69,23 @@ Treasuries, T-bills and CPI-U, 1928 to 2025, in US dollars).
 
 ## Figures that could not be confirmed
 
-- **Not confirmed from an official source:** the brackets, credit-point value, capital-income rates, surtax threshold
-  and National Insurance rates. The Israel Tax Authority and National Insurance Institute sites refused automated
-  access again on 16 November 2026, so the figures could not be read from them; they are as published by
-  independent sources, which agree with each other.
+- **The 25% rates** on capital gains, dividends and interest could not be confirmed from an official text.
 - Pensions are taxed in full because the partial exemption for qualifying pension annuities could not be confirmed
-  from an official source.
+  from an official source. How the old-age allowance is taxed was not confirmed either; it is taxed as ordinary income.
 - Capital gains are taxed on the nominal gain, because Glideworth does not know purchase dates. Long-held assets can
   be over-taxed, since Israel taxes only the real, inflation-adjusted gain.
 - No preset has been checked line by line against an official calculator for every case.
 
 ## Official sources
 
+- [Book of Laws 3511, 31 March 2026](https://fs.knesset.gov.il/25/law/25_lsr_12235101.pdf): Economic Efficiency Law
+  2026, chapter C (the 2026 brackets), in Hebrew
+- [Book of Laws 3342, 26 December 2024](https://fs.knesset.gov.il/25/law/25_lsr_5396578.pdf): Economic Efficiency Law
+  2025 (the 2025 to 2027 freeze and the 2% surtax on capital income), in Hebrew
+- [Knesset Research and Information Center, 9 February 2026](https://fs.knesset.gov.il/globaldocs/MMM/a4622f6b-9905-f111-a13e-005056aa7c52/2_a4622f6b-9905-f111-a13e-005056aa7c52_11_21431.pdf):
+  brackets, credit points and the pension credit, from the Tax Authority's 2026 tables, in Hebrew
+- [National Insurance Institute: rates for salaried workers](https://www.btl.gov.il/English%20Homepage/Insurance/Ratesandamount/Pages/forSalaried.aspx)
 - [Israel Tax Authority: monthly deductions booklet](https://www.gov.il/he/pages/income-tax-monthly-deductions-booklet) (in Hebrew)
-- [Israel Tax Authority: information for new immigrants](https://www.gov.il/BlobFolder/generalpage/new-immigrants-france-081026/he/IncomeTax_new-immigrants-english-081026.pdf) (credit points)
-- [National Insurance Institute: rates for employees](https://www.btl.gov.il/Insurance/Rates/Pages/%D7%9C%D7%A2%D7%95%D7%91%D7%93%D7%99%D7%9D%20%D7%A9%D7%9B%D7%99%D7%A8%D7%99%D7%9D.aspx)
 
 <Callout type="note" title="Estimates, not advice">
   Glideworth is planning software. Its tax figures help you compare choices under your own assumptions; they

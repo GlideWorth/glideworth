@@ -78,10 +78,14 @@ const BEFORE: Record<string, string> = {
   "NL-couple": "276d669df09da428",
   "FR-single": "08863fa29cecad70",
   "FR-couple": "8103ae0c4b8ddc27",
-  "ES-MD-single": "fb572d114c86247d",
-  "ES-MD-couple": "97f1127523875d85",
-  "IL-single": "6d14b74b182f58bc",
-  "IL-couple": "762a6d5a8e851e06",
+  // Spain re-recorded 2026-11-19: the art. 20 work-income reduction is measured before the 2,000
+  // other expenses, and the 65+ minimum applies from 65 (LIRPF; AEAT manual).
+  "ES-MD-single": "045245a1f290b11e",
+  "ES-MD-couple": "8ae5596f32411536",
+  // Israel re-recorded 2026-11-19: the pension credit is capped at 658 a month, the extra 2% surtax
+  // applies only to capital income above the threshold, and tax amounts are frozen through 2027.
+  "IL-single": "d202482725f634d3",
+  "IL-couple": "0dbef6f18afcf908",
   "IE-single": "71e400d674cd0200",
   "IE-couple": "9245a0705f59a682",
   // Re-recorded 2026-11-19: ACC levy 1.83% to 160,244 for 2027-28, amounts kept nominal through

@@ -3,7 +3,8 @@
  * hook: ES_REGIONAL_SCALES), savings scale, mínimo personal y familiar (taxed at the scale and
  * subtracted), work-income expenses and reduction, employee social security with the maximum base,
  * pension-plan contributions within their limits, and the optional wealth tax (Impuesto sobre el
- * Patrimonio) on TaxYearInput.wealth. Parameterised: 'es:MD', 'es:CT', 'es:AN', 'es:VC'.
+ * Patrimonio) with the solidarity tax on large fortunes on TaxYearInput.wealth. Parameterised:
+ * 'es:MD', 'es:CT', 'es:AN', 'es:VC'; any other region uses a regional scale equal to the state one.
  * Data: ../data/es.ts. Known simplifications: ES_SIMPLIFICATIONS.
  */
 import { ScenarioError } from "../../errors.js";
@@ -45,7 +46,11 @@ export function esRegion(code: string | undefined): EsRegion {
   throw new ScenarioError(`unknown Spanish autonomous community '${code}'`, { region: code });
 }
 
-/** Art. 20 LIRPF reduction for net work income `net` (0 when other income exceeds the limit). */
+/**
+ * Art. 20 LIRPF reduction. `net` is net work income after the art. 19.2 a)-e) expenses (social
+ * security) but before the 2,000 other expenses (art. 20, last paragraph); 0 when other income exceeds
+ * the limit. The caller caps it at the net income left after the other expenses.
+ */
 export function esWorkReduction(d: EsYear, net: number, otherIncome: number, f = 1): number {
   const W = d.work;
   if (net >= W.limit * f || otherIncome > W.otherIncomeLimit * f) return 0;
@@ -64,7 +69,8 @@ export function esMinimum(
   f = 1,
 ): number {
   const M = d.minimums;
-  let m = M.personal + (age > 65 ? M.over65 : 0) + (age > 75 ? M.over75 : 0);
+  // From 65 and 75 (AEAT Manual práctico de Renta 2025: "edad igual o superior a 65 años o a 75 años").
+  let m = M.personal + (age >= 65 ? M.over65 : 0) + (age >= 75 ? M.over75 : 0);
   let kids = 0;
   kidAges.forEach((a, i) => {
     kids += (M.descendants[Math.min(i, M.descendants.length - 1)] ?? 0) + (a < 3 ? M.under3 : 0);
@@ -98,6 +104,26 @@ function withMinimum(
   return { tax: r.tax, marginal: r.marginal };
 }
 
+/**
+ * Wealth tax and solidarity tax (ITSGF) for one person's net worth `perPerson`. The ITSGF is due on
+ * the part of its own amount not covered by the wealth tax paid (Ley 38/2022 art. 3.Quince), so the
+ * total is the larger of the two. In Madrid and Andalucía the regional 100% bonificación only removes
+ * the wealth tax above the ITSGF while the ITSGF is in force.
+ */
+export function esWealthTax(d: EsYear, region: EsRegion, perPerson: number, f = 1) {
+  const base = clamp0(perPerson - (region.wealthExempt ?? d.wealth.exempt) * f);
+  const gross = sliceTax(bands(region.wealthScale ?? d.wealth.stateScale, f), 0, base).tax;
+  const solidarityBase = clamp0(perPerson - d.solidarity.exempt * f);
+  const solidarity = sliceTax(bands(d.solidarity.scale, f), 0, solidarityBase).tax;
+  const wealthTax = region.wealthBonusDownToSolidarity ? Math.min(gross, solidarity) : gross;
+  return {
+    base,
+    wealthTax,
+    solidarityBase,
+    solidarityTax: clamp0(solidarity - wealthTax),
+  };
+}
+
 function compute(input: TaxYearInput, explain: boolean, code?: string): CountryResult {
   const id = code ? `es:${code}` : "es";
   const region = esRegion(code ?? input.location.region);
@@ -129,7 +155,7 @@ function compute(input: TaxYearInput, explain: boolean, code?: string): CountryR
     const otherGeneral = b.selfEmployment + b.rental + b.ordinary;
     const savings =
       b.interest + b.qualifiedDividends + b.ordinaryDividends + b.gainsLong + b.gainsShort;
-    const reduction = esWorkReduction(d, workNet1, otherGeneral + savings, fs);
+    const reduction = Math.min(workNet1, esWorkReduction(d, workNet0, otherGeneral + savings, fs));
     const work = clamp0(workNet1 - reduction);
     // ---- pension plan contributions: personal limit and 30% of net work and activity income
     // (employer contributions are income in kind and deductible: they net out and are ignored)
@@ -191,13 +217,17 @@ function compute(input: TaxYearInput, explain: boolean, code?: string): CountryR
     taxable += blg + bla;
     gross += workGross + otherGeneral + savings + b.deferredTaxFree;
   });
-  // ---- wealth tax (optional)
+  // ---- wealth tax and solidarity tax on large fortunes (optional)
   if ((input.config.lawToggles["es.wealthTax"] ?? false) && input.wealth) {
-    const per = input.wealth.netWorth / people.length;
-    const base = clamp0(per - d.wealth.exempt * idx.factor);
-    const t = sliceTax(bands(region.wealthScale ?? d.wealth.stateScale, idx.factor), 0, base).tax;
-    const wt = t * (1 - (region.wealthBonus ?? 0)) * people.length * scale;
-    sink.add("wealth", "Impuesto sobre el Patrimonio", wt, base * people.length);
+    const w = esWealthTax(d, region, input.wealth.netWorth / people.length, idx.factor);
+    const n = people.length * scale;
+    sink.add("wealth", "Impuesto sobre el Patrimonio", w.wealthTax * n, w.base * people.length);
+    sink.add(
+      "wealth",
+      "Impuesto temporal de solidaridad de las grandes fortunas",
+      w.solidarityTax * n,
+      w.solidarityBase * people.length,
+    );
   }
   const penalty = input.withdrawals.reduce(
     (s, w) => s + clamp0(w.taxableAmount) * w.penaltyRate,
@@ -235,7 +265,11 @@ function makeEs(code?: string): TaxJurisdiction {
     // Plans are paid out on retirement or after 10 years of seniority: no single access age.
     pensionAccessAge: () => null,
     lawToggles: [
-      { id: "es.wealthTax", label: "Impuesto sobre el Patrimonio (wealth tax)", default: false },
+      {
+        id: "es.wealthTax",
+        label: "Impuesto sobre el Patrimonio and solidarity tax on large fortunes",
+        default: false,
+      },
     ],
     sources: ES_YEARS.flatMap((y) => y.sources.map((s) => ({ taxYear: y.label, ...s }))),
     simplifications: ES_SIMPLIFICATIONS,

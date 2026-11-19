@@ -7,7 +7,10 @@ import { createUaeSampleDocument, UAE_SAMPLE_PLAN_ID } from "../src/samples/inde
 import { buildSimulationInput } from "../src/scenario.js";
 import { CURRENCY_PEGS } from "../src/tax/crossborder/currency.js";
 import {
+  AE_DEWS,
   AE_GRATUITY,
+  AE_SAVINGS_SCHEME,
+  AE_YEARS,
   AED_PER_USD,
   aeGpssaContributions,
   aeGpssaReplacementRate,
@@ -194,5 +197,25 @@ describe("UAE defaults and sample", () => {
     expect(stay.periods.some((p) => p.income.some((i) => i.sourceId.endsWith(":gratuity")))).toBe(
       true,
     );
+  });
+});
+
+describe("UAE: figures checked against official sources (2026-11-19)", () => {
+  it("no personal income tax: nothing but the zero is modelled", () => {
+    expect(AE_YEARS.every((y) => y.personalIncomeTax === 0)).toBe(true);
+  });
+
+  it("gratuity (u.ae, Article 51): 8 years on a 10,000 basic wage = 105 + 90 days = 65,000", () => {
+    expect(aeGratuity(8, 10_000)).toBeCloseTo(65_000, 6);
+    expect(aeGratuity(5, 10_000)).toBeCloseTo(35_000, 6);
+  });
+
+  it("DEWS (DIFC Employment Law) and the savings scheme (Cabinet Resolution 96 of 2023): 5.83% / 8.33% of basic wage; top-ups up to 25% of wage", () => {
+    for (const s of [AE_DEWS, AE_SAVINGS_SCHEME]) {
+      expect(s.employerRateUnder5Years).toBe(0.0583);
+      expect(s.employerRateFrom5Years).toBe(0.0833);
+    }
+    expect(AE_SAVINGS_SCHEME.voluntaryCapShareOfWage).toBe(0.25);
+    expect(AE_SAVINGS_SCHEME.sources.some((x) => /u\.ae/.test(x.url))).toBe(true);
   });
 });

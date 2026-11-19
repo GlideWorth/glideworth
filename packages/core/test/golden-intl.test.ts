@@ -353,10 +353,10 @@ describe("golden IL: pension fund -> retire at 67 -> drawdown + old-age pension"
   };
   const r = run(g);
 
-  it("year one equals the tax-il vectors: 19,392 less credit points 6,534 and 35% x 9,000; NI 10,952.56", () => {
+  it("year one equals the tax-il vectors: 19,392 less credit points 6,534 and 35% x 7,896 (the 9,000 contribution is capped at 658 a month); NI 10,952.56", () => {
     expect(line(r, 0, /^Income tax/)).toBeCloseTo(19_392, 6);
-    expect(line(r, 0, /Credit points/)).toBeCloseTo(-(2.25 * 2_904 + 0.35 * 9_000), 6);
-    expect(taxTotal(r, 0)).toBeCloseTo(19_392 - 6_534 - 3_150 + 10_952.556, 6);
+    expect(line(r, 0, /Credit points/)).toBeCloseTo(-(2.25 * 2_904 + 0.35 * 7_896), 6);
+    expect(taxTotal(r, 0)).toBeCloseTo(19_392 - 6_534 - 2_763.6 + 10_952.556, 6);
   });
 
   it("accumulates, locked until 67, then draws; reconciles every year", () => lifecycle(r, g));

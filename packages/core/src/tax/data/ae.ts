@@ -2,6 +2,10 @@
  * United Arab Emirates (individuals). Tax year = calendar year. AED, pegged to the US dollar.
  * Calculation: ../jurisdictions/ae.ts. Every figure below carries its official source; anything
  * that could not be confirmed from an official source is left out and listed in AE_SIMPLIFICATIONS.
+ * Checked 2026-11-19: the gratuity and savings scheme against the UAE government portal (updated
+ * 15 October 2026), DEWS against DIFC Employment Law No. 2 of 2019, GPSSA against the
+ * GPSSA page on Federal Decree-Law No. 57 of 2023. No personal income tax is levied, so no
+ * rate, band or allowance is modelled.
  */
 
 export interface AeSource {
@@ -77,7 +81,7 @@ export const AE_GRATUITY = {
   sources: [
     {
       url: "https://u.ae/en/information-and-services/jobs/Sector-of-employment/employment-in-the-private-sector/end-of-service-benefits-for-employees-in-the-private-sector",
-      note: "UAE government portal (2026): Article 51 of the Labour Law; 21 days per year for years 1-5, 30 days per year after, pro rata for fractions after one year, last basic wage, total capped at 2 years of wage",
+      note: "UAE government portal (updated 15 October 2026): Article 51 of the Labour Law; 21 days per year for years 1-5, 30 days per year after, pro rata for fractions after one year, last basic wage, total capped at 2 years of wage; unpaid absence not counted. Checked 2026-11-19",
     },
   ] as AeSource[],
 } as const;
@@ -109,7 +113,7 @@ export const AE_DEWS = {
   sources: [
     {
       url: "https://assets.difc.com/v1/media/edge/images/dubaiintern0078-difcexperie96c5-production-3253/media/project/difcexperiences/difc/difcwebsite/documents/laws--regulations/employment-law.pdf",
-      note: "DIFC Employment Law No. 2 of 2019 (consolidated July 2025): employer contributions 5.83% of monthly basic wage for the first five years of service, 8.33% for each year after",
+      note: "DIFC Employment Law No. 2 of 2019 (consolidated July 2025): employer contributions 5.83% of monthly basic wage for the first five years of service, 8.33% for each year after. Checked 2026-11-19",
     },
     {
       url: "https://www.difc.com/business/qualifying-schemes",
@@ -129,6 +133,10 @@ export const AE_SAVINGS_SCHEME = {
   employerRateFrom5Years: 0.0833,
   voluntaryCapShareOfWage: 0.25,
   sources: [
+    {
+      url: "https://u.ae/en/information-and-services/jobs/Sector-of-employment/employment-in-the-private-sector/end-of-service-benefits-for-employees-in-the-private-sector",
+      note: "UAE government portal (updated 15 October 2026), Cabinet Resolution No. 96 of 2023: employer 5.83% of monthly basic salary under five years of service, 8.33% after; voluntary employee contributions up to 25% of total wage. Checked 2026-11-19",
+    },
     {
       url: "https://www.mohre.gov.ae/en/media-centre/news/1/11/2023/voluntary-alternative-end-of-service-benefits-scheme-goes-into-effect-by-cabinet-resolution-aiming-to-boost-ease-of-doing-business-generate-investment-returns-for-employees.aspx",
       note: "MOHRE: Cabinet Resolution No. 96 of 2023 in force; employer contribution 5.83% of basic salary under five years of service, 8.33% from five years",
@@ -162,7 +170,7 @@ export const AE_GPSSA = {
   sources: [
     {
       url: "https://www.gpssa.gov.ae/pages/en/media-center/news/gpssa-reviews-most-prominent-features-federal-law-no-57-2023",
-      note: "GPSSA (Nov 2023): total contribution 26% (insured 11%, employer 15%; government bears 2.5% of the private employer share below AED 20,000); contribution salary ceiling AED 70,000 private / 100,000 government; pension 2.67% of the calculation salary per year to 30 years, +4% a year beyond, at most 100%; calculation salary = average of the last six years",
+      note: "GPSSA (page updated 26 October 2026; checked 2026-11-19): total contribution 26% (insured 11%, employer 15%; government bears 2.5% of the private employer share below AED 20,000); contribution salary ceiling AED 70,000 private / 100,000 government; pension 2.67% of the calculation salary per year to 30 years, +4% a year beyond, at most 100%; calculation salary = average of the last six years",
     },
     {
       url: "https://u.ae/en/information-and-services/jobs/Sector-of-employment/working-in-uae-government-sector/pensions-and-social-security-for-uae-citizens",

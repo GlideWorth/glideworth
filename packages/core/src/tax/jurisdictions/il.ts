@@ -1,8 +1,9 @@
 /**
- * Israel: income tax brackets with credit points, 3% surtax (+2% on capital income) above the
- * threshold, 25% tax on capital income (nominal gains: see IL_SIMPLIFICATIONS), employee National
- * Insurance and health tax at reduced / full rates, pension-contribution credit and keren hishtalmut
- * as a tax-free account. Data: ../data/il.ts.
+ * Israel: income tax brackets with credit points, 3% surtax above the threshold (+2% on capital
+ * income above it), 25% tax on capital income (nominal gains: see IL_SIMPLIFICATIONS), employee
+ * National Insurance and health tax at reduced / full rates, pension-contribution credit and keren
+ * hishtalmut as a tax-free account. The Ordinance's amounts are frozen through 2027 (s. 120B(e));
+ * National Insurance thresholds follow the price index. Data: ../data/il.ts.
  */
 import {
   alivePeople,
@@ -24,8 +25,9 @@ const ID = "il";
 
 function compute(input: TaxYearInput, explain: boolean): CountryResult {
   const d = pickYear(IL_YEARS, input.year);
-  const idx = indexFactor(input, ID, undefined);
+  const idx = indexFactor(input, ID, d.frozenThroughYear);
   const fs = idx.factor * periodScale(input);
+  const fsNi = indexFactor(input, `${ID}.ni`, undefined).factor * periodScale(input);
   const people = alivePeople(input);
   const sink = new LineSink(ID);
   const facts: Record<string, number> = {
@@ -59,22 +61,25 @@ function compute(input: TaxYearInput, explain: boolean): CountryResult {
     if (bf)
       fill.push({ jurisdictionId: ID, personId: p.id, schedule: "personal effort", bands: bf });
     // credits: credit points and the pension contribution credit
-    const pensionCredit = d.pension.creditRate * Math.min(ded.pretax, d.pension.wageShare * b.wage);
+    const P = d.pension;
+    const pensionCredit =
+      P.creditRate * Math.min(ded.pretax, P.wageShare * b.wage, P.maxContribution * fs);
     const credits = Math.min(
       t.tax,
       d.residentPoints * d.creditPoint * fs + pensionCredit + ded.credits,
     );
     const capTax = d.capital.rate * capital;
-    // surtax on total taxable income above the threshold (+2% on the capital part above it)
+    // surtax: 3% on total taxable income above the threshold (s. 121B(a)), plus 2% on taxable income
+    // from capital sources above the same threshold (s. 121B(a1)), measured on capital income alone
     const thr = d.surtax.threshold * fs;
     const over = clamp0(ordinary + capital - thr);
-    const surtax = d.surtax.rate * over + d.surtax.capitalExtra * Math.min(capital, over);
+    const surtax = d.surtax.rate * over + d.surtax.capitalExtra * clamp0(capital - thr);
     // National Insurance + health (employees, below the age limit)
     const N = d.nationalInsurance;
     const ni =
       p.age < N.untilAge
-        ? N.reducedRate * Math.min(b.wage, N.reducedUpTo * fs) +
-          N.fullRate * clamp0(Math.min(b.wage, N.max * fs) - N.reducedUpTo * fs)
+        ? N.reducedRate * Math.min(b.wage, N.reducedUpTo * fsNi) +
+          N.fullRate * clamp0(Math.min(b.wage, N.max * fsNi) - N.reducedUpTo * fsNi)
         : 0;
     const [onInc, onGain] = splitTax(capTax, [capInc, capGain]);
     sink.add("income", `Income tax${sfx}`, t.tax, ordinary);

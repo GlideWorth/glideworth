@@ -21,7 +21,7 @@ const EXPECTED_COUNT: Record<string, number> = {
   de: 13,
   nl: 10,
   fr: 10,
-  es: 8,
+  es: 10,
   il: 8,
   ie: 10,
   nz: 5,

@@ -16,17 +16,18 @@ notModelled:
   - Corporate Tax on a natural person's business or freelance-licence turnover above AED 1 million (9% above AED 375,000 of taxable income); model it as an expense if it applies
   - VAT at 5% on spending
   - Gratuity reductions on resignation under the old law, unpaid leave days and limited-contract rules
-  - GPSSA eligibility ages, early-retirement reductions, the pre-2023 law, and GCC nationals contributing to their home schemes
+  - GPSSA eligibility ages, early-retirement reductions and the pre-2023 law
   - A DEWS voluntary savings cap, which could not be confirmed
   - A state pension for expatriates, who are not entitled to one, so none is modelled
 ---
 
 import { facts } from '../../lib/facts';
 
-The UAE levies no personal income tax, so there is no tax table to read; the work is in the end-of-service benefits
-and savings schemes, which is where an expatriate's retirement money often sits. The UAE model has
-{facts.simplificationCount('ae')} written simplifications and the tax year is 2026 (calendar year). The currency is the dirham (AED),
-pegged to the US dollar at 3.6725 per dollar.
+The UAE levies no personal income tax, so there is no tax table to read and Glideworth models none; the work is in
+the end-of-service benefits and savings schemes, which is where an expatriate's retirement money often sits. The UAE
+model has {facts.simplificationCount('ae')} written simplifications and the tax year is 2026 (calendar year). The
+currency is the dirham (AED), pegged to the US dollar at 3.6725 per dollar. The figures below were checked against the
+UAE government portal, the Federal Tax Authority, the DIFC and GPSSA on 19 November 2026.
 
 ## What is modelled
 
@@ -36,7 +37,8 @@ pegged to the US dollar at 3.6725 per dollar.
   activities. That tax and VAT are out of scope: model business tax as an expense if it applies.
 - **End-of-service gratuity** for expatriate private-sector employees: nothing under one year of service; 21 days of
   basic wage for each of the first five years and 30 days for each year after, pro rata for part years once one year is
-  completed; capped at two years of wage. You set it on the salary, and it is paid in the month the salary ends.
+  completed; days of unpaid absence do not count; capped at two years of wage. You set it on the salary, and it is paid
+  in the month the salary ends.
 - **DEWS** (DIFC Employee Workplace Savings) and the **voluntary savings scheme** (Cabinet Resolution No. 96 of 2023)
   replace the gratuity for employers who join. Employer contributions are 5.83% of basic wage for the first five years of
   service and 8.33% after. The savings scheme allows voluntary employee top-ups of up to 25% of wage. Enter employer contributions as a flow
@@ -73,7 +75,6 @@ US history (S&P 500, 10-year Treasuries, T-bills and CPI-U, 1928 to 2025, in dol
   days of wage but no formula; basic annual wage ÷ 365 gives about 1.4% less.
 - Whether the two-year cap uses basic or total wage is not settled on the government portal. Glideworth uses basic wage.
 - The DEWS voluntary-savings cap and the GPSSA eligibility ages could not be confirmed, and are not modelled.
-- The gratuity is a UAE-only feature. A gratuity or bonus paid after you move abroad is taxed where you then live.
 
 ## Official sources
 
@@ -81,16 +82,13 @@ US history (S&P 500, 10-year Treasuries, T-bills and CPI-U, 1928 to 2025, in dol
 - [Federal Tax Authority: Corporate Tax and natural persons](https://tax.gov.ae/en/taxes/corporate.tax/corporate.tax.topics/basis.of.taxation.natural.person.aspx),
   [Cabinet Decision No. 49 of 2023](https://tax.gov.ae/DataFolder/Files/Legislation/05-06-2023/3/Cabinet%20Decision%20No.%2049%20of%202023%20-%20for%20publishing.pdf)
   and the [Ministry of Finance announcement](https://mof.gov.ae/en/news/ministry-of-finance-announces-issuance-of-uae-cabinet-decision-on-treatment-of-natural-persons-undertaking-a-business-or-business-activity/)
-- MOHRE (Ministry of Human Resources and Emiratisation): voluntary alternative end-of-service benefits scheme
-  and FAQ (no working link)
+- The same [UAE government portal page](https://u.ae/en/information-and-services/jobs/Sector-of-employment/employment-in-the-private-sector/end-of-service-benefits-for-employees-in-the-private-sector)
+  for the voluntary savings scheme (Cabinet Resolution No. 96 of 2023)
 - [DIFC Employment Law No. 2 of 2019](https://assets.difc.com/v1/media/edge/images/dubaiintern0078-difcexperie96c5-production-3253/media/project/difcexperiences/difc/difcwebsite/documents/laws--regulations/employment-law.pdf)
   and [DIFC qualifying schemes](https://www.difc.com/business/qualifying-schemes)
 - [GPSSA: features of Federal Law No. 57 of 2023](https://www.gpssa.gov.ae/pages/en/media-center/news/gpssa-reviews-most-prominent-features-federal-law-no-57-2023) and the
   [UAE portal on pensions for citizens](https://u.ae/en/information-and-services/jobs/Sector-of-employment/working-in-uae-government-sector/pensions-and-social-security-for-uae-citizens)
 - [Central Bank of the UAE](https://www.centralbank.ae/) (the dollar peg)
-
-Moving to or from the UAE, including the UK-UAE treaty, is covered on the
-[moving-country page](/planning/moving-country/).
 
 <Callout type="note" title="Estimates, not advice">
   Glideworth is planning software. Its tax figures help you compare choices under your own assumptions; they

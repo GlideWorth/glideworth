@@ -98,16 +98,20 @@ that is wrong whenever the rules change. Someone must add new years each spring.
 | Ireland                      | 2026; 2027 as announced in Budget 2027 (Finance (No. 2) Bill 2026)                                                |
 | New Zealand                  | 2026-27; ACC earners' levy 2027-28                                                                                |
 | France                       | 2026 finance law (taxes 2025 income), 2026 social rates                                                           |
-| Spain                        | **2025** IRPF scales, 2026 social security                                                                        |
+| Spain                        | State IRPF scales 2025 and 2026 (law in force); regional scales **2025**, used for 2026; 2026 social security     |
 | United Arab Emirates         | 2026 (no personal tax; gratuity, DEWS, savings scheme, GPSSA Law 57 of 2023)                                      |
 | Cross-border tables          | UK non-resident rules 2026-27 (gov.uk); US FEIE 2025-2026                                                         |
 
 Figures that could not be confirmed or are provisional:
 
-- Israel: **not confirmed from an official source** (2026-11-16): brackets, credit point, capital-income rates, the
-  surtax threshold and National Insurance rates. The Tax Authority and National Insurance Institute sites refused
-  automated access, so the figures are as published by independent sources (PwC is no longer cited). The partial
-  exemption for qualifying pension annuities could not be confirmed either, so pensions are taxed in full.
+- Israel (checked 2026-11-19): the 2026 tables also apply to 2027, because the Income Tax Ordinance's amounts are not
+  indexed in 2025-2027 (s. 120B(e)). The brackets, credit point, surtax threshold, pension credit cap and National Insurance
+  rates are now confirmed, from the Knesset Book of Laws (nos. 3511 and 3342), the Knesset Research and Information
+  Center and the National Insurance Institute's rates page (read from its Internet Archive copy; gov.il and btl.gov.il
+  still refuse automated access). **Not confirmed**: the 25% rates on capital gains, dividends and interest; the
+  partial exemption for qualifying pension annuities (not applied, so pensions are taxed in full); how the Bituach
+  Leumi old-age allowance is taxed (taxed as ordinary income); and how indexation resumes in 2028 after the 2025-2027
+  freeze (Glideworth indexes from 2027 with the plan's threshold policy).
 - US states: **not confirmed from an official source** (2026-11-19): all figures for Idaho (its official sites refused
   connections); Arizona's 2.5% rate (confirmed only by a 2025 legislative fiscal note) and whether voters approved a
   2.0% rate from 2027; whether Colorado adds back the federal senior deduction; and 2026 amounts not yet published,
@@ -168,11 +172,17 @@ Figures that could not be confirmed or are provisional:
   2027/28). Student loan thresholds for 2027/28 are not published (Plan 2 is held, as announced; the others are
   indexed with prices). The salary sacrifice NI cap from April 2029 awaits secondary legislation. State Pension age
   follows the legislated timetable; the government's third review has not reported.
-- Spain: 2025 scales are carried forward; only four regions have their own scales.
+- Spain (checked 2026-11-19): the state IRPF scales, savings scale, minimums, work-income reduction and pension-plan
+  limit are confirmed for 2025 and 2026 from the BOE consolidated text of the IRPF law; social security for 2026 from
+  the Seguridad Social; the wealth tax and the solidarity tax on large fortunes from the AEAT 2025 manual and Ley
+  38/2022. **Not confirmed**: the 2026 regional IRPF scales and 2026 regional wealth tax rules (the 2025 ones are used).
+  Only four regions have their own scales; any other region is assumed to have a scale equal to the state scale.
 - No preset has been checked line by line against an official calculator for every case.
-- UAE: the gratuity's daily wage (monthly basic / 30) is Glideworth's convention, and whether the two-year cap uses basic
-  or total wage is not settled on the government portal (basic is used); the DEWS voluntary-savings cap and GPSSA
-  eligibility ages could not be confirmed and are not modelled.
+- UAE (checked 2026-11-19): no personal income tax, so no rate is modelled; the gratuity, savings scheme, DEWS and
+  GPSSA figures were confirmed on the government portal, the DIFC Employment Law and GPSSA. The gratuity's daily wage
+  (monthly basic / 30) is Glideworth's convention, and whether the two-year cap uses basic or total wage is not settled
+  on the government portal (basic is used); the DEWS voluntary-savings cap and GPSSA eligibility ages could not be
+  confirmed and are not modelled.
 - Treaties other than UK-UAE are basic: the main allocation rules, not checked article by article (rows marked
   "not verified" use the credit method).
 - Cross-border tax is an estimate of the tax mechanics only: residence is the household's location for the whole
@@ -180,21 +190,21 @@ Figures that could not be confirmed or are provisional:
 
 Tax sources, checked 2026-11-16 and 2026-11-19 (the status of each country's sourcing; licences are in `DATA-LICENSES.md`):
 
-| Country              | Sourcing status                                                                                          |
-| -------------------- | -------------------------------------------------------------------------------------------------------- |
-| US federal, payroll  | ok (IRS, SSA, CMS; 2027 figures checked 2026-11-19)                                                      |
-| US states and cities | ok for 49 states, DC and 5 cities (2026-11-19); Idaho and some figures of 9 states not confirmed (above) |
-| Canada               | ok (CRA, provinces; 2026-11-19); Quebec lower rates and Manitoba bracket conflict not confirmed (above)  |
-| Israel               | not confirmed (official sites unreachable)                                                               |
-| United Arab Emirates | ok (copied sentence reworded)                                                                            |
-| Australia            | ok on facts (legislation, 2026-11-19); 2026-27 super caps not confirmed (ATO site unreachable)           |
-| Ireland              | ok on facts for 2026 (Revenue); 2027 from Budget 2027 documents (2026-11-19); gaps above                 |
-| New Zealand          | ok (IRD, 2026-11-19: rates from 1 April 2025, ACC levy 2026-27 and 2027-28)                              |
-| UK                   | ok (gov.uk, legislation.gov.uk, Budget 2026; checked 2026-11-19); gaps above                             |
-| Germany              | ok (statutes, Bundesregierung, BMG, DRV; BMF Lohnsteuer cross-check; 2026-11-19); gaps above             |
-| Netherlands          | ok (Belastingdienst, SVB, Rijksoverheid, Eerste Kamer; 2026-11-19); Box 3 provisional, gaps above        |
-| France               | ok (service-public.gouv.fr, BOFiP, Légifrance; 2026-11-19); gaps above                                   |
-| Spain                | unchanged in this pass                                                                                   |
+| Country              | Sourcing status                                                                                            |
+| -------------------- | ---------------------------------------------------------------------------------------------------------- |
+| US federal, payroll  | ok (IRS, SSA, CMS; 2027 figures checked 2026-11-19)                                                        |
+| US states and cities | ok for 49 states, DC and 5 cities (2026-11-19); Idaho and some figures of 9 states not confirmed (above)   |
+| Canada               | ok (CRA, provinces; 2026-11-19); Quebec lower rates and Manitoba bracket conflict not confirmed (above)    |
+| Israel               | ok on brackets, credit point, surtax and NI (Knesset, NII; 2026-11-19); capital-income rates not confirmed |
+| United Arab Emirates | ok (u.ae, FTA, DIFC, GPSSA; 2026-11-19)                                                                    |
+| Australia            | ok on facts (legislation, 2026-11-19); 2026-27 super caps not confirmed (ATO site unreachable)             |
+| Ireland              | ok on facts for 2026 (Revenue); 2027 from Budget 2027 documents (2026-11-19); gaps above                   |
+| New Zealand          | ok (IRD, 2026-11-19: rates from 1 April 2025, ACC levy 2026-27 and 2027-28)                                |
+| UK                   | ok (gov.uk, legislation.gov.uk, Budget 2026; checked 2026-11-19); gaps above                               |
+| Germany              | ok (statutes, Bundesregierung, BMG, DRV; BMF Lohnsteuer cross-check; 2026-11-19); gaps above               |
+| Netherlands          | ok (Belastingdienst, SVB, Rijksoverheid, Eerste Kamer; 2026-11-19); Box 3 provisional, gaps above          |
+| France               | ok (service-public.gouv.fr, BOFiP, Légifrance; 2026-11-19); gaps above                                     |
+| Spain                | ok (BOE, AEAT, Seguridad Social; 2026-11-19); 2026 regional scales not confirmed                           |
 
 Each country's full list of simplifications is `TAX_SIMPLIFICATIONS`
 (`packages/core/src/tax/data/simplifications.ts`) and is shown with the tax results. Highlights: US SALT cap and

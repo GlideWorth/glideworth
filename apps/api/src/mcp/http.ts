@@ -11,6 +11,23 @@ export async function handleMcpHttp(
   req: Request,
   opts: { services: Services; principal: Principal; allowWrites: boolean },
 ): Promise<Response> {
+  // Stateless, so there is no stream for server-initiated messages (GET) and no session to end
+  // (DELETE). Answering GET with an event stream that closes at once made clients reopen it in a
+  // tight loop: about 100,000 requests a day per connected client, which used up the workspace's
+  // daily API quota. 405 is what the Streamable HTTP spec asks for; clients then only POST.
+  if (req.method !== "POST") {
+    return Response.json(
+      {
+        jsonrpc: "2.0",
+        error: {
+          code: -32000,
+          message: "Method not allowed: this MCP server is stateless; use POST.",
+        },
+        id: null,
+      },
+      { status: 405, headers: { allow: "POST" } },
+    );
+  }
   const server = createMcpServer({
     services: opts.services,
     scopes: opts.principal.scopes,

@@ -244,3 +244,22 @@ describe("data tools", () => {
     });
   });
 });
+
+describe("stateless transport", () => {
+  it("answers GET and DELETE with 405 so clients never poll for a server stream", async () => {
+    for (const method of ["GET", "DELETE"]) {
+      const res = await h.fetchViaApp("http://localhost/mcp", {
+        method,
+        headers: { authorization: `Bearer ${READ_KEY}`, accept: "text/event-stream" },
+      });
+      expect(res.status).toBe(405);
+      expect(res.headers.get("allow")).toBe("POST");
+    }
+  });
+
+  it("still serves a full client session over POST", async () => {
+    const c = await connect(READ_KEY);
+    const { tools } = await c.listTools();
+    expect(tools.length).toBeGreaterThan(0);
+  });
+});

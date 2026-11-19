@@ -1,7 +1,7 @@
 /** Resolves the "Related" links of a page from the clusters in src/config/related.ts. */
 import { getCollection } from "astro:content";
 import { pages } from "../config/pages";
-import { clusters } from "../config/related";
+import { clusters, selectRelatedPaths } from "../config/related";
 
 export interface RelatedLink {
   href: string;
@@ -9,7 +9,6 @@ export interface RelatedLink {
   kind: string;
 }
 
-const MAX = 6;
 let index: Promise<Map<string, RelatedLink>> | undefined;
 
 async function titles(): Promise<Map<string, RelatedLink>> {
@@ -50,13 +49,8 @@ async function titles(): Promise<Map<string, RelatedLink>> {
 export async function relatedFor(path: string): Promise<RelatedLink[]> {
   index ??= titles();
   const map = await index;
-  const out: RelatedLink[] = [];
-  for (const c of clusters) {
-    if (!c.paths.includes(path)) continue;
-    for (const p of c.paths) {
-      const link = map.get(p);
-      if (p !== path && link && !out.some((o) => o.href === p)) out.push(link);
-    }
-  }
-  return out.slice(0, MAX);
+  return selectRelatedPaths(path).flatMap((href) => {
+    const link = map.get(href);
+    return link ? [link] : [];
+  });
 }

@@ -4,7 +4,7 @@
  * token (a self-host copy) nothing is sent.
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { bootCloud, type Cloud, signUp } from "./cloud-harness.js";
+import { bootCloud, type Cloud, signUp, WEBHOOK_SECRET } from "./cloud-harness.js";
 
 function capture() {
   // oxlint-disable-next-line typescript/no-explicit-any -- captured request bodies are untyped JSON
@@ -33,7 +33,20 @@ describe("cloud product events", () => {
   });
 
   it("sends the trial start as the owner, with statuses only", async () => {
-    const { userId, email } = await signUp(cloud);
+    const { browser, userId, email } = await signUp(cloud);
+    const checkout = await browser.post("/api/v1/billing/checkout", {
+      lookupKey: "cloud_monthly_v1",
+    });
+    expect(checkout.status, checkout.text).toBe(200);
+    const sessionId = String(checkout.json.url).split("/").at(-1) as string;
+    for (const ev of cloud.gateway.completeCheckout(sessionId)) {
+      const signed = cloud.gateway.sign(ev, WEBHOOK_SECRET);
+      const delivered = await browser.req("POST", "/stripe/webhook", {
+        raw: signed.body,
+        headers: { "stripe-signature": signed.header, "content-type": "application/json" },
+      });
+      expect(delivered.status, delivered.text).toBe(200);
+    }
     await cloud.rt.productEvents?.flush();
     const mine = ph.sent.filter((s) => s.body.distinct_id === userId);
     expect(mine).toHaveLength(1);

@@ -162,6 +162,12 @@ describe("billing product events (Stripe webhook)", () => {
     });
     db = cloud.db;
     const owner = await signedUpBrowser(cloud);
+    const checkout = await owner.browser.post("/api/v1/billing/checkout", {
+      lookupKey: "cloud_monthly_v1",
+    });
+    expect(checkout.status, checkout.text).toBe(200);
+    const sessionId = String(checkout.body.url).split("/").at(-1) as string;
+    await deliver(cloud.fake.completeCheckout(sessionId));
     const subId = db
       .select()
       .from(subscriptions)

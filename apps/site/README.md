@@ -19,6 +19,7 @@ Run from `apps/site` (or `pnpm --filter @glideworth/site <script>` from the repo
 | `pnpm icons`            | Regenerates the favicon set in `public/` from the mark                                                                                                                                                                                        |
 | `pnpm snapshot:openapi` | Rewrites `src/data/openapi.json` from the API's generated OpenAPI document (see "API reference" below)                                                                                                                                        |
 | `pnpm snapshot:dates`   | Rewrites `src/data/source-dates.json`: last commit date of each page source, the sitemap's fallback on a shallow checkout                                                                                                                     |
+| `pnpm indexnow:submit`  | Submits the live sitemap to IndexNow. Pass `-- --dry-run` to print the URLs and send nothing. Not part of CI or deploy; see [docs/INDEXNOW.md](docs/INDEXNOW.md)                                                                              |
 
 The scripts set `ASTRO_TELEMETRY_DISABLED=1`, and the dev toolbar is off, so nothing phones home.
 Lint with oxlint and check formatting with oxfmt from the repo root (`pnpm lint`, `pnpm format:check`).
@@ -46,7 +47,9 @@ scripts/                 check-dist, check-contrast, generate-icons, snapshot-op
 src/data/openapi.json    snapshot of the API's OpenAPI document; the API reference page is built from it
 src/data/source-dates.json  last commit date of each page source (sitemap lastmod when git history is shallow)
 src/config/related.ts    clusters of related pages (every page in a cluster links to the others)
-public/                  favicons and app icons (generated from /brand)
+public/                  favicons, app icons (generated from /brand) and the IndexNow key file
+/llms.txt                short catalog of the site for language models, generated at build time
+/llms-full.txt           the same catalog plus country tax limits and the legal pages
 ```
 
 ## Analytics (optional, off by default)

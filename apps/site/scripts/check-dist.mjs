@@ -420,7 +420,55 @@ else {
     if (!robots.split("\n").includes(`Sitemap: ${SITE}/${name}`))
       fail("robots.txt", `does not point at ${SITE}/${name}`);
   if (/^Disallow:\s*\/\s*$/m.test(robots)) fail("robots.txt", "disallows the whole site");
+  for (const name of ["llms.txt", "llms-full.txt"])
+    if (!robots.includes(`${SITE}/${name}`)) fail("robots.txt", `does not list ${SITE}/${name}`);
 }
+
+// /llms.txt and /llms-full.txt are build-generated catalogs. Prices and the MCP URL come from config.
+const llmsFiles = ["llms.txt", "llms-full.txt"].map((name) => [
+  name,
+  readFileSync(join(dist, name), "utf8"),
+]);
+for (const [name, text] of llmsFiles) {
+  if (!text.startsWith("# Glideworth\n")) fail(name, "does not start with the site title");
+  if (!text.includes("\n> ")) fail(name, "missing the summary blockquote");
+  if (!text.includes("14-day free trial with no card"))
+    fail(name, "does not state the no-card trial");
+  if (!text.includes("$9 a month or $90 a year")) fail(name, "does not state the price");
+  if (!text.includes("Self-hosting is free"))
+    fail(name, "does not state that self-hosting is free");
+  if (!text.includes("https://app.glideworth.com/mcp"))
+    fail(name, "does not list the hosted MCP URL");
+  for (const path of [
+    "/tools/coast-fire-calculator/",
+    "/tools/fire-calculator/",
+    "/tools/barista-fire-calculator/",
+    "/tools/how-long-will-my-money-last/",
+    "/tools/retirement-withdrawal-calculator/",
+    "/tools/monte-carlo-retirement-calculator/",
+    "/compare/boldin/",
+    "/compare/spreadsheets/",
+    "/planning/",
+    "/planning/uk/",
+    "/planning/moving-country/",
+    "/docs/api-and-mcp/mcp-setup/",
+    "/api/",
+  ]) {
+    if (!text.includes(`${SITE}${path}`)) fail(name, `missing ${path}`);
+  }
+}
+const full = llmsFiles[1][1];
+if (!full.includes("Not modelled:"))
+  fail("llms-full.txt", "does not list what a country tax estimate leaves out");
+if (sitemap.includes("/llms.txt") || sitemap.includes("/llms-full.txt"))
+  fail("sitemap", "lists an llms text file");
+
+const indexNowKey = "90abf381325f8bcc1f145c06aeb4946e";
+const keyFile = join(dist, `${indexNowKey}.txt`);
+if (!existsSync(keyFile)) fail(`${indexNowKey}.txt`, "missing");
+else if (readFileSync(keyFile, "utf8") !== indexNowKey)
+  fail(`${indexNowKey}.txt`, "does not contain exactly the IndexNow key");
+if (sitemap.includes(indexNowKey)) fail("sitemap", "lists the IndexNow key file");
 
 // security.txt (RFC 9116): present under the dot directory, with Contact, this site's Canonical, and an
 // Expires at least 30 days away (renew it in packages/cloud/src/security-txt.ts).

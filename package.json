@@ -22,6 +22,7 @@
     "backup": "pnpm --filter @glideworth/api backup",
     "restore": "pnpm --filter @glideworth/api restore",
     "bench": "pnpm --filter @glideworth/core bench",
+    "indexnow:submit": "pnpm --filter @glideworth/site indexnow:submit",
     "prepare": "node .husky/install.mjs"
   },
   "devDependencies": {

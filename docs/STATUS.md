@@ -42,7 +42,7 @@ PARITY.md counts: 210 features checked, 167 implemented, 35 partial, 5 missing, 
 - **Development**: `pnpm install`, `cp .env.example .env`, `pnpm dev` (API :8787, web :5173).
 - **Production, one port**: `pnpm build`, `pnpm start` (web, `/api`, `/mcp`, `/docs` on :8787). First visit asks for a
   passphrase (12+ characters). Set `GLIDEWORTH_SETUP_TOKEN` if the port is reachable by others.
-- **Docker**: `docker compose up -d --build`; data in the `cairn-data` volume; health check on `/health`.
+- **Docker**: `docker compose up -d` (image `ghcr.io/glideworth/glideworth`); data in the `glideworth-data` volume; health check on `/health`.
 - **Backups**: `pnpm backup`, `pnpm restore -- --from <file> --force` (stop the server first).
 
 ## Importing from ProjectionLab

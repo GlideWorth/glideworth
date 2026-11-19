@@ -61,6 +61,10 @@ files, and a pre-push hook runs typecheck, lint and tests. They are skipped in C
 Set `HUSKY=0` to bypass them for one command. The engine benchmarks (`pnpm bench`) are wall-clock
 measurements and are not part of `pnpm test`.
 
+A pull request that changes a GitHub Actions workflow is also checked by
+[zizmor](https://docs.zizmor.sh/), which looks for security mistakes in workflows (run it locally with
+`uvx zizmor .github/workflows/`).
+
 Run them locally before you push. Add tests with your change: a bug fix needs a test that fails without
 the fix; a feature needs tests for its behaviour and its edges. Do not weaken, skip or delete a test to
 make a change pass, unless the test was wrong, and then say so in the pull request.

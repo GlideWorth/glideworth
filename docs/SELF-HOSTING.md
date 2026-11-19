@@ -42,13 +42,15 @@ licensed under AGPL-3.0-only; see [`LICENSING.md`](../LICENSING.md).
 
 ## Install with Docker Compose
 
-The repository ships a `Dockerfile` and a `docker-compose.yml`: one container, one process, one port.
-The container runs the API, the web app, the MCP endpoint and SQLite, with the data on a Docker volume.
+Each release is published as a Docker image, `ghcr.io/glideworth/glideworth`, for `linux/amd64` and
+`linux/arm64`. The repository's `docker-compose.yml` runs it: one container, one process, one port. The
+container runs the API, the web app, the MCP endpoint and SQLite, with the data on a Docker volume. You need
+only two files, not the whole repository:
 
 ```bash
-git clone https://github.com/GlideWorth/glideworth.git
-cd glideworth
-cp .env.example .env
+mkdir glideworth && cd glideworth
+curl -fsSLO https://raw.githubusercontent.com/GlideWorth/glideworth/main/docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/GlideWorth/glideworth/main/.env.example -o .env
 ```
 
 Edit `.env` before the first start:
@@ -56,21 +58,24 @@ Edit `.env` before the first start:
 - set `GLIDEWORTH_SETUP_TOKEN` to a long random value (at least 8 characters; for example the output of
   `openssl rand -hex 24`). This stops a stranger who finds the port from choosing your passphrase first;
 - leave `GLIDEWORTH_BOOTSTRAP_KEY` **empty** (or set your own secret). The example development key in
-  `.env.example` is public and the server refuses it in production.
+  `.env.example` is public and the server refuses it in production;
+- optionally pin a release by adding `GLIDEWORTH_VERSION=1.0.0` (without it you get `latest`). Pinning is
+  recommended: you then upgrade when you choose to.
 
-Then build and start:
+Then start it:
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 docker compose ps                    # the service should become "healthy"
 docker compose logs -f glideworth
 ```
 
 Open <http://localhost:8787> (change the host port with `GLIDEWORTH_PORT` in `.env`). Data lives in the
-`cairn-data` Docker volume (its name predates the rename to Glideworth and is kept so existing installs keep
-their data; see [Upgrading from Cairn](#upgrading-from-cairn)) and survives restarts and upgrades. The
+`glideworth-data` Docker volume and survives restarts and upgrades. The
 database is `/data/glideworth.db` (`GLIDEWORTH_DATA_DIR=/data`, set by the image). Do not point
 `GLIDEWORTH_DATA_DIR` or `GLIDEWORTH_DB_PATH` anywhere outside `/data`.
+
+To build the image from source instead, clone the repository and run `docker compose up -d --build` in it.
 
 To stop it: `docker compose stop`. To remove the container but keep the data: `docker compose down`.
 `docker compose down -v` **deletes the volume and all your data**.
@@ -229,28 +234,30 @@ server's own defaults. Every variable also works under its name from before the 
    docker compose exec glideworth node dist/cli/admin.js backup --out /data/backups/pre-upgrade.db
    ```
 
-3. **Update and rebuild:**
+3. **Update:** set `GLIDEWORTH_VERSION` in `.env` to the new version (or leave it unset for `latest`), then:
 
    ```bash
-   git pull
-   docker compose up -d --build
+   docker compose pull
+   docker compose up -d
    docker compose logs --tail 50 glideworth
    ```
 
    Database migrations are applied automatically at start-up. Check `docker compose ps` shows "healthy".
+   If you build from source, run `git pull` (or check out the release tag) and `docker compose up -d --build`
+   instead.
 
-4. **If it goes wrong,** check out the previous version (`git checkout <previous tag>`), rebuild, and if
-   the database was changed in a way the old version cannot read, restore `pre-upgrade.db`.
+4. **If it goes wrong,** set `GLIDEWORTH_VERSION` back to the previous version and run `docker compose up -d`.
+   If the database was changed in a way the old version cannot read, restore `pre-upgrade.db`.
 
-Use release tags rather than `main` for production. Upgrade one minor version at a time if you have
-skipped several, reading the notes for each. If you run a pre-built image (`ghcr.io/glideworth/glideworth`),
-replace the build step with `docker compose pull` and pin the version tag in your override file.
+Pin a release rather than running `latest` in production. Upgrade one minor version at a time if you have
+skipped several, reading the notes for each. Releases and their notes:
+<https://github.com/GlideWorth/glideworth/releases>.
 
 ## Upgrading from Cairn
 
 Glideworth was developed under the working name **Cairn**. An install from that time upgrades like any
-other release: pull, rebuild, start. You do not need to change your `.env`, your volume, your API keys or
-your AI-assistant set-up, and you stay signed in. Take a backup first as usual (with the old service name,
+other release: pull, rebuild, start. You do not need to change your `.env`, your API keys or your AI-assistant
+set-up, but the Docker volume needs one step (below), and you stay signed in. Take a backup first as usual (with the old service name,
 `docker compose exec cairn node dist/cli/admin.js backup --out /data/backups/pre-glideworth.db`).
 
 ```bash
@@ -268,7 +275,7 @@ What keeps working, and how:
 | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `CAIRN_*` environment variables (`.env`, Compose, `docker run -e`, systemd)                                  | `GLIDEWORTH_*`                                                          | Every variable is read under both names; the new name wins when both are set. The server prints one warning at start-up naming the old variables in use (never their values). The Compose file substitutes `${GLIDEWORTH_X:-${CAIRN_X:-default}}`, so an old `.env` is honoured. |
 | Database file `cairn.db`                                                                                     | `glideworth.db`                                                         | If `glideworth.db` does not exist and `cairn.db` does in the same directory, `cairn.db` is used and the server logs one line saying so. Nothing is moved or copied.                                                                                                              |
-| Docker volume `cairn-data`                                                                                   | unchanged                                                               | The Compose file still mounts the volume named `cairn-data` (see below).                                                                                                                                                                                                         |
+| Docker volume `cairn-data`                                                                                   | `glideworth-data`                                                       | Not automatic: keep mounting `cairn-data` with an override file (see below).                                                                                                                                                                                                     |
 | API keys `cairn_<prefix>_<secret>`                                                                           | `glideworth_<prefix>_<secret>`                                          | Old keys keep verifying; new keys are created in the new format.                                                                                                                                                                                                                 |
 | Browser session cookies `cairn_session`, `cairn_csrf`                                                        | `glideworth_session`, `glideworth_csrf`                                 | An old cookie is accepted and, on the next page load, replaced by the new names for the same session.                                                                                                                                                                            |
 | OAuth tokens `cairn_oat_…`, `cairn_ort_…`; client ids `cairn-client-…`                                       | `glideworth_oat_…`, `glideworth_ort_…`, `glideworth-client-…`           | Old tokens work until they expire; refreshing one returns new-format tokens. Registered clients keep their ids.                                                                                                                                                                  |
@@ -280,11 +287,22 @@ What keeps working, and how:
 | Browser settings (theme, preferences, drafts, saved chart views)                                             | stored under `glideworth…` keys                                         | Moved from the old `cairn…` keys the first time the new version loads.                                                                                                                                                                                                           |
 | Example key `cairn_devlocal_…` in an old `.env.example`                                                      | `glideworth_devlocal_…`                                                 | Both are public and both are refused in production.                                                                                                                                                                                                                              |
 
-**The Docker volume keeps its old name.** Compose names volumes `<project>_<volume>`, so renaming the volume
-in `docker-compose.yml` would point a fresh, empty volume at `/data` and your data would look gone. It is
-therefore still declared as `cairn-data`. If you want the new name anyway (optional, purely cosmetic),
-copy the data into a new volume while the server is stopped, then switch the compose file to it with a
-`docker-compose.override.yml`:
+**The Docker volume.** The Compose file now names the volume `glideworth-data`. Compose names volumes
+`<project>_<volume>`, so a Cairn-era install would start against a fresh, empty volume and your data would
+look gone (it is still there, in `cairn-data`). Before you start the new version, either keep the old volume
+with a `docker-compose.override.yml`:
+
+```yaml
+# docker-compose.override.yml
+services:
+  glideworth:
+    volumes: !override
+      - cairn-data:/data
+volumes:
+  cairn-data:
+```
+
+or copy the data into the new volume while the server is stopped:
 
 ```bash
 docker compose stop glideworth
@@ -292,16 +310,6 @@ project=$(basename "$PWD")       # the Compose project name, unless you set COMP
 docker volume create "${project}_glideworth-data"
 docker run --rm -v "${project}_cairn-data:/from:ro" -v "${project}_glideworth-data:/to" \
   alpine sh -c 'cp -a /from/. /to/'
-```
-
-```yaml
-# docker-compose.override.yml
-services:
-  glideworth:
-    volumes: !override
-      - glideworth-data:/data
-volumes:
-  glideworth-data:
 ```
 
 Run `docker compose up -d`, check your data, and only then remove the old volume
@@ -322,7 +330,7 @@ Running from source (`pnpm start`) works the same way: an existing `.env` with `
 
 ## Backup and restore
 
-All your data is one SQLite file on the `cairn-data` volume. A backup is one self-contained file, is
+All your data is one SQLite file on the `glideworth-data` volume. A backup is one self-contained file, is
 integrity-checked, and can be taken **while the server is running**.
 
 ### Back up

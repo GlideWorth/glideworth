@@ -230,7 +230,7 @@ On first start with an empty database open `http://localhost:8787/`, choose a pa
 **Docker.** One container, SQLite on a volume, health check:
 
 ```bash
-docker compose up -d --build                  # http://localhost:8787 ; data in the cairn-data volume
+docker compose up -d                          # http://localhost:8787 ; data in the glideworth-data volume
 docker compose exec glideworth node dist/cli/admin.js backup --out /data/backups/manual.db
 docker build -t glideworth . && docker run -p 8787:8787 -v glideworth-data:/data glideworth
 ```

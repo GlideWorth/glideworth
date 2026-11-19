@@ -10,7 +10,7 @@
 # the cloud variables of .env.example; the operator console listens on GLIDEWORTH_OPS_LISTEN and the operator
 # CLI is `glideworth-cloud`, on the PATH). Self-host never loads the cloud packages.
 #
-# Upgrading from Cairn: keep mounting your existing volume (for example `-v cairn-data:/data`). Its
+# Upgrading from Cairn: mount your existing volume (for example `-v cairn-data:/data`). Its
 # /data/cairn.db is used while /data/glideworth.db does not exist, and CAIRN_* variables keep working
 # (see docs/SELF-HOSTING.md, "Upgrading from Cairn").
 #

@@ -191,9 +191,12 @@ jobs:
       matrix:
         shard: [1, 2, 3]
     steps:
+      # Full history so the sitemap date snapshot can be compared with git. A depth-1 checkout
+      # cannot see older files; that test skips itself when the clone is shallow.
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       # pnpm's version comes from "packageManager" in package.json.

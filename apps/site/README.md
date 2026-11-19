@@ -18,6 +18,7 @@ Run from `apps/site` (or `pnpm --filter @glideworth/site <script>` from the repo
 | `pnpm check:contrast`   | WCAG contrast of the colour tokens in both themes                                                                                                                                                                                             |
 | `pnpm icons`            | Regenerates the favicon set in `public/` from the mark                                                                                                                                                                                        |
 | `pnpm snapshot:openapi` | Rewrites `src/data/openapi.json` from the API's generated OpenAPI document (see "API reference" below)                                                                                                                                        |
+| `pnpm snapshot:dates`   | Rewrites `src/data/source-dates.json`: last commit date of each page source, the sitemap's fallback on a shallow checkout                                                                                                                     |
 
 The scripts set `ASTRO_TELEMETRY_DISABLED=1`, and the dev toolbar is off, so nothing phones home.
 Lint with oxlint and check formatting with oxfmt from the repo root (`pnpm lint`, `pnpm format:check`).
@@ -29,7 +30,7 @@ listed in `.prettierignore`. Format MDX by hand and follow the surrounding file.
 ## Layout
 
 ```
-astro.config.ts          site URL, trailing slashes, MDX, sitemap (noindex pages excluded), Shiki, Vite
+astro.config.ts          site URL, trailing slashes, MDX, sitemap (noindex excluded, lastmod from the page), Shiki, Vite
 src/config/site.ts       URLs (site, app, signup, repository), contact addresses, cloudLaunched switch
 src/config/pricing.ts    THE source of truth for price, trial and plan features
 src/config/pages.ts      title and description of every hand-written page (also feeds social images)
@@ -41,8 +42,9 @@ src/components/          design-system components (see CONTENT-GUIDE.md) and vis
 src/lib/                 facts (numbers read from @glideworth/core), jsonld, og (social images), docs, content
 src/styles/              tokens.css (colours, type, space), global.css
 src/pages/               routes; og/[...slug].png.ts draws the social images
-scripts/                 check-dist, check-contrast, generate-icons, snapshot-openapi
+scripts/                 check-dist, check-contrast, generate-icons, snapshot-openapi, snapshot-source-dates
 src/data/openapi.json    snapshot of the API's OpenAPI document; the API reference page is built from it
+src/data/source-dates.json  last commit date of each page source (sitemap lastmod when git history is shallow)
 src/config/related.ts    clusters of related pages (every page in a cluster links to the others)
 public/                  favicons and app icons (generated from /brand)
 ```

@@ -19,9 +19,12 @@ interface Props {
 }
 const { name, posts } = Astro.props;
 const path = `/blog/tags/${tagSlug(name)}/`;
+// Tag archives only list posts that already have their own URLs. noindex, follow keeps the listing
+// out of the index and the sitemap; crawlers still follow the links.
 ---
 
 <PageLayout
+  noindex
   title={`Articles about ${name}`}
   description={`Glideworth blog articles tagged ${name}: ${posts.length} ${posts.length === 1 ? 'article' : 'articles'} on retirement planning, tax and building an open-source planner.`}
   heading={name}

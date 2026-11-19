@@ -14,7 +14,8 @@
     "check:dist": "node scripts/check-dist.mjs",
     "check:contrast": "node scripts/check-contrast.mjs",
     "icons": "node scripts/generate-icons.mjs",
-    "snapshot:openapi": "node scripts/snapshot-openapi.mjs"
+    "snapshot:openapi": "node scripts/snapshot-openapi.mjs",
+    "snapshot:dates": "node scripts/snapshot-source-dates.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "8.1.6",

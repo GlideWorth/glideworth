@@ -8,6 +8,7 @@ import { defineConfig, envField } from "astro/config";
 import { defaultClientConditions, defaultServerConditions, type Plugin } from "vite";
 import { site } from "./src/config/site";
 import { shikiDark, shikiLight } from "./src/lib/shiki-theme";
+import { lastmodForUrl } from "./src/lib/sitemap-dates";
 
 const outDir = fileURLToPath(new URL("./dist/", import.meta.url));
 
@@ -91,7 +92,18 @@ export default defineConfig({
   // No telemetry from the dev toolbar either; the scripts also set ASTRO_TELEMETRY_DISABLED.
   devToolbar: { enabled: false },
   prefetch: false,
-  integrations: [mdx(), sitemap({ filter: isIndexable }), sitemapAlias()],
+  integrations: [
+    mdx(),
+    sitemap({
+      filter: isIndexable,
+      // A real date per URL (frontmatter, else the source file's last commit). Not the build clock.
+      serialize(item) {
+        const lastmod = lastmodForUrl(item.url);
+        return lastmod ? { ...item, lastmod } : item;
+      },
+    }),
+    sitemapAlias(),
+  ],
   markdown: {
     shikiConfig: {
       themes: { light: shikiLight, dark: shikiDark },

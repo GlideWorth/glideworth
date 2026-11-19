@@ -191,6 +191,12 @@ scrollable, focusable box automatically (`MdxTable`); wrap a hand-written table 
   nodes to a layout with `jsonLd={[…]}`; `Breadcrumbs` and `FAQ` emit their own. Blog posts get `Article`
   automatically. Never add ratings or reviews.
 - **noindex** (page prop, frontmatter field, or `placeholder`) also removes the page from the sitemap.
+  Tag archives (`/blog/tags/…`) are always `noindex, follow`: the posts stay indexed, the listing does not.
+- **Sitemap `lastmod`** is the page's frontmatter date (`updatedDate`, `lastUpdated`, `lastChecked` or
+  `checkedOn`, otherwise `pubDate` or `date`), and for a listing the newest of those. A page with no date
+  uses the last commit of its source file. Set `updatedDate` when you revise a post. After changing page
+  sources, run `pnpm snapshot:dates` and commit `src/data/source-dates.json` so a shallow build still has
+  the date.
 - **RSS** at `/rss.xml` lists published, indexable blog posts.
 - Site-wide values (domain, app URL, repository, contact addresses) are in `src/config/site.ts`.
 - The site makes **no third-party requests** in a default build: no external fonts, scripts, analytics or

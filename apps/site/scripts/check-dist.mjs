@@ -14,7 +14,9 @@
  *    contains the loader (a build with PUBLIC_GTM_ID set). A default build has no such page.
  *  - HYPERLINKS (<a href>): internal ones resolve and end with a slash; external ones may point at any
  *    https origin but must carry rel="noopener noreferrer"; plain http: links are errors
- *  - the sitemap lists every indexable page and no noindex page; sitemap.xml is a byte-for-byte copy of
+ *  - the sitemap lists every indexable page and no noindex page, and every URL has a calendar lastmod
+ *    (frontmatter, not the build clock: the Coast FIRE post is 2026-11-16); tag archives are
+ *    noindex, follow; sitemap.xml is a byte-for-byte copy of
  *    sitemap-index.xml; robots.txt points at both; .well-known/security.txt has a Contact, this site's
  *    Canonical and an Expires at least 30 days away; rss.xml lists
  *    every published post; XML is well-formed (when xmllint is available)
@@ -23,7 +25,7 @@
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, posix, relative } from "node:path";
+import { dirname, join, posix, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -368,6 +370,38 @@ for (const p of indexable) if (!listed.has(p)) fail("sitemap", `indexable page n
 for (const p of noindex) if (listed.has(p)) fail("sitemap", `noindex page listed: ${p}`);
 for (const p of listed)
   if (!indexable.has(p)) fail("sitemap", `listed URL has no built page: ${p}`);
+
+// lastmod is a calendar day from the page. The sitemap writer prints that day as midnight UTC
+// (2026-11-16T00:00:00.000Z), which is not the clock of the build.
+const lastmodByPath = new Map();
+for (const block of sitemap.matchAll(/<url>([\s\S]*?)<\/url>/g)) {
+  const loc = block[1].match(/<loc>([^<]+)<\/loc>/)?.[1];
+  const lastmod = block[1].match(/<lastmod>([^<]*)<\/lastmod>/)?.[1];
+  if (loc?.startsWith(SITE)) lastmodByPath.set(loc.slice(SITE.length), lastmod ?? "");
+}
+const calendarDay = (lastmod) => /^(\d{4}-\d{2}-\d{2})(?:T00:00:00\.000Z)?$/.exec(lastmod)?.[1];
+for (const p of listed) {
+  const day = calendarDay(lastmodByPath.get(p) ?? "");
+  if (!day)
+    fail("sitemap", `lastmod is not a calendar date: ${p} ${lastmodByPath.get(p) || "missing"}`);
+}
+const expectLastmod = (p, date) => {
+  const got = calendarDay(lastmodByPath.get(p) ?? "");
+  if (got !== date)
+    fail("sitemap", `${p} lastmod is ${lastmodByPath.get(p) ?? "missing"}, expected ${date}`);
+};
+expectLastmod("/blog/coast-fire-explained/", "2026-11-16");
+expectLastmod("/legal/privacy/", "2026-11-18");
+expectLastmod("/changelog/", "2026-11-18");
+expectLastmod("/docs/api-and-mcp/api-reference/", "2026-11-17");
+
+for (const file of html) {
+  const rel = relative(dist, file);
+  if (!rel.startsWith(join("blog", "tags") + sep)) continue;
+  const robots = readFileSync(file, "utf8").match(/<meta name="robots" content="([^"]*)"/);
+  if (!robots || !robots[1].includes("noindex") || !robots[1].includes("follow"))
+    fail(rel, `tag archive robots is "${robots?.[1] ?? "missing"}", expected noindex, follow`);
+}
 
 // sitemap.xml: the conventional URL serves the same index (issue #22).
 const indexFile = join(dist, "sitemap-index.xml");

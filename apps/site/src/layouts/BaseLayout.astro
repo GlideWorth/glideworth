@@ -19,6 +19,7 @@ import ConsentBanner from '../components/ConsentBanner.astro';
 import Footer from '../components/Footer.astro';
 import GoogleTagManager from '../components/GoogleTagManager.astro';
 import Header from '../components/Header.astro';
+import PostHog from '../components/PostHog.astro';
 import { PUBLIC_GTM_ID } from 'astro:env/server';
 import SEO, { type SeoProps } from '../components/SEO.astro';
 import { site } from '../config/site';
@@ -52,6 +53,7 @@ const showConsent = googleTagManagerOnPath(Astro.url.pathname, PUBLIC_GTM_ID) !=
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <GoogleTagManager />
+    <PostHog />
     <script is:inline>
       // Before first paint: the visitor's theme choice, and a flag that JavaScript runs.
       document.documentElement.classList.add('js');

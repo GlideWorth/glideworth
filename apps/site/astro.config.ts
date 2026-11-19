@@ -78,6 +78,19 @@ export default defineConfig({
         optional: true,
         default: "",
       }),
+      // PostHog (cookieless, src/lib/posthog.ts): set only by the official production build.
+      PUBLIC_POSTHOG_PROJECT_TOKEN: envField.string({
+        context: "server",
+        access: "public",
+        optional: true,
+        default: "",
+      }),
+      PUBLIC_POSTHOG_HOST: envField.string({
+        context: "server",
+        access: "public",
+        optional: true,
+        default: "",
+      }),
     },
   },
   trailingSlash: "always",

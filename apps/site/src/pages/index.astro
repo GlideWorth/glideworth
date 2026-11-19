@@ -20,7 +20,7 @@ import { organization, softwareApplication, website } from '../lib/jsonld';
 const n = facts.taxCountryCount;
 // The official hosted build loads Google Tag Manager on marketing pages (not the calculators or the app).
 const trackerNote = googleTagManagerId(PUBLIC_GTM_ID)
-  ? 'The free calculators load no trackers. The hosted app uses PostHog for product analytics.'
+  ? 'The free calculators load no trackers. This website measures visits with PostHog without cookies, and the hosted app uses PostHog for product analytics.'
   : 'This website and the free calculators load no trackers. The hosted app uses PostHog for product analytics.';
 
 const differences: FeatureItem[] = [

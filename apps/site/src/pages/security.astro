@@ -149,7 +149,7 @@ const reportRows = [
 ];
 
 const trackerBody = googleTagManagerId(PUBLIC_GTM_ID)
-  ? 'The hosted app sends product analytics, session recordings and error reports to PostHog. Recordings show what is on screen, figures included, with everything typed into form fields masked. This marketing site loads Google Tag Manager for page measurement, with advertising and analytics storage denied until a visitor consents. The free calculators load neither.'
+  ? 'The hosted app sends product analytics, session recordings and error reports to PostHog. Recordings show what is on screen, figures included, with everything typed into form fields masked. This marketing site loads Google Tag Manager for page measurement, with advertising and analytics storage denied until a visitor consents, and measures visits with PostHog without cookies or browser storage. The free calculators load neither.'
   : 'This website loads no analytics, advertising or third-party scripts. The hosted app sends product analytics, session recordings and error reports to PostHog. Recordings show what is on screen, figures included, with everything typed into form fields masked.';
 ---
 

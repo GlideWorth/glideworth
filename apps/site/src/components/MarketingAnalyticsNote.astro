@@ -3,8 +3,9 @@
  * Legal-page wording for the optional marketing-site tag. A build without PUBLIC_GTM_ID keeps
  * the original "no analytics" text. The official hosted build describes the tag it actually loads.
  */
-import { PUBLIC_GTM_ID } from "astro:env/server";
+import { PUBLIC_GTM_ID, PUBLIC_POSTHOG_HOST, PUBLIC_POSTHOG_PROJECT_TOKEN } from "astro:env/server";
 import { googleTagManagerId } from "../lib/gtm";
+import { sitePostHog } from "../lib/posthog";
 import Callout from "./Callout.astro";
 import MdxTable from "./MdxTable.astro";
 
@@ -14,6 +15,10 @@ interface Props {
 
 const { part } = Astro.props;
 const hosted = googleTagManagerId(PUBLIC_GTM_ID) !== undefined;
+// The official hosted build also measures marketing pages with PostHog, cookieless (src/lib/posthog.ts).
+const posthogSite = sitePostHog(PUBLIC_POSTHOG_PROJECT_TOKEN, PUBLIC_POSTHOG_HOST) !== undefined;
+const siteAnalytics =
+  "The marketing pages (not the calculators) also send page views, page leaves, clicks and where on the page they land, scroll depth, page load timings, the referring site and campaign tags, browser and device details, and your IP address to PostHog, through this website's own address. PostHog runs here without cookies or any browser storage: it tells visits apart with a daily hash of your IP address and browser details, computed on PostHog's servers. It records no session recordings on these pages.";
 const appAnalytics =
   "The hosted app (app.glideworth.com) uses PostHog for product analytics, session recordings and error reports: which pages and features are used, recordings of what the app shows and how it is used (form fields masked), and errors in the app. It keeps a random identifier in local storage under a key starting with ph_ and sets no cookie. Signed-in users are linked to their account id, email address and name. The free calculators and a self-hosted copy load no analytics, advertising or session-recording tools.";
 ---
@@ -55,6 +60,7 @@ const appAnalytics =
         still sends your IP address and the page address to Google. The calculator pages, where you type
         figures, do not load the tag, and the signed-in app does not either.
       </p>
+      {posthogSite && <p>{siteAnalytics}</p>}
       <MdxTable>
         <thead>
           <tr>
@@ -99,6 +105,7 @@ const appAnalytics =
       <p>
         The marketing website uses Google Analytics, through Google Tag Manager, to count visits (section
         1). Its cookies are set only if you accept them in the banner. It sets no advertising cookies.{" "}
+        {posthogSite && <>{siteAnalytics} </>}
         {appAnalytics}
       </p>
     ) : (
@@ -141,6 +148,7 @@ const appAnalytics =
 {
   part === "privacy" &&
     (hosted ? (
+      <>
       <p>
         See the <a href="/legal/cookies/">cookie policy</a>. The official hosted marketing site loads
         Google Tag Manager and measures page views with Google Analytics. Analytics cookies are set only
@@ -149,6 +157,8 @@ const appAnalytics =
         app does not load the tag, and the free calculators do not either. A website you build yourself
         does not load it when the container id is left unset, which is the default.
       </p>
+      {posthogSite && <p>{siteAnalytics}</p>}
+      </>
     ) : (
       <p>
         See the <a href="/legal/cookies/">cookie policy</a>. In short: the marketing site sets no cookies.

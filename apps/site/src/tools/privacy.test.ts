@@ -60,6 +60,7 @@ describe("no data leaves the browser", () => {
           queue.push(m[1]!);
         expect(html, page).not.toMatch(/<script[^>]+src="https?:/);
         expect(html, page).not.toMatch(/googletagmanager|google-analytics|gtag\(/);
+        expect(html, page).not.toMatch(/glideworth-posthog|PostHog\.astro/);
       }
       const seen = new Set<string>();
       while (queue.length) {

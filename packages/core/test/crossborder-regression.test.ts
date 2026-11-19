@@ -50,8 +50,8 @@ const BEFORE: Record<string, string> = {
   "sample-us:plan-early": "69b4a468bfb6d7d6",
   // Re-recorded when the sample's State Pension moved from 67 to 68 (Sam is born 1978; Pensions Act 2007).
   "sample-uk:uk-plan-main": "eb8417e6a89076dc",
-  "sample-de:de-plan-main": "b5b24f96cb250abb",
-  "sample-nl:nl-plan-main": "33947faa14f65e50",
+  "sample-de:de-plan-main": "8341591519a8e312",
+  "sample-nl:nl-plan-main": "b1cb8477078511c5",
   "GB-ENG-single": "ec9fe9b09b880e4c",
   "GB-ENG-couple": "6a75d2004a2e2491",
   "GB-SCT-single": "46070e0e27a76ea1",
@@ -69,12 +69,15 @@ const BEFORE: Record<string, string> = {
   // nominal through 2027-28, and the cited sources.
   "AU-single": "40ce59307ce88edc",
   "AU-couple": "7d3e20b93534b2ac",
-  "DE-single": "557a6b72037213fd",
-  "DE-couple": "d955b763e69d1e64",
-  "NL-single": "030e373d6d593429",
-  "NL-couple": "7e043b1c00356ec9",
-  "FR-single": "819a0af1da1c5193",
-  "FR-couple": "db1fe3de053c2fb9",
+  // Re-recorded 2026-11-19 (DE/NL/FR official-source check): Aktivrente, care surcharge for parents
+  // and pre-1940 births, NL pre-1946 first bracket and Zvw on pensions, FR CSG by income, retirement
+  // age table and single-parent cap, and the cited sources.
+  "DE-single": "ff29c3df434321de",
+  "DE-couple": "e51daa373114a153",
+  "NL-single": "fec38eccce371a62",
+  "NL-couple": "276d669df09da428",
+  "FR-single": "08863fa29cecad70",
+  "FR-couple": "8103ae0c4b8ddc27",
   "ES-MD-single": "fb572d114c86247d",
   "ES-MD-couple": "97f1127523875d85",
   "IL-single": "6d14b74b182f58bc",

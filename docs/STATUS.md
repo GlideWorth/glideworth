@@ -125,8 +125,29 @@ Figures that could not be confirmed or are provisional:
 - Australia (checked 2026-11-19): the 2026-27 super caps (concessional 32,500, non-concessional 130,000) are **not
   confirmed** (the ATO site refused automated access); rates and the Medicare levy thresholds were confirmed from the
   amending Acts on the Federal Register of Legislation.
-- Netherlands: 2026 Box 3 deemed returns for savings and debts are provisional; the counter-evidence route is not
-  applied.
+- Netherlands (checked 2026-11-19 against the Belastingdienst): the 2026 Box 3 deemed returns for savings (1.28%) and
+  debts (2.70%) are provisional; the counter-evidence route (Wet tegenbewijsregeling box 3) is not applied, so Box 3
+  is always the deemed return. The Wet werkelijk rendement box 3 (actual return from 2028) passed the Tweede Kamer on
+  12 February 2026 and was still before the Eerste Kamer, with novelle 37.053, on 2026-11-19: **not law, not
+  applied**; the model assumes the deemed-return system continues. No 2027 figures are used (2026 indexed). AOW age
+  is set to 2032 (67y3m); later cohorts are assumed to stay at 67y3m. The SVB page on AOW deductions confirms the Zvw
+  contribution is withheld from the AOW; the Belastingdienst Zvw page names pensions and benefits but not the AOW by
+  name.
+- Germany (checked 2026-11-19 against gesetze-im-internet.de, the Bundesregierung, BMG and DRV, and the BMF
+  Lohnsteuer interface): the Einkommensteuerreformgesetz 2027 (Grundfreibetrag €12,564 in 2027 and €12,900 in 2028,
+  Arbeitnehmer-Pauschbetrag €1,430) is a cabinet draft of 2 September 2026, **not enacted and not applied** (2026
+  indexed). The Altersvorsorgereformgesetz replaces Riester for new contracts from 2027; its §10a deduction maximum is
+  **not confirmed**, so €2,100 is kept for every year. The Aktivrente (§3 Nr. 21 EStG, €24,000 a year) is confirmed in
+  the statute; its Bundesgesetzblatt citation was not looked up. Health insurance contribution rates for 2027 are not
+  published (the 2026 rates are used).
+- France (checked 2026-11-19 against service-public.gouv.fr, BOFiP and Légifrance; impots.gouv.fr was down for
+  maintenance): the projet de loi de finances pour 2027 (barème for 2026 income; a proposed €3,000 sub-cap on the 10%
+  pension allowance) is **not enacted and not applied** (the 2025-income barème is indexed). The 2027 PASS of €48,900
+  announced by service-public.gouv.fr is not applied (2026 indexed). AGIRC-ARRCO rates and the PER ceilings were
+  **not re-read** in this pass (the AGIRC-ARRCO site's certificate failed); they are unchanged since 2019. The 18.6%
+  social-contribution rate on PEA gains is the general rate from service-public F2329; the PEA pages do not state a
+  rate. The CDHR (minimum 20% tax above €250,000 / €500,000) is extended by the 2026 finance law per secondary
+  sources only; it is not modelled.
 - US TCJA-sunset variant: an estimate, not law.
 - Ireland (checked 2026-11-19): CGT is 33% to 6 October 2026 and 31% from 7 October 2026 (Revenue); with no disposal
   dates, 2026 uses the average by days (32.53%) and 2027 onward 31%. The 2027 table is Budget 2027 as announced
@@ -157,19 +178,23 @@ Figures that could not be confirmed or are provisional:
 - Cross-border tax is an estimate of the tax mechanics only: residence is the household's location for the whole
   plan (no statutory residence test, no 183-day rules, no moves), and treaty relief assumes it is claimed.
 
-Tax sources, checked 2026-11-16 (the status of each country's sourcing; licences are in `DATA-LICENSES.md`):
+Tax sources, checked 2026-11-16 and 2026-11-19 (the status of each country's sourcing; licences are in `DATA-LICENSES.md`):
 
-| Country                                 | Sourcing status                                                                                                |
-| --------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| US federal, payroll                     | ok (IRS, SSA, CMS; 2027 figures checked 2026-11-19)                                                            |
-| US states and cities                    | ok for 49 states, DC and 5 cities (2026-11-19); Idaho and some figures of 9 states not confirmed (above)       |
-| Canada                                  | ok (CRA, provinces; 2026-11-19); Quebec lower rates and Manitoba bracket conflict not confirmed (above)        |
-| Israel                                  | not confirmed (official sites unreachable)                                                                     |
-| United Arab Emirates                    | ok (copied sentence reworded)                                                                                  |
-| Australia                               | ok on facts (legislation, 2026-11-19); 2026-27 super caps not confirmed (ATO site unreachable)                 |
-| Ireland                                 | ok on facts for 2026 (Revenue); 2027 from Budget 2027 documents (2026-11-19); gaps above                       |
-| New Zealand                             | ok (IRD, 2026-11-19: rates from 1 April 2025, ACC levy 2026-27 and 2027-28)                                    |
-| UK, Germany, France, Spain, Netherlands | UK ok (gov.uk, legislation.gov.uk, Budget 2026; checked 2026-11-19; gaps above); others unchanged in this pass |
+| Country              | Sourcing status                                                                                          |
+| -------------------- | -------------------------------------------------------------------------------------------------------- |
+| US federal, payroll  | ok (IRS, SSA, CMS; 2027 figures checked 2026-11-19)                                                      |
+| US states and cities | ok for 49 states, DC and 5 cities (2026-11-19); Idaho and some figures of 9 states not confirmed (above) |
+| Canada               | ok (CRA, provinces; 2026-11-19); Quebec lower rates and Manitoba bracket conflict not confirmed (above)  |
+| Israel               | not confirmed (official sites unreachable)                                                               |
+| United Arab Emirates | ok (copied sentence reworded)                                                                            |
+| Australia            | ok on facts (legislation, 2026-11-19); 2026-27 super caps not confirmed (ATO site unreachable)           |
+| Ireland              | ok on facts for 2026 (Revenue); 2027 from Budget 2027 documents (2026-11-19); gaps above                 |
+| New Zealand          | ok (IRD, 2026-11-19: rates from 1 April 2025, ACC levy 2026-27 and 2027-28)                              |
+| UK                   | ok (gov.uk, legislation.gov.uk, Budget 2026; checked 2026-11-19); gaps above                             |
+| Germany              | ok (statutes, Bundesregierung, BMG, DRV; BMF Lohnsteuer cross-check; 2026-11-19); gaps above             |
+| Netherlands          | ok (Belastingdienst, SVB, Rijksoverheid, Eerste Kamer; 2026-11-19); Box 3 provisional, gaps above        |
+| France               | ok (service-public.gouv.fr, BOFiP, Légifrance; 2026-11-19); gaps above                                   |
+| Spain                | unchanged in this pass                                                                                   |
 
 Each country's full list of simplifications is `TAX_SIMPLIFICATIONS`
 (`packages/core/src/tax/data/simplifications.ts`) and is shown with the tax results. Highlights: US SALT cap and

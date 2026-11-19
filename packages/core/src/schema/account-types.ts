@@ -478,7 +478,8 @@ export const ACCOUNT_TYPE_INFO: Record<AccountType, AccountTypeInfo> = {
     drawdown: "tax-deferred",
     country: "FR",
     hasContributionLimit: true,
-    // Available from the legal retirement age (64 when the 2023 reform is fully phased in).
+    // Available from the legal retirement age: the FR plug-in gives it by birth date (LFSS 2026
+    // table, 62 to 64); 64 is only the fallback when no FR rules apply.
     qualifiedAge: 64,
     lockedUntilAccessAge: true,
     assetClass: "portfolio",

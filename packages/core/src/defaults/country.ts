@@ -15,6 +15,7 @@ import type { DatasetId } from "../stochastic/data/index.js";
 import { pickYear } from "../tax/common.js";
 import { pegFxRates } from "../tax/crossborder/currency.js";
 import { deRegelaltersgrenze } from "../tax/data/de.js";
+import { frLegalRetirementAge } from "../tax/data/fr.js";
 import { nlAowAge } from "../tax/data/nl.js";
 import { UK_TAX_YEARS, ukStatePensionAge } from "../tax/data/uk.js";
 import { defaultStackIds } from "../tax/registry.js";
@@ -411,21 +412,14 @@ interface IntlSpec {
   joint: boolean;
 }
 
+export { frLegalRetirementAge };
+
 const CALENDAR: CountryDefaults["taxYear"] = {
   startMonth: 1,
   startDay: 1,
   label: "calendar year",
   yearAlignment: { kind: "calendar" },
 };
-
-/**
- * France: âge légal de départ by cohort under the 2023 reform (62, rising by 3 months a cohort from
- * 1961 to 64 for 1968 onwards). The 2025 suspension of the reform's phase-in is not modelled.
- */
-export function frLegalRetirementAge(birthYear: number): number {
-  if (birthYear <= 1960) return 62;
-  return Math.min(64, 62 + 0.25 * (birthYear - 1960));
-}
 
 /**
  * The seven countries with national presets added in workstream (b2). State-pension amounts depend

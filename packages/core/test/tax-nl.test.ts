@@ -6,7 +6,13 @@
  */
 import { describe, expect, it } from "vitest";
 import { NL_YEARS, nlAowAge } from "../src/tax/data/nl.js";
-import { nlArbeidskorting, nlBox3, nlJurisdiction } from "../src/tax/jurisdictions/nl.js";
+import {
+  nlAhk,
+  nlArbeidskorting,
+  nlBox3,
+  nlJurisdiction,
+  nlOuderenkorting,
+} from "../src/tax/jurisdictions/nl.js";
 import { sumKind, sumLabel, taxInput, total } from "./tax-helpers.js";
 
 const d = NL_YEARS[0]!;
@@ -58,7 +64,7 @@ describe("Netherlands 2026: box 1 employees (under AOW age)", () => {
 });
 
 describe("Netherlands 2026: retirees, box 2 and box 3", () => {
-  it("retiree at AOW age (70), AOW 18,000 + pension 20,000: 17.85% = 6,783; AOW-age AHK 1,291.97, ouderenkorting 2,067, alleenstaande-ouderenkorting 540", () => {
+  it("retiree at AOW age (70), AOW 18,000 + pension 20,000: 17.85% = 6,783; AOW-age AHK 1,291.97, ouderenkorting 2,067, alleenstaande-ouderenkorting 540; bijdrage Zvw 4.85% x 38,000 = 1,843", () => {
     const o = nl({
       people: [{ age: 70 }],
       income: [
@@ -67,7 +73,9 @@ describe("Netherlands 2026: retirees, box 2 and box 3", () => {
       ],
     });
     expect(sumLabel(o, /^Box 1/)).toBeCloseTo(6_783, 6);
-    expect(total(o)).toBeCloseTo(2_884.0348, 4);
+    // Bijdrage Zvw (fisin2026 ch. 28): 4.85% on pension and AOW, below the 79,409 maximum.
+    expect(sumLabel(o, /^Bijdrage Zvw/)).toBeCloseTo(1_843, 6);
+    expect(total(o)).toBeCloseTo(2_884.0348 + 1_843, 4);
   });
 
   it("AOW age: 67 for those born before 1961, 67 years 3 months for 1961-1965", () => {
@@ -122,5 +130,44 @@ describe("Netherlands 2026: retirees, box 2 and box 3", () => {
       income: [{ character: "qualified-dividend", incomeType: "nl-box2", amount: 100_000 }],
     });
     expect(sumLabel(o, /^Box 2/)).toBeCloseTo(0.245 * 68_843 + 0.31 * 31_157, 6);
+  });
+});
+
+describe("Netherlands 2026: official edges, born before 1946, bijdrage Zvw", () => {
+  it("credit edges from the Belastingdienst tables: ouderenkorting 2,067 to 46,002, nil from 59,782; AHK nil from 78,426", () => {
+    expect(nlOuderenkorting(d, 46_002)).toBeCloseTo(2_067, 6);
+    expect(nlOuderenkorting(d, 59_782)).toBeCloseTo(0, 6);
+    expect(nlAhk(d, 29_736, false)).toBeCloseTo(3_115, 6);
+    // the published phase-out rates leave under 1 EUR at 78,426 (the tables round to nil)
+    expect(nlAhk(d, 78_426, false)).toBeLessThan(1);
+    expect(nlAhk(d, 78_426, true)).toBeLessThan(1);
+  });
+
+  it("born before 1946 at AOW age: 17.85% runs to 41,123 (not 38,883)", () => {
+    const pension = { income: [{ character: "pension" as const, amount: 40_000 }] };
+    const pre = nl({ people: [{ age: 81, birthYear: 1945 }], ...pension });
+    expect(sumLabel(pre, /^Box 1/)).toBeCloseTo(0.1785 * 40_000, 6);
+    const post = nl({ people: [{ age: 80, birthYear: 1946 }], ...pension });
+    expect(sumLabel(post, /^Box 1/)).toBeCloseTo(0.1785 * 38_883 + 0.3756 * 1_117, 6);
+  });
+
+  it("bijdrage Zvw: the SVB July 2026 example (single, AOW 1,662.16 gross a month) gives 80.61", () => {
+    // https://www.svb.nl/nl/aow/bedragen-aow/aow-bedragen: 4.85% x 1,662.16 = 80.61
+    const o = nl({
+      months: 1,
+      people: [{ age: 70 }],
+      income: [{ character: "pension", incomeType: "state-pension", amount: 1_662.16 }],
+    });
+    expect(sumLabel(o, /^Bijdrage Zvw/)).toBeCloseTo(80.61, 2);
+  });
+
+  it("bijdrage Zvw: capped at 79,409 of income; wages (employer-paid) use up the cap first; none on wages alone", () => {
+    const pension = (amount: number) => ({ character: "pension" as const, amount });
+    expect(
+      sumLabel(nl({ people: [{ age: 70 }], income: [pension(100_000)] }), /^Bijdrage Zvw/),
+    ).toBeCloseTo(0.0485 * 79_409, 6);
+    const mixed = nl({ income: [{ character: "wage", amount: 60_000 }, pension(40_000)] });
+    expect(sumLabel(mixed, /^Bijdrage Zvw/)).toBeCloseTo(0.0485 * 19_409, 6);
+    expect(sumLabel(nl(wage(60_000)), /^Bijdrage Zvw/)).toBe(0);
   });
 });

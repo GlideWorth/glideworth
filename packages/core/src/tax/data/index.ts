@@ -31,7 +31,7 @@ export {
   type EsRegion,
   type EsYear,
 } from "./es.js";
-export { FR_SIMPLIFICATIONS, FR_YEARS, type FrYear } from "./fr.js";
+export { FR_SIMPLIFICATIONS, FR_YEARS, type FrYear, frLegalRetirementAge } from "./fr.js";
 export { IE_SIMPLIFICATIONS, IE_YEARS, type IeYear } from "./ie.js";
 export { IL_SIMPLIFICATIONS, IL_YEARS, type IlYear } from "./il.js";
 export { NL_SIMPLIFICATIONS, NL_YEARS, type NlYear, nlAowAge } from "./nl.js";

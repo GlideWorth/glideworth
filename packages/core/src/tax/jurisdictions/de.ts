@@ -4,11 +4,13 @@
  * health incl. average Zusatzbeitrag, long-term care with childless surcharge / child discounts,
  * unemployment) with contribution ceilings, Vorsorgeaufwendungen, Abgeltungsteuer + Soli on capital
  * income with the Sparer-Pauschbetrag and equity-fund Teilfreistellung, taxable share of statutory
- * pensions by first year of payment, bAV (§3 Nr. 63), Riester (§10a) and Rürup (§10(3)).
+ * pensions by first year of payment, bAV (§3 Nr. 63), Riester (§10a), Rürup (§10(3)) and the
+ * Aktivrente (§3 Nr. 21: wages after the Regelaltersgrenze tax-free up to 24,000 EUR a year).
  * Data: ../data/de.ts. Known simplifications: DE_SIMPLIFICATIONS.
  */
 import {
   alivePeople,
+  birthYearOf,
   clamp0,
   collectIncome,
   formulaFill,
@@ -33,6 +35,7 @@ import type {
   BracketFill,
   PensionAccessQuery,
   TaxContributionLimitQuery,
+  TaxPerson,
   TaxYearInput,
 } from "../types.js";
 import { type CountryResult, nationalJurisdiction, splitTax } from "./intl.js";
@@ -90,7 +93,24 @@ interface PersonDe {
   gross: number;
 }
 
-function personDe(input: TaxYearInput, d: DeYear, fs: number, pid: string, age: number): PersonDe {
+/**
+ * Months of `year` that qualify for the Aktivrente: work from the month after the person reaches the
+ * Regelaltersgrenze (§3 Nr. 21 EStG). Without a birth month the birthday is taken as 1 July.
+ */
+export function deAktivrenteMonths(
+  birthYear: number,
+  birthMonth: number | undefined,
+  year: number,
+) {
+  const reached =
+    birthYear * 12 + ((birthMonth ?? 7) - 1) + Math.round(deRegelaltersgrenze(birthYear) * 12);
+  return Math.min(12, Math.max(0, year * 12 + 12 - (reached + 1)));
+}
+
+function personDe(input: TaxYearInput, d: DeYear, fs: number, person: TaxPerson): PersonDe {
+  const pid = person.id;
+  const age = person.age;
+  const birthYear = birthYearOf(person, input.year);
   const people = alivePeople(input);
   const b = collectIncome(input, ID, pid, people);
   const ded = personDeductions(input, pid, people);
@@ -105,9 +125,13 @@ function personDe(input: TaxYearInput, d: DeYear, fs: number, pid: string, age: 
   const bavTaxFree = Math.min(bav, P.bavTaxFreeShare * S.ceilingPension * fs);
   const bavSocialFree = Math.min(bav, P.bavSocialFreeShare * S.ceilingPension * fs);
 
-  // ---- employment income
+  // ---- employment income (Aktivrente: §3 Nr. 21, one twelfth of 24,000 a qualifying month)
   const wage = b.wage;
-  const taxWage = clamp0(wage - bavTaxFree);
+  const aktivrente = Math.min(
+    clamp0(wage - bavTaxFree),
+    (d.aktivrente * fs * deAktivrenteMonths(birthYear, person.birthMonth, input.year)) / 12,
+  );
+  const taxWage = clamp0(wage - bavTaxFree - aktivrente);
   const employment = clamp0(taxWage - d.allowances.werbungskosten * fs);
   const svWage = clamp0(wage - bavSocialFree);
 
@@ -129,9 +153,12 @@ function personDe(input: TaxYearInput, d: DeYear, fs: number, pid: string, age: 
   const capP = S.ceilingPension * fs;
   const capH = S.ceilingHealth * fs;
   const kids25 = input.dependents.filter((x) => x.age < 25).length;
+  // §55(3) SGB XI: no surcharge for parents (of children of any age), under 23 or born before 1940.
+  const parent = kids25 > 0 || (input.config.lawToggles["de.parent"] ?? false);
+  const childless = !parent && age >= 23 && birthYear >= 1940;
   const careEmployee =
     S.longTermCare / 2 +
-    (kids25 === 0 && age >= 23 ? S.longTermCareChildlessSurcharge : 0) -
+    (childless ? S.longTermCareChildlessSurcharge : 0) -
     S.longTermCareChildDiscount * Math.min(4, Math.max(0, kids25 - 1));
   const careFull = careEmployee + S.longTermCare / 2;
   const healthHalf = (S.health + S.healthSupplementAverage) / 2;
@@ -195,7 +222,7 @@ function compute(input: TaxYearInput, explain: boolean): CountryResult {
   const people = alivePeople(input);
   const joint = input.filingStatus === "married-joint" && people.length === 2;
   const k = churchRate(input, d);
-  const rs = people.map((p) => personDe(input, d, fs, p.id, p.age));
+  const rs = people.map((p) => personDe(input, d, fs, p));
   const sink = new LineSink(ID);
   const facts: Record<string, number> = {
     ...idx.facts,
@@ -330,6 +357,11 @@ export const deJurisdiction = nationalJurisdiction({
   homeSaleExclusion: () => Number.POSITIVE_INFINITY,
   lawToggles: [
     { id: "de.churchTax", label: "Kirchensteuer (church member)", default: false },
+    {
+      id: "de.parent",
+      label: "Has children, including grown-up ones (no childless long-term care surcharge)",
+      default: false,
+    },
     {
       id: "de.equityFunds",
       label: "Investments are equity funds (30% Teilfreistellung)",

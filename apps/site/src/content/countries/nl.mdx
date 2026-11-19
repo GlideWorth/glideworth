@@ -1,6 +1,6 @@
 ---
 title: Retirement planning in the Netherlands
-description: "How Glideworth estimates Dutch tax at a basic level for 2026: boxes 1, 2 and 3, tax credits, AOW, and the provisional figures and gaps to know about."
+description: "How Glideworth estimates Dutch tax at a basic level for 2026: boxes 1, 2 and 3, tax credits, the Zvw contribution, AOW, and the provisional figures and gaps to know about."
 ogTitle: Retirement planning in the Netherlands
 countryCode: NL
 countryName: Netherlands
@@ -10,12 +10,14 @@ modelled:
   - Box 1 income tax and national insurance premiums, below and at AOW age, with the general tax credit, the employment tax credit and the older-person credits
   - Box 2 tax on substantial-interest income you tag as such
   - Box 3 tax on a deemed return on savings, other assets and debts, with the tax-free allowance; partners share the allowance
+  - The income-related health insurance contribution (Zvw) on pensions, AOW and self-employment profit
   - Pension and annuity contributions deducted in box 1, and pension income taxed in box 1
   - AOW (state pension) age by birth year
 notModelled:
   - The counter-evidence route for box 3 (taxing the actual return when lower)
+  - The actual-return box 3 system planned for 2028, which is not yet law
   - Mortgage interest deduction and the own-home rules
-  - Self-employed deductions and the income-related health contribution for pensioners and the self-employed
+  - Self-employed deductions
   - Limits on pension deductions (jaarruimte and reserveringsruimte), and the limit on deductions at the top rate
   - Splitting of common items between fiscal partners
   - Loss harvesting; gains are realised in proportion to cost basis and treated as long-term
@@ -24,22 +26,38 @@ notModelled:
 import { facts } from '../../lib/facts';
 
 The Netherlands is estimated at a **basic level**: the main rules are in, with {facts.simplificationCount('nl')} written
-simplifications, and it has had less checking than the United Kingdom or the United States. The tables are for 2026. Some
-figures are provisional (see below), and later years index the 2026 tables with the plan's threshold policy.
+simplifications, and it has had less checking than the United Kingdom or the United States. The tables are for 2026 and
+were checked against the Belastingdienst's published figures on 19 November 2026. Some figures are provisional (see
+below), and later years index the 2026 tables with the plan's threshold policy.
 
 ## What is modelled
 
 - **Box 1** for 2026, under AOW age: 35.75% on income up to €38,883, 37.56% up to €78,426 and 49.50% above. These
-  rates include the national insurance premiums. From AOW age the first rate is 17.85%.
-- **Tax credits**: the general tax credit (maximum €3,115 below AOW age, reducing above €29,736), the employment tax
-  credit (maximum about €5,685, reducing at higher incomes and nil from €132,920), the older-person credit
-  (up to €2,067) and a single-person older-person credit of €540.
+  rates include the national insurance premiums. From AOW age the first rate is 17.85% (to €41,123 for people born
+  before 1946).
+- **Tax credits**: the general tax credit (maximum €3,115 below AOW age and €1,556 from AOW age, reducing above €29,736),
+  the employment tax credit (maximum €5,685, or €2,840 from AOW age, reducing at higher incomes and nil from €132,920),
+  the older-person credit (€2,067, reducing by 15% above €46,002 and nil from €59,782) and a single-person
+  older-person credit of €540.
 - **Box 2** (substantial interest): 24.5% up to €68,843 and 31% above, applied only to income you tag as such.
 - **Box 3**: a deemed return on assets instead of tax on actual interest, dividends or gains. The allowance is €59,357
   per person (€118,714 with a partner), the deemed returns are 1.28% on savings, 6.00% on other assets and 2.70% on
   debts (above a €3,800 threshold), and the rate is 36%. The savings and debt percentages are provisional.
-- **AOW age** in the model is 67 for people born before 1961 and 67 years and 3 months for those born later. You enter
-  the pension amount yourself.
+- **Zvw contribution**: 4.85% of pensions, AOW, pension and annuity withdrawals and self-employment profit, up to
+  €79,409 of income a year. On wages the employer pays instead, and wages count towards the €79,409 first.
+- **AOW age** is 67 in 2026 and 2027 and 67 years and 3 months from 2028 to 2032, which is set by law up to people
+  born on 30 September 1965. The model assumes later cohorts stay at 67 years and 3 months, though the age follows
+  life expectancy. You enter the pension amount yourself.
+
+## Box 3: which rules apply
+
+After the Supreme Court's ruling of December 2021, box 3 is taxed on a deemed return per type of asset (the bridging
+rules). Since 2025 you may show that your actual return was lower and be taxed on that instead. **Glideworth always
+uses the deemed return**, so in years of low returns it can overstate box 3.
+
+A law to tax the actual return from 2028 (Wet werkelijk rendement box 3) passed the Tweede Kamer on 12 February 2026.
+On 19 November 2026 it was still before the Eerste Kamer, with an amending bill submitted on 3 November 2026. It is not
+law, so the model assumes the deemed-return system continues in every year.
 
 ## Worked example
 
@@ -72,6 +90,7 @@ No Dutch or euro-area market history is bundled. Dutch households are tested aga
 - Box 3 replaces tax on actual interest, dividends and gains, so they are not taxed again.
 - The year you reach AOW age is taxed at the AOW rate for the whole year if you reach it by 1 January, otherwise at
   the under-AOW rate.
+- The flat health insurance premium you pay your insurer is not a tax and is not included.
 - No preset has been checked line by line against an official calculator for every case.
 
 ## Official sources
@@ -79,6 +98,9 @@ No Dutch or euro-area market history is bundled. Dutch households are tested aga
 - [Belastingdienst: tax calculation (Fiscale informatie 2026)](https://www.belastingdienst.nl/wps/wcm/connect/fisin/fisin2026/belastingberekening)
 - [Belastingdienst: tax credits 2026](https://www.belastingdienst.nl/wps/wcm/connect/fisin/fisin2026/heffingskortingen)
 - [Belastingdienst: provisional assessment rates and credits](https://www.belastingdienst.nl/wps/wcm/connect/nl/voorlopige-aanslag/content/voorlopige-aanslag-tarieven-en-heffingskortingen)
+- [Belastingdienst: income-related Zvw contribution 2026](https://www.belastingdienst.nl/wps/wcm/connect/fisin/fisin2026/inkomensafhankelijke_bijdrage_zorgverzekeringswet)
+  and [SVB: deductions from the AOW](https://www.svb.nl/nl/aow/bedragen-aow/wat-gaat-er-van-uw-aow-af)
+- [Eerste Kamer: Wet werkelijk rendement box 3 (36.748)](https://www.eerstekamer.nl/wetsvoorstel/36748_wet_werkelijk_rendement_box)
 - [Rijksoverheid: AOW age](https://www.rijksoverheid.nl/themas/belastingen-uitkeringen-en-toeslagen/algemene-ouderdomswet-aow/aow-leeftijd)
 
 <Callout type="note" title="Estimates, not advice">

@@ -4,8 +4,8 @@
  * F1419 rule (1,807 per half part; 3,614 for two children).
  */
 import { describe, expect, it } from "vitest";
-import { FR_YEARS } from "../src/tax/data/fr.js";
-import { frImpot, frJurisdiction, frParts } from "../src/tax/jurisdictions/fr.js";
+import { FR_YEARS, frLegalRetirementAge } from "../src/tax/data/fr.js";
+import { frImpot, frJurisdiction, frParts, frPensionTier } from "../src/tax/jurisdictions/fr.js";
 import { sumKind, sumLabel, taxInput, total } from "./tax-helpers.js";
 
 const d = FR_YEARS[0]!;
@@ -140,11 +140,75 @@ describe("France: capital income, wrappers, PER and retirees", () => {
     ).toBeCloseTo(10_000, 6);
   });
 
-  it("retiree, pension 30,000: CSG/CRDS/CASA 9.1% = 2,730; 5.9 points deductible; 10% allowance; impôt 1,518.77 less décote 209.76", () => {
+  it("retiree, pension 30,000: RFR 25,407 is in the median tier (17,057 to 26,472): CSG/CRDS/CASA 7.4% = 2,220; 4.2 points deductible; 10% allowance; impôt 1,569.26 less décote 186.91", () => {
+    // Tier test (service-public F2971): 30,000 x (1 - 5.9%) = 28,230, less 10% = 25,407 <= 26,472.
+    // Then 30,000 x (1 - 4.2%) = 28,740, less 10% (2,874) = 25,866; 11% x (25,866 - 11,600) = 1,569.26;
+    // décote 897 - 45.25% x 1,569.26 = 186.91.
     const o = fr({ people: [{ age: 70 }], income: [{ character: "pension", amount: 30_000 }] });
-    expect(sumLabel(o, /CSG \/ CRDS \/ CASA/)).toBeCloseTo(2_730, 6);
-    expect(o.facts["fr.revenuImposable.p1"]).toBeCloseTo(25_407, 6);
-    expect(sumLabel(o, /^Impôt sur le revenu/)).toBeCloseTo(1_518.77, 6);
-    expect(sumLabel(o, /^Décote/)).toBeCloseTo(-209.756575, 6);
+    expect(sumLabel(o, /CSG \/ CRDS \/ CASA \(pensions, taux médian\)/)).toBeCloseTo(2_220, 6);
+    expect(o.facts["fr.revenuImposable.p1"]).toBeCloseTo(25_866, 6);
+    expect(sumLabel(o, /^Impôt sur le revenu/)).toBeCloseTo(1_569.26, 6);
+    expect(sumLabel(o, /^Décote/)).toBeCloseTo(-(897 - 0.4525 * 1_569.26), 6);
+  });
+
+  it("retiree, pension 40,000: RFR 33,876 is above 26,472, so the normal rate 9.1% = 3,640 with 5.9 points deductible", () => {
+    const o = fr({ people: [{ age: 70 }], income: [{ character: "pension", amount: 40_000 }] });
+    expect(sumLabel(o, /CSG \/ CRDS \/ CASA \(pensions, taux normal\)/)).toBeCloseTo(3_640, 6);
+    expect(o.facts["fr.revenuImposable.p1"]).toBeCloseTo(40_000 * 0.941 * 0.9, 6);
+  });
+});
+
+describe("France: CSG tiers on pensions, single-parent cap, legal retirement age", () => {
+  it("pension CSG tiers by RFR (service-public F2971, 2026): 1 part 13,048 / 17,057 / 26,472; 2 parts +2 half-parts", () => {
+    expect(frPensionTier(d, 13_048, 1).label).toBe("taux zéro");
+    expect(frPensionTier(d, 13_049, 1).label).toBe("taux réduit");
+    expect(frPensionTier(d, 17_058, 1).label).toBe("taux médian");
+    expect(frPensionTier(d, 26_472, 1).label).toBe("taux médian");
+    expect(frPensionTier(d, 26_473, 1).label).toBe("taux normal");
+    // 2 parts: 13,048 + 2 x 3,484 = 20,016; 17,057 + 2 x 4,555 = 26,167; 26,472 + 2 x 7,066 = 40,604
+    expect(frPensionTier(d, 20_016, 2).label).toBe("taux zéro");
+    expect(frPensionTier(d, 26_168, 2).label).toBe("taux médian");
+    expect(frPensionTier(d, 40_604, 2).label).toBe("taux médian");
+    expect(frPensionTier(d, 40_605, 2).label).toBe("taux normal");
+  });
+
+  it("low pensions: 14,000 pays no CSG (RFR 11,856.60); 16,000 pays the reduced 3.8% + 0.5% CRDS, no CASA = 688", () => {
+    // RFR proxy 14,000 x 0.941 x 0.9 = 11,856.60 <= 13,048 -> taux zéro
+    // 16,000 x 0.941 = 15,056, less 10% = 13,550.40 > 13,048 -> taux réduit 4.3% = 688
+    const zero = fr({ people: [{ age: 70 }], income: [{ character: "pension", amount: 14_000 }] });
+    expect(sumLabel(zero, /CSG \/ CRDS \/ CASA/)).toBe(0);
+    const o = fr({ people: [{ age: 70 }], income: [{ character: "pension", amount: 16_000 }] });
+    expect(sumLabel(o, /CSG \/ CRDS \/ CASA \(pensions, taux réduit\)/)).toBeCloseTo(688, 6);
+    // 3.8% fully deductible: 16,000 x 0.962 = 15,392, less 10% = 13,852.8
+    expect(o.facts["fr.revenuImposable.p1"]).toBeCloseTo(13_852.8, 6);
+  });
+
+  it("single parent, one child, 60,000: the two half-parts are capped at 4,262 (service-public F1419)", () => {
+    // 2 parts: 2 x tax(30,000) = 4,207.98; 1 part: tax(60,000) = 11,103.99; 11,103.99 - 4,262 = 6,841.99
+    expect(frParts(false, 1, true)).toBe(2);
+    expect(frImpot(d, 60_000, 2, false, 1, true).brut).toBeCloseTo(6_841.99, 6);
+    // a couple's or other half-parts use 1,807: a non-single-parent with 2 parts would get 3,614
+    expect(frImpot(d, 60_000, 2, false, 1, false).brut).toBeCloseTo(11_103.99 - 3_614, 6);
+  });
+
+  it("legal retirement age after the LFSS 2026 suspension (service-public F14043)", () => {
+    expect(frLegalRetirementAge(1960)).toBe(62);
+    expect(frLegalRetirementAge(1961, 8)).toBe(62);
+    expect(frLegalRetirementAge(1961, 9)).toBe(62.25);
+    expect(frLegalRetirementAge(1962)).toBe(62.5);
+    expect(frLegalRetirementAge(1963)).toBe(62.75);
+    expect(frLegalRetirementAge(1964)).toBe(62.75);
+    expect(frLegalRetirementAge(1965, 3)).toBe(62.75);
+    expect(frLegalRetirementAge(1965, 4)).toBe(63);
+    expect(frLegalRetirementAge(1966)).toBe(63.25);
+    expect(frLegalRetirementAge(1968)).toBe(63.75);
+    expect(frLegalRetirementAge(1969)).toBe(64);
+    expect(frLegalRetirementAge(1990)).toBe(64);
+    expect(
+      frJurisdiction.pensionAccessAge!({ accountType: "fr-per", birthYear: 1964, birthMonth: 6 }),
+    ).toBe(62.75);
+    expect(
+      frJurisdiction.pensionAccessAge!({ accountType: "fr-pea", birthYear: 1964, birthMonth: 6 }),
+    ).toBeNull();
   });
 });

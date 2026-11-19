@@ -1,12 +1,12 @@
 /**
  * Germany 2026 vectors. Hand-worked from the statutory formulas (§32a EStG tariff as published on
- * gesetze-im-internet.de, SolZG §3/§4, SV-Rechengrößen 2026); working inline. Cross-check: the
- * official tariff formula itself (the BMF calculator at bmf-steuerrechner.de implements it; it
- * could not be queried automatically). Glideworth omits the statutory rounding to full euros.
+ * gesetze-im-internet.de, SolZG §3/§4, SV-Rechengrößen 2026); working inline. Official cross-check:
+ * the BMF Lohnsteuer interface (PAP 2026), queried 2026-11-19, in the last describe block.
+ * Glideworth omits the statutory rounding to full euros.
  */
 import { describe, expect, it } from "vitest";
 import { DE_YEARS, deBesteuerungsanteil } from "../src/tax/data/de.js";
-import { deJurisdiction, deTariff } from "../src/tax/jurisdictions/de.js";
+import { deAktivrenteMonths, deJurisdiction, deTariff } from "../src/tax/jurisdictions/de.js";
 import { sumKind, sumLabel, taxInput, total } from "./tax-helpers.js";
 
 const d = DE_YEARS[0]!;
@@ -191,3 +191,86 @@ describe("Germany 2026: capital income and retirees", () => {
     expect(total(de(wage(0)))).toBe(0);
   });
 });
+
+describe("Germany 2026: official cross-check against the BMF Lohnsteuer interface (PAP 2026)", () => {
+  // https://www.bmf-steuerrechner.de/interface/2026Version1.xhtml?code=LSt2026ext&LZZ=1&KRV=0&PKV=0&KVZ=2.9
+  // plus RE4 (annual wage in cents), STKL, PVZ (1 = childless surcharge) and PVA (child discounts),
+  // queried 2026-11-19. For a full year of wages only, the annual Lohnsteuer (LSTLZZ) equals the
+  // assessed tax except that (a) the PAP deducts health insurance at the 14.0% rate without sick pay
+  // plus half the Zusatzbeitrag (8.45%), where the assessment deducts 8.75% less 4% (§10(1) Nr. 3
+  // Satz 4 EStG: 8.40%), and (b) the PAP rounds down to whole euros. Both make the BMF figure a few
+  // euros lower, so the model must be 0 to 20 EUR above it.
+  const within = (model: number, bmf: number) => {
+    expect(model - bmf).toBeGreaterThanOrEqual(0);
+    expect(model - bmf).toBeLessThanOrEqual(20);
+  };
+  const soli = (o: ReturnType<typeof de>) => sumLabel(o, /^Solidarit/);
+
+  it("Steuerklasse I, childless: 20,000 -> 380; 50,000 -> 6,788; 100,000 -> 23,248 and Soli 344.86; 300,000 -> 107,310 and Soli 5,902.05", () => {
+    within(est(de(wage(20_000))), 380);
+    within(est(de(wage(50_000))), 6_788);
+    const o100 = de(wage(100_000));
+    within(est(o100), 23_248);
+    within(soli(o100), 344.86);
+    const o300 = de(wage(300_000));
+    within(est(o300), 107_310);
+    within(soli(o300), 5_902.05);
+  });
+
+  it("Steuerklasse III (splitting, one earner): 80,000 -> 9,496", () => {
+    // The model also gives the non-earning spouse the 36 EUR Sonderausgaben-Pauschbetrag.
+    const o = de({
+      ...wage(80_000),
+      people: [{}, { id: "p2" }],
+      config: { filingStatus: "married-joint" },
+    });
+    within(est(o), 9_496);
+  });
+
+  it("parent of two children under 25 (PVZ=0, PVA=1): 50,000 -> 6,921; care 1.8% - 0.25 = 1.55%", () => {
+    const o = de({ ...wage(50_000), dependents: [10, 12] });
+    expect(sumLabel(o, /Pflegeversicherung/)).toBeCloseTo(0.0155 * 50_000, 6);
+    within(est(o), 6_921);
+  });
+});
+
+describe("Germany 2026: long-term care surcharge and the Aktivrente", () => {
+  it("de.parent: a parent whose children are grown up pays 1.8%, not the childless 2.4%; born before 1940: no surcharge", () => {
+    expect(sumLabel(de(wage(50_000)), /Pflegeversicherung/)).toBeCloseTo(1_200, 6);
+    const parent = de({ ...wage(50_000), config: { lawToggles: { "de.parent": true } } });
+    expect(sumLabel(parent, /Pflegeversicherung/)).toBeCloseTo(900, 6);
+    // pensioner born 1939, statutory pension 12,000: full care rate 3.6% without the surcharge
+    const old = de({
+      people: [{ age: 87, birthYear: 1939 }],
+      income: [{ character: "pension", incomeType: "state-pension", amount: 12_000 }],
+    });
+    expect(sumLabel(old, /Pflegeversicherung/)).toBeCloseTo(0.036 * 12_000, 6);
+  });
+
+  it("Aktivrente months (§3 Nr. 21: from the month after the Regelaltersgrenze)", () => {
+    // born March 1960: Regelaltersgrenze 66y4m, reached July 2026, so August to December = 5
+    expect(deAktivrenteMonths(1960, 3, 2026)).toBe(5);
+    expect(deAktivrenteMonths(1960, 3, 2027)).toBe(12);
+    expect(deAktivrenteMonths(1960, 3, 2025)).toBe(0);
+    // born 1958 (66), no month: birthday taken as 1 July, reached July 2024
+    expect(deAktivrenteMonths(1958, undefined, 2024)).toBe(5);
+  });
+
+  it("Aktivrente: a 68-year-old (born 1958) earning 30,000 has 24,000 tax-free, so no income tax", () => {
+    // taxable wage 6,000 - 1,230 = 4,770; contributions still deducted: RV 2,790, KV 2,625 x 0.96 =
+    // 2,520, PV 2.4% = 720, Sonderausgaben 36: 4,770 - 2,790 - 3,240 - 36 < 0 -> zvE 0
+    const o = de({ ...wage(30_000), people: [{ age: 68, birthYear: 1958 }] });
+    expect(o.facts["de.zvE.p1"]).toBe(0);
+    expect(est(o)).toBe(0);
+    // without the Aktivrente (age 60) the same wage is taxed
+    expect(est(de({ ...wage(30_000), people: [{ age: 60, birthYear: 1966 }] }))).toBeGreaterThan(0);
+    // above the cap: 60,000 at 68 is taxed like 36,000 at 60 (same contributions on 60,000)
+    const big = de({ ...wage(60_000), people: [{ age: 68, birthYear: 1958 }] });
+    const ref = de({ ...wage(60_000), people: [{ age: 60, birthYear: 1966 }] });
+    expect(big.facts["de.zvE.p1"]).toBeCloseTo(ref.facts["de.zvE.p1"]! - 24_000, 6);
+  });
+});
+
+function est(o: ReturnType<typeof de>) {
+  return sumLabel(o, /^Einkommensteuer/);
+}

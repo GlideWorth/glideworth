@@ -338,13 +338,15 @@ describe("country defaults for the new presets", () => {
     },
   );
 
-  it("cohort ages: DE 66y4m for 1960, NL 67y3m, FR 64 from 1968, ES 67", () => {
+  it("cohort ages: DE 66y4m for 1960, NL 67y3m, FR 62y9m for 1964 (LFSS 2026 suspension) and 64 from 1969, ES 67", () => {
     expect(defaultsForCountry("DE", { birthMonth: "1960-05" }).statePension!.startAge).toBeCloseTo(
       66 + 4 / 12,
       9,
     );
     expect(defaultsForCountry("NL", { birthMonth: "1970-05" }).statePension!.startAge).toBe(67.25);
     expect(frLegalRetirementAge(1963)).toBe(62.75);
+    expect(defaultsForCountry("FR", { birthMonth: "1964-05" }).statePension!.startAge).toBe(62.75);
+    expect(defaultsForCountry("FR", { birthMonth: "1968-05" }).statePension!.startAge).toBe(63.75);
     expect(defaultsForCountry("FR", { birthMonth: "1975-05" }).statePension!.startAge).toBe(64);
     expect(defaultsForCountry("ES").statePension!.startAge).toBe(67);
     expect(defaultsForCountry("DE").statePension!.deferralUplift).toBe(true);

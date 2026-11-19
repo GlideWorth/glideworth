@@ -9,45 +9,56 @@ taxYears:
   - 2026 social contribution rates
 modelled:
   - Impôt sur le revenu with the barème, quotient familial, décote and the 10% deduction for professional expenses
-  - Employee pension contributions and CSG and CRDS on salaries, and CSG, CRDS and CASA on pensions
+  - Employee pension contributions and CSG and CRDS on salaries, and CSG, CRDS and CASA on pensions at the rate for the household's income
   - The prélèvement forfaitaire unique (PFU) of 31.4% on capital income, with the barème option as a setting
   - PEA, assurance-vie and PER rules, including the assurance-vie allowance after eight years
   - The pension allowance and micro-foncier rental income
-  - A legal retirement age by birth year under the 2023 reform
+  - A legal retirement age by birth date, with the 2026 suspension of the 2023 reform
 notModelled:
   - Health, unemployment and provident contributions (mostly employer-paid) and executive (APEC) contributions
   - Social contributions for the self-employed (only CSG and CRDS)
-  - The exceptional contribution on high incomes and the real-estate wealth tax (IFI)
+  - The exceptional and differential contributions on high incomes (CEHR, CDHR) and the real-estate wealth tax (IFI)
   - Tax reductions and credits other than amounts you enter, real-expense regimes and micro-BIC or BNC allowances
-  - The reduced and zero CSG rates for pensions by household income
-  - The 4,262 euro first-child cap and other special half-parts of the quotient familial
+  - Special half-parts of the quotient familial other than for children and single parents
+  - The 2027 finance law, which is still being debated
 ---
 
 import { facts } from '../../lib/facts';
 
 France is estimated at a **basic level**: the main rules are in, with {facts.simplificationCount('fr')} written
 simplifications, and it has had less checking than the United Kingdom or the United States. Income tax uses the
-barème from the 2026 finance law (loi de finances du 19 février 2026), which taxes 2025 income, the latest enacted. The
-barème for 2026 income, set by the 2027 finance law, is not yet enacted, so the model carries the 2025-income barème forward
-with the plan's threshold policy. Social contributions use 2026 rates.
+barème from the 2026 finance law (loi de finances du 19 février 2026), which taxes 2025 income and is the latest
+enacted. The figures were checked against service-public.gouv.fr and BOFiP on 19 November 2026.
+
+The barème for 2026 income will be set by the 2027 finance law, which was still before Parliament on that date. It is
+**not applied**: the model carries the 2025-income barème forward with the plan's threshold policy. That includes a
+proposed €3,000 sub-cap on the 10% pension allowance. Social contributions use 2026 rates.
 
 ## What is modelled
 
 - **Barème**: 0% to €11,600; 11% to €29,579; 30% to €84,577; 41% to €181,917; 45% above, per part of the quotient
-  familial. The benefit of the quotient familial is capped at €1,807 per half-part. The décote reduces the tax of
-  lower-income households (maximum €897 for a single person, €1,483 for a couple, at 45.25%).
+  familial. The benefit of the quotient familial is capped at €1,807 per half-part, and at €4,262 for the two
+  half-parts of a single parent's first child. The décote reduces the tax of lower-income households (maximum €897
+  for a single person, €1,483 for a couple, at 45.25%).
 - **Salaries** are gross. Employee pension contributions (vieillesse capped at the €48,060 social security ceiling
   at 6.9%, the uncapped 0.4%, and AGIRC-ARRCO) and CSG at 9.2% (6.8 points deductible) and CRDS at 0.5% on 98.25% of salary
-  are deducted. A 10% deduction for professional expenses applies (minimum €509, maximum €14,555).
-- **Pensions** pay CSG at the full 8.3% rate plus CRDS and CASA, with a 10% income-tax allowance (minimum €454 a person,
-  maximum €4,439 a household). PER withdrawals are taxed as pensions.
-- **Capital income**: the PFU is 31.4% (12.8% income tax plus 18.6% social contributions); assurance-vie and property
-  income keep 17.2% social contributions. Dividends get a 40% allowance under the barème option.
+  are deducted. A 10% deduction for professional expenses applies (minimum €509, maximum €14,555 per person).
+- **Pensions** pay CSG, CRDS and CASA at the rate for the household's income: nothing up to €13,048 of income for one
+  part; 3.8% CSG plus 0.5% CRDS up to €17,057; 6.6% plus 0.5% plus 0.3% CASA up to €26,472; and 8.3% plus 0.5% plus 0.3%
+  above that. Each extra half-part raises the limits. The law uses the household's income of two years earlier. The
+  model uses the same year's income. Pensions get a 10% income-tax allowance (minimum €454 a person, maximum €4,439 a
+  household). PER withdrawals are taxed as pensions.
+- **Capital income**: the PFU is 31.4% (12.8% income tax plus 18.6% social contributions) on income received from
+  2026. Assurance-vie and property income keep 17.2% social contributions. Dividends get a 40% allowance under the
+  barème option.
 - **Wrappers**: PEA, assurance-vie and PER. Gains are taxed on withdrawal and assumed held five years (PEA) or eight
-  years (assurance-vie), both settings. After eight years assurance-vie has a €4,600 allowance (€9,200 for a couple)
-  and a 7.5% rate. The PER deduction is capped at 10% of professional income and the PER is locked until 64.
-- **Legal retirement age** is 62 for people born up to 1960, rising by three months a cohort to 64 from 1968. The 2025
-  suspension of the reform is not modelled. You enter the pension amount yourself.
+  years (assurance-vie), both settings. After five years PEA gains are free of income tax but pay the 18.6% social
+  contributions. After eight years assurance-vie has a €4,600 allowance (€9,200 for a couple) and a 7.5% rate. The PER
+  deduction is capped at 10% of professional income.
+- **Legal retirement age** follows the 2023 reform as suspended by the 2026 social security financing law: 62 for
+  people born before September 1961, 62 years 9 months for those born from 1963 to March 1965, 63 for the rest of
+  1965, and three months more for each later year, reaching 64 for people born from 1969. The PER opens at the same
+  age. You enter the pension amount yourself.
 
 ## Worked example
 
@@ -75,25 +86,30 @@ No French or euro-area market history is bundled. French households are tested a
 ## What to treat with care
 
 - The barème is for 2025 income and is carried forward, which will be wrong when the 2027 finance law changes it.
+- The CSG rate on pensions is chosen from the same year's income. The law uses the income of two years earlier and
+  smooths a change of rate.
 - PEA and assurance-vie dividends are kept inside the wrapper (no annual tax), and part of the gain is taxed on withdrawal.
-- The rate of 12.8% above €150,000 of assurance-vie premiums is not modelled.
+- The rate of 12.8% above €150,000 of assurance-vie premiums is not modelled, nor are the older rules for premiums paid
+  before 27 September 2017.
 - The PER deduction is limited to 10% of this year's professional income, while the law uses the prior year and allows
   carry-forward of unused ceilings.
-- A single parent gets the extra half-part at the general €1,807 cap.
+- Early retirement for long careers is not modelled.
 - No preset has been checked line by line against an official calculator for every case.
 
 ## Official sources
 
 - [service-public.gouv.fr: barème and quotient familial](https://www.service-public.gouv.fr/particuliers/vosdroits/F1419)
 - [BOFiP: décote](https://bofip.impots.gouv.fr/bofip/2495-PGP.html/identifiant=BOI-IR-LIQ-20-20-30-20260407)
-- [impots.gouv.fr: 10% deduction](https://www.impots.gouv.fr/particulier/questions/comment-puis-je-beneficier-de-la-deduction-forfaitaire-de-10),
-  [pensions](https://www.impots.gouv.fr/particulier/pensions-de-retraite) and
-  [assurance-vie and PEA](https://www.impots.gouv.fr/particulier/lassurance-vie-et-le-pea-0)
+- [service-public.gouv.fr: 10% deduction](https://www.service-public.gouv.fr/particuliers/vosdroits/F1989),
+  [declaring pensions](https://www.service-public.gouv.fr/particuliers/vosdroits/F415),
+  [assurance-vie](https://www.service-public.gouv.fr/particuliers/vosdroits/F22414) and
+  [PEA](https://www.service-public.gouv.fr/particuliers/vosdroits/F22449)
 - [URSSAF: social security ceilings](https://www.urssaf.fr/accueil/outils-documentation/taux-baremes/plafonds-securite-sociale.html)
 - [AGIRC-ARRCO: 2026 contributions](https://reglementation.agirc-arrco.fr/home/baremes/listes-area/baremes-1/cotisations-au-regime-agirc-arrco-en-2026.html)
 - [service-public.gouv.fr: social contributions on capital income](https://www.service-public.gouv.fr/particuliers/vosdroits/F2329),
-  [PFU](https://entreprendre.service-public.gouv.fr/actualites/A18796), [PER deduction](https://www.service-public.gouv.fr/particuliers/vosdroits/F34982)
-  and [CSG on pensions](https://www.service-public.gouv.fr/particuliers/vosdroits/F2971)
+  [PFU](https://entreprendre.service-public.gouv.fr/actualites/A18796), [PER deduction](https://www.service-public.gouv.fr/particuliers/vosdroits/F34982),
+  [CSG on pensions](https://www.service-public.gouv.fr/particuliers/vosdroits/F2971) and
+  [legal retirement age](https://www.service-public.gouv.fr/particuliers/vosdroits/F14043)
 
 <Callout type="note" title="Estimates, not advice">
   Glideworth is planning software. Its tax figures help you compare choices under your own assumptions; they

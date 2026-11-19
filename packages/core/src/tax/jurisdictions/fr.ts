@@ -1,6 +1,6 @@
 /**
  * France: impôt sur le revenu (barème progressif, quotient familial with its cap, décote), employee
- * pension contributions and CSG/CRDS on salaries, CSG/CRDS/CASA on pensions, prélèvements sociaux on
+ * pension contributions and CSG/CRDS on salaries, CSG/CRDS/CASA on pensions (by income tier), prélèvements sociaux on
  * capital and property income, PFU (flat tax) with the option for the barème, PEA (after 5 years)
  * and assurance-vie (after 8 years) gains on withdrawal, PER contributions as deductions.
  * The foyer fiscal is the married couple (married-joint) or each person.
@@ -19,7 +19,7 @@ import {
   sliceTax,
   withdrawalsFrom,
 } from "../common.js";
-import { FR_SIMPLIFICATIONS, FR_YEARS, type FrYear } from "../data/fr.js";
+import { FR_SIMPLIFICATIONS, FR_YEARS, type FrYear, frLegalRetirementAge } from "../data/fr.js";
 import type { BracketFill, TaxContributionLimitQuery, TaxPerson, TaxYearInput } from "../types.js";
 import { type CountryResult, nationalJurisdiction } from "./intl.js";
 
@@ -62,6 +62,7 @@ export function frImpot(
   parts: number,
   couple: boolean,
   f = 1,
+  singleParent = false,
 ): { brut: number; decote: number; marginal: number; fill: BracketFill["bands"] } {
   const b = bands(d.bareme, f);
   const baseParts = couple ? 2 : 1;
@@ -69,7 +70,13 @@ export function frImpot(
   const q = sliceTax(b, 0, r / parts, fill);
   const withQf = parts * q.tax;
   const withoutQf = baseParts * sliceTax(b, 0, r / baseParts).tax;
-  const cap = d.quotient.capPerHalfPart * f * (parts - baseParts) * 2;
+  // The two half-parts of a single parent's first child share the higher cap (4,262 for 2025 income).
+  const extra = parts - baseParts;
+  const cap =
+    d.quotient.capPerHalfPart * f * extra * 2 +
+    (singleParent && extra >= 1
+      ? (d.quotient.capSingleParentFirstChild - 2 * d.quotient.capPerHalfPart) * f
+      : 0);
   const brut = Math.max(withQf, withoutQf - cap);
   const D = d.decote;
   const decote = Math.min(brut, clamp0((couple ? D.couple : D.single) * f - D.rate * brut));
@@ -85,6 +92,14 @@ export function frImpot(
       tax: x.tax * parts,
     })),
   };
+}
+
+/** CSG / CRDS / CASA tier on pensions for a revenu fiscal de référence `rfr` and `parts`. */
+export function frPensionTier(d: FrYear, rfr: number, parts: number, f = 1) {
+  const tiers = d.pensionsSocial;
+  let tier = tiers[0]!;
+  for (const t of tiers) if (rfr > (t.rfrAbove + ((parts - 1) / 0.5) * t.perHalfPart) * f) tier = t;
+  return tier;
 }
 
 interface Foyer {
@@ -123,11 +138,9 @@ function compute(input: TaxYearInput, explain: boolean): CountryResult {
   fys.forEach((fy, fi) => {
     const sfx = fys.length > 1 ? ` (${fy.people[0]!.id})` : "";
     let revenu = 0;
-    let pensionNet = 0;
-    let pensionMinAllow = 0;
+    const pensionsByPerson: number[] = [];
     let payPension = 0;
     let payCsg = 0;
-    let pensionsSocial = 0;
     let capIncome = 0;
     let capDividends = 0;
     let capGains = 0;
@@ -152,11 +165,7 @@ function compute(input: TaxYearInput, explain: boolean): CountryResult {
       const se = b.selfEmployment * (1 - P.csgDeductible);
       // pensions (incl. state pensions and PER / other deferred withdrawals)
       const pens = b.pension + b.socialSecurity + b.deferredWithdrawals;
-      const S = d.pensionsSocial;
-      const pNet = pens * (1 - S.csgDeductible);
-      pensionNet += pNet;
-      pensionMinAllow += pNet > 0 ? Math.min(pNet, d.pensionAllowance.minPerPerson * fs) : 0;
-      pensionsSocial += (S.csg + S.crds + S.casa) * pens;
+      pensionsByPerson.push(pens);
       // PER: deductible within 10% of professional income (min 10% PASS, max 10% of 8 PASS)
       const perPass = d.per.passPriorYear * fs;
       const perCap = Math.max(
@@ -191,15 +200,26 @@ function compute(input: TaxYearInput, explain: boolean): CountryResult {
         b.gainsShort +
         b.deferredTaxFree;
     }
-    // pension allowance: 10% (min per pensioner, max per foyer)
-    const allowance = Math.min(
-      pensionNet,
-      Math.min(
-        d.pensionAllowance.maxPerHousehold * fs,
-        Math.max(pensionMinAllow, d.pensionAllowance.rate * pensionNet),
-      ),
-    );
-    revenu += pensionNet - allowance;
+    const singleParent = !fy.couple && input.filingStatus === "head-of-household";
+    const parts = frParts(fy.couple, fy.dependents, singleParent);
+    // pensions net of deductible CSG, less the 10% allowance (min per pensioner, max per foyer)
+    const pensionsTaxable = (csgDeductible: number) => {
+      let net = 0;
+      let minAllow = 0;
+      for (const pens of pensionsByPerson) {
+        const pNet = pens * (1 - csgDeductible);
+        net += pNet;
+        minAllow += pNet > 0 ? Math.min(pNet, d.pensionAllowance.minPerPerson * fs) : 0;
+      }
+      const allowance = Math.min(
+        net,
+        Math.min(
+          d.pensionAllowance.maxPerHousehold * fs,
+          Math.max(minAllow, d.pensionAllowance.rate * net),
+        ),
+      );
+      return net - allowance;
+    };
     // property income: micro-foncier allowance; 17.2% social; 6.8 points of CSG deductible
     const foncier =
       rental <= d.microFoncier.limit * fs ? rental * (1 - d.microFoncier.allowance) : rental;
@@ -209,13 +229,15 @@ function compute(input: TaxYearInput, explain: boolean): CountryResult {
     if (bareme)
       revenu +=
         capIncome + capDividends * (1 - C.dividendAllowance) + capGains - C.csgDeductible * capAll;
-    revenu = clamp0(revenu);
-    const parts = frParts(
-      fy.couple,
-      fy.dependents,
-      !fy.couple && input.filingStatus === "head-of-household",
-    );
-    const imp = frImpot(d, revenu, parts, fy.couple, fs);
+    // CSG tier on pensions: the RFR (this year's income as a proxy) with the normal-rate deduction,
+    // plus capital income under the PFU, which the RFR includes.
+    const normal = d.pensionsSocial[d.pensionsSocial.length - 1]!;
+    const rfr = clamp0(revenu + pensionsTaxable(normal.csgDeductible)) + (bareme ? 0 : capAll);
+    const tier = frPensionTier(d, rfr, parts, fs);
+    const pensGross = pensionsByPerson.reduce((s, x) => s + x, 0);
+    const pensionsSocial = (tier.csg + tier.crds + tier.casa) * pensGross;
+    revenu = clamp0(revenu + pensionsTaxable(tier.csgDeductible));
+    const imp = frImpot(d, revenu, parts, fy.couple, fs, singleParent);
     if (explain)
       fill.push({
         jurisdictionId: ID,
@@ -230,7 +252,12 @@ function compute(input: TaxYearInput, explain: boolean): CountryResult {
     sink.add("credit", `Réductions / crédits d'impôt${sfx}`, -reducers);
     sink.add("payroll", `Cotisations retraite salariales${sfx}`, payPension);
     sink.add("payroll", `CSG / CRDS (revenus d'activité)${sfx}`, payCsg);
-    sink.add("other", `CSG / CRDS / CASA (pensions)${sfx}`, pensionsSocial);
+    sink.add(
+      "other",
+      `CSG / CRDS / CASA (pensions, ${tier.label})${sfx}`,
+      pensionsSocial,
+      pensGross,
+    );
     // PFU on capital income (unless the barème option was taken)
     if (!bareme) {
       sink.add(
@@ -299,8 +326,9 @@ export const frJurisdiction = nationalJurisdiction({
   country: "FR",
   compute,
   contributionLimit,
-  // PER: available at retirement (legal retirement age; not modelled as a fixed age here).
-  pensionAccessAge: () => null,
+  // PER: available from the legal retirement age (LFSS 2026 table), or on retiring.
+  pensionAccessAge: (q) =>
+    q.accountType === "fr-per" ? frLegalRetirementAge(q.birthYear, q.birthMonth) : null,
   // Résidence principale: the gain is exempt.
   homeSaleExclusion: () => Number.POSITIVE_INFINITY,
   lawToggles: [

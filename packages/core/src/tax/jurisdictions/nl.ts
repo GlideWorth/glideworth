@@ -1,8 +1,9 @@
 /**
  * Netherlands: box 1 (brackets below / at AOW age, incl. premies volksverzekeringen), algemene
  * heffingskorting and arbeidskorting with their phase-outs, ouderenkorting and alleenstaande-
- * ouderenkorting, box 2 (substantial interest) and box 3 (2026 deemed-return regime with the
- * heffingsvrij vermogen). Pension contributions are deducted from box 1.
+ * ouderenkorting, box 2 (substantial interest), box 3 (2026 deemed-return regime with the
+ * heffingsvrij vermogen) and the income-related Zvw contribution on non-wage income. Pension
+ * contributions are deducted from box 1.
  * Data: ../data/nl.ts. Known simplifications: NL_SIMPLIFICATIONS.
  */
 import {
@@ -90,7 +91,8 @@ function compute(input: TaxYearInput, explain: boolean): CountryResult {
     const sfx = multi ? ` (${p.id})` : "";
     const b = collectIncome(input, ID, p.id, people);
     const ded = personDeductions(input, p.id, people);
-    const aow = p.age >= nlAowAge(birthYearOf(p, input.year));
+    const birthYear = birthYearOf(p, input.year);
+    const aow = p.age >= nlAowAge(birthYear);
     let box2Income = 0;
     for (const it of input.income)
       if (it.incomeType === "nl-box2" && it.amount > 0)
@@ -107,7 +109,8 @@ function compute(input: TaxYearInput, explain: boolean): CountryResult {
         ded.deductions,
     );
     const fillBands: BracketFill["bands"] | undefined = explain ? [] : undefined;
-    const t1 = sliceTax(bands(aow ? d.box1.aow : d.box1.belowAow, fs), 0, box1, fillBands);
+    const rows = !aow ? d.box1.belowAow : birthYear < 1946 ? d.box1.aowBefore1946 : d.box1.aow;
+    const t1 = sliceTax(bands(rows, fs), 0, box1, fillBands);
     if (fillBands)
       fill.push({ jurisdictionId: ID, personId: p.id, schedule: "box 1", bands: fillBands });
     const t2 = sliceTax(bands(d.box2.rows, fs), 0, box2Income).tax;
@@ -127,6 +130,12 @@ function compute(input: TaxYearInput, explain: boolean): CountryResult {
     );
     sink.add("credit", `Heffingskortingen${sfx}`, -applied);
     sink.add("dividends", `Box 2 (substantial interest)${sfx}`, t2, box2Income);
+    // Bijdrage Zvw on pensions, AOW, withdrawals and profit, above any wages (employer-paid).
+    const zvwBase = Math.min(
+      clamp0(b.pension + b.socialSecurity + b.deferredWithdrawals + b.selfEmployment),
+      clamp0(d.zvw.maxIncome * fs - b.wage),
+    );
+    sink.add("payroll", `Bijdrage Zvw (income-related)${sfx}`, d.zvw.rate * zvwBase, zvwBase);
     sink.add(
       "wealth",
       `Box 3 (savings and investments)${sfx}`,

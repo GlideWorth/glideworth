@@ -1,6 +1,6 @@
 ---
 title: Retirement planning in Germany
-description: "How Glideworth estimates German tax and pensions at a basic level for 2026: income tax tariff, social contributions, Riester, Rürup, bAV, and gaps."
+description: "How Glideworth estimates German tax and pensions at a basic level for 2026: income tax tariff, social contributions, the Aktivrente, Riester, Rürup, bAV, and gaps."
 ogTitle: Retirement planning in Germany
 countryCode: DE
 countryName: Germany
@@ -12,6 +12,7 @@ modelled:
   - Employee social contributions - pension, unemployment, statutory health and long-term care - up to the 2026 ceilings
   - Abgeltungsteuer (25%) on capital income, the saver's allowance and the partial exemption for equity funds
   - The taxable share of statutory pensions, and Rürup, Riester and bAV contributions and payouts
+  - The Aktivrente - up to €24,000 a year of wages tax-free after the statutory pension age
   - A statutory pension age by birth year with a deferral uplift
 notModelled:
   - Private health insurance; statutory cover is assumed at the average supplementary rate
@@ -19,14 +20,19 @@ notModelled:
   - Social contributions and trade tax for the self-employed
   - The Riester allowance (Zulage) and the Günstigerprüfung; the Vorabpauschale
   - The age relief amount, the pension benefits allowance (Versorgungsfreibetrag), mini-jobs and the progression clause
-  - The Saxony long-term care rate
+  - The health-contribution allowance on company pensions and the Saxony long-term care rate
+  - The 2027 income tax reform, which is still a draft
 ---
 
 import { facts } from '../../lib/facts';
 
 Germany is estimated at a **basic level**: the main rules are in, with {facts.simplificationCount('de')} written simplifications,
 but it has had less checking than the United Kingdom or the United States. The tax tables are for 2026
-(Veranlagungszeitraum 2026), and later years index them with the plan's threshold policy.
+(Veranlagungszeitraum 2026), checked against the statutes and the federal ministries' published values on
+19 November 2026. Later years index them with the plan's threshold policy.
+
+The Einkommensteuerreformgesetz 2027 (a basic allowance of €12,564 in 2027 and €12,900 in 2028, a €1,430 employee
+allowance and a flatter tariff) was a cabinet draft on that date and is **not applied**.
 
 ## What is modelled
 
@@ -37,14 +43,19 @@ but it has had less checking than the United Kingdom or the United States. The t
   zone at 11.9%. Church tax is a setting: 9%, or 8% in Bavaria and Baden-Württemberg.
 - **Employee social contributions**: the pension scheme at 18.6% in total (the employee pays half), unemployment at
   2.6% (half), statutory health at 14.6% plus the average supplementary rate of 2.9% (each shared between employer and
-  employee), and long-term care at 3.6%, with a surcharge for the childless. Ceilings are €101,400 for pension and
-  €69,750 for health.
+  employee), and long-term care at 3.6%. Ceilings are €101,400 for pension and €69,750 for health and care.
+- **Long-term care surcharge**: people aged 23 or over with no children pay 0.6 points more. The model applies it when
+  the household has no dependants under 25, unless you set "Has children, including grown-up ones" (parents never pay
+  it). People born before 1940 are exempt. Each child under 25 from the second to the fifth takes 0.25 points off.
 - **Capital income**: Abgeltungsteuer of 25% with a saver's allowance of €1,000, and a 30% partial exemption (Teilfreistellung)
   for equity funds, which Glideworth assumes by default.
-- **Pensions**: the taxable share of a statutory pension is 84% for pensions starting in 2026 (the share applies
-  to the whole pension each year). Rürup, Riester and bAV accounts are available; bAV contributions are tax-free up to 8% of the
-  pension ceiling and social-contribution-free up to 4%; Riester contributions are deducted up to €2,100. Payouts
-  from these contracts are available from age 62.
+- **Pensions**: the taxable share of a statutory pension is 84% for pensions starting in 2026 (82.5% for 2023, rising
+  by half a point a year to 100% in 2058, under the Wachstumschancengesetz). The share applies to the whole pension
+  each year. Rürup, Riester and bAV accounts are available. bAV contributions are tax-free up to 8% of the pension
+  ceiling and social-contribution-free up to 4%. Riester contributions are deducted up to €2,100. Payouts from these
+  contracts are available from age 62.
+- **Aktivrente**: from 2026, wages for work done from the month after the statutory pension age are tax-free up to
+  €24,000 a year (§3 Nr. 21 EStG). Without a birth month, the birthday is taken as 1 July.
 - **Statutory pension age** follows the birth year: 65 for people born up to 1946, rising to 67 for those born from
   1964, and deferral adds 0.5% a month. You enter the pension amount yourself.
 
@@ -63,6 +74,10 @@ A single person has taxable income (zu versteuerndes Einkommen) of €40,000 in 
 - Income tax = 6,174.76 + 1,034.87 = **€7,209.63**.
 - The solidarity surcharge is nil, because the tax is below the €20,350 exemption limit.
 
+Glideworth's tests compare salaries from €20,000 to €300,000 with the Federal Ministry of Finance's own wage-tax
+calculator for 2026. The estimate is €2 to €17 higher in each case. That is because the official wage-tax calculation
+deducts slightly more health contribution than the annual assessment does, and rounds down to whole euros.
+
 ## Historical data for simulations
 
 No German or euro-area market history is bundled. German households are tested against US history by default
@@ -72,9 +87,15 @@ American.
 ## What to treat with care
 
 - Tax is not rounded to whole euros.
+- The 2027 reform is not applied; later years are the 2026 tables indexed with inflation.
 - The Besteuerungsanteil is applied to the whole pension each year, and the fixed euro allowance is not frozen.
 - Dividends and gains are assumed to come from equity funds. Set the equity-funds option off if they do not.
-- Riester, bAV and Rürup payouts are fully taxable except Rürup, which uses the taxable share.
+- Riester, bAV and Rürup payouts are fully taxable except Rürup, which uses the taxable share. Riester is replaced for
+  new contracts from 2027 (Altersvorsorgereformgesetz); the deduction limit for the new products is not confirmed, so
+  €2,100 is used for every year.
+- Employees past the statutory pension age still pay the employee pension and unemployment contributions in the model,
+  though in law they are usually exempt.
+- Company pensions pay full health contributions with no monthly allowance.
 - A figure for the self-employed leaves out their social contributions.
 - No preset has been checked line by line against an official calculator for every case.
 
@@ -83,14 +104,17 @@ American.
 - [§32a EStG: tariff](https://www.gesetze-im-internet.de/estg/__32a.html), [§22 EStG: pensions](https://www.gesetze-im-internet.de/estg/__22.html),
   [§20 EStG: capital income](https://www.gesetze-im-internet.de/estg/__20.html), [§32d EStG](https://www.gesetze-im-internet.de/estg/__32d.html),
   [§10 EStG](https://www.gesetze-im-internet.de/estg/__10.html), [§10a EStG (Riester)](https://www.gesetze-im-internet.de/estg/__10a.html),
-  [§9a EStG](https://www.gesetze-im-internet.de/estg/__9a.html) and [§3 EStG](https://www.gesetze-im-internet.de/estg/__3.html)
+  [§9a EStG](https://www.gesetze-im-internet.de/estg/__9a.html) and [§3 EStG (bAV, Aktivrente)](https://www.gesetze-im-internet.de/estg/__3.html)
 - [Solidaritätszuschlaggesetz §3](https://www.gesetze-im-internet.de/solzg_1995/__3.html) and
   [§4](https://www.gesetze-im-internet.de/solzg_1995/__4.html)
 - [Investmentsteuergesetz §20](https://www.gesetze-im-internet.de/invstg_2018/__20.html)
 - [Bundesregierung: Beitragsbemessungsgrenzen](https://www.bundesregierung.de/breg-de/aktuelles/beitragsbemessungsgrenzen-2386514)
+  and [Einkommensteuerreform 2027 (draft)](https://www.bundesregierung.de/breg-de/aktuelles/einkommensteuerreform-2027-2451192)
 - [Bundesgesundheitsministerium: contributions](https://www.bundesgesundheitsministerium.de/beitraege) and
   [long-term care financing](https://www.bundesgesundheitsministerium.de/themen/pflege/online-ratgeber-pflege/die-pflegeversicherung/finanzierung)
 - [Deutsche Rentenversicherung: values](https://www.deutsche-rentenversicherung.de/DRV/DE/Experten/Zahlen-und-Fakten/Werte-der-Rentenversicherung/werte-der-rentenversicherung)
+  and [Altersvorsorgereformgesetz](https://www.deutsche-rentenversicherung.de/DRV/DE/Rente/Moeglichkeiten-der-Altersvorsorge/Altervorsorgereformgesetz.html)
+- [BMF wage and income tax calculator](https://www.bmf-steuerrechner.de/)
 
 <Callout type="note" title="Estimates, not advice">
   Glideworth is planning software. Its tax figures help you compare choices under your own assumptions; they

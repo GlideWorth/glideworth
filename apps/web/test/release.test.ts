@@ -13,7 +13,7 @@ import {
   withFxVolatility,
 } from "../src/features/chance/fx-risk";
 import { NotificationCentre } from "../src/features/checkins/notification-centre";
-import { bankApplyRequest } from "../src/features/import/bank-import";
+import { bankApplyRequest, spendingPlanId } from "../src/features/import/bank-import";
 import { countryDefaults } from "../src/features/plan-editor/state/defaults";
 import {
   buildEntityIndex,
@@ -56,6 +56,21 @@ describe("W4-1: bank files are applied as previewed", () => {
     expect(
       bankApplyRequest({ ...base, format: "ofx", dateFormat: "DD/MM/YYYY" }),
     ).not.toHaveProperty("dateFormat");
+  });
+  it("sends the exchange rate the user typed, and spending follows the open plan", () => {
+    const req = bankApplyRequest({
+      text: "",
+      format: "ofx",
+      dateFormat: "auto",
+      balances: true,
+      createMissing: true,
+      planId: spendingPlanId(undefined, "uk-plan-main"),
+      excluded: [],
+      fxRates: [{ from: "USD", to: "GBP", rate: 0.8 }],
+    });
+    expect(req.planId).toBe("uk-plan-main");
+    expect(req.fxRates).toEqual([{ from: "USD", to: "GBP", rate: 0.8 }]);
+    expect(spendingPlanId("other", "uk-plan-main")).toBe("other");
   });
 });
 

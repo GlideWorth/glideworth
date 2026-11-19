@@ -31,7 +31,7 @@ import { Card, CardBody, CardHeader } from "../../components/ui/card";
 import { Stat } from "../../components/ui/stat";
 import { useCloudSession } from "../../lib/auth";
 import { formatMonth } from "../../lib/format";
-import { financesInBase } from "../../lib/fx-math";
+import { financesInBase, unconvertedHoldings, unconvertedSentence } from "../../lib/fx-math";
 import { firstFullYear, total } from "../../lib/money";
 import { useResolvedTheme } from "../../lib/theme";
 import { useFormat, useProjection } from "../../lib/workspace";
@@ -245,6 +245,13 @@ export function DashboardView() {
   const on = (id: WidgetId) => prefs[id] !== false;
   const index = useMemo(() => buildEntityIndex(doc, plan), [doc, plan]);
   const now = currentNetWorth(doc);
+  const leftOut = doc
+    ? unconvertedSentence(
+        unconvertedHoldings(doc.finances, doc.household.currency),
+        doc.household.currency,
+        (amount, currency) => f.moneyIn(amount, currency),
+      )
+    : null;
   const mcEntry = useMcStore((s) => (plan ? s.byPlan[plan.id] : undefined));
   const mc = mcEntry && mcEntry.planVersion === plan?.version ? mcEntry : undefined;
   // Without a run in this browser, the last check-in's chance of success (same plan version) stands in,
@@ -318,6 +325,7 @@ export function DashboardView() {
                     {f.money(Math.abs(now.netWorth - prevSnap), true)} since last snapshot
                   </div>
                 ) : null}
+                {leftOut ? <div className="text-ochre">{leftOut}</div> : null}
               </>
             }
           />
@@ -551,7 +559,9 @@ export function DashboardView() {
                         className="flex items-center justify-between py-0.5 text-[13px]"
                       >
                         <span className="truncate">{a.name}</span>
-                        <span className="num">{f.money(a.balance)}</span>
+                        <span className="num">
+                          {f.moneyIn(a.balance, a.currency ?? f.currency)}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -572,7 +582,9 @@ export function DashboardView() {
                       className="flex items-center justify-between py-0.5 text-[13px]"
                     >
                       <span className="truncate">{r.name}</span>
-                      <span className="num">{f.money(r.currentValue)}</span>
+                      <span className="num">
+                        {f.moneyIn(r.currentValue, r.currency ?? f.currency)}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -590,7 +602,9 @@ export function DashboardView() {
                         className="flex items-center justify-between py-0.5 text-[13px]"
                       >
                         <span className="truncate">{r.name} loan</span>
-                        <span className="num text-negative">−{f.money(r.loan!.balance)}</span>
+                        <span className="num text-negative">
+                          −{f.moneyIn(r.loan!.balance, r.currency ?? f.currency)}
+                        </span>
                       </div>
                     ))}
                   {doc?.finances.debts.map((d) => (
@@ -599,7 +613,9 @@ export function DashboardView() {
                       className="flex items-center justify-between py-0.5 text-[13px]"
                     >
                       <span className="truncate">{d.name}</span>
-                      <span className="num text-negative">−{f.money(d.balance)}</span>
+                      <span className="num text-negative">
+                        −{f.moneyIn(d.balance, d.currency ?? f.currency)}
+                      </span>
                     </div>
                   ))}
                 </div>

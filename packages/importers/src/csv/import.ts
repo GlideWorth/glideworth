@@ -498,6 +498,8 @@ export interface TransactionRow {
   spend: number;
   category: string;
   description: string;
+  /** Statement currency, when the row came from a bank file that names one. */
+  currency?: string;
 }
 
 export interface CategorySummary {
@@ -509,6 +511,8 @@ export interface CategorySummary {
   byYear: Record<string, number>;
   /** The annualised figure used for the event. */
   annual: number;
+  /** Set when every counted row in the category is in this one currency. */
+  currency?: string;
 }
 
 export interface ExpenseSummary {
@@ -800,6 +804,8 @@ export function summariseTransactionRows(
 
   const expenseTypeOf = expenseTypeLookup(options.categoryMap);
   const byCat = new Map<string, CategorySummary>();
+  /** null = the category mixed currencies (or a row had none), so the event stays in the household currency. */
+  const currencyOf = new Map<string, string | null>();
   for (const r of rows) {
     let c = byCat.get(r.category);
     if (!c) {
@@ -823,6 +829,14 @@ export function summariseTransactionRows(
     const y = r.date.slice(0, 4);
     c.byYear[y] = (c.byYear[y] ?? 0) + r.spend;
     if (inWindow(r.date)) c.annual += r.spend * factor;
+    const cur = r.currency ?? null;
+    const seen = currencyOf.get(r.category);
+    if (seen === undefined) currencyOf.set(r.category, cur);
+    else if (seen !== cur) currencyOf.set(r.category, null);
+  }
+  for (const c of byCat.values()) {
+    const cur = currencyOf.get(c.category);
+    if (cur) c.currency = cur;
   }
   const categories = [...byCat.values()]
     .filter((c) => c.annual > 0 || c.total > 0)
@@ -843,6 +857,7 @@ export function summariseTransactionRows(
         endInclusive: false,
       },
       spendingType: c.spendingType,
+      ...(c.currency ? { currency: c.currency } : {}),
       notes: `Imported from ${c.count} transactions (${from} to ${to}).`,
     })) as ExpenseEventInput[];
   return {

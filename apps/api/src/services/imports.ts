@@ -156,6 +156,19 @@ export const BankFileImportBody = z
       .optional()
       .describe("Update balances from the file (default: match by name). `false` skips balances."),
     planId: z.string().optional().describe("Add the annual expense summary to this plan."),
+    fxRates: z
+      .array(
+        z.object({
+          from: z.string().regex(/^[A-Z]{3}$/),
+          to: z.string().regex(/^[A-Z]{3}$/),
+          rate: z.number().positive(),
+        }),
+      )
+      .max(20)
+      .optional()
+      .describe(
+        "Exchange rates to store with the import (1 from = rate to). A statement in another currency needs a rate to the household currency; without one the plan cannot be simulated and the balance is left out of net worth.",
+      ),
     annualise: z
       .union([z.enum(["last-12-months", "all", "latest-full-year"]), z.boolean()])
       .optional()
@@ -340,6 +353,7 @@ export class ImportsService {
       ...(body.excludeCategories ? { excludeCategories: body.excludeCategories } : {}),
       ...(body.balances !== undefined ? { balances: body.balances } : {}),
       ...(body.planId ? { transactionsToPlanId: body.planId } : {}),
+      ...(body.fxRates?.length ? { fxRates: body.fxRates } : {}),
     };
     return this.applyHousehold(
       householdId,

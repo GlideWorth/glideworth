@@ -203,10 +203,101 @@ describe("QIF", () => {
       { balances: { createMissing: true } },
       { dryRun: false },
     );
-    expect(r.issues.some((i) => i.code === "bank.foreign-currency")).toBe(true);
+    expect(r.issues.some((i) => i.code === "bank.fx-missing" && i.severity === "warning")).toBe(
+      true,
+    );
     expect(
       r.document.finances.accounts.find((a) => a.name.startsWith("Savings account"))!.currency,
     ).toBe("EUR");
+  });
+});
+
+/** The QA sample: one USD checking account, a payroll credit and a rent debit, into a GBP household. */
+const USD_OFX = `OFXHEADER:100
+DATA:OFXSGML
+VERSION:102
+SECURITY:NONE
+ENCODING:USASCII
+CHARSET:1252
+COMPRESSION:NONE
+OLDFILEUID:NONE
+NEWFILEUID:NONE
+
+<OFX><SIGNONMSGSRSV1><SONRS><STATUS><CODE>0<SEVERITY>INFO</STATUS><DTSERVER>20261118000000<LANGUAGE>ENG</SONRS></SIGNONMSGSRSV1>
+<BANKMSGSRSV1><STMTTRNRS><TRNUID>1<STATUS><CODE>0<SEVERITY>INFO</STATUS><STMTRS><CURDEF>USD<BANKACCTFROM><BANKID>123456789<ACCTID>000111222<ACCTTYPE>CHECKING</BANKACCTFROM>
+<BANKTRANLIST><DTSTART>20261001<DTEND>20261031
+<STMTTRN><TRNTYPE>CREDIT<DTPOSTED>20261001<TRNAMT>5000.00<FITID>1001<NAME>PAYROLL</STMTTRN>
+<STMTTRN><TRNTYPE>DEBIT<DTPOSTED>20261003<TRNAMT>-1800.00<FITID>1002<NAME>RENT</STMTTRN>
+</BANKTRANLIST><LEDGERBAL><BALAMT>12000.00<DTASOF>20261031</LEDGERBAL></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>
+`;
+
+describe("USD statement into a GBP household", () => {
+  const request = {
+    balances: { createMissing: true },
+    transactionsToPlanId: UK_SAMPLE_PLAN_ID,
+  };
+
+  it("warns that there is no USD rate, and does not pretend one before the user supplies it", () => {
+    const doc = createUkSampleDocument();
+    const preview = importBankFileInto(doc, USD_OFX, request);
+    expect(preview.dryRun).toBe(true);
+    expect(preview.document).toBe(doc);
+    expect(preview.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "bank.fx-missing", severity: "warning" }),
+      ]),
+    );
+    expect(preview.summary.categories).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ category: "Housing", annual: 21_600, currency: "USD" }),
+      ]),
+    );
+    const housing = preview.summary.events.find((e) => e.name === "Housing");
+    expect(housing).toMatchObject({ type: "housing", currency: "USD", amount: { value: 21_600 } });
+  });
+
+  it("applies the account, the included housing expense and the rate the user entered, and the plan still simulates", () => {
+    const doc = createUkSampleDocument();
+    const before = doc.plans.find((p) => p.id === UK_SAMPLE_PLAN_ID)!.expenses.length;
+    const done = importBankFileInto(
+      doc,
+      USD_OFX,
+      { ...request, fxRates: [{ from: "USD", to: "GBP", rate: 0.8 }] },
+      { dryRun: false },
+    );
+    expect(done.issues.some((i) => i.code === "bank.fx-missing")).toBe(false);
+    expect(done.document.finances.fxRates).toEqual([
+      { from: "USD", to: "GBP", rate: 0.8, annualDrift: 0 },
+    ]);
+    expect(done.document.finances.accounts.find((a) => a.name.includes("1222"))).toMatchObject({
+      currency: "USD",
+      balance: 12_000,
+      type: "cash",
+    });
+    const plan = done.document.plans.find((p) => p.id === UK_SAMPLE_PLAN_ID)!;
+    expect(plan.expenses).toHaveLength(before + 1);
+    expect(plan.expenses.find((e) => e.name === "Housing")).toMatchObject({
+      type: "housing",
+      currency: "USD",
+      amount: { value: 21_600 },
+    });
+    expect(() => simulate(buildSimulationInput(done.document, UK_SAMPLE_PLAN_ID))).not.toThrow();
+  });
+
+  it("leaves an existing pair alone and still converts through it", () => {
+    const doc = createUkSampleDocument();
+    doc.finances.fxRates = [{ from: "GBP", to: "USD", rate: 1.25, annualDrift: 0 }];
+    const done = importBankFileInto(
+      doc,
+      USD_OFX,
+      { ...request, fxRates: [{ from: "USD", to: "GBP", rate: 0.5 }] },
+      { dryRun: false },
+    );
+    expect(done.document.finances.fxRates).toEqual([
+      { from: "GBP", to: "USD", rate: 1.25, annualDrift: 0 },
+    ]);
+    expect(done.issues.some((i) => i.code === "bank.fx-missing")).toBe(false);
+    expect(() => simulate(buildSimulationInput(done.document, UK_SAMPLE_PLAN_ID))).not.toThrow();
   });
 });
 

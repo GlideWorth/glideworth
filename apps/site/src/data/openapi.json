@@ -11697,6 +11697,33 @@
       "type": "string",
       "description": "Add the annual expense summary to this plan."
      },
+     "fxRates": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "from": {
+         "type": "string",
+         "pattern": "^[A-Z]{3}$"
+        },
+        "to": {
+         "type": "string",
+         "pattern": "^[A-Z]{3}$"
+        },
+        "rate": {
+         "type": "number",
+         "exclusiveMinimum": 0
+        }
+       },
+       "required": [
+        "from",
+        "to",
+        "rate"
+       ]
+      },
+      "maxItems": 20,
+      "description": "Exchange rates to store with the import (1 from = rate to). A statement in another currency needs a rate to the household currency; without one the plan cannot be simulated and the balance is left out of net worth."
+     },
      "annualise": {
       "anyOf": [
        {

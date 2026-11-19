@@ -806,6 +806,8 @@ export interface BankFileRequest {
   balances?: false | { accountMap?: Record<string, string>; createMissing?: boolean };
   planId?: string;
   excludeCategories?: string[];
+  /** Rates stored with the import: 1 `from` = `rate` `to`. */
+  fxRates?: { from: string; to: string; rate: number }[];
   dryRun?: boolean;
 }
 

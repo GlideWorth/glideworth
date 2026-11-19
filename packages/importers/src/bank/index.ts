@@ -3,7 +3,7 @@
  * import) and transactions summarised into annual expense events (the CSV transaction pipeline).
  * Pure; dry run by default. Account numbers are masked to their last four digits.
  */
-import type { GlideworthDocument } from "@glideworth/core";
+import { type FxRate, fxPairKey, type GlideworthDocument } from "@glideworth/core";
 import {
   applyExpenseSummary,
   applyReconciliation,
@@ -108,6 +108,9 @@ export function bankSpendingRows(
     excluded.set(category, e);
   };
   const excludedCats = new Set((opts.excludeCategories ?? []).map((c) => c.toLowerCase()));
+  const currencyByKey = new Map(
+    parsed.accounts.flatMap((a) => (a.currency ? [[a.key, a.currency] as const] : [])),
+  );
   const rows: TransactionRow[] = [];
   const expenseTypeOf = expenseTypeLookup(opts.categoryMap);
   let inferred = 0;
@@ -140,7 +143,15 @@ export function bankSpendingRows(
       return;
     }
     if (t.amount === 0) return;
-    rows.push({ line: i + 1, date: t.date, spend: -t.amount, category, description: t.payee });
+    const currency = currencyByKey.get(t.accountKey);
+    rows.push({
+      line: i + 1,
+      date: t.date,
+      spend: -t.amount,
+      category,
+      description: t.payee,
+      ...(currency ? { currency } : {}),
+    });
   });
   if (inferred > 0)
     issues.push({
@@ -197,6 +208,42 @@ export interface BankImportRequest extends BankFileOptions {
   balances?: { accountMap?: Record<string, string>; createMissing?: boolean } | false;
   /** Add the annual expense summary to this plan. */
   transactionsToPlanId?: string;
+  /**
+   * Rates to store on the household (`1 from = rate to`) when applying. A pair the household already
+   * has is left as it is. Supplied on a dry run too, so the missing-rate warning clears once the
+   * user has typed one.
+   */
+  fxRates?: { from: string; to: string; rate: number; annualDrift?: number }[];
+}
+
+function rateCovers(
+  rates: readonly { from: string; to: string; rate: number }[],
+  currency: string,
+  base: string,
+): boolean {
+  return rates.some(
+    (r) =>
+      r.rate > 0 &&
+      ((r.from === currency && r.to === base) || (r.from === base && r.to === currency)),
+  );
+}
+
+/** Add `incoming` pairs the household does not already have (either direction). */
+function withFxRates(
+  doc: GlideworthDocument,
+  incoming: NonNullable<BankImportRequest["fxRates"]>,
+): GlideworthDocument {
+  const existing = doc.finances.fxRates ?? [];
+  const next: FxRate[] = [...existing];
+  for (const r of incoming) {
+    if (!/^[A-Z]{3}$/.test(r.from) || !/^[A-Z]{3}$/.test(r.to)) continue;
+    if (r.from === r.to || !(r.rate > 0) || !Number.isFinite(r.rate)) continue;
+    const key = fxPairKey(r.from, r.to);
+    if (next.some((x) => fxPairKey(x.from, x.to) === key)) continue;
+    next.push({ from: r.from, to: r.to, rate: r.rate, annualDrift: r.annualDrift ?? 0 });
+  }
+  if (next.length === existing.length) return doc;
+  return { ...doc, finances: { ...doc.finances, fxRates: next } };
 }
 
 export interface BankImportOutcome {
@@ -220,15 +267,37 @@ export function importBankFileInto(
   const s = summariseBankFile(text, request);
   const issues = [...s.issues];
   const base = doc.household.currency;
-  for (const a of s.accounts)
-    if (a.currency && a.currency !== base)
+  const knownRates = [...(doc.finances.fxRates ?? []), ...(request.fxRates ?? [])];
+  const byCurrency = new Map<string, string[]>();
+  for (const a of s.accounts) {
+    if (!a.currency || a.currency === base) continue;
+    const names = byCurrency.get(a.currency) ?? [];
+    names.push(a.name);
+    byCurrency.set(a.currency, names);
+  }
+  for (const e of s.summary.events)
+    if (e.currency && e.currency !== base && !byCurrency.has(e.currency))
+      byCurrency.set(e.currency, []);
+  for (const [currency, names] of byCurrency) {
+    const who = names.length ? names.join(", ") : `Spending in ${currency}`;
+    const verb = names.length === 1 || names.length === 0 ? "is" : "are";
+    if (rateCovers(knownRates, currency, base))
       issues.push({
         severity: "info",
         category: "info",
-        sourcePath: `${s.format}:${a.key}`,
-        message: `${a.name} is in ${a.currency}; new accounts keep that currency (add an FX rate to ${base})`,
+        sourcePath: `${s.format}:${currency}`,
+        message: `${who} ${verb} in ${currency} and will be converted to ${base} with your exchange rate`,
         code: "bank.foreign-currency",
       });
+    else
+      issues.push({
+        severity: "warning",
+        category: "info",
+        sourcePath: `${s.format}:${currency}`,
+        message: `${who} ${verb} in ${currency}, which has no exchange rate to ${base}. Enter a rate before applying: without one the plan cannot be simulated, and the balance is left out of net worth.`,
+        code: "bank.fx-missing",
+      });
+  }
   const rec =
     request.balances === false
       ? undefined
@@ -237,6 +306,7 @@ export function importBankFileInto(
   const blocked = issues.some((i) => i.severity === "error");
   let next = doc;
   if (!dryRun && !blocked) {
+    if (request.fxRates?.length) next = withFxRates(next, request.fxRates);
     if (rec) {
       next = applyReconciliation(next, rec);
       // New accounts from a foreign-currency statement keep the statement's currency.

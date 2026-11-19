@@ -52,7 +52,13 @@ import { Tooltip } from "../../components/ui/tooltip";
 import { cn } from "../../lib/cn";
 import { countryLabel } from "../../lib/countries";
 import { formatMonth } from "../../lib/format";
-import { financesInBase, toBase } from "../../lib/fx-math";
+import {
+  financesInBase,
+  fxRateToBase,
+  toBase,
+  unconvertedHoldings,
+  unconvertedSentence,
+} from "../../lib/fx-math";
 import { useFormat, useWorkspace } from "../../lib/workspace";
 import { useUi } from "../../stores/ui";
 import { FxRatesEditor, foreignCurrencies } from "../currency/fx";
@@ -277,6 +283,11 @@ function NetWorthCard() {
     () => netWorth(financesInBase(doc.finances, doc.household.currency), doc.household),
     [doc.finances, doc.household],
   );
+  const leftOut = unconvertedSentence(
+    unconvertedHoldings(doc.finances, doc.household.currency),
+    doc.household.currency,
+    (amount, currency) => f.moneyIn(amount, currency),
+  );
   const parts = CATEGORY_ORDER.map((c, i) => ({
     c,
     v: nw.byCategory[c] ?? 0,
@@ -317,6 +328,7 @@ function NetWorthCard() {
               {f.money(nw.netWorth)}
             </div>
             <div className="mt-1.5 text-[12px] text-ink-3">Liquid {f.money(nw.liquid)}</div>
+            {leftOut ? <p className="mt-2 max-w-sm text-[12px] text-ochre">{leftOut}</p> : null}
           </div>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-[12.5px]">
             <dt className="text-ink-3">Assets</dt>
@@ -457,7 +469,7 @@ function AccountsCard({
   const [showArchived, setShowArchived] = useState(false);
   const visible = accounts.filter((a) => showArchived || !a.archived);
   const inBase = (a: Account) =>
-    toBase(a.balance, a.currency, doc.household.currency, doc.finances.fxRates);
+    toBase(a.balance, a.currency, doc.household.currency, doc.finances.fxRates) ?? 0;
   const total = accounts.filter((a) => !a.archived).reduce((s, a) => s + inBase(a), 0);
   const archivedCount = accounts.filter((a) => a.archived).length;
   const gb = doc.household.location.country === "GB";
@@ -610,6 +622,10 @@ function AccountRow({
           {info.label} · {ownerLabel(doc.household, a.owner)}
           {a.institution ? ` · ${a.institution}` : ""}
           {a.currency ? ` · ${a.currency}` : ""}
+          {a.currency &&
+          fxRateToBase(a.currency, doc.household.currency, doc.finances.fxRates) === null
+            ? " · not in the total"
+            : ""}
           {(a.jurisdiction ?? info.country ?? doc.household.location.country) !==
           doc.household.location.country
             ? ` · in ${countryLabel(a.jurisdiction ?? info.country!)}`
@@ -741,7 +757,7 @@ function AssetsCard({
     .filter((a) => !a.archived)
     .reduce(
       (s, a) =>
-        s + toBase(a.currentValue, a.currency, doc.household.currency, doc.finances.fxRates),
+        s + (toBase(a.currentValue, a.currency, doc.household.currency, doc.finances.fxRates) ?? 0),
       0,
     );
   const menu = (
@@ -833,6 +849,10 @@ function AssetsCard({
                     ? ` · loan ${f.moneyIn(a.loan.balance, a.currency ?? f.currency, true)}`
                     : ""}
                   {a.currency ? ` · ${a.currency}` : ""}
+                  {a.currency &&
+                  fxRateToBase(a.currency, doc.household.currency, doc.finances.fxRates) === null
+                    ? " · not in the total"
+                    : ""}
                   {a.country && a.country !== doc.household.location.country
                     ? ` · in ${countryLabel(a.country)}`
                     : ""}
@@ -908,12 +928,14 @@ function DebtsCard({
     debts
       .filter((d) => !d.archived)
       .reduce(
-        (s, d) => s + toBase(d.balance, d.currency, doc.household.currency, doc.finances.fxRates),
+        (s, d) =>
+          s + (toBase(d.balance, d.currency, doc.household.currency, doc.finances.fxRates) ?? 0),
         0,
       ) +
     loans.reduce(
       (s, r) =>
-        s + toBase(r.loan!.balance, r.currency, doc.household.currency, doc.finances.fxRates),
+        s +
+        (toBase(r.loan!.balance, r.currency, doc.household.currency, doc.finances.fxRates) ?? 0),
       0,
     );
   const payoff = (balance: number, apr: number, payment: number) => {
@@ -1030,6 +1052,10 @@ function DebtsCard({
                     {f.percent(d.interest.apr, 2)} ·{" "}
                     {f.moneyIn(d.monthlyPayment.value, d.currency ?? f.currency)}/mo ·{" "}
                     {payoff(d.balance, d.interest.apr, d.monthlyPayment.value)}
+                    {d.currency &&
+                    fxRateToBase(d.currency, doc.household.currency, doc.finances.fxRates) === null
+                      ? " · not in the total"
+                      : ""}
                     {d.country && d.country !== doc.household.location.country
                       ? ` · ${countryLabel(d.country)}`
                       : ""}

@@ -302,7 +302,7 @@ export function EventsSection({ kind, onOpen }: { kind: Kind; onOpen: (id: strin
                 </button>
                 <div className="text-right">
                   <div className="num text-[13px]">
-                    {f.money(e.amount.value)}
+                    {f.moneyIn(e.amount.value, e.currency ?? f.currency)}
                     <span className="text-ink-3"> {amountUnit(e) || "once"}</span>
                   </div>
                   <div className="num text-[11px] text-ink-3">

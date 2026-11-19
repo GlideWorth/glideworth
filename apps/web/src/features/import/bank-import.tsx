@@ -6,12 +6,13 @@
 import { type BankImportOutcome, importBankFileInto } from "@glideworth/importers";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { ArrowRight, CircleAlert, Landmark, Loader2, RotateCcw } from "lucide-react";
+import { ArrowRight, CircleAlert, Landmark, Loader2, RotateCcw, TriangleAlert } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardBody, CardHeader } from "../../components/ui/card";
 import { Field } from "../../components/ui/input";
+import { NumberInput } from "../../components/ui/number-input";
 import { Select } from "../../components/ui/select";
 import { SwitchField } from "../../components/ui/switch";
 import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/table";
@@ -20,6 +21,7 @@ import { useAccess } from "../../lib/access";
 import { ApiRequestError, api, type BankFileRequest } from "../../lib/api";
 import { formatDay, formatMoney, plural } from "../../lib/format";
 import { useActivePlan, useFormat, useWorkspace } from "../../lib/workspace";
+import { hasPair } from "../currency/fx";
 import { FileDrop, formatBytes, type PickedFile } from "./file-drop";
 
 /**
@@ -34,6 +36,7 @@ export function bankApplyRequest(c: {
   createMissing: boolean;
   planId: string | undefined;
   excluded: string[];
+  fxRates?: { from: string; to: string; rate: number }[];
 }): BankFileRequest {
   return {
     text: c.text,
@@ -42,8 +45,21 @@ export function bankApplyRequest(c: {
     balances: c.balances ? { createMissing: c.createMissing } : false,
     ...(c.planId ? { planId: c.planId } : {}),
     ...(c.excluded.length ? { excludeCategories: c.excluded } : {}),
+    ...(c.fxRates?.length ? { fxRates: c.fxRates } : {}),
     dryRun: false,
   };
+}
+
+/**
+ * Spending follows the plan the user picked, or the plan already open. The choice is not frozen at
+ * the moment the file is chosen: the household may still be loading then, and an unset id would
+ * drop every included expense.
+ */
+export function spendingPlanId(
+  picked: string | undefined,
+  active: string | undefined,
+): string | undefined {
+  return picked ?? active;
 }
 
 /** The server refuses a bank file over 2,000,000 characters (`MAX_BANK_FILE_CHARS` in the API). */
@@ -93,13 +109,23 @@ function BankWorkbench({ file, onReset }: { file: PickedFile; onReset: () => voi
   const qc = useQueryClient();
   const navigate = useNavigate();
   const doc = ws?.doc;
+  const base = doc?.household.currency ?? f.currency;
   const [balances, setBalances] = useState(true);
   const [createMissing, setCreateMissing] = useState(false);
   const [spending, setSpending] = useState(true);
-  const [planId, setPlanId] = useState<string | undefined>(plan?.id);
+  const [pickedPlanId, setPickedPlanId] = useState<string | undefined>(undefined);
+  const planId = spendingPlanId(pickedPlanId, plan?.id);
   const [dateFormat, setDateFormat] = useState<"auto" | "MM/DD/YYYY" | "DD/MM/YYYY">("auto");
   const [excluded, setExcluded] = useState<string[]>([]);
+  const [rateInput, setRateInput] = useState<Record<string, number | null>>({});
   const [busy, setBusy] = useState(false);
+  const proposedRates = useMemo(
+    () =>
+      Object.entries(rateInput).flatMap(([from, rate]) =>
+        rate !== null && rate > 0 ? [{ from, to: base, rate }] : [],
+      ),
+    [rateInput, base],
+  );
 
   const preview = useMemo((): { o?: BankImportOutcome; error?: string } => {
     if (!doc) return {};
@@ -113,6 +139,7 @@ function BankWorkbench({ file, onReset }: { file: PickedFile; onReset: () => voi
             balances: balances ? { createMissing } : false,
             ...(spending && planId ? { transactionsToPlanId: planId } : {}),
             excludeCategories: excluded,
+            ...(proposedRates.length ? { fxRates: proposedRates } : {}),
           },
           { dryRun: true },
         ),
@@ -120,13 +147,36 @@ function BankWorkbench({ file, onReset }: { file: PickedFile; onReset: () => voi
     } catch (e) {
       return { error: e instanceof Error ? e.message : String(e) };
     }
-  }, [doc, file.text, balances, createMissing, spending, planId, excluded, dateFormat]);
+  }, [
+    doc,
+    file.text,
+    balances,
+    createMissing,
+    spending,
+    planId,
+    excluded,
+    dateFormat,
+    proposedRates,
+  ]);
   const o = preview.o;
+  const needingRate = useMemo(() => {
+    if (!o || !doc) return [];
+    const codes = new Set<string>();
+    for (const a of o.accounts) if (a.currency && a.currency !== base) codes.add(a.currency);
+    for (const e of o.summary.events) if (e.currency && e.currency !== base) codes.add(e.currency);
+    return [...codes].filter((c) => !hasPair(doc.finances.fxRates ?? [], c, base)).sort();
+  }, [o, doc, base]);
+  const fxRates = needingRate.flatMap((c) => {
+    const rate = rateInput[c];
+    return rate !== null && rate !== undefined && rate > 0 ? [{ from: c, to: base, rate }] : [];
+  });
+  const ratesReady = needingRate.every((c) => (rateInput[c] ?? 0) > 0);
   const blocking = (o?.issues ?? []).filter((i) => i.severity === "error");
   const online = ws?.source === "api";
   const canApply =
     !!o &&
     blocking.length === 0 &&
+    ratesReady &&
     online &&
     access.canWrite &&
     (balances || (spending && !!planId));
@@ -147,6 +197,7 @@ function BankWorkbench({ file, onReset }: { file: PickedFile; onReset: () => voi
           createMissing,
           planId: spending ? planId : undefined,
           excluded,
+          fxRates,
         }),
       );
       await qc.invalidateQueries({ queryKey: ["workspace"] });
@@ -240,8 +291,8 @@ function BankWorkbench({ file, onReset }: { file: PickedFile; onReset: () => voi
                   {(id) => (
                     <Select
                       id={id}
-                      value={planId}
-                      onValueChange={setPlanId}
+                      value={planId ?? ""}
+                      onValueChange={setPickedPlanId}
                       placeholder="Choose a plan"
                       options={(doc?.plans ?? []).map((p) => ({ value: p.id, label: p.name }))}
                     />
@@ -332,7 +383,14 @@ function BankWorkbench({ file, onReset }: { file: PickedFile; onReset: () => voi
                     ? `${plural(o.summary.transactions, "transaction")} · ${formatDay(o.summary.range.from, f.locale)} to ${formatDay(o.summary.range.to, f.locale)}`
                     : plural(o.summary.transactions, "transaction")
                 }
-                title={`Spending: ${money(o.summary.totalAnnual)} a year`}
+                title={(() => {
+                  const currencies = [
+                    ...new Set(o.summary.categories.map((c) => c.currency ?? base)),
+                  ];
+                  return currencies.length === 1
+                    ? `Spending: ${money(o.summary.totalAnnual, currencies[0] === base ? undefined : currencies[0])} a year`
+                    : "Spending by category";
+                })()}
               />
               {o.summary.categories.length === 0 ? (
                 <CardBody className="text-ink-3">No spending found.</CardBody>
@@ -349,7 +407,7 @@ function BankWorkbench({ file, onReset }: { file: PickedFile; onReset: () => voi
                     {o.summary.categories.map((c) => (
                       <TR key={c.category}>
                         <TD>{c.category}</TD>
-                        <TD numeric>{money(c.annual)}</TD>
+                        <TD numeric>{money(c.annual, c.currency)}</TD>
                         <TD numeric>
                           <input
                             type="checkbox"
@@ -430,11 +488,50 @@ function BankWorkbench({ file, onReset }: { file: PickedFile; onReset: () => voi
         </>
       ) : null}
 
-      <div className="flex items-center justify-end gap-3">
+      {needingRate.length ? (
+        <div
+          role="alert"
+          className="flex flex-col gap-3 rounded-lg border border-ochre/40 bg-ochre-soft px-3 py-3 text-[13px] text-ochre"
+        >
+          <div className="flex gap-2">
+            <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+            <p>
+              {needingRate.length === 1
+                ? `${needingRate[0]} has no exchange rate to ${base}.`
+                : `${needingRate.join(", ")} have no exchange rate to ${base}.`}{" "}
+              Enter one before applying. Without it the plan cannot be simulated, and that money is
+              left out of net worth. The rate is saved with your other exchange rates.
+            </p>
+          </div>
+          {needingRate.map((c) => (
+            <label key={c} className="flex flex-wrap items-center gap-2 text-ink">
+              <span className="text-[12.5px] font-medium">1 {c} equals</span>
+              <NumberInput
+                aria-label={`${c} to ${base} exchange rate`}
+                decimals={4}
+                className="w-36"
+                value={rateInput[c] ?? null}
+                onValueChange={(v) => setRateInput((prev) => ({ ...prev, [c]: v }))}
+              />
+              <span className="text-[12.5px] font-medium">{base}</span>
+            </label>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap items-center justify-end gap-3">
         {!online ? (
           <span className="text-[12px] text-ink-3">The server is offline; preview only.</span>
         ) : !access.canWrite ? (
           <span className="text-[12px] text-ink-3">View only: you cannot import.</span>
+        ) : !ratesReady ? (
+          <span className="text-[12px] text-ochre">
+            Enter{" "}
+            {needingRate.length === 1
+              ? `a ${needingRate[0]} to ${base} rate`
+              : "the missing exchange rates"}{" "}
+            to apply.
+          </span>
         ) : null}
         <Button variant="primary" onClick={apply} disabled={!canApply || busy}>
           {busy ? <Loader2 className="animate-spin" /> : <ArrowRight />} Apply import

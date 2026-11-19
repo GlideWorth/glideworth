@@ -74,8 +74,12 @@ export function Timeline({
   const width = Math.ceil(years * px);
   const x = (m: number) => ((Math.min(Math.max(m, start), end) - start) / 12) * px;
 
-  const amountLabel = (e: { amount: { value: number }; type: string; frequency: Frequency }) =>
-    `${f.money(e.amount.value, true)}${amountUnit(e)}`;
+  const amountLabel = (e: {
+    amount: { value: number };
+    type: string;
+    frequency: Frequency;
+    currency?: string;
+  }) => `${f.moneyIn(e.amount.value, e.currency ?? f.currency, true)}${amountUnit(e)}`;
 
   const toBars = (
     items: (Plan["income"][number] | Plan["expenses"][number])[],

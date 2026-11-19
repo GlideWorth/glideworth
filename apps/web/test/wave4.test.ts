@@ -14,7 +14,13 @@ import {
   planSettingsFor,
   simplificationsFor,
 } from "../src/lib/countries";
-import { financesInBase, fxRateToBase, toBase } from "../src/lib/fx-math";
+import {
+  financesInBase,
+  fxRateToBase,
+  toBase,
+  unconvertedHoldings,
+  unconvertedSentence,
+} from "../src/lib/fx-math";
 
 const household = (country: string, region?: string): Household =>
   ({
@@ -121,6 +127,31 @@ describe("multi-currency helpers", () => {
     };
     expect(financesInBase(fin, "GBP").accounts[0]!.balance).toBe(800);
     expect(foreignCurrencies({ household: doc.household, finances: fin })).toEqual(["USD"]);
+  });
+  it("leaves a foreign balance out of the total when no rate converts it", () => {
+    const doc = createUkSampleDocument();
+    const gbp = doc.finances.accounts.reduce((s, a) => s + a.balance, 0);
+    const fin = {
+      ...doc.finances,
+      accounts: [
+        ...doc.finances.accounts,
+        {
+          ...doc.finances.accounts[0]!,
+          id: "usd-cash",
+          name: "Current account",
+          balance: 12_000,
+          currency: "USD",
+        },
+      ],
+    };
+    expect(toBase(12_000, "USD", "GBP", [])).toBeNull();
+    const converted = financesInBase(fin, "GBP");
+    expect(converted.accounts.find((a) => a.id === "usd-cash")!.balance).toBe(0);
+    expect(converted.accounts.reduce((s, a) => s + a.balance, 0)).toBe(gbp);
+    expect(unconvertedHoldings(fin, "GBP")).toEqual([{ currency: "USD", amount: 12_000 }]);
+    expect(unconvertedSentence(unconvertedHoldings(fin, "GBP"), "GBP", (n, c) => `${c} ${n}`)).toBe(
+      "USD 12000 is not included: USD has no exchange rate to GBP.",
+    );
   });
 });
 

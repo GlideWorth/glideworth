@@ -18,7 +18,7 @@ import { LEGAL_URL, SUPPORT_EMAIL } from "../legal";
 import { nav } from "../next";
 import { Loading, LoadError } from "../settings-kit";
 import { describeError, FormAlert, isCode, Notice } from "../ui";
-import { useLocale } from "../../../lib/workspace";
+import { useDocumentLocale, useLocale } from "../../../lib/workspace";
 
 /** Only ever send the browser to Stripe's https pages (the server decides the URL; we check it anyway). */
 export function goToStripe(url: string): boolean {
@@ -77,7 +77,10 @@ export function BillingSection() {
     }
   }, [returned, confirmed, duringTrial, qc, posthog]);
 
-  if (billing.isLoading) return <Loading what="billing" />;
+  // Dates use the household locale. While the document is still loading, the browser locale would
+  // format them (en-US on a machine whose household is en-GB) and the page would look finished.
+  const localeReady = useDocumentLocale();
+  if (billing.isLoading || !localeReady) return <Loading what="billing" />;
   if (billing.isError || !billing.data)
     return (
       <LoadError error={billing.error} what="Billing" onRetry={() => void billing.refetch()} />

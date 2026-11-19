@@ -6,12 +6,13 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Check, ChevronsUpDown, ListTree, SlidersHorizontal, Star } from "lucide-react";
 import { DropdownMenu as M } from "radix-ui";
 import { cn } from "../../lib/cn";
-import { useActivePlan } from "../../lib/workspace";
+import { useActivePlan, useWorkspace } from "../../lib/workspace";
 import { useUi } from "../../stores/ui";
 import { appearanceColor } from "../ui/appearance-picker";
 
 export function PlanSwitcher({ className }: { className?: string }) {
   const { plan, plans } = useActivePlan();
+  const pending = useWorkspace().isPending;
   const setActive = useUi((s) => s.setActivePlan);
   const navigate = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
@@ -25,7 +26,13 @@ export function PlanSwitcher({ className }: { className?: string }) {
     <M.Root>
       <M.Trigger
         data-tour="plan-switcher"
-        aria-label={plan ? `Active plan: ${plan.name}. Change plan` : "Choose a plan"}
+        aria-label={
+          pending
+            ? "Loading plans"
+            : plan
+              ? `Active plan: ${plan.name}. Change plan`
+              : "Choose a plan"
+        }
         className={cn(
           "group flex h-8 pointer-coarse:h-11 min-w-0 items-center gap-1.5 rounded-md sm:gap-2 border border-border bg-surface pr-2 pl-2.5 text-left text-[13px] shadow-card transition-colors hover:border-border-strong data-[state=open]:border-focus",
           className,
@@ -36,7 +43,9 @@ export function PlanSwitcher({ className }: { className?: string }) {
           className="size-2 shrink-0 rounded-full"
           style={{ background: appearanceColor(plan?.appearance?.color, 0) }}
         />
-        <span className="min-w-0 flex-1 truncate font-medium">{plan?.name ?? "No plans yet"}</span>
+        <span className="min-w-0 flex-1 truncate font-medium">
+          {pending ? "Loading…" : (plan?.name ?? "No plans yet")}
+        </span>
         {plan?.isMain ? (
           <Star
             className="size-3 shrink-0 fill-ochre text-ochre max-sm:hidden"

@@ -9,8 +9,7 @@ import { NotFound } from "../../components/layout/route-states";
 import { Select } from "../../components/ui/select";
 import { useCloudSession, useMode } from "../../lib/auth";
 import { cn } from "../../lib/cn";
-import { useSettings } from "../../lib/settings";
-import { useWorkspace } from "../../lib/workspace";
+import { serverReachable, useWorkspace } from "../../lib/workspace";
 import { ShareLinksPanel } from "../share/share-links";
 import { AboutSection } from "./about-section";
 import { AiSection } from "./ai-section";
@@ -74,27 +73,28 @@ export function SettingsPage() {
   const mode = useMode();
   const sections = sectionsForMode(mode);
   const current = settingsSection(params.section, mode);
-  const { persisted } = useSettings();
-  const { data: ws } = useWorkspace();
+  const { data: ws, isPending } = useWorkspace();
   const noWorkspace = useCloudSession()?.workspace === null;
   // Unknown ids (and a hosted section on a self-host server) are not this page.
   if (!current) return <NotFound />;
   const isCloudSection = CLOUD_SECTION_IDS.includes(current.id);
   const Body = BODY[current.id] ?? ProfileSection;
   const groups = [...new Set(sections.map((s) => s.group))];
-  return (
-    <Page
-      title="Settings"
-      description={
-        persisted === "api"
+  // `persisted !== "api"` used to mean "offline", including while the workspace was still loading
+  // and while a new workspace had no household yet. Only a failed request is an outage.
+  const description = !ws
+    ? isPending
+      ? "Loading your settings…"
+      : "The server is offline: settings are kept in this browser until it is back."
+    : noWorkspace || (mode === "cloud" && ws.status === 403)
+      ? "You are not in a workspace, so settings are kept in this browser only."
+      : ws.firstRun
+        ? "Nothing is set up yet, so settings are kept in this browser for now."
+        : serverReachable(ws)
           ? "Changes save as you make them."
-          : noWorkspace || (mode === "cloud" && ws?.status === 403)
-            ? "You are not in a workspace, so settings are kept in this browser only."
-            : ws?.firstRun
-              ? "Nothing is set up yet, so settings are kept in this browser for now."
-              : "The server is offline: settings are kept in this browser until it is back."
-      }
-    >
+          : "The server is offline: settings are kept in this browser until it is back.";
+  return (
+    <Page title="Settings" description={description}>
       <div className="grid gap-6 md:grid-cols-[200px_minmax(0,1fr)]">
         <div className="md:hidden">
           <Select

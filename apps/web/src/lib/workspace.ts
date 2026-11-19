@@ -108,6 +108,24 @@ export function useServerUnreachable(): boolean {
   return data?.source === "api" && isError && error instanceof ServerUnreachableError;
 }
 
+/**
+ * The API answered. A brand-new workspace (`firstRun`) has no household yet, so the app shows the
+ * bundled sample: that is not an outage. Offline is only the sample fallback after a failed request.
+ */
+export function serverReachable(ws: Pick<Workspace, "source" | "firstRun"> | undefined): boolean {
+  return ws?.source === "api" || ws?.firstRun === true;
+}
+
+/**
+ * The household's locale once its document has loaded. Undefined while that load is still in
+ * flight, so a screen does not format a date in the browser's locale and then correct it.
+ */
+export function useDocumentLocale(): string | undefined {
+  const { data, isPending } = useWorkspace();
+  if (isPending || !data) return undefined;
+  return data.doc.settings?.locale ?? data.doc.household.locale ?? navigator.language;
+}
+
 export function useActivePlan(): {
   plan: Plan | undefined;
   plans: Plan[];

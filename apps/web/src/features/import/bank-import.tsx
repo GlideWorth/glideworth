@@ -20,9 +20,11 @@ import { toast } from "../../components/ui/toaster";
 import { useAccess } from "../../lib/access";
 import { ApiRequestError, api, type BankFileRequest } from "../../lib/api";
 import { formatDay, formatMoney, plural } from "../../lib/format";
-import { useActivePlan, useFormat, useWorkspace } from "../../lib/workspace";
+import { makeFormatter, useActivePlan, useFormat } from "../../lib/workspace";
 import { hasPair } from "../currency/fx";
 import { FileDrop, formatBytes, type PickedFile } from "./file-drop";
+import { persistWorkspace } from "./persist";
+import { useImportTarget } from "./starter";
 
 /**
  * The apply request, built from the same choices as the in-browser preview so the server reads the
@@ -102,19 +104,27 @@ export function BankFileImport() {
 }
 
 function BankWorkbench({ file, onReset }: { file: PickedFile; onReset: () => void }) {
-  const { data: ws } = useWorkspace();
+  const { ws, doc, reachable } = useImportTarget();
   const { plan } = useActivePlan();
   const access = useAccess();
-  const f = useFormat();
+  const workspaceFormat = useFormat();
+  const f =
+    ws?.firstRun && doc
+      ? makeFormatter({
+          locale: doc.settings?.locale ?? doc.household.locale,
+          currency: doc.household.currency,
+        })
+      : workspaceFormat;
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const doc = ws?.doc;
   const base = doc?.household.currency ?? f.currency;
   const [balances, setBalances] = useState(true);
   const [createMissing, setCreateMissing] = useState(false);
   const [spending, setSpending] = useState(true);
   const [pickedPlanId, setPickedPlanId] = useState<string | undefined>(undefined);
   const planId = spendingPlanId(pickedPlanId, plan?.id);
+  // A new workspace has no saved plan yet, so spending lands on the blank plan this import creates.
+  const chosenPlanId = planId ?? doc?.plans[0]?.id;
   const [dateFormat, setDateFormat] = useState<"auto" | "MM/DD/YYYY" | "DD/MM/YYYY">("auto");
   const [excluded, setExcluded] = useState<string[]>([]);
   const [rateInput, setRateInput] = useState<Record<string, number | null>>({});
@@ -137,7 +147,7 @@ function BankWorkbench({ file, onReset }: { file: PickedFile; onReset: () => voi
           {
             ...(dateFormat !== "auto" ? { dateFormat } : {}),
             balances: balances ? { createMissing } : false,
-            ...(spending && planId ? { transactionsToPlanId: planId } : {}),
+            ...(spending && chosenPlanId ? { transactionsToPlanId: chosenPlanId } : {}),
             excludeCategories: excluded,
             ...(proposedRates.length ? { fxRates: proposedRates } : {}),
           },
@@ -153,7 +163,7 @@ function BankWorkbench({ file, onReset }: { file: PickedFile; onReset: () => voi
     balances,
     createMissing,
     spending,
-    planId,
+    chosenPlanId,
     excluded,
     dateFormat,
     proposedRates,
@@ -172,14 +182,14 @@ function BankWorkbench({ file, onReset }: { file: PickedFile; onReset: () => voi
   });
   const ratesReady = needingRate.every((c) => (rateInput[c] ?? 0) > 0);
   const blocking = (o?.issues ?? []).filter((i) => i.severity === "error");
-  const online = ws?.source === "api";
+  const offline = !!ws && !reachable;
   const canApply =
     !!o &&
     blocking.length === 0 &&
     ratesReady &&
-    online &&
+    reachable &&
     access.canWrite &&
-    (balances || (spending && !!planId));
+    (balances || (spending && !!chosenPlanId));
   const money = (v: number, currency?: string) =>
     formatMoney(v, { locale: f.locale, currency: currency ?? f.currency });
 
@@ -187,19 +197,38 @@ function BankWorkbench({ file, onReset }: { file: PickedFile; onReset: () => voi
     if (!doc || !o) return;
     setBusy(true);
     try {
-      await api.importBankFile(
-        doc.household.id,
-        bankApplyRequest({
-          text: file.text,
-          format: o.format,
-          dateFormat,
-          balances,
-          createMissing,
-          planId: spending ? planId : undefined,
-          excluded,
-          fxRates,
-        }),
-      );
+      if (ws?.firstRun) {
+        // Same choices as the preview, written onto the blank plan and created on the server.
+        const applied = importBankFileInto(
+          doc,
+          file.text,
+          {
+            ...(dateFormat !== "auto" ? { dateFormat } : {}),
+            balances: balances ? { createMissing } : false,
+            ...(spending && chosenPlanId ? { transactionsToPlanId: chosenPlanId } : {}),
+            excludeCategories: excluded,
+            ...(fxRates.length ? { fxRates } : {}),
+          },
+          { dryRun: false },
+        );
+        const block = applied.issues.find((i) => i.severity === "error");
+        if (block) throw new Error(block.message);
+        await persistWorkspace(qc, applied.document);
+      } else {
+        await api.importBankFile(
+          doc.household.id,
+          bankApplyRequest({
+            text: file.text,
+            format: o.format,
+            dateFormat,
+            balances,
+            createMissing,
+            planId: spending ? chosenPlanId : undefined,
+            excluded,
+            fxRates,
+          }),
+        );
+      }
       await qc.invalidateQueries({ queryKey: ["workspace"] });
       await qc.invalidateQueries({ queryKey: ["snapshots"] });
       const rec = o.reconciliation;
@@ -210,7 +239,7 @@ function BankWorkbench({ file, onReset }: { file: PickedFile; onReset: () => voi
             ? `${rec.matched.length} ${rec.matched.length === 1 ? "balance" : "balances"} updated`
             : null,
           rec?.created.length ? `${rec.created.length} added` : null,
-          spending && planId ? `${o.summary.events.length} yearly expenses added` : null,
+          spending && chosenPlanId ? `${o.summary.events.length} yearly expenses added` : null,
         ]
           .filter(Boolean)
           .join(", "),
@@ -218,7 +247,9 @@ function BankWorkbench({ file, onReset }: { file: PickedFile; onReset: () => voi
         action: {
           label: "View",
           onClick: () =>
-            void navigate({ to: spending && planId ? `/plans/${planId}` : "/finances" }),
+            void navigate({
+              to: spending && chosenPlanId ? `/plans/${chosenPlanId}` : "/finances",
+            }),
         },
       });
       onReset();
@@ -291,7 +322,7 @@ function BankWorkbench({ file, onReset }: { file: PickedFile; onReset: () => voi
                   {(id) => (
                     <Select
                       id={id}
-                      value={planId ?? ""}
+                      value={chosenPlanId ?? ""}
                       onValueChange={setPickedPlanId}
                       placeholder="Choose a plan"
                       options={(doc?.plans ?? []).map((p) => ({ value: p.id, label: p.name }))}
@@ -520,8 +551,12 @@ function BankWorkbench({ file, onReset }: { file: PickedFile; onReset: () => voi
       ) : null}
 
       <div className="flex flex-wrap items-center justify-end gap-3">
-        {!online ? (
+        {offline ? (
           <span className="text-[12px] text-ink-3">The server is offline; preview only.</span>
+        ) : ws?.firstRun ? (
+          <span className="text-[12px] text-ink-3">
+            Nothing is set up yet. Applying this import creates your plan.
+          </span>
         ) : !access.canWrite ? (
           <span className="text-[12px] text-ink-3">View only: you cannot import.</span>
         ) : !ratesReady ? (

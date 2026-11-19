@@ -30,9 +30,11 @@ import { toast } from "../../components/ui/toaster";
 import { api } from "../../lib/api";
 import { cn } from "../../lib/cn";
 import { formatMoney, plural } from "../../lib/format";
-import { useActivePlan, useFormat, useWorkspace } from "../../lib/workspace";
+import { makeFormatter, useActivePlan, useFormat } from "../../lib/workspace";
 import { FileDrop, formatBytes, type PickedFile } from "./file-drop";
 import { CATEGORY_META } from "./import-model";
+import { persistWorkspace } from "./persist";
+import { useImportTarget } from "./starter";
 
 const KINDS: { value: CsvKind; label: string; description: string }[] = [
   {
@@ -150,13 +152,20 @@ function CsvWorkbench({
   file: PickedFile;
   onReset: () => void;
 }) {
-  const { data: ws } = useWorkspace();
+  const { ws, doc, reachable } = useImportTarget();
   const { plan } = useActivePlan();
-  const f = useFormat();
+  const workspaceFormat = useFormat();
+  // A new workspace previews against a blank plan, so money uses that plan's currency, not the sample's.
+  const f =
+    ws?.firstRun && doc
+      ? makeFormatter({
+          locale: doc.settings?.locale ?? doc.household.locale,
+          currency: doc.household.currency,
+        })
+      : workspaceFormat;
   const qc = useQueryClient();
   const navigate = useNavigate();
   const posthog = usePostHog();
-  const doc = ws?.doc;
   const [preset, setPreset] = useState<string>(AUTO);
   const [locale, setLocale] = useState<"auto" | "en-GB" | "en-US">("auto");
   const [decimal, setDecimal] = useState<"auto" | "." | ",">("auto");
@@ -167,6 +176,7 @@ function CsvWorkbench({
   const [createMissing, setCreateMissing] = useState(true);
   const [accountMap, setAccountMap] = useState<Record<string, string>>({});
   const [planId, setPlanId] = useState<string | undefined>(plan?.id);
+  const chosenPlanId = planId ?? doc?.plans[0]?.id;
   const [annualise, setAnnualise] =
     useState<NonNullable<TransactionOptions["annualise"]>>("last-12-months");
   const [excluded, setExcluded] = useState<string[]>([]);
@@ -182,7 +192,15 @@ function CsvWorkbench({
     defaultDate: new Date().toISOString().slice(0, 10),
   };
   const deferred = useDeferredValue(
-    JSON.stringify([options, createMissing, accountMap, planId, annualise, excluded, progressMode]),
+    JSON.stringify([
+      options,
+      createMissing,
+      accountMap,
+      chosenPlanId,
+      annualise,
+      excluded,
+      progressMode,
+    ]),
   );
   const outcome = useMemo((): { o?: CsvImportOutcome; error?: string } => {
     if (!doc) return {};
@@ -231,8 +249,8 @@ function CsvWorkbench({
   const o = outcome.o;
   const a = o?.analysis;
   const blocking = (o?.issues ?? []).filter((i) => i.severity === "error");
-  const canApply =
-    !!o && !!a && a.missing.length === 0 && blocking.length === 0 && ws?.source === "api";
+  const offline = !!ws && !reachable;
+  const canApply = !!o && !!a && a.missing.length === 0 && blocking.length === 0 && reachable;
 
   const apply = async () => {
     if (!o || !doc || !ws) return;
@@ -240,7 +258,50 @@ function CsvWorkbench({
     try {
       const hh = doc.household.id;
       let summary = "";
-      if (kind === "account-balances" && o.reconciliation) {
+      // No household on the server yet: save the blank plan with this import on it. The preview
+      // document is that plan, not the bundled sample.
+      if (ws.firstRun) {
+        const applied =
+          kind === "account-balances"
+            ? importCsvInto(
+                doc,
+                file.text,
+                { kind, options: { ...options, createMissing, accountMap } },
+                { dryRun: false },
+              )
+            : kind === "progress-snapshots"
+              ? importCsvInto(
+                  doc,
+                  file.text,
+                  { kind, options: { ...options, mode: progressMode } },
+                  { dryRun: false },
+                )
+              : importCsvInto(
+                  doc,
+                  file.text,
+                  {
+                    kind,
+                    planId: chosenPlanId ?? "",
+                    options: { ...options, annualise, excludeCategories: excluded },
+                  },
+                  { dryRun: false },
+                );
+        const block = applied.issues.find((i) => i.severity === "error");
+        if (block) throw new Error(block.message);
+        await persistWorkspace(qc, applied.document);
+        const pid = chosenPlanId;
+        const target = applied.document.plans.find((p) => p.id === pid);
+        if (kind === "account-balances" && applied.reconciliation) {
+          const rec = applied.reconciliation;
+          summary = `${rec.matched.length} ${rec.matched.length === 1 ? "balance" : "balances"} updated${rec.created.length ? `, ${rec.created.length} ${rec.created.length === 1 ? "account" : "accounts"} added` : ""}`;
+        } else if (kind === "progress-snapshots" && applied.snapshots) {
+          summary = `${plural(applied.snapshots.length, "snapshot")} added to Progress`;
+        } else if (kind === "transactions" && applied.summary) {
+          const before = new Set(doc.plans.find((p) => p.id === pid)?.expenses.map((e) => e.id));
+          const added = (target?.expenses ?? []).filter((e) => !before.has(e.id));
+          summary = `${added.length} yearly expenses added to “${target?.name ?? "the plan"}”`;
+        }
+      } else if (kind === "account-balances" && o.reconciliation) {
         const rec = o.reconciliation;
         const next = o.document;
         for (const c of rec.created) {
@@ -269,7 +330,7 @@ function CsvWorkbench({
         );
         summary = `${plural(o.snapshots.length, "snapshot")} added to Progress`;
       } else if (kind === "transactions" && o.summary) {
-        const pid = planId ?? doc.plans[0]?.id;
+        const pid = chosenPlanId;
         const target = o.document.plans.find((p) => p.id === pid);
         const before = new Set(doc.plans.find((p) => p.id === pid)?.expenses.map((e) => e.id));
         const added = (target?.expenses ?? []).filter((e) => !before.has(e.id));
@@ -291,7 +352,7 @@ function CsvWorkbench({
                 kind === "progress-snapshots"
                   ? "/progress"
                   : kind === "transactions"
-                    ? `/plans/${planId}`
+                    ? `/plans/${chosenPlanId}`
                     : "/finances",
             }),
         },
@@ -522,7 +583,7 @@ function CsvWorkbench({
                 {(id) => (
                   <Select
                     id={id}
-                    value={planId}
+                    value={chosenPlanId}
                     onValueChange={setPlanId}
                     placeholder="Choose a plan"
                     options={doc.plans.map((p) => ({ value: p.id, label: p.name }))}
@@ -577,9 +638,13 @@ function CsvWorkbench({
             />
           ) : null}
           {(o?.issues ?? []).length ? <CsvIssues issues={o!.issues} /> : null}
-          {ws?.source !== "api" ? (
+          {offline ? (
             <p className="rounded-md bg-ochre-soft px-3 py-2 text-[12.5px] text-ochre">
               The Glideworth server is not reachable, so this preview cannot be applied right now.
+            </p>
+          ) : ws?.firstRun ? (
+            <p className="rounded-md bg-surface-2 px-3 py-2 text-[12.5px] text-ink-2">
+              Nothing is set up yet. Applying this import creates your plan.
             </p>
           ) : null}
         </CardBody>

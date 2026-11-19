@@ -8,10 +8,12 @@
 # must exist (create it once from the default branch) and must NOT be protected.
 name: CLA
 
+# zizmor flags both triggers below (dangerous-triggers). They are what a CLA bot needs, and this workflow is
+# safe with them only because it never checks out or runs pull-request content (see above).
 on:
-  issue_comment:
+  issue_comment: # zizmor: ignore[dangerous-triggers]
     types: [created]
-  pull_request_target:
+  pull_request_target: # zizmor: ignore[dangerous-triggers]
     types: [opened, closed, synchronize]
 
 permissions:
@@ -33,7 +35,9 @@ jobs:
       )
     steps:
       - name: CLA assistant
-        uses: contributor-assistant/github-action@ca4a40a7d1004f18d9960b404b97e5f30a505a08 # v2.6.1
+        # The action's repository is archived (no more fixes). Accepted until it is replaced: it is pinned
+        # to a commit and runs no pull-request code.
+        uses: contributor-assistant/github-action@ca4a40a7d1004f18d9960b404b97e5f30a505a08 # v2.6.1 # zizmor: ignore[archived-uses]
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

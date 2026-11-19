@@ -1,5 +1,7 @@
 # Glideworth
 
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/GlideWorth/glideworth/badge)](https://scorecard.dev/viewer/?uri=github.com/GlideWorth/glideworth)
+
 Glideworth is an open, self-hosted personal-finance and life-planning app. You describe your household, accounts,
 income, spending and milestones; Glideworth projects your finances decades ahead, in today's money or in future
 money, and tells you your chance of success, why a plan fails when it does, and what you could change.

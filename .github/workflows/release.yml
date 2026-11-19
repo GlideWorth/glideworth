@@ -1,0 +1,121 @@
+# Cut a release of Glideworth: tag the public repository's main, publish a GitHub release with notes, and
+# start the Docker workflow, which builds, smoke-tests and pushes ghcr.io/glideworth/glideworth:<version>.
+#
+# Run it from the Actions tab of GlideWorth/glideworth ("Run workflow", enter a version such as 1.0.0).
+#
+# Why not release-please: the public repository is a mirror that sync-public.yml overwrites on every push to
+# the internal main, so a release tool cannot commit a changelog or version bump into it, and the commit
+# subjects are plain sentences, not Conventional Commits. The release notes here are the commit subjects since
+# the previous release; each synced commit lists the internal changes it carries as "- " lines.
+#
+# A tag that the workflow token creates does not start other workflows, so the image build is started with
+# workflow_dispatch on the new tag (the one event the token may trigger). docker.yml handles that run the same
+# way as a pushed tag.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version without the leading v, e.g. 1.0.0 or 1.1.0-beta.1"
+        type: string
+        required: true
+
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Tag, release and build the image
+    # Public repository only: its main is what self-hosters run and what the image is built from.
+    if: github.repository == 'GlideWorth/glideworth' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # create the tag and the release
+      actions: write # start docker.yml on the new tag
+    steps:
+      - name: Check out (full history and tags)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check the version
+        id: version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if ! printf '%s' "$VERSION" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::'$VERSION' is not a version like 1.0.0 or 1.1.0-beta.1 (no leading v)"
+            exit 1
+          fi
+          tag="v$VERSION"
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "::error::$tag already exists"
+            exit 1
+          fi
+          prerelease=false
+          case "$VERSION" in *-*) prerelease=true ;; esac
+          echo "tag=$tag" >>"$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >>"$GITHUB_OUTPUT"
+
+      - name: Write the release notes
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          notes="$RUNNER_TEMP/notes.md"
+          # The newest earlier release tag (pre-releases included), or none for the first release.
+          prev="$(git tag --list 'v*' --sort=-v:refname | head -1)"
+          {
+            echo "## Changes"
+            echo
+            if [ -z "$prev" ]; then
+              echo "First release."
+            else
+              # Each synced commit either is one change (its subject) or lists several as "- " lines.
+              for sha in $(git log --reverse --format=%H "$prev..HEAD"); do
+                bullets="$(git log -1 --format=%b "$sha" | grep '^- ' || true)"
+                if [ -n "$bullets" ]; then
+                  printf '%s\n' "$bullets"
+                else
+                  printf -- '- %s\n' "$(git log -1 --format=%s "$sha")"
+                fi
+              done
+              echo
+              echo "Full diff: https://github.com/$REPO/compare/$prev...$TAG"
+            fi
+            echo
+            echo "## Docker image"
+            echo
+            echo '```sh'
+            echo "docker pull ghcr.io/glideworth/glideworth:${TAG#v}"
+            echo '```'
+            echo
+            echo "The image (linux/amd64 and linux/arm64) appears a few minutes after this release, once the Docker workflow finishes. Upgrade steps: docs/SELF-HOSTING.md."
+          } >"$notes"
+          cat "$notes"
+
+      - name: Create the tag and the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+          SHA: ${{ github.sha }}
+        run: |
+          flags=()
+          if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); else flags+=(--latest); fi
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$SHA" --title "$TAG" \
+            --notes-file "$RUNNER_TEMP/notes.md" "${flags[@]}"
+
+      - name: Build and publish the image
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          gh workflow run docker.yml --repo "$GITHUB_REPOSITORY" --ref "$TAG"
+          echo "::notice title=Image build started::Docker workflow running on $TAG; see the Actions tab."

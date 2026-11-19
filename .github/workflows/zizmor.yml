@@ -1,0 +1,47 @@
+# zizmor: static analysis of the GitHub Actions workflows themselves (template injection, over-broad token
+# permissions, unpinned actions, credentials left in checkouts, dangerous triggers, archived actions).
+# Runs only when a workflow or action file changes. Fails on any finding; to accept one, add an inline
+# "# zizmor: ignore[<audit>]" comment on the flagged line with the reason next to it.
+#
+# Locally: uvx zizmor .github/workflows/
+name: zizmor
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+      - ".github/actions/**"
+      - ".github/dependabot.yml"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/**"
+      - ".github/actions/**"
+      - ".github/dependabot.yml"
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zizmor:
+    name: Audit workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # advanced-security: false prints findings in the log and fails the job instead of uploading SARIF,
+      # so it works the same in the private internal repository (no code scanning) and the public one.
+      - name: Run zizmor
+        uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
+        with:
+          advanced-security: false

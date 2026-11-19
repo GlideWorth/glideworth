@@ -11,7 +11,7 @@ export interface NavLink {
 export const primaryNav: NavLink[] = [
   { label: "Features", href: "/features/" },
   { label: "Pricing", href: "/pricing/" },
-  { label: "API & MCP", href: "/api/" },
+  { label: "Calculators", href: "/tools/" },
   { label: "Countries", href: "/planning/" },
   { label: "Docs", href: "/docs/" },
   { label: "Blog", href: "/blog/" },
@@ -24,7 +24,8 @@ export const footerNav: { heading: string; links: NavLink[] }[] = [
     links: [
       { label: "Features", href: "/features/" },
       { label: "Pricing", href: "/pricing/" },
-      { label: "API & MCP for AI agents", href: "/api/" },
+      { label: "ChatGPT and Claude on your plan", href: "/features/mcp-server/" },
+      { label: "API & MCP for developers", href: "/api/" },
       { label: "Changelog", href: "/changelog/" },
       { label: "Roadmap", href: "/roadmap/" },
     ],
@@ -51,7 +52,6 @@ export const footerNav: { heading: string; links: NavLink[] }[] = [
     heading: "Planning",
     links: [
       { label: "Planning by country", href: "/planning/" },
-      { label: "Moving country", href: "/planning/moving-country/" },
       { label: "Glideworth and Boldin", href: "/compare/boldin/" },
       { label: "Glideworth and spreadsheets", href: "/compare/spreadsheets/" },
       { label: "Glideworth and ProjectionLab", href: "/compare/projectionlab/" },

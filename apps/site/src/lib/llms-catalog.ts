@@ -101,7 +101,7 @@ async function document(full: boolean): Promise<LlmsDoc> {
       },
       {
         heading: "Planning by country",
-        links: [...links(["/planning/", "/planning/moving-country/"]), ...countryLinks],
+        links: [...links(["/planning/"]), ...countryLinks],
       },
       {
         heading: "Comparisons",

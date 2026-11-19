@@ -101,6 +101,10 @@ export default defineConfig({
   // Pages that were merged into another: the old address forwards to the new one.
   redirects: {
     "/docs/api-and-mcp/connect-an-ai-assistant/": "/docs/api-and-mcp/mcp-setup/",
+    // Moving-country planning was removed from the product (2026-11); its pages forward to the nearest topic.
+    "/planning/moving-country/": "/planning/",
+    "/features/cross-border/": "/features/tax-estimates/",
+    "/blog/planning-a-move-abroad-taxes-pensions/": "/blog/",
   },
   // No telemetry from the dev toolbar either; the scripts also set ASTRO_TELEMETRY_DISABLED.
   devToolbar: { enabled: false },

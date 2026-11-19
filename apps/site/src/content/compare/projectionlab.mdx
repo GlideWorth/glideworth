@@ -1,9 +1,9 @@
 ---
 title: Glideworth and ProjectionLab compared
-description: "A dated, sourced comparison of Glideworth and ProjectionLab: who each suits, price, tax and simulation, data, automation, and moving over by JSON import."
+description: "A dated, sourced comparison of Glideworth and ProjectionLab: who each suits, scenarios, guardrails, couples, price, self-hosting, AI and moving over."
 ogTitle: Glideworth vs ProjectionLab
 competitor: ProjectionLab
-checkedOn: 2026-11-16
+checkedOn: 2026-11-19
 sources:
   - label: ProjectionLab pricing page
     url: https://projectionlab.com/pricing
@@ -19,6 +19,14 @@ sources:
     url: https://projectionlab.com/changelog
   - label: ProjectionLab about page
     url: https://projectionlab.com/about
+  - label: "ProjectionLab: Important Update on Self-Hosting ProjectionLab (6 March 2025)"
+    url: https://projectionlab.com/help/offline-version
+  - label: "ProjectionLab roadmap: branching plan model with variables shared with parent plan"
+    url: https://changemap.co/projectifi/projectifi/task/6243-branching-plan-model-with-variables/
+  - label: "ProjectionLab roadmap: risk-based withdrawal guardrails"
+    url: https://changemap.co/projectifi/projectifi/task/9189-risk-based-withdrawal-guardrails/
+  - label: "ProjectionLab roadmap: family account"
+    url: https://changemap.co/projectifi/projectifi/task/6249-family-account/
 ---
 
 import { formatPrice, pricing } from '../../config/pricing';
@@ -30,8 +38,8 @@ page sets out what each is, using only what ProjectionLab says about itself in p
 code does today. Every statement about ProjectionLab links to the page it came from and the date we read it.
 
 <Callout type="note" title="How to read this page">
-  Facts about ProjectionLab were checked on 16 November 2026 from its public pages. We did not create an
-  account or use the product, so we describe what it says it does, not how it behaves. Products change. If
+  Facts about ProjectionLab were checked on 16 November 2026 from its public pages, and the self-hosting,
+  roadmap and Premium price facts again on 19 November 2026. We did not create an account or use the product, so we describe what it says it does, not how it behaves. Products change. If
   you find something out of date or wrong, write to <a href={`mailto:${site.contact.hello}`}>{site.contact.hello}</a>
   and we will correct it.
 </Callout>
@@ -49,10 +57,27 @@ file rates its depth as partial. If you are an adviser or coach,
 ProjectionLab has a Pro plan for managing clients
 ([pricing](https://projectionlab.com/pricing), read 16 Nov 2026); Glideworth has no adviser tier.
 
-**Glideworth may suit you better if** you want to run the planner yourself and keep the data in one file on
-your own machine, read and change the source code (AGPL-3.0), reach your plan from scripts or an AI assistant
-through a server-side REST API and an MCP server, or plan across several countries with a written list of what
-each country's tax estimate leaves out. You can use every feature when you self-host, at no cost.
+**Glideworth may suit you better if** you want these, which ProjectionLab users have asked for on its public
+roadmap:
+
+- **Scenarios that follow your main plan.** Glideworth's what-if branches inherit changes from the plan they
+  came from, and you compare them side by side. ProjectionLab's "branching plan model with variables shared with
+  parent plan" is marked Planned on its roadmap, with 275 votes
+  ([roadmap](https://changemap.co/projectifi/projectifi/task/6243-branching-plan-model-with-variables/), read 19 Nov 2026).
+- **Spending guardrails.** Glideworth shows what spending its guardrails give this year and the portfolio level at
+  which they would cut. "Risk-based withdrawal guardrails" is a suggestion on ProjectionLab's roadmap, with 137
+  votes ([roadmap](https://changemap.co/projectifi/projectifi/task/9189-risk-based-withdrawal-guardrails/), read 19 Nov 2026).
+- **Two sign-ins on one household.** In Glideworth each partner can sign in to the same household. "Family
+  account" is a suggestion on ProjectionLab's roadmap, with 249 votes
+  ([roadmap](https://changemap.co/projectifi/projectifi/task/6249-family-account/), read 19 Nov 2026).
+
+It may also suit you if you want answers in money and dates (the most you can spend and the earliest you can
+retire, at a chance of success you choose), if you want to talk to ChatGPT or Claude about your plan, or if you
+want a planner that cannot be withdrawn. ProjectionLab released future updates to its web app only and ran
+bug-fix support for self-hosted copies until 31 December 2025
+([self-hosting update](https://projectionlab.com/help/offline-version), read 19 Nov 2026). Glideworth's code is
+open source, so you, or anyone, can keep running it whatever happens to the company, and you can self-host every
+feature at no cost.
 
 **Neither is built around live bank connections.** Glideworth does not link accounts, by design. ProjectionLab's
 security page says no linked accounts are required ([security](https://projectionlab.com/security), read
@@ -65,15 +90,15 @@ repository today.
 
 | | Glideworth | ProjectionLab |
 |---|---|---|
-| Price | Self-hosted: free, every feature. Hosted: {formatPrice(pricing.monthly)} a month or {formatPrice(pricing.yearly)} a year | Basic $0 a year; Premium $129 a year; Pro $549 a year ([pricing](https://projectionlab.com/pricing), 16 Nov 2026) |
+| Price | Hosted: {formatPrice(pricing.monthly)} a month or {formatPrice(pricing.yearly)} a year. Self-hosted: free, every feature | Basic $0 a year; Premium $129 a year; Pro $549 a year ([pricing](https://projectionlab.com/pricing), 16 Nov 2026; Premium re-read 19 Nov 2026) |
 | Free tier | Self-hosting has no feature limits | Basic: forecasting, planning, Monte Carlo and historical backtesting ([pricing](https://projectionlab.com/pricing), 16 Nov 2026) |
-| Source and hosting | Open source (AGPL-3.0); run it yourself, with data in a SQLite file | Hosted on Google Cloud Firestore with daily backups; self-hosting and local-only storage are not mentioned on the page ([security](https://projectionlab.com/security), 16 Nov 2026) |
+| Source and hosting | Open source (AGPL-3.0); hosted, or run it yourself with every feature | Hosted on Google Cloud Firestore with daily backups ([security](https://projectionlab.com/security), 16 Nov 2026). Future updates ship to the web app only; bug-fix support for self-hosted copies ran until 31 December 2025 ([self-hosting update](https://projectionlab.com/help/offline-version), 19 Nov 2026) |
 | Tax estimates | {facts.taxCountryCount} countries with a written list of simplifications for each, plus flat or custom rates | Presets named on its home page include Canada, the UK, Australia, Germany and the Netherlands, "and more" ([home page](https://projectionlab.com/), 16 Nov 2026) |
 | Monte Carlo | Historical restart, sequential, block bootstrap, normal, lognormal and fat-tail returns; seeded; US history 1928 to 2025, UK history 1983 to 2025 | Monte Carlo and historical backtesting, each trial tied to a historical return sequence, with custom distributions ([Monte Carlo page](https://projectionlab.com/monte-carlo), 16 Nov 2026) |
 | Tax planning | Roth conversions, withdrawal strategies, tax-strategy comparison, estate estimates; depth is "partial" in the project's status file | Premium lists Roth conversions, tax optimisation, withdrawal strategies, estate planning and compare mode ([pricing](https://projectionlab.com/pricing), 16 Nov 2026); v4.6.0 added the Optimize tool ([changelog](https://projectionlab.com/changelog), 16 Nov 2026) |
 | Reports and export | JSON and CSV tables; a printable report from the browser (no server-side PDF) | Table reports exported as PDF, CSV and JSON, from v4.4.0 ([changelog](https://projectionlab.com/changelog), 16 Nov 2026) |
 | Automation | REST API (OpenAPI 3.1) that runs on the server, scoped API keys, signed webhooks | A plugin API that runs in the browser as `window.projectionlabPluginAPI`, with an API key and seven methods ([Plugin API docs](https://app.projectionlab.com/docs/types/PluginAPI.html), 16 Nov 2026) |
-| AI assistants | MCP server over stdio or HTTP; edits are proposals you approve | No official MCP server or AI assistant appears in its ten most recent changelog entries ([changelog](https://projectionlab.com/changelog), 16 Nov 2026) |
+| AI assistants | Connect ChatGPT or Claude to your plan; any change it suggests is a proposal you approve | No official MCP server or AI assistant appears in its ten most recent changelog entries ([changelog](https://projectionlab.com/changelog), 16 Nov 2026) |
 | Security assurances | No certifications and no external audit | Describes a programme "designed to align with" SOC 2 control areas and says Google Cloud's certifications apply to Google's infrastructure, not to ProjectionLab ([security](https://projectionlab.com/security), 16 Nov 2026) |
 | Track record | New project | Development began in 2021 ([about](https://projectionlab.com/about), 16 Nov 2026) |
 
@@ -110,8 +135,7 @@ approximation or dropped field as an issue, and never prints your values.
 What it does not carry over, so you should plan to check it:
 
 - **Anything the report marks approximated or unsupported.** Nothing is dropped silently, but those items need
-  your attention. Examples of judgement calls: a relocation milestone becomes a move on the residency timeline;
-  a percentage priority is read from its amount; per-account overrides are kept only where they differ from the
+  your attention. Examples of judgement calls: a percentage priority is read from its amount; per-account overrides are kept only where they differ from the
   account's own settings.
 - **Interface state.** Chart and table preferences, layout, tour progress and similar settings are ignored.
 - **Account state and secrets.** Billing and terms state are ignored. A plugin API key in the file is discarded
@@ -145,7 +169,7 @@ confirmed where its app's menus offer the export, so check its help pages.
   },
   {
     q: 'Where did these facts come from, and how do I report a mistake?',
-    a: `<p>Every ProjectionLab statement links to a public ProjectionLab page and the date it was read, 16 November 2026. Pages change, so a statement can go out of date. Email <a href="mailto:${site.contact.hello}">${site.contact.hello}</a> with the page and what is wrong.</p>`
+    a: `<p>Every ProjectionLab statement links to a public ProjectionLab page and the date it was read, 16 or 19 November 2026. Pages change, so a statement can go out of date. Email <a href="mailto:${site.contact.hello}">${site.contact.hello}</a> with the page and what is wrong.</p>`
   }
 ]} />
 

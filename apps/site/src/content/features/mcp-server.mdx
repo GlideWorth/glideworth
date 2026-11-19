@@ -1,38 +1,53 @@
 ---
-title: The MCP server for AI assistants
-description: "Connect Claude or any MCP client to your plan with {{mcpReadTools}} read and compute tools and {{mcpWriteTools}} write tools that stay off by default. Edits are always proposals."
-ogTitle: The MCP server
-summary: Read, simulate and propose with an AI assistant, read-only by default, with every edit a change set you approve.
-order: 15
+title: Talk to ChatGPT or Claude about your plan
+description: "Connect ChatGPT, Claude or another AI assistant to your Glideworth plan and ask about it in your own words. Any change it suggests is a proposal you approve."
+ogTitle: Your AI assistant on your plan
+summary: Ask your assistant about your plan in plain words. It runs Glideworth's numbers, and every change it suggests waits for your approval.
+order: 9
 ---
 
 import { facts } from '../../lib/facts';
+import { site } from '../../config/site';
 
-The Model Context Protocol is the standard way for AI assistants to use tools. Glideworth's MCP server lets an
-assistant read your plans, run simulations and propose changes, under rules you set. It is a thin adapter over
-the same services as the [REST API](/features/rest-api/), so every tool has a REST twin and behaves identically.
+Connect your Glideworth account to ChatGPT or Claude, and you can talk to your assistant about your plan: "Can we
+retire at 55?", "Why does the money run out in 2041?", "What if we sell the house in ten years?" The assistant
+reads your plan, runs Glideworth's own calculations and explains the answer. It can do most of what you can do in
+the app, with you. When it suggests a change, you see a before and after, and nothing changes until you approve it.
 
-## What an assistant gets
+## How to connect
+
+With the hosted service, add <code>{site.appUrl}/mcp</code> as a connector in your assistant (a custom connector
+in Claude, or a connector in ChatGPT where your ChatGPT plan allows custom ones), then sign in to Glideworth when
+asked. A consent screen shows what the assistant is asking for, and you can grant less: read only, or read and
+propose changes. The [setup guide](/docs/api-and-mcp/mcp-setup/) covers Claude Desktop, Claude Code and other
+clients in detail.
+
+## For technical readers
+
+The connection uses the Model Context Protocol (MCP), the standard way for AI assistants to use tools. Glideworth's
+MCP server is a thin adapter over the same services as the [REST API](/features/rest-api/), so every tool has a
+REST twin and behaves identically. The rest of this page is the detail.
+
+### What an assistant gets
 
 There are {facts.mcpTools} tools. {facts.mcpReadTools} read and compute, and all of them are marked read-only. {facts.mcpWriteTools} write, and they exist only when
 you switch writes on at the server **and** the connecting key has write scope. A client cannot call a tool it
 cannot see.
 
 - **Read:** households, accounts, plans, plan history, diffs, progress snapshots, check-in history, notifications,
-  exchange rates, the residency timeline and cross-border rule tables, and dry-run previews of CSV and bank-file
-  imports.
+  exchange rates, and dry-run previews of CSV imports.
 - **Compute:** a plan summary (the best first call), projections, Monte Carlo and historical backtests, plan
   comparison, explanations, the assumption audit, sensitivity, every [solver](/features/solvers/), guardrails,
-  tax breakdowns, stay-or-move, and previews of what-ifs.
+  tax breakdowns, and previews of what-ifs.
 - **Write:** propose, apply and discard change sets; create branches; apply imports; update balances; record
-  snapshots; run check-ins; create and revoke share links; set exchange rates and a person's cross-border record.
+  snapshots; run check-ins; create and revoke share links; set exchange rates.
 - **Resources and prompts:** reference documents (units, glossary, change sets, common edit paths) and prompts
   such as `review_my_plan`, `why_might_my_plan_fail`, `how_much_can_i_spend` and `can_i_retire_earlier`.
 
 Tools return compact JSON with money in today's money unless asked otherwise, and every error says how to recover:
 a code, a message and a hint about which tool to call next.
 
-## The safety model
+### The safety model
 
 - **Read-only by default.** The write switch is off until you turn it on.
 - **Scoped keys.** `read` for analysis, `simulate` for compute only, `write` to propose and apply. A viewer's
@@ -46,7 +61,7 @@ a code, a message and a hint about which tool to call next.
 - **Limits that hold under manipulation.** An assistant that has been tricked by text it read can still do only
   what its key allows, which is why least-privilege keys matter.
 
-## A worked illustration
+### A worked illustration
 
 You ask, "What if I retire three years earlier? Save it as a branch." Illustrative figures throughout. The
 assistant calls `get_plan_summary`, then `preview_whatif` with the `early-retirement` template and `years: 3`
@@ -55,7 +70,7 @@ assistant calls `get_plan_summary`, then `preview_whatif` with the `early-retire
 86% to 74%. It is saved as a branch called Retire at 57." You open the branch in the app and decide. The
 [API and MCP page](/api/) walks through a longer session, including a change set.
 
-## Connecting
+### Connecting from your own software
 
 Over HTTP against a running server, or over stdio with no server running, with the commands shown on the
 [API and MCP page](/api/). Remote assistants that connect by URL sign in with OAuth 2.1 (PKCE, rotating refresh

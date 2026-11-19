@@ -64,9 +64,7 @@ describe("sourceCandidates", () => {
     expect(sourceCandidates("/docs/methodology/monte-carlo/")[0]).toBe(
       "src/content/docs/methodology/monte-carlo.mdx",
     );
-    expect(sourceCandidates("/planning/moving-country/")[0]).toBe(
-      "src/pages/planning/moving-country.astro",
-    );
+    expect(sourceCandidates("/pricing/")[0]).toBe("src/pages/pricing.astro");
     expect(sourceCandidates("/authors/glideworth-team/")[0]).toBe(
       "src/content/authors/authors.json",
     );

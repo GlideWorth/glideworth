@@ -12,9 +12,9 @@ const pagesByCode = new Map(
 
 <PageLayout
   {...page('/planning/')}
-  heading="Planning by country"
-  eyebrow="Countries"
-  lede={`Glideworth estimates tax in ${facts.taxCountryCount} countries, each for stated tax years and with a written list of what it leaves out. Flat or custom rates cover anywhere else.`}
+  heading="Tax estimates for your country"
+  eyebrow="Planning by country"
+  lede={`Glideworth estimates the tax in every year of your plan for ${facts.taxCountryCount} countries, each for stated tax years and with a written list of what it leaves out. Flat or custom rates cover anywhere else.`}
   crumbs={[{ label: 'Planning by country', href: '/planning/' }]}
 >
   <div class="container body">
@@ -32,9 +32,9 @@ const pagesByCode = new Map(
       }
     </ul>
     <p class="note">
-      Moving between countries? The engine models residency changes over time, tax on income sourced in a country you
-      have left, and treaty relief, and the app has screens for the residency timeline and the stay-or-move
-      comparison. Read <a href="/planning/moving-country/">the guide to moving country</a>.
+      Each guide says which taxes the estimate includes, which tax years it covers and what it leaves out. Every
+      figure is an estimate under your own assumptions, not a tax return or advice. Read
+      <a href="/blog/what-a-tax-estimate-leaves-out/">what a tax estimate leaves out</a>.
     </p>
   </div>
   <CTABand />

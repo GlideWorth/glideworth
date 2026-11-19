@@ -9,7 +9,7 @@ export const GET: APIRoute = async () => {
   return rss({
     title: `${site.name} blog`,
     description:
-      "Articles from the Glideworth team on retirement planning, tax across countries and building an open-source planner.",
+      "Articles from the Glideworth team on retirement and FIRE planning, withdrawal rates, tax estimates and building an open-source planner.",
     site: site.url,
     items: posts.map((p) => ({
       title: p.data.title,

@@ -2,37 +2,48 @@
 /**
  * Diagram of an AI assistant working on a plan over MCP: a question, the tools it calls (real tool
  * names from docs/MCP.md), and a change set the person approves. Figures in the change set are
- * illustrative and labelled so.
+ * illustrative and labelled so. With `plain`, the steps are described in words, without tool names.
  */
+interface Props {
+  /** Describe what the assistant does in plain words instead of naming the MCP tools. */
+  plain?: boolean;
+}
+const { plain = false } = Astro.props;
 const tools = [
-  { name: 'get_plan_summary', note: 'reads the plan' },
-  { name: 'preview_changes', note: 'tries retiring at 57, stores nothing' },
-  { name: 'run_monte_carlo', note: 'chance of success, before and after' },
-  { name: 'propose_change_set', note: 'writes a proposal, applies nothing' },
+  { name: 'get_plan_summary', note: 'reads the plan', plain: 'Reads your plan' },
+  { name: 'preview_changes', note: 'tries retiring at 57, stores nothing', plain: 'Tries retiring at 57, without saving anything' },
+  { name: 'run_monte_carlo', note: 'chance of success, before and after', plain: 'Works out your chance of success, before and after' },
+  { name: 'propose_change_set', note: 'writes a proposal, applies nothing', plain: 'Writes up the change for you to approve' },
 ];
 ---
 
-<div class="flow" role="group" aria-label="How an AI assistant proposes a change over MCP">
+<div class="flow" role="group" aria-label={plain ? 'How an AI assistant proposes a change to your plan' : 'How an AI assistant proposes a change over MCP'}>
   <ol class="flow-steps" role="list">
     <li class="step">
       <p class="step-label"><span class="n">1</span>You ask</p>
       <p class="bubble">“What if I retire three years earlier? Show me what it does to my chance of success.”</p>
     </li>
     <li class="step">
-      <p class="step-label"><span class="n">2</span>Your assistant calls Glideworth's MCP tools</p>
+      <p class="step-label"><span class="n">2</span>{plain ? 'Your assistant works in Glideworth' : "Your assistant calls Glideworth's MCP tools"}</p>
       <ul class="tools" role="list">
         {
-          tools.map((t) => (
-            <li>
-              <code>{t.name}</code>
-              <span>{t.note}</span>
-            </li>
-          ))
+          tools.map((t) =>
+            plain ? (
+              <li>
+                <span>{t.plain}</span>
+              </li>
+            ) : (
+              <li>
+                <code>{t.name}</code>
+                <span>{t.note}</span>
+              </li>
+            ),
+          )
         }
       </ul>
     </li>
     <li class="step">
-      <p class="step-label"><span class="n">3</span>You review the proposal</p>
+      <p class="step-label"><span class="n">3</span>{plain ? 'You approve it, or not' : 'You review the proposal'}</p>
       <div class="changeset">
         <p class="cs-head">
           <span>Change set</span><span class="cs-status">Proposed</span>

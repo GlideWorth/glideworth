@@ -27,10 +27,10 @@ anything else here.
    `hostedOnly` flag in `src/config/pricing.ts`; hosted-only things have `hostedOnly: true`. Mark a feature
    `planned` only if it is not built, and never mark something available that is not in the code. Use
    `trialCta` from `site.ts` for the "try it" button.
-6. **Cross-border:** the engine models residency changes, non-resident source taxation and treaty relief, and
-   the web app has screens for them (`apps/web/src/features/crossborder`): the residency timeline,
-   citizenship and past residence, a country on each item, tax by country and a stay-or-move comparison. Say
-   what the product does, not only what the engine does.
+6. **Tax by country:** present it as "tax estimates for your country". Moving country, residency timelines,
+   stay-or-move comparisons, treaty rules, the debt payoff (avalanche or snowball) comparison, the 72(t)/SEPP
+   comparison and OFX, QFX or QIF bank-file import were removed from the product in November 2026; do not
+   mention them. CSV, ProjectionLab and Glideworth JSON imports remain.
    - **Model limits are not the law.** When a page says what a model leaves out, word it as Glideworth's
      simplification ("the model does not carry forward unused pension annual allowance, which UK law allows"),
      never as a rule of the law ("unused allowance is not carried forward").
@@ -46,9 +46,21 @@ anything else here.
     storage keys). Use the new names everywhere; mention the old ones only on the upgrade page
     (`docs/self-hosting/upgrading`, "Upgrading from Cairn") and in the cookie policy's note about old names.
 
-## 2. Tone
+## 2. Audience and tone
 
-Plain, calm, specific. Short sentences. British spelling ("licence", "optimise", "colour") to match the
+**Who the site is for.** People pursuing FIRE and planning their own retirement. They know personal finance
+well and often do not know software. Technical readers are welcome, but no consumer page may assume them.
+
+- **Lead with outcomes, not features or technology.** Start from the questions people ask: how much can I
+  spend, when can I retire, why does my plan fall short, what if we do it differently, what do I cut if
+  markets fall, what about the two of us. Name the feature second.
+- **Keep the technology to the technical pages.** API operation counts, MCP tool counts, SQLite, Docker,
+  Node and licence names belong on `/open-source/`, `/self-hosting/`, `/api/` and the docs. On consumer pages,
+  self-hosting and open source get one calm section for technical readers, and the AI assistant is pitched
+  in plain words: connect ChatGPT or Claude, ask about your plan, approve any change it proposes.
+- **"No bank login needed" is a feature.** Say it plainly.
+
+**Tone.** Plain, calm, specific. Short sentences. British spelling ("licence", "optimise", "colour") to match the
 existing docs. Explain rather than hype: no "revolutionary", "seamless", "unlock", "supercharge", no
 exclamation marks, no emoji. Prefer a concrete example over an adjective. Address the reader as "you".
 

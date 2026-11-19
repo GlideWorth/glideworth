@@ -5,7 +5,7 @@ import FAQ from '../components/FAQ.astro';
 import PricingTable from '../components/PricingTable.astro';
 import Section from '../components/Section.astro';
 import { page } from '../config/pages';
-import { formatPrice, pricing, yearlySaving } from '../config/pricing';
+import { competitorPrices, formatPrice, pricing, yearlySaving } from '../config/pricing';
 import { site } from '../config/site';
 import PageLayout from '../layouts/PageLayout.astro';
 import { facts } from '../lib/facts';
@@ -47,11 +47,15 @@ const faq: FaqItem[] = [
   },
   {
     q: 'Does Glideworth connect to my bank?',
-    a: '<p>No. You enter balances yourself or import files: ProjectionLab JSON exports, bank and budgeting CSVs (Monarch, YNAB and generic), and OFX, QFX or QIF statements.</p>',
+    a: '<p>No, and it never asks for a bank login. You enter balances yourself or import files: a ProjectionLab JSON export, or bank and budgeting CSVs (Monarch, YNAB and generic).</p>',
   },
   {
-    q: 'Can my AI assistant use my hosted account?',
-    a: `<p>Yes. The hosted service has an MCP server that uses OAuth, so Claude and other MCP clients can connect without a tunnel. The same MCP server runs on your own machine or server if you self-host. Assistants get ${facts.mcpReadTools} read and compute tools; the ${facts.mcpWriteTools} write tools stay off unless you turn them on, and plan edits are always proposals you approve. See <a href="/api/">API and MCP</a>.</p>`,
+    q: 'Can I use ChatGPT or Claude with my plan?',
+    a: `<p>Yes. Add Glideworth as a connector in your assistant and sign in, and you can ask about your plan in your own words. Your assistant runs Glideworth's calculations, and any change it suggests is a proposal you approve. You choose whether it can only read or can also propose changes. See <a href="/features/mcp-server/">your AI assistant on your plan</a>. Developers can use the <a href="/api/">REST API and MCP server</a> directly, ${facts.mcpReadTools} read and compute tools and ${facts.mcpWriteTools} write tools.</p>`,
+  },
+  {
+    q: 'How does the price compare with other planners?',
+    a: `<p>A year of ${pricing.planName} is ${y}. ${competitorPrices.plans.map((c) => `<a href="${c.compare}">${c.name}</a> is ${formatPrice(c.yearly)} a year`).join(' and ')}, according to their pricing pages on ${competitorPrices.checkedOn}. The products differ, so read the comparison pages for what each one offers.</p>`,
   },
   {
     q: 'Which countries does it estimate tax for?',
@@ -66,9 +70,9 @@ const faq: FaqItem[] = [
 
 <PageLayout
   {...page('/pricing/')}
-  heading="One plan, every feature. Or run it yourself, free."
+  heading="One plan, every feature."
   eyebrow="Pricing"
-  lede={`${pricing.planName} is ${m} a month or ${y} a year after a ${pricing.trialDays}-day free trial with no card. Self-hosting is free, with nothing held back.`}
+  lede={`${pricing.planName} is ${m} a month or ${y} a year after a ${pricing.trialDays}-day free trial with no card. If you run your own server, you can self-host it free, with nothing held back.`}
   crumbs={[{ label: 'Pricing', href: '/pricing/' }]}
   jsonLd={[softwareApplication()]}
 >

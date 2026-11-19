@@ -14,7 +14,7 @@ import type { FaqItem } from '../lib/jsonld';
 const licences = [
   ['The application: engine, API, MCP server, web app, scripts and docs', 'GNU AGPL v3.0 only', 'LICENSE'],
   [
-    'The importers and exporters package (ProjectionLab, CSV, bank files, JSON, report)',
+    'The importers and exporters package (ProjectionLab, CSV, JSON, report)',
     'MIT',
     'packages/importers/LICENSE',
   ],
@@ -106,7 +106,7 @@ const faq: FaqItem[] = [
         <h3>Why MIT for importers</h3>
         <p>
           The importers and exporters are MIT so other software can read and write Glideworth's formats, and the
-          ProjectionLab, CSV and bank-file readers, without taking on the AGPL's network clause. That package depends on
+          ProjectionLab and CSV readers, without taking on the AGPL's network clause. That package depends on
           the AGPL core, so check with your own lawyer how this affects what you build on it.
         </p>
       </div>

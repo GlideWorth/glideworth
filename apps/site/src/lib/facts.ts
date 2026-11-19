@@ -5,6 +5,8 @@
  */
 import {
   ENGINE_VERSION,
+  HISTORICAL_SERIES_DATASET,
+  MARKET_DATASETS,
   NATIONAL_JURISDICTION_BY_COUNTRY,
   TAX_SIMPLIFICATIONS,
 } from "@glideworth/core";
@@ -27,6 +29,7 @@ const COUNTRY_NAMES: Record<string, string> = {
 };
 
 const codes = Object.keys(NATIONAL_JURISDICTION_BY_COUNTRY);
+const usHistory = MARKET_DATASETS[HISTORICAL_SERIES_DATASET];
 
 const METHODS = ["get", "post", "put", "patch", "delete"];
 /** Operations in the committed self-host OpenAPI snapshot (src/data/openapi.json). */
@@ -40,6 +43,9 @@ export const facts = {
   taxCountries: codes.map((code) => ({ code, name: COUNTRY_NAMES[code] ?? code })),
   /** Engine version (read from @glideworth/core). */
   engineVersion: ENGINE_VERSION,
+  /** First and last year of the bundled US market history that simulations replay (read from @glideworth/core). */
+  usHistoryFirstYear: usHistory.firstYear,
+  usHistoryLastYear: usHistory.lastYear,
   /** Number of written simplifications per tax model id, e.g. simplificationCount('uk'). */
   simplificationCount: (jurisdictionId: string) => TAX_SIMPLIFICATIONS[jurisdictionId]?.length ?? 0,
 

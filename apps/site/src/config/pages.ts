@@ -29,25 +29,26 @@ export interface PageMeta {
 
 export const pages = {
   "/": {
-    title: "Glideworth: open-source retirement and financial planner",
+    title: "Glideworth: retirement and FIRE planner",
     fullTitle: true,
-    description: `Plan decades ahead with tax estimates for ${n} countries, Monte Carlo, solvers and an MCP server. Open source, and free to self-host.`,
-    ogTitle: "Plan your glide path to and through retirement",
-    ogEyebrow: "Open-source financial planner",
+    description:
+      "Find out how much you can spend and when you can retire, see why a plan falls short year by year, and compare scenarios. No bank login needed.",
+    ogTitle: "Know when you can retire, and how much you can spend",
+    ogEyebrow: "Retirement and FIRE planner",
   },
   "/pricing/": {
     title: "Pricing",
     // Follows site.cloudLaunched, like the pricing page body, so the snippet never contradicts the page.
     description: site.cloudLaunched
-      ? `Self-hosting is free with every feature. ${pricing.planName} is open now: a ${pricing.trialDays}-day free trial${pricing.trialNeedsCard ? " with a card" : " with no card"}, then ${formatPrice(pricing.monthly)} a month or ${formatPrice(pricing.yearly)} a year.`
+      ? `${pricing.planName} is ${formatPrice(pricing.monthly)} a month or ${formatPrice(pricing.yearly)} a year after a ${pricing.trialDays}-day free trial${pricing.trialNeedsCard ? " with a card" : " with no card"}. One plan with every feature; self-hosting is free.`
       : `Self-hosting is free with every feature. The hosted plan, ${pricing.planName}, opens later at ${formatPrice(pricing.monthly)} a month or ${formatPrice(pricing.yearly)} a year after a ${pricing.trialDays}-day free trial${pricing.trialNeedsCard ? " with a card" : " with no card"}.`,
-    ogTitle: "One plan. Or run it yourself, free.",
+    ogTitle: "One plan, every feature",
     ogEyebrow: "Pricing",
   },
   "/features/": {
     title: "Features",
     description:
-      "What Glideworth does: projections with a full ledger, tax estimates, Monte Carlo, solvers, explanations, branches, imports, sharing, an API and an MCP server.",
+      "What Glideworth does: finds what you can spend and when you can retire, explains each year, compares scenarios, estimates tax and works with ChatGPT or Claude.",
     ogEyebrow: "Features",
   },
   "/api/": {
@@ -77,7 +78,7 @@ export const pages = {
   "/about/": {
     title: "About",
     description:
-      "Why Glideworth exists: a careful, open-source planner for people who want to see how their retirement plan works and keep control of their financial data.",
+      "Why Glideworth exists: a retirement planner for people working towards financial independence who want to see how their plan works and keep their own data.",
     ogEyebrow: "About",
   },
   "/contact/": {
@@ -148,7 +149,7 @@ export const pages = {
   "/blog/": {
     title: "Blog",
     description:
-      "Articles from the Glideworth team on retirement planning, tax across countries, Monte Carlo methods, and building an open-source planner in public.",
+      "Articles from the Glideworth team on retirement and FIRE planning, withdrawal rates, tax estimates, Monte Carlo methods, and building an open-source planner.",
     ogEyebrow: "Blog",
   },
   "/docs/": {
@@ -165,15 +166,8 @@ export const pages = {
   },
   "/planning/": {
     title: "Planning by country",
-    description: `How Glideworth estimates tax in each of the ${n} countries it supports, what each model leaves out, which tax years it covers, and how moves between countries work.`,
+    description: `Tax estimates for your country: how Glideworth estimates tax in each of the ${n} countries it supports, which tax years each model covers, and what it leaves out.`,
     ogEyebrow: "Planning by country",
-  },
-  "/planning/moving-country/": {
-    title: "Moving country: residency, tax and treaties",
-    description:
-      "How Glideworth models a move between countries: residency timeline, split years, non-resident tax, treaty relief, departure rules and a stay-or-move comparison.",
-    ogTitle: "Planning a move between countries",
-    ogEyebrow: "Moving country",
   },
   "/compare/": {
     title: "Comparisons",

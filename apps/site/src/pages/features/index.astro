@@ -16,7 +16,7 @@ const entries = (await getCollection('features')).sort((a, b) => a.data.order - 
   {...page('/features/')}
   heading="Everything the planner does"
   eyebrow="Features"
-  lede="Glideworth models a household's finances year by year, estimates tax, simulates thousands of futures, answers planning questions and explains its results. Each guide below says what it does and what it does not."
+  lede="Glideworth tells you how much you can spend and when you can retire, shows year by year why a plan works or falls short, and lets you compare what-ifs side by side. Each guide below says what a feature does and what it does not."
   crumbs={[{ label: 'Features', href: '/features/' }]}
 >
   <Section title="Feature guides" intro="One page per capability, with a worked illustration and an honest list of limits." tight>
@@ -33,14 +33,18 @@ const entries = (await getCollection('features')).sort((a, b) => a.data.order - 
   <Section title="At a glance" tight>
     <FeatureGrid
       items={[
-        { glyph: 'ledger', title: 'Projections', href: '/features/projections-and-ledger/', body: "A year-by-year ledger with taxes, withdrawals and every money movement, in today's money or future money, for one person or a couple." },
-        { glyph: 'globe', title: `Tax in ${facts.taxCountryCount} countries`, href: '/features/tax-estimates/', body: 'Estimates with stated tax years and written simplifications, plus flat and custom rates, several currencies and cross-border residency in the engine.' },
-        { glyph: 'fan', title: 'Monte Carlo', href: '/features/monte-carlo/', body: 'Historical, bootstrap and distribution-based methods, seeded, with failure analysis, milestone timing and backtests.' },
-        { glyph: 'solver', title: 'Solvers', href: '/features/solvers/', body: 'Maximum spending, earliest retirement, required savings, safe withdrawal rate, risk-based guardrails, tax-strategy comparison.' },
-        { glyph: 'branch', title: 'Branches and change sets', href: '/features/branches-and-change-sets/', body: 'What-if branches that follow a parent plan, diff and merge, version history with undo, survivor scenarios.' },
-        { glyph: 'people', title: 'Sharing', href: '/features/sharing-and-roles/', body: 'Owner, editor and viewer sign-ins, read-only share links, progress snapshots and scheduled check-ins.' },
-        { glyph: 'import', title: 'Import and export', href: '/features/import-and-export/', body: 'ProjectionLab JSON, bank and budgeting CSV, OFX, QFX and QIF in; JSON, CSV tables and a printable report out.' },
-        { glyph: 'plug', title: 'API and MCP', href: '/api/', body: `${facts.apiOperations} REST operations and ${facts.mcpTools} MCP tools, scoped keys, signed webhooks.` },
+        { glyph: 'solver', title: 'What you can spend, when you can retire', href: '/features/solvers/', body: 'The most you can spend, the earliest date you can retire, the savings you need and a safe withdrawal rate, at the chance of success you choose.' },
+        { glyph: 'ledger', title: 'Every year, line by line', href: '/features/projections-and-ledger/', body: "A table for each year of income, tax, spending and withdrawals, in today's money or future money, for one person or a couple." },
+        { glyph: 'ledger', title: 'Why a plan falls short', href: '/features/explanations-and-audit/', body: 'Plain answers to why the plan fails, where the money went in a year and what changed between two plans, plus a check of your assumptions.' },
+        { glyph: 'branch', title: 'Scenarios side by side', href: '/features/branches-and-change-sets/', body: 'What-if copies of your plan that follow the original, compared side by side, with version history and undo.' },
+        { glyph: 'fan', title: 'Tested against market history', href: '/features/monte-carlo/', body: 'Thousands of simulated markets, from history or from random returns, showing how often the plan lasts and when it fails.' },
+        { glyph: 'fan', title: 'Spending guardrails', href: '/features/withdrawal-strategies/', body: 'Withdrawal rules from a fixed amount to Guyton-Klinger, and guardrails that show what to spend this year and when you would cut.' },
+        { glyph: 'people', title: 'Plan as a couple', href: '/features/sharing-and-roles/', body: 'Each partner signs in to the same household, with survivor scenarios for what happens if one of you dies.' },
+        { glyph: 'globe', title: `Tax for ${facts.taxCountryCount} countries`, href: '/features/tax-estimates/', body: 'Estimates for your country, for stated tax years, each with a written list of what it leaves out. Flat or custom rates elsewhere.' },
+        { glyph: 'plug', title: 'ChatGPT or Claude on your plan', href: '/features/mcp-server/', body: 'Connect your assistant and ask about your plan in your own words. Any change it suggests is a proposal you approve.' },
+        { glyph: 'import', title: 'Import and export', href: '/features/import-and-export/', body: 'No bank login: type in balances, or import a ProjectionLab export or bank and budgeting CSVs. Everything exports.' },
+        { glyph: 'ledger', title: 'Progress and check-ins', href: '/features/progress-and-check-ins/', body: 'Record balances against the plan, and get told when your chance of success or a milestone moves.' },
+        { glyph: 'code', title: 'For developers', href: '/api/', body: `A REST API with ${facts.apiOperations} operations and an MCP server with ${facts.mcpTools} tools, with scoped keys and signed webhooks.` },
       ]}
       columns={4}
     />
@@ -49,8 +53,8 @@ const entries = (await getCollection('features')).sort((a, b) => a.data.order - 
     <Callout type="note" title="Read this before relying on a number">
       <p>
         Glideworth is planning software, not advice, and every tax figure is an estimate for a stated tax year. It
-        steps by year, not by month; it does not connect to bank accounts; it does not randomise lifespan or care
-        costs in simulations; and it applies no statutory residence test for people who move country. Each feature
+        steps by year, not by month; it does not connect to bank accounts; and it does not randomise lifespan or care
+        costs in simulations. Each feature
         guide lists its own limits, and the full status of the project is in the
         <a href="/roadmap/">roadmap</a>.
       </p>

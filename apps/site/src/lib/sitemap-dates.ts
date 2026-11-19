@@ -102,11 +102,7 @@ export function sourceCandidates(pathname: string): string[] {
   };
   if (rel.startsWith("blog/") && !rel.startsWith("blog/tags/")) content("blog", rel.slice(5));
   else if (rel.startsWith("docs/")) content("docs", rel.slice(5));
-  else if (
-    rel.startsWith("planning/") &&
-    rel !== "planning/moving-country" &&
-    !rel.slice(9).includes("/")
-  )
+  else if (rel.startsWith("planning/") && !rel.slice(9).includes("/"))
     content("countries", rel.slice(9));
   else if (rel.startsWith("compare/")) content("compare", rel.slice(8));
   else if (rel.startsWith("features/") && !rel.slice(9).includes("/"))

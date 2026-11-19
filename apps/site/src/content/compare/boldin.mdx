@@ -1,6 +1,6 @@
 ---
 title: Glideworth and Boldin compared
-description: "A dated, sourced comparison of Glideworth and Boldin: who each suits, price, country coverage, Monte Carlo, security assurances, automation and moving over."
+description: "A dated, sourced comparison of Glideworth and Boldin: who each suits, price, tax outside the US, Monte Carlo, bank linking, AI assistants and moving over."
 ogTitle: Glideworth vs Boldin
 competitor: Boldin
 checkedOn: 2026-11-16
@@ -26,10 +26,10 @@ import { facts } from '../../lib/facts';
 import { site } from '../../config/site';
 
 Boldin (the trading name of NewRetirement, Inc.) and Glideworth are both retirement planners. They differ most
-in who they are built for and how you use them: Boldin is a hosted, US-focused planner with optional human
-advice; Glideworth is an open-source planner you can run yourself, with tax estimates for
-{facts.taxCountryCount} countries. Every statement about Boldin below links to the page it came from and the
-date we read it.
+in who they are built for: Boldin is a US-focused planner with linked bank accounts and optional human advice;
+Glideworth answers in money and dates (how much you can spend, when you can retire), needs no bank login, works
+with ChatGPT or Claude, and estimates tax for {facts.taxCountryCount} countries. Every statement about Boldin below
+links to the page it came from and the date we read it.
 
 <Callout type="note" title="How to read this page">
   Facts about Boldin were checked on 16 November 2026 from its public pages. We did not create an account or use
@@ -44,8 +44,8 @@ today, with human help available. Its pricing page lists a Boldin Advisors servi
 a CERTIFIED FINANCIAL PLANNER professional for a $3,200 flat fee
 ([pricing](https://boldin.com/pricing/), read 16 Nov 2026). Glideworth offers no advice or coaching. Boldin's
 PlannerPlus plan lists connected accounts, so balances can come from your institutions rather than being typed
-in ([pricing](https://boldin.com/pricing/), 16 Nov 2026); Glideworth has no account aggregation, by design, and
-takes CSV, OFX, QFX and QIF files instead. Boldin also says it holds SOC 2 Type 1 and Type 2 reports and offers
+in ([pricing](https://boldin.com/pricing/), 16 Nov 2026); Glideworth never asks for a bank login, by design, and
+takes CSV files instead. Boldin also says it holds SOC 2 Type 1 and Type 2 reports and offers
 optional two-factor sign-in
 ([security](https://www.boldin.com/security), 16 Nov 2026); Glideworth holds no certifications, and its hosted service
 offers two-factor sign-in with an authenticator app. And Boldin has a longer history: it renamed itself from
@@ -54,11 +54,14 @@ NewRetirement in September 2024
 more than 450,000 people have complete plans with it ([about](https://www.boldin.com/about), 16 Nov 2026).
 Glideworth is new.
 
-**Glideworth may suit you better if** you plan outside the United States or across countries, because Boldin
-says its planner has no features for other countries' tax or retirement rules
+**Glideworth may suit you better if** you want answers in money and dates: solvers for the most you can spend,
+the earliest date you can retire, the savings you need and a safe withdrawal rate, with a year-by-year table that
+shows why a plan falls short. It suits you if you plan outside the United States, because Boldin says its planner
+has no features for other countries' tax or retirement rules
 ([help article](https://help.boldin.com/en/articles/6509299-is-plannerplus-suitable-for-canadians-or-other-non-us-citizens-planning-for-retirement),
-16 Nov 2026). It also suits you if you want to self-host and keep your data in a file on your own machine, read
-or change the source, or connect your own AI assistant or scripts to your plan through an API and an MCP server.
+16 Nov 2026). It also suits you if you would rather not link your bank, want to talk to your own ChatGPT or
+Claude about your plan, or want a planner whose code is open, so it keeps working whatever happens to the company.
+A year of the hosted plan costs less than PlannerPlus; see [price](#price).
 
 ## Side by side
 
@@ -73,8 +76,8 @@ repository today.
 | Countries | {facts.taxCountryCount} countries with tax estimates, each with a written list of what it leaves out; flat or custom rates elsewhere | US tax law only: its help says other countries' tax rules cannot be applied ([help](https://help.boldin.com/en/articles/6509299-is-plannerplus-suitable-for-canadians-or-other-non-us-citizens-planning-for-retirement), 16 Nov 2026) |
 | US tax detail | Federal, payroll, every state and some cities, IRMAA, the ACA credit, Roth conversions; the SALT cap and itemised phase-outs are not applied automatically | PlannerPlus lists federal and state taxes, Medicare and IRMAA, net investment income tax and the 10% early-withdrawal penalty ([pricing](https://boldin.com/pricing/) and [release notes](https://www.boldin.com/retirement/release-notes/), 16 Nov 2026) |
 | Monte Carlo | Historical restart, sequential, block bootstrap, normal, lognormal and fat-tail returns; seeded; US history 1928 to 2025, UK history 1983 to 2025 | PlannerPlus: thousands of trials with randomised monthly returns, one blended return and standard deviation per account ([article](https://www.boldin.com/retirement/understanding-boldins-monte-carlo-simulation-what-it-is-why-it-matters-and-whats-new/), 16 Nov 2026). The article names no historical data set or replay mode; that is not proof there is none |
-| Account connections | None; CSV, OFX, QFX and QIF import | Connected accounts on PlannerPlus ([pricing](https://boldin.com/pricing/), 16 Nov 2026) |
-| AI | Your own assistant connects over MCP; plan edits are proposals you approve | A built-in Boldin AI: Basic is limited, PlannerPlus lists unlimited Q&A ([pricing](https://boldin.com/pricing/), 16 Nov 2026) |
+| Account connections | None, so no bank login; CSV import | Connected accounts on PlannerPlus ([pricing](https://boldin.com/pricing/), 16 Nov 2026) |
+| AI | Your own ChatGPT or Claude connects to your plan; any change it suggests is a proposal you approve | A built-in Boldin AI: Basic is limited, PlannerPlus lists unlimited Q&A ([pricing](https://boldin.com/pricing/), 16 Nov 2026) |
 | API | REST API (OpenAPI 3.1), scoped keys, signed webhooks; MCP server | An API behind its branded planning solutions for businesses ([about](https://www.boldin.com/about), 16 Nov 2026); we found no consumer API, plugin or MCP server on the pages we read |
 | Security assurances | No certifications, no external audit | Says SOC 2 Type 1 and Type 2 (latest Type 2 period ended 30 September 2025), TrustArc certified, optional two-factor sign-in ([security](https://www.boldin.com/security), 16 Nov 2026) |
 | Human advice | None | Boldin Advisors, $3,200 flat fee ([pricing](https://boldin.com/pricing/), 16 Nov 2026) |
@@ -100,13 +103,8 @@ yourself.
 
 Glideworth has no Boldin importer, so a move means entering your plan: accounts and balances, income, spending
 and milestones. You can bring balances in from a bank or budgeting tool by CSV (Monarch, YNAB or a generic
-layout) or from OFX, QFX or QIF files, and create the plan through the web app, the API or an AI assistant over
-MCP. Expect Boldin and Glideworth to give different results for the same inputs: they use different tax tables,
+layout), and build the plan in the web app or by talking it through with your AI assistant. Expect Boldin and Glideworth to give different results for the same inputs: they use different tax tables,
 different return models and different conventions. Run your plan in both for a while before you rely on either.
-
-If you hold accounts in more than one country, Glideworth lets you set a country on each account, property,
-debt and income and shows tax by country; Boldin says its planner has no features for other countries' tax or
-retirement rules.
 
 ## Questions
 
@@ -117,11 +115,11 @@ retirement rules.
   },
   {
     q: 'Does Glideworth connect to my bank?',
-    a: '<p>No, by design. You enter balances yourself or import CSV, OFX, QFX or QIF files. If automatic balance updates matter most to you, Boldin lists connected accounts on its PlannerPlus plan.</p>'
+    a: '<p>No, by design: it never asks for a bank login. You enter balances yourself or import CSV files. If automatic balance updates matter most to you, Boldin lists connected accounts on its PlannerPlus plan.</p>'
   },
   {
     q: 'Can I use Glideworth for retirement outside the United States?',
-    a: `<p>Yes: it has tax estimates for ${facts.taxCountryCount} countries, each with a written list of what it leaves out, and a model for moving between them. Boldin says its planner is built on US rules.</p>`
+    a: `<p>Yes: it has tax estimates for ${facts.taxCountryCount} countries, each with a written list of what it leaves out. Boldin says its planner is built on US rules.</p>`
   },
   {
     q: 'Where did these facts come from, and how do I report a mistake?',

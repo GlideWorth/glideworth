@@ -148,7 +148,7 @@ curl -s -X POST $GLIDEWORTH/api/v1/change-sets/<id>/apply -H "Authorization: Bea
       <FeatureGrid
         columns={2}
         items={[
-          { glyph: 'ledger', title: 'Read', body: 'Households, accounts, plans, history, progress, check-ins and cross-border rules. Money comes back in today\'s money unless you ask otherwise.' },
+          { glyph: 'ledger', title: 'Read', body: 'Households, accounts, plans, history, progress, check-ins and exchange rates. Money comes back in today\'s money unless you ask otherwise.' },
           { glyph: 'solver', title: 'Simulate', body: 'Projections, Monte Carlo, backtests, solvers, guardrails, tax breakdowns, explanations and the assumption audit, all read-only.' },
           { glyph: 'branch', title: 'Propose', body: 'Edits are change sets: a readable diff and a before-and-after result, applied only when you say so. Or a what-if branch that leaves the plan alone.' },
           { glyph: 'plug', title: 'Two doors, one engine', body: 'Every MCP tool has a REST twin. Use MCP for assistants and REST for scripts, webhooks and your own software.' },
@@ -232,7 +232,7 @@ curl -s -X POST $GLIDEWORTH/api/v1/change-sets/<id>/apply -H "Authorization: Bea
       Other tasks use other tools: <code>run_monte_carlo</code> and <code>explain_year</code> for "why does it fail?",
       <code>solve_max_spending</code> for "the most I can spend at 90%", <code>solve_retirement_date</code> for "how
       early can I retire?", <code>audit_plan</code> for "find problems with my assumptions", and
-      <code>compare_stay_or_move</code> for "should we move abroad?".
+      <code>survivor_scenarios</code> for "what happens if one of us dies?".
     </p>
   </Section>
 

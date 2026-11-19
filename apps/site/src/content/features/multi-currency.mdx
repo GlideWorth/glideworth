@@ -3,7 +3,7 @@ title: Multi-currency planning
 description: Hold accounts, property, debts and income in different currencies, convert them with your own exchange rates and drift, and test exchange-rate risk.
 ogTitle: Multi-currency planning
 summary: Items in their own currency, exchange-rate pairs with drift, and optional exchange-rate risk in simulations.
-order: 10
+order: 13
 ---
 
 If you have savings in sterling, a pension in euros and a salary in dirhams, a planner that quietly converts
@@ -21,8 +21,8 @@ currency, makes the exchange rate an explicit assumption, and lets you test what
 - **The engine reports in the base currency** and keeps the original amount alongside, so you can see both.
 - **Progress snapshots, check-in net worth and the totals** the API reports convert foreign items with these
   rates. A missing pair counts at 1 and is reported; the engine itself refuses to run a plan with a missing pair.
-- **Tax is worked out in each country's currency,** using your rates, so a plan that crosses a border needs a rate
-  for every currency involved. The audit lists any that are missing.
+- **Tax is worked out in the tax country's currency,** using your rates, so a plan with items in other currencies
+  needs a rate for every currency involved. The audit lists any that are missing.
 
 ## Exchange-rate risk in simulations
 
@@ -69,11 +69,9 @@ the household's version, so a stale edit is refused.
 - **No currency hedging, forward contracts or foreign-exchange costs** on conversions.
 - **Exchange-rate risk is optional and simplified:** per-pair volatility and an optional correlation between
   pairs, not a full currency model. By default rates follow their drift.
-- **Cross-border residence is separate.** A currency says what an amount is in; where you are resident is set in
-  the [residency timeline](/features/cross-border/).
 
 ## Go further
 
-- [Moving between countries](/features/cross-border/): tax in each country needs the right rates.
-- [Plan modelling](/features/plan-modelling/): where an item's country and currency are set.
+- [Plan modelling](/features/plan-modelling/): where an item's currency is set.
+- [Tax estimates](/features/tax-estimates/): what each country's model includes and leaves out.
 - [Progress and check-ins](/features/progress-and-check-ins/): net worth converted with your rates.

@@ -13,9 +13,9 @@ export const site = {
   /** The public source repository. */
   repoUrl: "https://github.com/GlideWorth/glideworth",
   /** Short line used as the default description and in the footer. */
-  tagline: "An open-source financial and retirement planner with an API and MCP server.",
+  tagline: "A retirement planner that shows when you can retire, how much you can spend, and why.",
   description:
-    "Glideworth projects your household finances decades ahead, with tax estimates for each country it supports, Monte Carlo on historical returns, solvers and explanations, and an API and MCP server for AI assistants. Open source: use the hosted service or run it yourself.",
+    "Glideworth is a retirement and FIRE planner. It finds how much you can spend and when you can retire, shows year by year why a plan falls short, compares scenarios side by side and plans for couples, with tax estimates for your country. No bank login needed, and you can talk to ChatGPT or Claude about your plan.",
   locale: "en",
   /**
    * The legal entity behind Glideworth, used in the legal pages. No registration, VAT or data protection
@@ -41,7 +41,18 @@ export const site = {
    * calls to action say that the hosted service is about to open.
    */
   cloudLaunched: true,
+  /**
+   * The public demo (a sample household, no sign-up) at `demoUrl`. True since 2026-11-19, when #75 put it live;
+   * while false, the "Try the demo" calls to action are hidden. Flip it once app.glideworth.com/demo works.
+   */
+  demoLive: true,
+  demoUrl: "https://app.glideworth.com/demo",
 } as const;
+
+/** The "try the demo" call to action, or undefined while the demo is not live. */
+export const demoCta = site.demoLive
+  ? { label: "Try the demo, no sign-up", href: site.demoUrl }
+  : undefined;
 
 /**
  * The primary "try it" call to action. Until the hosted service is open there is no sign-up to send people

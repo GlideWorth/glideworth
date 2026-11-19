@@ -12,69 +12,24 @@ export const RELATED_LIMIT = 6;
 
 export const clusters: { subject: string; paths: string[] }[] = [
   {
-    subject: "Moving country",
-    paths: [
-      "/planning/moving-country/",
-      "/features/cross-border/",
-      "/docs/planning/moving-country/",
-      "/features/multi-currency/",
-      "/planning/",
-    ],
-  },
-  {
     subject: "Planning in the British Isles",
-    paths: [
-      "/planning/",
-      "/planning/moving-country/",
-      "/planning/uk/",
-      "/planning/ie/",
-      "/planning/fr/",
-      "/planning/nl/",
-    ],
+    paths: ["/planning/", "/planning/uk/", "/planning/ie/", "/planning/fr/", "/planning/nl/"],
   },
   {
     subject: "Planning in North America",
-    paths: [
-      "/planning/",
-      "/planning/moving-country/",
-      "/planning/us/",
-      "/planning/ca/",
-      "/planning/uk/",
-      "/planning/ie/",
-    ],
+    paths: ["/planning/", "/planning/us/", "/planning/ca/", "/planning/uk/", "/planning/ie/"],
   },
   {
     subject: "Planning in continental Europe",
-    paths: [
-      "/planning/",
-      "/planning/moving-country/",
-      "/planning/de/",
-      "/planning/nl/",
-      "/planning/fr/",
-      "/planning/es/",
-    ],
+    paths: ["/planning/", "/planning/de/", "/planning/nl/", "/planning/fr/", "/planning/es/"],
   },
   {
     subject: "Planning in Oceania",
-    paths: [
-      "/planning/",
-      "/planning/moving-country/",
-      "/planning/au/",
-      "/planning/nz/",
-      "/planning/uk/",
-      "/planning/ie/",
-    ],
+    paths: ["/planning/", "/planning/au/", "/planning/nz/", "/planning/uk/", "/planning/ie/"],
   },
   {
     subject: "Planning in the Middle East",
-    paths: [
-      "/planning/",
-      "/planning/moving-country/",
-      "/planning/il/",
-      "/planning/ae/",
-      "/planning/es/",
-      "/planning/fr/",
-    ],
+    paths: ["/planning/", "/planning/il/", "/planning/ae/", "/planning/es/", "/planning/fr/"],
   },
   // These pages still have free related slots after their own clusters. Listing the country
   // first makes the slot point at a guide that would otherwise have few inbound links.
@@ -87,24 +42,17 @@ export const clusters: { subject: string; paths: string[] }[] = [
     paths: ["/planning/ca/", "/planning/au/", "/features/tax-estimates/"],
   },
   {
-    subject: "Cross-border moves and further countries",
-    paths: ["/planning/il/", "/planning/ae/", "/features/cross-border/"],
+    subject: "What tax estimates leave out, further countries",
+    paths: [
+      "/planning/il/",
+      "/planning/ae/",
+      "/planning/au/",
+      "/blog/what-a-tax-estimate-leaves-out/",
+    ],
   },
   {
     subject: "Several currencies and further countries",
     paths: ["/planning/nz/", "/planning/de/", "/features/multi-currency/"],
-  },
-  {
-    subject: "Moving abroad",
-    paths: [
-      "/blog/planning-a-move-abroad-taxes-pensions/",
-      "/planning/moving-country/",
-      "/planning/",
-      "/planning/uk/",
-      "/planning/ae/",
-      "/planning/us/",
-      "/docs/planning/moving-country/",
-    ],
   },
   {
     subject: "Tax estimates",
@@ -216,7 +164,6 @@ export const clusters: { subject: string; paths: string[] }[] = [
       "/features/import-and-export/",
       "/docs/importing/projectionlab/",
       "/docs/importing/csv/",
-      "/docs/importing/bank-files/",
       "/docs/importing/glideworth-json/",
       "/compare/projectionlab/",
     ],

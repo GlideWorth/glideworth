@@ -2,6 +2,7 @@
 title: "AI assistant access to your financial plan"
 description: "How MCP lets an assistant read or change a financial plan, why read-only keys and approved proposals matter, what your AI provider sees, and a worked session."
 pubDate: 2026-11-16
+updatedDate: 2026-11-19
 author: [glideworth-team]
 tags: [MCP, AI, Security, Methodology]
 draft: false
@@ -64,7 +65,7 @@ This is the part most easily overlooked. Using MCP does not run the model inside
 
 Concretely:
 
-- **The assistant sees what the tools return, within the key's scopes.** A plan summary returns accounts, balances and income figures, so those figures are now in the conversation. Glideworth's tools return compact output (money rounded to whole units, summaries by default) and bank-file previews mask account numbers to the last four digits, but a plan is personal data by nature.
+- **The assistant sees what the tools return, within the key's scopes.** A plan summary returns accounts, balances and income figures, so those figures are now in the conversation. Glideworth's tools return compact output (money rounded to whole units, summaries by default), but a plan is personal data by nature.
 - **The model provider you connect sees that data too.** Glideworth's own documentation says so in a warning: "An assistant sees what its tools return, within the scopes of its key. The model provider you connect sees that data too. If that matters to you, use a local model."
 - **Self-hosting the planner does not change this.** When you run Glideworth yourself, the data starts on your machine and the MCP server answers from there. Whatever it returns goes to the model, wherever the model runs. If that is a hosted service, a copy of the returned text leaves your machine.
 - **Providers' terms differ,** on retention, human review and training use. The terms of the provider and the product you use are the place to look, and this article makes no claim about any of them.

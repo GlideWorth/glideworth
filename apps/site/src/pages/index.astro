@@ -1,7 +1,6 @@
 ---
 import { PUBLIC_GTM_ID } from 'astro:env/server';
 import Button from '../components/Button.astro';
-import Card from '../components/Card.astro';
 import CTABand from '../components/CTABand.astro';
 import FeatureGrid, { type FeatureItem } from '../components/FeatureGrid.astro';
 import Figure from '../components/Figure.astro';
@@ -10,12 +9,13 @@ import AgentFlow from '../components/visuals/AgentFlow.astro';
 import ProjectionFan from '../components/visuals/ProjectionFan.astro';
 import TaxYear from '../components/visuals/TaxYear.astro';
 import { page } from '../config/pages';
-import { formatPrice, priceSentence, pricing, trialTerms } from '../config/pricing';
-import { site, trialCta } from '../config/site';
+import { competitorPrices, formatPrice, priceSentence, pricing, trialTerms } from '../config/pricing';
+import { demoCta, site, trialCta } from '../config/site';
 import PageLayout from '../layouts/PageLayout.astro';
 import { facts } from '../lib/facts';
 import { googleTagManagerId } from '../lib/gtm';
 import { organization, softwareApplication, website } from '../lib/jsonld';
+import { externalLinkProps } from '../lib/links';
 
 const n = facts.taxCountryCount;
 // The official hosted build loads Google Tag Manager on marketing pages (not the calculators or the app).
@@ -23,50 +23,51 @@ const trackerNote = googleTagManagerId(PUBLIC_GTM_ID)
   ? 'The free calculators load no trackers. This website measures visits with PostHog without cookies, and the hosted app uses PostHog for product analytics.'
   : 'This website and the free calculators load no trackers. The hosted app uses PostHog for product analytics.';
 
-const differences: FeatureItem[] = [
+// The questions people ask of a retirement planner, each answered by a part of the product.
+const questions: FeatureItem[] = [
   {
-    glyph: 'code',
-    title: 'Open source, all of it',
-    body: `The engine, the app, the API and the MCP server are open source under ${site.license}. Self-host the whole planner for free, with every feature, or let us run it for you.`,
-    href: '/open-source/',
-  },
-  {
-    glyph: 'globe',
-    title: `Tax estimates for ${n} countries`,
-    body: 'The UK, the US with every state, Canada, Australia, five European countries, Israel, New Zealand and the UAE. The planner also follows residency moves, non-resident rules and treaty relief.',
-    href: '/planning/',
-  },
-  {
-    glyph: 'fan',
-    title: 'Monte Carlo on market history',
-    body: 'Thousands of trials from historical returns, block bootstrap or fat-tailed distributions, with optional exchange-rate risk, backtests and sequence-of-returns analysis.',
-    href: '/features/monte-carlo/',
+    glyph: 'solver',
+    title: 'How much can I spend?',
+    body: 'Glideworth finds the most you can spend each year and still have your plan work, at the level of confidence you choose.',
+    href: '/features/solvers/',
   },
   {
     glyph: 'solver',
-    title: 'Answers, not just charts',
-    body: 'The most you can spend at a chosen chance of success, the earliest date you can retire, the savings you need, a safe withdrawal rate, spending guardrails.',
-    href: '/features/',
+    title: 'When can I retire?',
+    body: 'The earliest date your plan holds up, the savings it takes to get there, and a withdrawal rate that lasts.',
+    href: '/features/solvers/',
   },
   {
     glyph: 'ledger',
-    title: 'Explanations you can check',
-    body: 'Why the plan fails when it fails, where the money went in any year, an audit of your assumptions, and which edit explains the gap between two plans.',
-    href: '/features/',
+    title: 'Why does my plan fall short?',
+    body: 'A year-by-year table of income, tax, spending and withdrawals, and a plain explanation of what goes wrong and when.',
+    href: '/features/explanations-and-audit/',
   },
   {
-    glyph: 'plug',
-    title: 'Built for AI assistants',
-    body: `A REST API with ${facts.apiOperations} operations and an MCP server with ${facts.mcpTools} tools. Assistants read plans and run simulations; any edit is a proposal you approve.`,
-    href: '/api/',
+    glyph: 'branch',
+    title: 'What if we do it differently?',
+    body: 'Copy your plan into a what-if, such as retiring three years earlier or selling the house, and compare the two side by side.',
+    href: '/features/branches-and-change-sets/',
+  },
+  {
+    glyph: 'fan',
+    title: 'What do I cut if markets fall?',
+    body: 'Spending guardrails show what to spend this year, and how far your savings would have to fall before you cut back.',
+    href: '/features/withdrawal-strategies/',
+  },
+  {
+    glyph: 'people',
+    title: 'What about the two of us?',
+    body: 'Plan as a couple: each of you signs in to the same household, and you can see what happens to the other if one of you dies.',
+    href: '/features/sharing-and-roles/',
   },
 ];
 
 const proof = [
-  { value: String(n), label: 'countries with tax estimates' },
-  { value: String(facts.apiOperations), label: 'REST API operations, OpenAPI 3.1' },
-  { value: String(facts.mcpTools), label: 'MCP tools for AI assistants' },
-  { value: '1', label: 'SQLite file holds all your data when you self-host' },
+  { value: String(n), label: 'countries with tax estimates built in' },
+  { value: `${facts.usHistoryFirstYear}–${facts.usHistoryLastYear}`, label: 'US market history your plan is tested against' },
+  { value: '0', label: 'bank logins needed: type in balances or import a file' },
+  { value: formatPrice(pricing.yearly), label: `a year, after a ${pricing.trialDays}-day free trial with no card` },
 ];
 ---
 
@@ -75,20 +76,20 @@ const proof = [
     <section class="hero" aria-labelledby="hero-title">
       <div class="container hero-grid">
         <div class="hero-copy">
-          <span class="eyebrow">Open-source financial and retirement planner</span>
-          <h1 id="hero-title">Plan your <em>glide path</em> to and through retirement.</h1>
+          <span class="eyebrow">Retirement and FIRE planner</span>
+          <h1 id="hero-title">Know <em>when you can retire</em>, and how much you can spend.</h1>
           <p class="lede">
-            Glideworth projects your household's finances decades ahead, year by year, with tax estimated in
-            every year. It tells you how often your plan works, why it fails when it does, and what to
-            change. Run it on your own machine, or in our cloud, and let your AI assistant work on it with you.
+            Glideworth maps out your money year by year, with tax estimated in every year. It tells you the most you can
+            spend, the earliest you can stop working, and why your plan falls short if it does. You type in your
+            numbers; it never asks for a bank login.
           </p>
           <div class="hero-actions">
             <Button href={trialCta.href} size="lg" arrow>{trialCta.label}</Button>
             {
-              site.cloudLaunched ? (
-                <Button href="/self-hosting/" size="lg" variant="secondary">Self-host it free</Button>
+              demoCta ? (
+                <Button href={demoCta.href} size="lg" variant="secondary">{demoCta.label}</Button>
               ) : (
-                <Button href="/pricing/" size="lg" variant="secondary">See the hosted plan</Button>
+                <Button href="/tools/" size="lg" variant="secondary">Try a free calculator</Button>
               )
             }
           </div>
@@ -100,7 +101,7 @@ const proof = [
         <div class="hero-visual">
           <Figure
             screenshot="hero-chance-of-success"
-            caption="The chance-of-success view summarises thousands of simulated futures. Drawn here from illustrative numbers."
+            caption="Your plan run through thousands of possible markets, and how often it lasts. Drawn here from illustrative numbers."
           >
             <ProjectionFan />
           </Figure>
@@ -122,28 +123,28 @@ const proof = [
   </Fragment>
 
   <Section
-    id="different"
-    eyebrow="What makes it different"
-    title="A serious planner you can open up, run anywhere, and talk to."
-    intro="Glideworth shows its working, runs wherever you choose, and gives software a proper way in."
+    id="questions"
+    eyebrow="What it answers"
+    title="The questions you actually want answered."
+    intro="Most retirement tools draw a chart and leave you to work out what it means. Glideworth answers in money and dates."
   >
-    <FeatureGrid items={differences} />
+    <FeatureGrid items={questions} />
   </Section>
 
   <Section id="working" tone="raised">
     <div class="split">
       <div class="split-copy">
-        <span class="eyebrow">Every number shows its working</span>
-        <h2 id="working-title">See the ledger behind the headline.</h2>
+        <span class="eyebrow">Nothing hidden</span>
+        <h2 id="working-title">See where the money goes, every year.</h2>
         <p class="lede">
-          Each projection is a year-by-year ledger of income, spending, saving, withdrawals, returns and tax, for
-          every account and every person. Nothing is a black box.
+          Every plan comes with a table for each year: what comes in, what goes out, what you pay in tax, what you
+          withdraw and from where. When a result surprises you, you can find the year and the line that caused it.
         </p>
         <ul class="ticks" role="list">
-          <li>Tax by year and by jurisdiction, in today's money or future money.</li>
-          <li>Every country's estimate lists what it leaves out, next to the result.</li>
-          <li>Ask why the plan fails, where the money went in a year, or what changed between two plans.</li>
-          <li>An assumption audit flags what looks off, most severe first.</li>
+          <li>Ask why the plan runs short, where the money went in a given year, or what changed between two plans.</li>
+          <li>A check of your assumptions flags what looks wrong, such as nothing set aside for care in your 80s.</li>
+          <li>Each country's tax estimate lists what it leaves out, next to the result.</li>
+          <li>The formulas are open, so anyone can check how a number was worked out.</li>
         </ul>
       </div>
       <Figure screenshot="results-taxes" caption="One plan year's tax, as Glideworth lays it out. Amounts are illustrative.">
@@ -152,25 +153,26 @@ const proof = [
     </div>
   </Section>
 
-  <Section id="agents">
+  <Section id="assistant">
     <div class="split split-reverse">
       <div class="split-copy">
-        <span class="eyebrow">API and MCP</span>
-        <h2 id="agents-title">Give your AI assistant a plan to work on, not your passwords.</h2>
+        <span class="eyebrow">Your AI assistant</span>
+        <h2 id="assistant-title">Talk to ChatGPT or Claude about your plan.</h2>
         <p class="lede">
-          Connect Claude or any MCP client with a key scoped to what it may do. It can read your plans, run
-          simulations and solvers, and explain the results. When it suggests a change, it writes a proposal; you
-          preview it and decide.
+          Connect your Glideworth account to ChatGPT or Claude and ask in your own words: "Can we retire at 55?",
+          "Why does the money run out in 2041?", "What if we sell the house?" Your assistant can do most of what you can
+          do in the app, with you.
         </p>
         <ul class="ticks" role="list">
-          <li>{facts.mcpReadTools} read and compute tools; {facts.mcpWriteTools} write tools that stay off unless you enable them.</li>
-          <li>Plan edits are change sets: proposed, previewed, then applied or discarded. Nothing can be deleted over MCP.</li>
-          <li>A REST API with {facts.apiOperations} operations, scoped keys, signed webhooks and conflict-safe writes.</li>
+          <li>Changes are proposals. You see the before and after, and nothing changes until you approve it.</li>
+          <li>You choose whether the assistant can only read your plan or can also suggest changes.</li>
+          <li>The numbers come from Glideworth's calculations, not from the assistant's guesswork.</li>
+          <li>Your AI provider sees what the assistant reads, so you decide whether to connect it at all.</li>
         </ul>
-        <p><Button href="/api/" variant="ghost" arrow>How the API and MCP server work</Button></p>
+        <p><Button href="/features/mcp-server/" variant="ghost" arrow>How the assistant connection works</Button></p>
       </div>
-      <Figure screenshot="mcp-session" caption="An assistant answering a what-if over MCP. Tool names are real; figures are illustrative.">
-        <AgentFlow />
+      <Figure screenshot="mcp-session" caption="An assistant answering a what-if. Figures are illustrative.">
+        <AgentFlow plain />
       </Figure>
     </div>
   </Section>
@@ -178,9 +180,9 @@ const proof = [
   <Section
     id="countries"
     tone="raised"
-    eyebrow="Planning across borders"
-    title={`Tax estimates for ${n} countries, and for moving between them.`}
-    intro="Each country model covers stated tax years and lists its own simplifications. For households that move, the planner follows each person's residency over time (the app has a timeline editor and a stay-or-move comparison), taxes income where it is sourced, and applies treaty relief."
+    eyebrow="Tax"
+    title="Tax estimates for your country."
+    intro={`Tax can decide whether a plan works. Glideworth estimates the tax in every year of your plan for ${n} countries, each for stated tax years and with a written list of what it leaves out.`}
   >
     <ul class="countries" role="list">
       {
@@ -198,34 +200,7 @@ const proof = [
     </p>
   </Section>
 
-  <Section
-    id="ways"
-    eyebrow="Two ways to run it"
-    title="The same planner, wherever you want it."
-    intro="The hosted service and the self-hosted build run the same open-source code. You pay for convenience, never for features."
-  >
-    <div class="ways">
-      <Card title={pricing.planName} as="h3" tone="accent">
-        <p class="way-price"><span class="num">{formatPrice(pricing.monthly)}</span> a month or <span class="num">{formatPrice(pricing.yearly)}</span> a year</p>
-        <p>
-          {site.cloudLaunched ? 'We run it' : 'Planned: we run it'}, apply engine and tax-table updates, and host the API and MCP server at a stable HTTPS
-          address with OAuth, so assistants connect without tunnels. {trialTerms()}.
-          {!site.cloudLaunched && ' The hosted service is not open yet; the software is, and you can self-host it today.'}
-        </p>
-        <Fragment slot="footer"><Button href="/pricing/" arrow>See pricing</Button></Fragment>
-      </Card>
-      <Card title="Self-hosted" as="h3">
-        <p class="way-price"><span class="num">Free</span>, with every feature</p>
-        <p>
-          One Docker container or one Node process on your own computer or server, with your data in a single
-          SQLite file. Backups are one command. No licence key, no sign-up with us, no telemetry.
-        </p>
-        <Fragment slot="footer"><Button href="/self-hosting/" variant="secondary" arrow>Self-hosting guide</Button></Fragment>
-      </Card>
-    </div>
-  </Section>
-
-  <Section id="data" tone="raised" width="wide">
+  <Section id="data" width="wide">
     <div class="data-grid">
       <div>
         <span class="eyebrow">Your data</span>
@@ -233,23 +208,64 @@ const proof = [
       </div>
       <dl class="data-points">
         <div>
-          <dt>No bank connections</dt>
-          <dd>You enter balances or import files: ProjectionLab exports, bank and budgeting CSVs, OFX, QFX and QIF.</dd>
-        </div>
-        <div>
-          <dt>No telemetry</dt>
-          <dd>A self-hosted server makes no network calls except the webhooks you set up. {trackerNote}</dd>
+          <dt>No bank login needed</dt>
+          <dd>You type in balances or import a file: a ProjectionLab export, or a CSV from your bank or budgeting app. Nothing links to your accounts.</dd>
         </div>
         <div>
           <dt>Everything exports</dt>
-          <dd>Take your data out as JSON, CSV tables or a printable report, and import it into another instance.</dd>
+          <dd>Take your data out at any time as a file you can import again, as spreadsheet tables, or as a printable report.</dd>
         </div>
         <div>
-          <dt>Code you can read</dt>
-          <dd>Every rule that turns your inputs into numbers is in the open repository.</dd>
+          <dt>Workings you can check</dt>
+          <dd>Every rule that turns your inputs into numbers is published. You, or anyone you trust, can read how a result was reached.</dd>
+        </div>
+        <div>
+          <dt>No lock-in</dt>
+          <dd>The code is open source, so your planner keeps working even if we stop: you, or anyone, can run it.</dd>
         </div>
       </dl>
+      <p class="data-note">{trackerNote}</p>
     </div>
+  </Section>
+
+  <Section
+    id="price"
+    tone="raised"
+    eyebrow="Pricing"
+    title="One plan, every feature."
+    width="narrow"
+  >
+    <p class="price-line">
+      <span class="num">{formatPrice(pricing.monthly)}</span> a month or <span class="num">{formatPrice(pricing.yearly)}</span> a year.
+    </p>
+    <p class="price-copy">
+      {trialTerms()}. When the trial ends nothing is charged: your plans stay, read-only, until you subscribe.
+      For comparison, {competitorPrices.plans.map((c, i) => (
+        <>
+          {i > 0 && ' and '}<a href={c.compare}>{c.name}</a> is {formatPrice(c.yearly)}
+        </>
+      ))} a year (their pricing pages, read {competitorPrices.checkedOn}).
+    </p>
+    <p><Button href="/pricing/" variant="ghost" arrow>See pricing</Button></p>
+  </Section>
+
+  <Section
+    id="open-source"
+    eyebrow="For technical users"
+    title="Open source, and you can run it yourself."
+    width="narrow"
+  >
+    <p class="calm-copy">
+      Glideworth's code is public under the {site.license} licence. Most people use the hosted service and never think
+      about it. If you are comfortable running software on your own computer or server, you can self-host the whole
+      planner for free, with every feature and no licence key. Developers also get a REST API and an MCP server.
+    </p>
+    <p class="calm-links">
+      <a href="/self-hosting/">Self-hosting guide</a>
+      <a href="/open-source/">How the project works</a>
+      <a href="/api/">API and MCP</a>
+      <a href={site.repoUrl} {...externalLinkProps(site.repoUrl)}>Source code</a>
+    </p>
   </Section>
 
   <CTABand />
@@ -409,30 +425,25 @@ const proof = [
     max-width: 52rem;
   }
 
-  .ways {
-    display: grid;
-    gap: var(--space-m);
-  }
-  @media (min-width: 52rem) {
-    .ways {
-      grid-template-columns: 1fr 1fr;
-    }
-  }
-  .ways :global(.card) {
-    gap: var(--space-s);
-  }
-  .ways :global(.card .btn) {
-    margin-top: var(--space-xs);
-    align-self: start;
-  }
-  .way-price {
+  .price-line {
     color: var(--ink);
     font-size: var(--text-lg);
   }
-  .way-price .num {
+  .price-line .num {
     font-family: var(--font-display);
     font-size: var(--text-2xl);
     font-weight: 540;
+  }
+  .price-copy,
+  .calm-copy {
+    color: var(--ink-2);
+    margin-top: var(--space-s);
+  }
+  .calm-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2xs) var(--space-m);
+    margin-top: var(--space-s);
   }
 
   .data-grid {
@@ -464,5 +475,10 @@ const proof = [
   .data-points dd {
     color: var(--ink-2);
     font-size: var(--text-sm);
+  }
+  .data-note {
+    grid-column: -2 / -1;
+    font-size: var(--text-xs);
+    color: var(--ink-3);
   }
 </style>

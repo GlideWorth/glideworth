@@ -40,7 +40,13 @@ export const pricing = {
     {
       label: "The complete planner",
       detail:
-        "Every projection, tax estimate, Monte Carlo method, solver and explanation in the open-source app.",
+        "Every projection, tax estimate, simulation, solver and explanation in the open-source app.",
+      status: "available",
+    },
+    {
+      label: "How much you can spend, and when you can retire",
+      detail:
+        "Solvers for the most you can spend, the earliest retirement date, the savings you need and a safe withdrawal rate.",
       status: "available",
     },
     {
@@ -50,30 +56,32 @@ export const pricing = {
       status: "available",
     },
     {
-      label: "Unlimited plans and branches",
-      detail: "Branches, diffs, version history and survivor scenarios.",
+      label: "Unlimited plans and scenarios",
+      detail: "What-if branches side by side, version history and survivor scenarios for couples.",
       status: "available",
     },
     {
-      label: "REST API and MCP server",
+      label: "Plan as a couple",
       detail:
-        "Scoped keys, and OAuth for clients that connect by URL once the server has a public HTTPS address (the hosted service has one already).",
+        "Each partner signs in to the same household. Add a viewer, or send a read-only link.",
       status: "available",
     },
     {
-      label: "Owner, editor and viewer sign-ins",
-      detail: "Share a household, or send a read-only link.",
+      label: "Talk to ChatGPT or Claude about your plan",
+      detail:
+        "Your assistant reads the plan, runs the numbers and proposes changes you approve. A REST API for developers too.",
       status: "available",
     },
     {
       label: "Imports and exports",
       detail:
-        "ProjectionLab JSON, bank and budgeting CSV, OFX, QFX and QIF in; JSON, CSV and a printable report out.",
+        "ProjectionLab JSON, bank and budgeting CSV, and Glideworth JSON in; JSON, CSV and a printable report out.",
       status: "available",
     },
     {
-      label: "Hosted REST API and MCP endpoint",
-      detail: "A stable HTTPS address with OAuth, so AI assistants connect without tunnels.",
+      label: "A ready address for your AI assistant",
+      detail:
+        "Add the hosted address to ChatGPT or Claude as a connector, then sign in. No server of your own.",
       status: "available",
       hostedOnly: true,
     },
@@ -93,6 +101,28 @@ export const pricing = {
       hostedOnly: true,
     },
   ] as PlanFeature[],
+} as const;
+
+/**
+ * Yearly prices of the paid plans people most often compare with, as their own pricing pages stated them on
+ * `checkedOn`. The compare pages (src/content/compare) carry the full, sourced detail; keep the two in step.
+ */
+export const competitorPrices = {
+  checkedOn: "19 November 2026",
+  plans: [
+    {
+      name: "ProjectionLab Premium",
+      yearly: 129,
+      source: "https://projectionlab.com/pricing",
+      compare: "/compare/projectionlab/",
+    },
+    {
+      name: "Boldin PlannerPlus",
+      yearly: 168,
+      source: "https://boldin.com/pricing/",
+      compare: "/compare/boldin/",
+    },
+  ],
 } as const;
 
 /** "$9", "$90". Whole numbers print without decimals. */

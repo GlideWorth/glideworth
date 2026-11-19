@@ -450,7 +450,6 @@ for (const [name, text] of llmsFiles) {
     "/compare/spreadsheets/",
     "/planning/",
     "/planning/uk/",
-    "/planning/moving-country/",
     "/docs/api-and-mcp/mcp-setup/",
     "/api/",
   ]) {

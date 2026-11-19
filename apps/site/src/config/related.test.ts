@@ -53,11 +53,10 @@ describe("related clusters", () => {
     }
   });
 
-  it("links every country guide to the hub, the move guide and two neighbours", () => {
+  it("links every country guide to the hub and two neighbours", () => {
     for (const country of COUNTRIES) {
       const related = selectRelatedPaths(country);
       expect(related, country).toContain("/planning/");
-      expect(related, country).toContain("/planning/moving-country/");
       const neighbours = related.filter((path) => /^\/planning\/[a-z]{2}\/$/.test(path));
       expect(neighbours.length, country).toBeGreaterThanOrEqual(2);
     }
@@ -69,14 +68,10 @@ describe("related clusters", () => {
     }
   });
 
-  it("links the move and tax articles to country guides", () => {
-    const move = selectRelatedPaths("/blog/planning-a-move-abroad-taxes-pensions/").filter((path) =>
-      COUNTRIES.includes(path),
-    );
+  it("links the tax article to country guides", () => {
     const tax = selectRelatedPaths("/blog/what-a-tax-estimate-leaves-out/").filter((path) =>
       COUNTRIES.includes(path),
     );
-    expect(move.length).toBeGreaterThanOrEqual(2);
     expect(tax.length).toBeGreaterThanOrEqual(2);
   });
 

@@ -3,7 +3,8 @@
  * source; durable user settings stay in UserSettings via the API.
  */
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
+import { demoAwareStorage } from "../../lib/demo";
 
 export type ProjectionMode =
   | "netWorth"
@@ -48,7 +49,7 @@ export const useChartPrefs = create<ChartPrefs>()(
       setDashboardWidget: (id, on) =>
         set((s) => ({ dashboardWidgets: { ...s.dashboardWidgets, [id]: on } })),
     }),
-    { name: "glideworth-chart-prefs" },
+    { name: "glideworth-chart-prefs", storage: createJSONStorage(() => demoAwareStorage) },
   ),
 );
 

@@ -1,6 +1,7 @@
 import type { ValueBasis } from "@glideworth/core";
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
+import { demoAwareStorage } from "../lib/demo";
 
 export type ThemePref = "system" | "light" | "dark";
 export type Density = "comfortable" | "compact";
@@ -74,6 +75,7 @@ export const useUi = create<UiState>()(
     }),
     {
       name: "glideworth-ui",
+      storage: createJSONStorage(() => demoAwareStorage),
       // Transient UI state never survives a reload.
       partialize: ({ navOpen: _n, shortcutsOpen: _s, readOnly: _r, readOnlyWhy: _w, ...rest }) =>
         rest,

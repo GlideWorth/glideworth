@@ -29,6 +29,36 @@ export const DEMO_KEYS = {
   started: `${DEMO_PREFIX}started`,
 } as const;
 
+/**
+ * Local storage for the app's persisted stores (preferences, UI, charts). A demo page reads and writes
+ * the same names under the demo prefix, so state this browser saved for a real workspace (an import
+ * checklist naming people and plans, the last import report) never shows in the demo, the demo never
+ * overwrites it, and "Reset demo" clears it. Keys are mapped on every call, not when a store is created.
+ */
+export const demoAwareStorage = {
+  getItem: (name: string): string | null => {
+    try {
+      return localStorage.getItem(isDemo() ? `${DEMO_PREFIX}${name}` : name);
+    } catch {
+      return null;
+    }
+  },
+  setItem: (name: string, value: string): void => {
+    try {
+      localStorage.setItem(isDemo() ? `${DEMO_PREFIX}${name}` : name, value);
+    } catch {
+      /* blocked or full: the store keeps working in memory */
+    }
+  },
+  removeItem: (name: string): void => {
+    try {
+      localStorage.removeItem(isDemo() ? `${DEMO_PREFIX}${name}` : name);
+    } catch {
+      /* blocked */
+    }
+  },
+};
+
 /** `/demo`, `/demo/` and `/demo/<anything>`; not `/demonstration`. */
 export function isDemoPath(pathname: string): boolean {
   return pathname === DEMO_BASE || pathname.startsWith(`${DEMO_BASE}/`);

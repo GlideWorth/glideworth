@@ -6,7 +6,8 @@
  */
 import type { ImportIssue } from "@glideworth/importers";
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
+import { demoAwareStorage } from "../lib/demo";
 
 export type DateStyle = "short" | "medium" | "iso";
 export type TaxYearConvention = "auto" | "calendar" | "uk-april" | "au-july" | "nz-april";
@@ -102,7 +103,7 @@ export const usePrefs = create<PrefsState>()(
       lastImport: null,
       set: (patch) => set(patch),
     }),
-    { name: "glideworth-prefs", version: 1 },
+    { name: "glideworth-prefs", version: 1, storage: createJSONStorage(() => demoAwareStorage) },
   ),
 );
 

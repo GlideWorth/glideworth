@@ -17,6 +17,7 @@
 import { CURRENCY_CODES } from "../../lib/countries";
 import { formatMoney } from "../../lib/format";
 import { defaultAnswers, type SetupAnswers } from "../onboarding/build-document";
+import { isDemo } from "../../lib/demo";
 
 export const HANDOFF_TOOLS = {
   "coast-fire": "Coast FIRE calculator",
@@ -96,6 +97,8 @@ export function stashHandoff(h: Handoff): void {
 }
 
 export function readHandoff(): Handoff | null {
+  // A calculator hand-off belongs to the visitor's own sign-up, never to the demo's sample household.
+  if (isDemo()) return null;
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;

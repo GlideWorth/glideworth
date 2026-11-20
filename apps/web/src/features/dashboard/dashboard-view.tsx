@@ -40,6 +40,7 @@ import { useUi } from "../../stores/ui";
 import { useMcStore } from "../chance/mc-store";
 import { ChangesSinceCheckInCard, useChangesSinceCheckin } from "../checkins/checkins";
 import { CalculatorHandoffBanner } from "../cloud/handoff-notice";
+import { useDemoChanceOfSuccess } from "../demo/demo-chance";
 import { attempt, bridge } from "../results/core-bridge";
 import {
   buildEntityIndex,
@@ -71,6 +72,26 @@ export function currentNetWorth(doc: GlideworthDocument | undefined) {
     (fin?.debts.reduce((s, d) => s + d.balance, 0) ?? 0) +
     (fin?.realAssets.reduce((s, r) => s + (r.loan?.balance ?? 0), 0) ?? 0);
   return { assets, liabilities, netWorth: assets - liabilities };
+}
+
+/**
+ * What the plan's FI milestone asks for, in words ("25× spending"), when it is a multiple of spending.
+ * Lets "not reached" say what was missed, so it doesn't read as a contradiction of "Fully funded": a plan
+ * can stay funded (pensions, returns) without the portfolio ever reaching the multiple.
+ */
+export function fiTargetLabel(plan: Plan | undefined): string | null {
+  const ms = plan?.milestones.find((m) => m.kind === "financial-independence" || m.id === "ms-fi");
+  for (const c of ms?.criteria ?? []) {
+    if (c.kind === "metric" && c.threshold.kind === "multipleOf") {
+      const of = {
+        spending: "spending",
+        expenses: "expenses",
+        essentialSpending: "essential spending",
+      }[c.threshold.of];
+      return `${c.threshold.multiple}× ${of}`;
+    }
+  }
+  return null;
 }
 
 /** Headline FI metrics from a deterministic projection. */
@@ -146,13 +167,24 @@ function PlanCard({ plan, doc }: { plan: Plan; doc: GlideworthDocument }) {
           {plan.lineage ? <Badge>Branch</Badge> : null}
         </div>
         <div className="text-[12px] text-ink-3">
-          {isLoading
-            ? "Simulating…"
-            : error
-              ? "Cannot simulate yet"
-              : r && last
-                ? `${r.summary.success ? "Fully funded" : `Short from ${r.summary.firstShortfallYear}`} · ${f.money(total(last, "netWorth", basis), true)} in ${last.year}`
-                : ""}
+          {isLoading ? (
+            "Simulating…"
+          ) : error ? (
+            "Cannot simulate yet"
+          ) : r && last ? (
+            <>
+              {r.summary.success ? (
+                "Fully funded"
+              ) : (
+                <span className="font-medium text-negative">
+                  Short from {r.summary.firstShortfallYear}
+                </span>
+              )}
+              {` · ${f.money(total(last, "netWorth", basis), true)} in ${last.year}`}
+            </>
+          ) : (
+            ""
+          )}
         </div>
       </div>
       <Sparkline
@@ -261,6 +293,8 @@ export function DashboardView() {
   const primary = doc?.household.people.find((p) => p.role === "primary");
   const accountName = useCloudSession()?.user.name;
   const fi = result ? fiMetrics(result, plan) : null;
+  const fiTarget = fiTargetLabel(plan);
+  useDemoChanceOfSuccess(input, plan);
   const history = useMemo(
     () =>
       [...(doc?.progress ?? [])]
@@ -370,7 +404,9 @@ export function DashboardView() {
                     : `in ${fi.yearsToFi} year${fi.yearsToFi === 1 ? "" : "s"}`
                   : fi && !fi.hasFiMilestone
                     ? "No FI milestone in this plan"
-                    : "Not reached in plan"
+                    : fiTarget
+                      ? `Never reaches ${fiTarget}`
+                      : "Not reached in plan"
               }
             />
             <Stat

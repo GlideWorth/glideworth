@@ -45,11 +45,12 @@ asking the same question twice gives the same answer.
 
 ## A worked illustration
 
-On the synthetic UK sample household, asked at 90%, the spending solver answers in pounds a year what the
-household could spend instead of its planned £31,600 (about £36,100 in the project's sample run), and offers the
-edit as a change set. Asked about retirement at an 85% target, the earliest-retirement solver gives a month and an
-age (about 56 and a half). These are illustrative results for a made-up household and one set of assumptions;
-yours will differ.
+On the synthetic US sample household, Avery and Jordan, asked at 90%, the spending solver answers in dollars a
+year what the couple could spend instead of their planned $77,400 (about $76,900 in the project's sample run, so
+the plan is close to its limit), and offers the edit as a change set. Asked about retirement at an 85% target, the
+earliest-retirement solver gives a month and an age (August 2040, when Avery is about 56 and a half, seven months
+earlier than planned). These are illustrative results for a made-up household and one set of assumptions; yours
+will differ.
 
 The same questions work over MCP. A prompt named `how_much_can_i_spend` runs `solve_max_spending` and quotes the
 figure per year; `can_i_retire_earlier` runs `solve_retirement_date`, explains the trade-off and offers a

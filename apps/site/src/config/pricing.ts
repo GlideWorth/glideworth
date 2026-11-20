@@ -52,7 +52,7 @@ export const pricing = {
     {
       label: `Tax estimates for ${facts.taxCountryCount} countries`,
       detail:
-        "UK, US (federal, every state and some cities), Canada, Australia, Germany, the Netherlands, France, Spain, Israel, Ireland, New Zealand and the UAE.",
+        "US (federal, every state and some cities), UK, Canada, Australia, Germany, the Netherlands, France, Spain, Israel, Ireland, New Zealand and the UAE.",
       status: "available",
     },
     {

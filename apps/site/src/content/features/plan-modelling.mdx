@@ -17,9 +17,9 @@ you like on one set of finances, and update the finances without rewriting any o
 dates. Adding a second person switches the household to couple mode.
 
 **Accounts.** Cash and savings with a rate, taxable investments with a cost basis, tax-deferred and tax-free
-retirement accounts, health and education accounts, crypto. Account types follow the country: ISAs, LISAs and
-pensions in the UK, 401(k)s, IRAs and Roth accounts in the US, TFSAs and RRSPs in Canada, super in Australia,
-and the wrappers of the other countries the planner estimates tax for. Each account has an owner (you, your
+retirement accounts, health and education accounts, crypto. Account types follow the country: 401(k)s, IRAs,
+Roth accounts, HSAs and 529s in the US, ISAs, LISAs and pensions in the UK, TFSAs and RRSPs in Canada, super in
+Australia, and the wrappers of the other countries the planner estimates tax for. Each account has an owner (you, your
 partner or joint), a growth assumption, fees, and rules for when it can be touched.
 
 **Real assets and debts.** Property, vehicles and other assets, owned outright or financed, with appreciation,
@@ -27,7 +27,7 @@ running costs, rental income and a planned sale or purchase. Debts compound and 
 by a flow you define.
 
 **Income and expenses.** Salary, self-employment, bonuses, share vesting, defined-benefit and annuity income,
-state pensions, windfalls and inheritances; spending by type (housing, healthcare, education, travel, charity
+Social Security and state pensions, windfalls and inheritances; spending by type (housing, healthcare, education, travel, charity
 and so on), marked essential or discretionary. Each item starts and ends on a date, an age, a year or a
 milestone, can change faster or slower than inflation, and can repeat.
 
@@ -37,24 +37,25 @@ times annual spending", or several joined with AND and OR. Tie an income or expe
 the milestone moves everything attached to it. If a milestone is never reached, the plan says so.
 
 **Flows.** What happens to money left over each year, in priority order: fill the emergency fund to a target,
-take the employer match, fill the ISA or 401(k), then invest the rest. The order is the priority.
+take the employer match, fill the 401(k), Roth IRA or HSA (or an ISA in the UK), then invest the rest. The order is the priority.
 
 ## A worked illustration
 
 The planner ships with synthetic sample households (no real data) so you can see the shape of a plan. This is
-the structure of the UK sample, with amounts in today's money:
+the structure of the US sample, a couple in Colorado, with amounts in today's money:
 
 | Part | What the plan says |
 | --- | --- |
-| Household | One person born June 1978, living in the UK, planning to age 92 |
-| Accounts | Easy-access savings, stocks-and-shares ISA, general investment account, a small crypto holding, a SIPP and a workplace pension |
-| Income | £58,000 salary until the retirement milestone, then the State Pension from its start age |
-| Expenses | £2,300 a month of living costs and £4,000 a year of travel |
-| Milestones | Retirement at 60; life expectancy at 92 |
-| Flows | Pension contribution with employer match, then ISA, then SIPP, then invest the rest |
+| Household | Avery (born March 1984) and Jordan (born October 1986), married filing jointly, with one child |
+| Accounts | High-yield savings, a joint taxable brokerage account, Avery's 401(k), Jordan's Roth IRA and a family HSA, plus a home with a mortgage and a car loan |
+| Income | Avery's $132,000 salary and Jordan's $7,400 a month (part-time from 45) until the retirement milestone, then Social Security from 67 |
+| Expenses | $5,200 a month of living costs, $9,000 a year of travel, healthcare from retirement and a replacement car in 2031 |
+| Milestones | Retirement when Avery turns 57; life expectancy at 92 and 94; financial independence at 25 times spending; mortgage paid off |
+| Flows | $23,000 a year into the 401(k), $7,000 into the Roth IRA, the emergency fund up to $36,000, then invest the rest |
 
-Move the retirement milestone from 60 to 57 and the salary ends earlier, the pension flow stops earlier, the
-State Pension stays where it is, and the drawdown starts sooner. Nothing else needed editing. That is the point
+Move the retirement milestone from 57 to 52 and both salaries end earlier, the 401(k) and Roth IRA contributions
+stop earlier, healthcare costs start sooner, Social Security stays where it is, and the drawdown starts sooner.
+Nothing else needed editing. That is the point
 of building a plan from milestones rather than from dated rows.
 
 <Callout type="note" title="Amounts and units">
@@ -75,8 +76,8 @@ reality with the plan over time (see [progress and check-ins](/features/progress
   month inside a year. A crash in March and a recovery by December are not seen separately.
 - **No bank connections.** You enter balances, import files or push them from a script. Glideworth never asks for
   bank credentials. See [importing](/features/import-and-export/).
-- **No means-tested benefits.** UK Universal Credit and Pension Credit are not modelled; neither are loss
-  harvesting or specific-lot selling.
+- **No means-tested benefits.** Medicaid eligibility in the US and Universal Credit and Pension Credit in the UK
+  are not modelled; neither are loss harvesting or specific-lot selling.
 - **Some tax-specific items are simplified.** The municipal and Treasury bond-income split is not modelled, and
   each country's tax model lists what else it leaves out. See [tax estimates](/features/tax-estimates/).
 - **Per-person privacy inside a household** is not modelled: everyone who can sign in to a household sees all
@@ -87,5 +88,5 @@ reality with the plan over time (see [progress and check-ins](/features/progress
 ## Go further
 
 - [Projections and the year-by-year ledger](/features/projections-and-ledger/): what the engine produces from a plan.
-- [Branches, change sets and history](/features/branches-and-change-sets/): try "retire at 57" without touching the plan.
+- [Branches, change sets and history](/features/branches-and-change-sets/): try "retire at 52" without touching the plan.
 - [Importing from ProjectionLab or CSV](/features/import-and-export/) if you already have your numbers elsewhere.

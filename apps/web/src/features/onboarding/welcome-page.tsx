@@ -25,21 +25,21 @@ import { persistWorkspace } from "../import/persist";
 
 const SAMPLES = [
   {
-    id: "uk",
-    label: "Sam",
-    detail: "UK · single · ISA, SIPP and workplace pension · retiring at 60",
-    build: createUkSampleDocument,
-  },
-  {
     id: "us",
     label: "Avery & Jordan",
     detail: "US couple · 401(k), Roth and brokerage · home with a mortgage",
     build: createSampleDocument,
   },
   {
+    id: "uk",
+    label: "Sam",
+    detail: "UK · single · ISA, SIPP and workplace pension · retiring at 60",
+    build: createUkSampleDocument,
+  },
+  {
     id: "ae",
     label: "Noor & Ellis",
-    detail: "UAE couple · dirhams, gratuity, DEWS, a UK pension · a plan that moves back to the UK",
+    detail: "UAE couple · dirhams, gratuity, DEWS and a UK pension",
     build: createUaeSampleDocument,
   },
 ] as const;

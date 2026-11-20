@@ -12,10 +12,13 @@ import {
 } from "@glideworth/core";
 import openapiSnapshot from "../data/openapi.json?raw";
 
-/** Display names for the country codes the engine has a national tax model for. */
+/**
+ * Display names for the country codes the engine has a national tax model for. Lists on the site follow
+ * the engine's order (NATIONAL_JURISDICTION_BY_COUNTRY), which puts the United States first.
+ */
 const COUNTRY_NAMES: Record<string, string> = {
-  GB: "United Kingdom",
   US: "United States",
+  GB: "United Kingdom",
   CA: "Canada",
   AU: "Australia",
   DE: "Germany",

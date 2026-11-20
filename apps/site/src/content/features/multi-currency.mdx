@@ -6,8 +6,9 @@ summary: Items in their own currency, exchange-rate pairs with drift, and option
 order: 13
 ---
 
-If you have savings in sterling, a pension in euros and a salary in dirhams, a planner that quietly converts
-everything at today's rate is hiding the biggest assumption in the plan. Glideworth lets each item keep its own
+If you live in the US with savings in dollars, a pension in euros from years working in Europe and a rental
+flat in pounds, a planner that quietly converts everything at today's rate is hiding the biggest assumption in
+the plan. Glideworth lets each item keep its own
 currency, makes the exchange rate an explicit assumption, and lets you test what happens when it moves.
 
 ## How it works
@@ -33,15 +34,16 @@ holds one currency is never affected.
 
 ## A worked illustration
 
-An illustrative household has £400,000 in UK investments and a pension of 50,000 euros a year that starts at
-67. Its base currency is sterling, and the plan assumes 0.86 pounds per euro with no drift:
+An illustrative US household has $400,000 in a brokerage account and a pension of 50,000 euros a year, from
+years working in Germany, that starts at 67. Its base currency is the US dollar, and the plan assumes 1.08 dollars
+per euro with no drift:
 
 | Item | Currency | Plan figure | In base currency |
 | --- | --- | --- | --- |
-| UK investments | GBP | 400,000 | £400,000 |
-| Euro pension (annual) | EUR | 50,000 | £43,000 |
+| US brokerage account | USD | 400,000 | $400,000 |
+| Euro pension (annual) | EUR | 50,000 | $54,000 |
 
-Now give the pair a 9% yearly volatility. The pension's value in pounds varies from trial to trial, and the
+Now give the pair a 9% yearly volatility. The pension's value in dollars varies from trial to trial, and the
 chance of success moves with it. The difference between the two runs is the exchange-rate risk in the plan, which
 a fixed rate cannot show. All numbers here are invented.
 

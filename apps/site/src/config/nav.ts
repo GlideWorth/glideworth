@@ -61,14 +61,14 @@ export const footerNav: { heading: string; links: NavLink[] }[] = [
   {
     heading: "Countries",
     links: [
+      { label: "United States", href: "/planning/us/" },
       { label: "United Kingdom", href: "/planning/uk/" },
+      { label: "Canada", href: "/planning/ca/" },
       { label: "Ireland", href: "/planning/ie/" },
       { label: "France", href: "/planning/fr/" },
       { label: "Germany", href: "/planning/de/" },
       { label: "Netherlands", href: "/planning/nl/" },
       { label: "Spain", href: "/planning/es/" },
-      { label: "United States", href: "/planning/us/" },
-      { label: "Canada", href: "/planning/ca/" },
       { label: "Australia", href: "/planning/au/" },
       { label: "New Zealand", href: "/planning/nz/" },
       { label: "Israel", href: "/planning/il/" },

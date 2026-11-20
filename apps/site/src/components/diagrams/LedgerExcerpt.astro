@@ -2,24 +2,24 @@
 /**
  * One plan year as the ledger lays it out: money in, money out, where the shortfall was drawn from,
  * and the reconciliation that ends every year. All amounts are ILLUSTRATIVE (a made-up retired
- * household); the structure follows the year drill-down in the app.
+ * US household); the structure follows the year drill-down in the app.
  */
 const income = [
-  ['State Pension', 11_500],
+  ['Social Security', 22_000],
   ['Part-time work', 8_000],
 ] as const;
 const outflows = [
-  ['Living costs', 34_000],
+  ['Living costs', 40_000],
   ['Travel', 6_000],
-  ['Income tax', 1_900],
+  ['Federal and state tax', 2_400],
 ] as const;
 const draws = [
-  ['Cash account', 5_000],
-  ['Taxable investments', 7_400],
-  ['Tax-free account', 10_000],
+  ['High-yield savings', 4_000],
+  ['Taxable brokerage', 6_400],
+  ['Roth IRA', 8_000],
 ] as const;
 const sum = (rows: readonly (readonly [string, number])[]) => rows.reduce((s, [, n]) => s + n, 0);
-const money = (n: number) => `£${n.toLocaleString('en-GB')}`;
+const money = (n: number) => `$${n.toLocaleString('en-US')}`;
 const totalIn = sum(income);
 const totalOut = sum(outflows);
 const totalDraw = sum(draws);

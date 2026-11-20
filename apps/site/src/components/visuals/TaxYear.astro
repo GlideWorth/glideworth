@@ -1,53 +1,62 @@
 ---
 /**
- * One plan year's tax, as the product lays it out: lines by kind and person, plus the model's own
- * list of what it leaves out. Amounts are ILLUSTRATIVE; the "leaves out" lines are real entries from
- * the UK model's simplifications (packages/core/src/tax/data/anglo.ts).
+ * One plan year's tax, as the product lays it out: lines by kind and level, plus the model's own
+ * list of what it leaves out. The amounts are the 2034 year (future dollars) of the synthetic US
+ * sample household (createSampleDocument in packages/core: a married couple filing jointly in
+ * Colorado) with its tax switched from flat rates to the full estimate, rounded to the dollar.
+ * They move when the engine or the tax tables change, so the visual calls them illustrative.
+ * The "leaves out" lines are real entries from the US simplifications (packages/core/src/tax/data/anglo.ts).
  */
 import { facts } from '../../lib/facts';
 
 const lines = [
-  { label: 'Income tax', who: 'Alex', amount: 6_486 },
-  { label: 'Income tax', who: 'Sam', amount: 3_686 },
-  { label: 'Capital gains tax', who: 'Alex', amount: 540 },
-  { label: 'Dividend tax', who: 'Sam', amount: 0, note: 'within allowance' },
+  { label: 'Federal income tax', level: 'Federal', amount: 24_539 },
+  { label: 'Qualified dividends tax', level: 'Federal', amount: 740 },
+  { label: 'Child tax credit', level: 'Federal', amount: -2_734 },
+  { label: 'Social Security tax', level: 'Payroll', amount: 14_433 },
+  { label: 'Medicare tax', level: 'Payroll', amount: 3_376 },
+  { label: 'Colorado income tax', level: 'State', amount: 7_720 },
 ];
 const total = lines.reduce((s, l) => s + l.amount, 0);
-const gbp = (n: number) => `£${n.toLocaleString('en-GB')}`;
+const usd = (n: number) => `${n < 0 ? '−' : ''}$${Math.abs(n).toLocaleString('en-US')}`;
 const leavesOut = [
-  'Unused pension annual allowance is not carried forward',
-  'One basic and one higher capital gains rate for all assets',
-  'No Class 2, voluntary Class 3 or employer National Insurance',
+  'The SALT cap and limits on itemised deductions are not applied automatically',
+  'No earned income, education or child and dependent care credits',
+  'Employer payroll taxes are not modelled',
 ];
+const listed =
+  facts.simplificationCount('us-federal') +
+  facts.simplificationCount('us-payroll') +
+  facts.simplificationCount('us-state');
 ---
 
 <div class="taxyear">
   <div class="ty-head">
-    <p class="ty-title">Tax in 2034/35 <span class="ty-sub">United Kingdom, two people</span></p>
+    <p class="ty-title">Tax in 2034 <span class="ty-sub">United States, married filing jointly in Colorado</span></p>
     <p class="ty-flag">Illustrative amounts</p>
   </div>
   <table>
     <caption class="visually-hidden">Illustrative tax lines for one plan year</caption>
     <thead>
-      <tr><th scope="col">Line</th><th scope="col">Person</th><th scope="col" class="r">Amount</th></tr>
+      <tr><th scope="col">Line</th><th scope="col">Level</th><th scope="col" class="r">Amount</th></tr>
     </thead>
     <tbody>
       {
         lines.map((l) => (
           <tr>
-            <td>{l.label}{l.note && <span class="note"> · {l.note}</span>}</td>
-            <td>{l.who}</td>
-            <td class="r num">{gbp(l.amount)}</td>
+            <td>{l.label}</td>
+            <td>{l.level}</td>
+            <td class="r num">{usd(l.amount)}</td>
           </tr>
         ))
       }
     </tbody>
     <tfoot>
-      <tr><th scope="row" colspan="2">Total</th><td class="r num">{gbp(total)}</td></tr>
+      <tr><th scope="row" colspan="2">Total</th><td class="r num">{usd(total)}</td></tr>
     </tfoot>
   </table>
   <div class="leaves">
-    <p class="leaves-title">What this estimate leaves out <span class="muted">(3 of {facts.simplificationCount('uk')} shown)</span></p>
+    <p class="leaves-title">What this estimate leaves out <span class="muted">(3 of {listed} shown)</span></p>
     <ul>
       {leavesOut.map((t) => <li>{t}</li>)}
     </ul>
@@ -104,10 +113,6 @@ const leavesOut = [
   .r {
     text-align: right;
     padding-right: 0;
-  }
-  .note {
-    color: var(--ink-3);
-    font-size: var(--text-xs);
   }
   .leaves {
     border-radius: var(--radius-m);

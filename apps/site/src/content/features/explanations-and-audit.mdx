@@ -44,7 +44,8 @@ first. Examples it checks for:
 - implausible returns or an implausibly high early withdrawal rate;
 - a missing flow, or nothing paying for care costs in your 80s;
 - early withdrawals that carry penalties, and cash drag;
-- a missing exchange rate, or a state pension that will fall short on qualifying years.
+- a missing exchange rate, or a state pension (such as the UK State Pension) that will fall short on qualifying
+  years.
 
 A finding with a fix comes with ready-made plan edits. You can preview them (nothing is stored), propose them as a
 change set, and apply them only when you agree.
@@ -53,9 +54,9 @@ change set, and apply them only when you agree.
 
 An illustrative finding, as it might read:
 
-> **Warning: housing may be counted twice.** The plan has a £1,800 a month "Living costs" expense and a £900 a
+> **Warning: housing may be counted twice.** The plan has a $4,200 a month "Living costs" expense and a $2,100 a
 > month "Mortgage" expense, but also a mortgage on the home in current finances. Fix: remove the separate
-> mortgage expense. Preview: end net worth rises by £141,000 (today's money).
+> mortgage expense. Preview: end net worth rises by $310,000 (today's money).
 
 The figures are invented. The pattern is real: a finding, why it matters, a fix, and a preview before anything
 changes. Through MCP the sequence is `audit_plan`, then `preview_changes` with the finding's patch, then

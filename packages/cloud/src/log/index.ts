@@ -102,13 +102,13 @@ const LEVELS: Record<LogLevel, number> = { debug: 10, info: 20, warn: 30, error:
 const EVENT_RE = /^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$/;
 const RESERVED = new Set(["level", "time", "event", "droppedFields"]);
 
-const EMAIL_LIKE = /[^\s@]+@[^\s@]+\.[^\s@]+/;
+const EMAIL_LIKE = /[^\s@]@[^\s@]+\.[^\s@]/;
 const CREDENTIAL_LIKE = /\b(gw[karcs]|glideworth|cairn|scrypt)[_$]/i;
 /** 32+ characters of a base64url/base32/hex token, or of standard base64 (route templates do not match). */
 const TOKEN_LIKE =
   /[A-Za-z0-9_-]{32,}|(?=[A-Za-z0-9+/]*\d)(?=[A-Za-z0-9+/]*[A-Z])[A-Za-z0-9+/]{32,}/;
 /** Three or more words: a message, a name or free text, never one of the identifiers or enums we log. */
-const PROSE_LIKE = /\S+\s+\S+\s+\S+/;
+const PROSE_LIKE = /\S\s+\S+\s+\S/;
 const MAX_STRING = 200;
 
 /** The value scrub every log line gets (also applied to error report tags). */

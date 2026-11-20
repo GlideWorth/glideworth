@@ -3,7 +3,7 @@
  * process on one port. Only used when a dist directory exists and serving is enabled.
  */
 import { createHash } from "node:crypto";
-import { readFile, stat } from "node:fs/promises";
+import { type FileHandle, open } from "node:fs/promises";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import type { MiddlewareHandler } from "hono";
 
@@ -57,11 +57,17 @@ export function staticSite(rootDir: string): MiddlewareHandler {
   const etags = new Map<string, string>();
 
   async function load(file: string): Promise<{ body: Buffer; etag: string; type: string } | null> {
+    let fh: FileHandle;
     try {
-      const st = await stat(file);
+      fh = await open(file, "r");
+    } catch {
+      return null;
+    }
+    try {
+      const st = await fh.stat();
       if (!st.isFile()) return null;
       const key = `${file}:${st.mtimeMs}:${st.size}`;
-      const body = await readFile(file);
+      const body = await fh.readFile();
       let etag = etags.get(key);
       if (!etag) {
         etag = `"${createHash("sha1").update(body).digest("base64url").slice(0, 20)}"`;
@@ -70,6 +76,8 @@ export function staticSite(rootDir: string): MiddlewareHandler {
       return { body, etag, type: TYPES[extname(file).toLowerCase()] ?? "application/octet-stream" };
     } catch {
       return null;
+    } finally {
+      await fh.close();
     }
   }
 

@@ -14,10 +14,9 @@
 # /data/cairn.db is used while /data/glideworth.db does not exist, and CAIRN_* variables keep working
 # (see docs/SELF-HOSTING.md, "Upgrading from Cairn").
 #
-ARG NODE_VERSION=24
-
 # ------------------------------------------------------------------------------------------ base
-FROM node:${NODE_VERSION}-bookworm-slim AS base
+# Pinned by digest; Dependabot (docker ecosystem) moves the tag and digest together.
+FROM node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS base
 ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH \
     CI=true
@@ -85,7 +84,7 @@ RUN --mount=type=secret,id=posthog_cli_api_key \
 RUN pnpm --filter @glideworth/api deploy --prod --legacy /deploy
 
 # ------------------------------------------------------------------------------------- runtime
-FROM node:${NODE_VERSION}-bookworm-slim AS runtime
+FROM node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS runtime
 # The port is the server's default (8787) and is not set here, so a GLIDEWORTH_API_PORT or a pre-rename
 # CAIRN_API_PORT given at `docker run` time is honoured either way.
 # GLIDEWORTH_DATA_DIR, not GLIDEWORTH_DB_PATH: self-host keeps /data/glideworth.db (or an existing

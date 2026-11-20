@@ -16,15 +16,17 @@ on:
   pull_request_target: # zizmor: ignore[dangerous-triggers]
     types: [opened, closed, synchronize]
 
-permissions:
-  actions: write
-  contents: write
-  pull-requests: write
-  statuses: write
+permissions: {}
 
 jobs:
   cla:
     runs-on: ubuntu-latest
+    # The CLA assistant needs all four: it writes the signature branch, comments, sets the status and reruns.
+    permissions:
+      actions: write
+      contents: write
+      pull-requests: write
+      statuses: write
     # Public repository only. This file is exported to GlideWorth/glideworth, where outside contributors
     # send pull requests; the internal repository has no outside contributors and no signature branch.
     if: >-

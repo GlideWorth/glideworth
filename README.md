@@ -85,7 +85,8 @@ connection to your accounts.
 mkdir glideworth && cd glideworth
 curl -fsSLO https://raw.githubusercontent.com/GlideWorth/glideworth/main/docker-compose.yml
 curl -fsSL https://raw.githubusercontent.com/GlideWorth/glideworth/main/.env.example -o .env
-# edit .env: set GLIDEWORTH_SETUP_TOKEN (e.g. `openssl rand -hex 24`), leave GLIDEWORTH_BOOTSTRAP_KEY empty
+sed -i.bak -e "s/^GLIDEWORTH_SETUP_TOKEN=.*/GLIDEWORTH_SETUP_TOKEN=$(openssl rand -hex 24)/" \
+  -e 's/^GLIDEWORTH_BOOTSTRAP_KEY=.*/GLIDEWORTH_BOOTSTRAP_KEY=/' .env   # set a setup token, clear the dev key
 docker compose up -d     # pulls ghcr.io/glideworth/glideworth and serves http://localhost:8787
 ```
 
@@ -191,7 +192,9 @@ pnpm restore -- --from ~/glideworth.db --force   # stop the server first; the ol
 ### Quick start: Docker, built from source
 
 ```bash
-cp .env.example .env     # then set GLIDEWORTH_SETUP_TOKEN, and leave GLIDEWORTH_BOOTSTRAP_KEY empty (or your own secret)
+cp .env.example .env
+sed -i.bak -e "s/^GLIDEWORTH_SETUP_TOKEN=.*/GLIDEWORTH_SETUP_TOKEN=$(openssl rand -hex 24)/" \
+  -e 's/^GLIDEWORTH_BOOTSTRAP_KEY=.*/GLIDEWORTH_BOOTSTRAP_KEY=/' .env   # set a setup token, clear the dev key
 docker compose up -d --build            # builds the image from this checkout; http://localhost:8787
 ```
 

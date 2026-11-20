@@ -9,14 +9,16 @@ import { page } from '../config/pages';
 import PageLayout from '../layouts/PageLayout.astro';
 import type { FaqItem } from '../lib/jsonld';
 
-const install = `git clone <repository address>   # the repository is being prepared for public release
-cd glideworth
-cp .env.example .env
+const install = `mkdir glideworth && cd glideworth
+curl -fsSLO https://raw.githubusercontent.com/GlideWorth/glideworth/main/docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/GlideWorth/glideworth/main/.env.example -o .env
 
-# Edit .env: set GLIDEWORTH_SETUP_TOKEN to a long random value
-# (for example the output of: openssl rand -hex 24) and leave GLIDEWORTH_BOOTSTRAP_KEY empty.
+# Set a setup token, so nobody else can choose your passphrase first,
+# and clear the public development key (production refuses it).
+sed -i.bak -e "s/^GLIDEWORTH_SETUP_TOKEN=.*/GLIDEWORTH_SETUP_TOKEN=$(openssl rand -hex 24)/" \\
+  -e 's/^GLIDEWORTH_BOOTSTRAP_KEY=.*/GLIDEWORTH_BOOTSTRAP_KEY=/' .env
 
-docker compose up -d --build
+docker compose up -d               # pulls ghcr.io/glideworth/glideworth
 docker compose ps                  # wait for "healthy"
 # Open http://localhost:8787 and choose a passphrase of 12 or more characters.`;
 
@@ -33,8 +35,8 @@ docker compose run --rm --no-deps \\
 docker compose up -d`;
 
 const upgrade = `docker compose exec glideworth node dist/cli/admin.js backup --out /data/backups/pre-upgrade.db
-git pull
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 docker compose logs --tail 50 glideworth   # migrations run at start-up`;
 
 const caddy = `glideworth.example.com {
@@ -72,9 +74,9 @@ const faq: FaqItem[] = [
   <Section eyebrow="The short path" title="Four steps to a running planner." width="narrow" tight>
     <Steps
       items={[
-        { title: 'Get the code', body: 'Clone the repository. You need Docker with the Compose plugin, or Node 24 and pnpm 10 to run from source.' },
-        { title: 'Configure', body: 'Copy .env.example to .env and set a setup token, so nobody else can choose your passphrase first.' },
-        { title: 'Start it', body: 'docker compose up -d --build, then open port 8787 and choose a passphrase of 12 or more characters.' },
+        { title: 'Download two files', body: 'The Compose file and the example settings. You need Docker with the Compose plugin, or Node 24 and pnpm 10 to run from source.' },
+        { title: 'Configure', body: 'Set a setup token in .env, so nobody else can choose your passphrase first, and clear the development key.' },
+        { title: 'Start it', body: 'docker compose up -d pulls the published image. Open port 8787 and choose a passphrase of 12 or more characters.' },
         { title: 'Back it up', body: 'The database is one file. The backup command is safe while the server runs. Copy backups off the machine.' },
       ]}
     />
@@ -104,7 +106,7 @@ const faq: FaqItem[] = [
     <CodeBlock lang="text" title="Caddyfile" code={caddy} />
     <ul class="points">
       <li><strong>Backups.</strong> A backup on the same volume protects against mistakes, not against losing the disk. Copy backups elsewhere regularly, and store them as carefully as the live data, because a backup holds your whole plan and your hashed credentials.</li>
-      <li><strong>Upgrades.</strong> You choose when. Read the release notes, back up first, then pull and rebuild. Database migrations run automatically at start-up. Tax-table updates and fixes reach you when you upgrade.</li>
+      <li><strong>Upgrades.</strong> You choose when. Read the release notes, back up first, then pull the new image. Database migrations run automatically at start-up. Tax-table updates and fixes reach you when you upgrade.</li>
       <li><strong>Security.</strong> Keep the image up to date, set the setup token before exposing a new instance, and keep the port off the public internet until you have a passphrase and TLS.</li>
       <li><strong>Your passphrase.</strong> With no email, recovery is a command on the host.</li>
       <li><strong>One instance.</strong> A single container per database, on local storage.</li>

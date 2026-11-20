@@ -110,7 +110,7 @@ export function prepareRun(
   const periodStarts = baseline.periods.map((p) => parseMonth(p.startMonth));
   const last = baseline.periods[periods - 1];
   periodStarts.push(last ? parseMonth(last.startMonth) + last.months : 0);
-  const ages: Record<string, number[]> = {};
+  const ages: Record<string, number[]> = Object.create(null);
   for (const person of input.household.people)
     ages[person.id] = baseline.periods.map((p) => p.ages[person.id] ?? Number.NaN);
   const metrics = [...(options.metrics ?? ALL_STOCHASTIC_METRICS)];
@@ -196,7 +196,10 @@ function applyAccountOverrides(
           dividendYield = (1 - share) * base0.dividendYield + share * base0.bondYield;
       }
     } else continue;
-    settings ??= { ...plan.accountSettings };
+    settings ??= Object.assign(
+      Object.create(null) as Record<string, AccountBehaviourPatch>,
+      plan.accountSettings,
+    );
     const next: AccountBehaviourPatch = { ...patch, growth };
     if (dividendYield !== undefined)
       next.dividends = { ...eff.dividends, yield: { kind: "fixed", rate: dividendYield } };

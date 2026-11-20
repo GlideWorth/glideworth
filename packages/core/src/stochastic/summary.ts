@@ -83,7 +83,7 @@ export function summarizeMonteCarlo(
   const summaries = shard.summaries;
 
   let successes = 0;
-  const outcomeCounts: Record<string, number> = {};
+  const outcomeCounts: Record<string, number> = Object.create(null);
   for (const c of settings.outcomeCategories) outcomeCounts[c.id] = 0;
   for (const s of summaries) {
     if (s.success) successes++;

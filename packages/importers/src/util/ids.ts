@@ -1,11 +1,13 @@
 /** Id handling: Glideworth ids are `[A-Za-z0-9_-]{1,64}`; source ids may be anything. */
 
 export function slug(input: string, fallback: string): string {
-  const s = input
+  const t = input
     .normalize("NFKD")
     .replace(/[^A-Za-z0-9_-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 56);
+    .replace(/^-+/, "");
+  let end = t.length;
+  while (end > 0 && t[end - 1] === "-") end--;
+  const s = t.slice(0, Math.min(end, 56));
   return s.length > 0 ? s : fallback;
 }
 

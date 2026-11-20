@@ -372,18 +372,10 @@ export function mapTax(
     if (incomeMode === "fixed" && ordinary !== undefined) custom.flatEffectiveRate = ordinary;
     if (fttActive) {
       const event = str(v.fttTaxableEvent) ?? "buy-sell";
-      const base =
-        /sell|sale/.test(event) && /buy|purchase/.test(event)
-          ? "both"
-          : /sell|sale/.test(event)
-            ? "sales"
-            : /buy|purchase/.test(event)
-              ? "purchases"
-              : "both";
-      if (
-        base === "both" &&
-        !/(sell|sale).*(buy|purchase)|(buy|purchase).*(sell|sale)/.test(event)
-      ) {
+      const sells = /sell|sale/.test(event);
+      const buys = /buy|purchase/.test(event);
+      const base = sells && buys ? "both" : sells ? "sales" : buys ? "purchases" : "both";
+      if (!sells && !buys) {
         approximated(
           ctx,
           `${path}.fttTaxableEvent`,

@@ -53,12 +53,17 @@ curl -fsSLO https://raw.githubusercontent.com/GlideWorth/glideworth/main/docker-
 curl -fsSL https://raw.githubusercontent.com/GlideWorth/glideworth/main/.env.example -o .env
 ```
 
-Edit `.env` before the first start:
+Edit `.env` before the first start. This command does the first two steps:
+
+```bash
+sed -i.bak -e "s/^GLIDEWORTH_SETUP_TOKEN=.*/GLIDEWORTH_SETUP_TOKEN=$(openssl rand -hex 24)/" \
+  -e 's/^GLIDEWORTH_BOOTSTRAP_KEY=.*/GLIDEWORTH_BOOTSTRAP_KEY=/' .env   # set a setup token, clear the dev key
+```
 
 - set `GLIDEWORTH_SETUP_TOKEN` to a long random value (at least 8 characters; for example the output of
   `openssl rand -hex 24`). This stops a stranger who finds the port from choosing your passphrase first;
-- leave `GLIDEWORTH_BOOTSTRAP_KEY` **empty** (or set your own secret). The example development key in
-  `.env.example` is public and the server refuses it in production;
+- clear `GLIDEWORTH_BOOTSTRAP_KEY` (or set your own secret). `.env.example` ships the public development key,
+  which the server refuses in production and warns about at start-up;
 - optionally pin a release by adding `GLIDEWORTH_VERSION=1.0.0` (without it you get `latest`). Pinning is
   recommended: you then upgrade when you choose to.
 

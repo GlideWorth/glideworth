@@ -25,10 +25,9 @@ import {
 import { addMonths } from "./finance-math";
 
 export function newId(prefix: string): string {
-  const rand =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID().replace(/-/g, "").slice(0, 10)
-      : Math.random().toString(36).slice(2, 12);
+  const rand = Array.from(crypto.getRandomValues(new Uint8Array(5)), (b) =>
+    b.toString(16).padStart(2, "0"),
+  ).join("");
   return `${prefix}-${rand}`;
 }
 

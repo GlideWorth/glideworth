@@ -17,6 +17,9 @@ export const Id = z
   .min(1)
   .max(64)
   .regex(/^[A-Za-z0-9_-]+$/, 'ids may contain letters, digits, "_" and "-"')
+  // Ids key plain objects (per-account settings, outcome counts): `__proto__` or `constructor` would reach
+  // Object.prototype.
+  .refine((v) => !Object.hasOwn(Object.prototype, v), "this id is reserved")
   .meta({ id: "Id", description: "Stable identifier (UUID or slug)." });
 export type Id = z.infer<typeof Id>;
 

@@ -7,8 +7,16 @@ import {
   ValidationError,
 } from "../src/index.js";
 import { createSampleDocument } from "../src/samples/index.js";
+import { Id } from "../src/schema/primitives.js";
 
 describe("schema", () => {
+  it("refuses ids that name Object.prototype members", () => {
+    for (const id of ["__proto__", "constructor", "toString", "hasOwnProperty"]) {
+      expect(Id.safeParse(id).success, id).toBe(false);
+    }
+    expect(Id.safeParse("acct_proto-1").success).toBe(true);
+  });
+
   it("parses the synthetic sample document", () => {
     const doc = createSampleDocument();
     expect(doc.schemaVersion).toBe(SCHEMA_VERSION);

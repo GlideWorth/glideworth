@@ -18,7 +18,7 @@ Where Glideworth stands, how to run it, and what not to trust yet. Feature-by-fe
 | MCP                                                       | 67 tools (49 read/compute, 18 write behind a switch), resources, prompts; stdio and HTTP.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | Web (`apps/web`)                                          | React app: onboarding, plan editor, results, chance of success, cash flow, taxes, estate, compare, insights, progress, import, reports, settings, PWA; cross-border: citizenships and US green card per person, item countries, tax by country and basis, "how this is taxed and why".                                                                                                                                                                                                                                                                                                                                             |
 
-PARITY.md counts: 212 features checked, 169 implemented, 35 partial, 5 missing, 3 removed.
+PARITY.md counts: 214 features checked, 171 implemented, 35 partial, 5 missing, 3 removed.
 
 ### Added on 2026-11-23
 
@@ -257,6 +257,11 @@ long-term, and losses are never realised.
 - **Partial first year.** The plan starts in the month balances are dated, so the first (and last) year may be
   short. It is labelled (for example 2026*) and can be shown annualised.
 - Monte Carlo uses a fixed default seed so comparisons share random draws; results are cached per plan version.
+- **Dependents.** A dependent counts in a year when they are born by the year's end and younger than their own
+  "independent at" age at its start (`engine/dependents.ts`). The US child tax credit, the automatic ACA household
+  size (living adults on the return plus these dependents) and survivor filing status all read this one rule; no
+  IRS qualifying-child test beyond each credit's own age limit is applied (engine 0.7.0). A stored ACA household
+  size is a manual override (schema 6).
 
 ### Not modelled
 

@@ -8,6 +8,7 @@ import type { McpContext } from "./server.js";
 export const GLOSSARY = `# Glideworth glossary
 
 - **Household**: the people (1-2), dependents, location and currency being planned for.
+- **Dependent**: a child or other dependent in \`household.dependents\` (birth month, \`independentAtAge\`). They count for tax credits and the automatic ACA household size from birth until that age. Costs can follow their age: an expense with \`dependentId\` and \`{ "kind": "dependentAge", "dependentId", "age" }\` dates moves when their birth month changes.
 - **Current finances**: starting balances. Accounts (balance, cost basis), real assets (value, loan) and debts.
 - **Plan**: a scenario on top of the finances: milestones, income, expenses, flows, assumptions, tax and Monte Carlo settings. Plans have a numeric \`version\` that increases on every write.
 - **Branch**: a plan that stores a patch over a parent and follows it (a what-if scenario).
@@ -49,6 +50,8 @@ export const EDIT_PATHS = `# Common plan edits (RFC 6902 ops; ids come from get_
 - Stop/start an item: { "op": "replace", "path": "/expenses/[id=EXPENSE]/enabled", "value": false }
 - Move retirement: { "op": "replace", "path": "/milestones/[id=MILESTONE]/criteria/0/age", "value": 58 } (or use preview_whatif early-retirement)
 - Add an expense: { "op": "add", "path": "/expenses/-", "value": { "id": "exp-care", "type": "healthcare", "name": "Care", "owner": "joint", "amount": { "value": 5000, "basis": "real" }, "frequency": "yearly", "range": { "start": { "kind": "age", "personId": "PERSON", "age": 80, "offsetMonths": 0 }, "end": { "kind": "planEnd", "offsetMonths": 0 } }, "change": { "kind": "inflation", "plus": 0.02 }, "spendingType": "essential" } }
+- Add a child's cost by age (no amount is assumed: use the user's figure): { "op": "add", "path": "/expenses/-", "value": { "id": "exp-robin-college", "type": "education", "name": "Robin's college", "owner": "joint", "dependentId": "DEPENDENT", "amount": { "value": USER_AMOUNT, "basis": "real" }, "frequency": "yearly", "range": { "start": { "kind": "dependentAge", "dependentId": "DEPENDENT", "age": 18, "offsetMonths": 0 }, "end": { "kind": "dependentAge", "dependentId": "DEPENDENT", "age": 22, "offsetMonths": 0 } } } }  (end is exclusive: the cost stops on the 22nd birthday)
+- ACA household size: { "op": "replace", "path": "/expenses/[id=EXPENSE]/healthcare/householdSize", "value": "auto" } follows the tax household each year (adults on the return + dependents still dependent); a number fixes it for every year. explain_year states the size used.
 - Change an assumption: { "op": "replace", "path": "/assumptions/stockReturn", "value": { "kind": "fixed", "rate": 0.05 } }
 - Monte Carlo settings: { "op": "replace", "path": "/monteCarlo/trials", "value": 2000 }
 

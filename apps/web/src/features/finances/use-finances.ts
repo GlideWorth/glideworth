@@ -23,6 +23,7 @@ export function useFinanceScope(): EditorScope {
   return useMemo(
     () => ({
       people: doc?.household.people ?? [],
+      dependents: doc?.household.dependents ?? [],
       milestones: plan?.milestones ?? [],
       accounts: (doc?.finances.accounts ?? [])
         .filter((a) => !a.archived)

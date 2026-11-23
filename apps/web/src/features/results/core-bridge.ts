@@ -165,7 +165,9 @@ export function diffFormat(
   return {
     locale,
     currency,
-    people: Object.fromEntries(doc.household.people.map((p) => [p.id, p.name])),
+    people: Object.fromEntries(
+      [...doc.household.people, ...doc.household.dependents].map((p) => [p.id, p.name]),
+    ),
     entities: Object.fromEntries(
       [...fin.accounts, ...fin.realAssets, ...fin.debts].map((x) => [x.id, x.name]),
     ),

@@ -136,6 +136,7 @@ function PlanEditorBody({ plan }: { plan: PlanT }) {
   const scope = useMemo<EditorScope>(
     () => ({
       people: doc.household.people,
+      dependents: doc.household.dependents,
       milestones: plan.milestones,
       accounts: [
         ...doc.finances.accounts

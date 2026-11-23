@@ -14,6 +14,7 @@ import {
   clamp0,
   collectIncome,
   finiteMarginal,
+  householdDependents,
   LineSink,
   periodScale,
   pickYear,
@@ -102,6 +103,21 @@ export function irmaaThresholds(
   table: UsIrmaaYear = US_IRMAA_2026,
 ): number[] {
   return irmaaTable(status, table).map(([lo]) => lo * factor);
+}
+
+/** The living adults on the federal return: both spouses when filing jointly, else one person. */
+export function returnFilers(input: TaxYearInput): TaxYearInput["people"] {
+  const people = alivePeople(input);
+  return input.filingStatus === "married-joint" ? people : people.slice(0, 1);
+}
+
+/**
+ * ACA household size for the poverty line: the size set on the ACA expense when there is one,
+ * otherwise the tax household (the living adults on the return plus the household's dependents this
+ * year, the same list the child tax credit counts from).
+ */
+export function acaHouseholdSize(input: TaxYearInput): number {
+  return input.aca?.householdSize ?? returnFilers(input).length + householdDependents(input).length;
 }
 
 export function federalPovertyLine(
@@ -195,7 +211,8 @@ function computeFederal(input: TaxYearInput, explain: boolean): FedCore {
     status === "married-joint" ||
     status === "married-separate" ||
     status === "qualifying-surviving-spouse";
-  const filers = status === "married-joint" ? people : people.slice(0, 1);
+  const filers = returnFilers(input);
+  const dependents = householdDependents(input);
   const n65 = filers.filter((p) => p.age >= 65).length;
   // Non-resident aliens (cross-border source tax) cannot claim the standard deduction
   // (Publication 519, chapter 5).
@@ -209,7 +226,7 @@ function computeFederal(input: TaxYearInput, explain: boolean): FedCore {
   const itemizing = itemizedItems > standard;
   const deduction = Math.max(standard, itemizedItems);
   const exemptions =
-    d.personalExemption * fs * (filers.length + input.dependents.filter((x) => x.age < 19).length);
+    d.personalExemption * fs * (filers.length + dependents.filter((x) => x.age < 19).length);
   let senior = 0;
   if (
     d.seniorDeduction &&
@@ -280,7 +297,7 @@ function computeFederal(input: TaxYearInput, explain: boolean): FedCore {
 
   // ---- credits
   const beforeCredits = regular + amt;
-  const kids = input.dependents.filter((x) => x.age < 17).length;
+  const kids = dependents.filter((x) => x.age < 17).length;
   let ctc = 0;
   let ctcRefundable = 0;
   if (kids > 0) {
@@ -302,10 +319,12 @@ function computeFederal(input: TaxYearInput, explain: boolean): FedCore {
   // ---- ACA premium tax credit
   let ptc = 0;
   let fplMultiple = 0;
+  let acaSize = 0;
   let acaLine: { kind: "credit" | "aca-reconciliation"; amount: number } | null = null;
   if (input.aca && input.aca.benchmarkPremium > 0) {
     const aca = usTable(US_ACA_YEARS, input);
-    const fpl = federalPovertyLine(input.aca.householdSize, aca.factor, aca.row);
+    acaSize = acaHouseholdSize(input);
+    const fpl = federalPovertyLine(acaSize, aca.factor, aca.row);
     fplMultiple = acaMagi / scale / fpl;
     const pct = acaApplicablePercentage(
       fplMultiple,
@@ -384,6 +403,10 @@ function computeFederal(input: TaxYearInput, explain: boolean): FedCore {
     "tax.ordinaryBracketRate": ordTaxable > 0 ? ord.marginal : 0,
   };
   if (fplMultiple > 0) facts["us.fplMultiple"] = fplMultiple;
+  if (acaSize > 0) {
+    facts["us.acaHouseholdSize"] = acaSize;
+    facts["us.acaHouseholdSizeAuto"] = input.aca?.householdSize === undefined ? 1 : 0;
+  }
   if (irmaa > 0) facts["us.irmaaMagi"] = lookbackMagi;
   if (ira.nondeductible > 0) {
     facts["us.iraMagi"] = ira.magi;

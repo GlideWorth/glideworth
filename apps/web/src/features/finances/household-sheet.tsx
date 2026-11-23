@@ -1,5 +1,6 @@
 import {
   CurrentFinances,
+  type Dependent,
   type Household,
   Household as HouseholdSchema,
   Milestone,
@@ -34,6 +35,8 @@ import {
   planKey,
 } from "../plan-editor/state/doc-store";
 import { useIssues } from "../plan-editor/state/validation";
+import { linkedCosts, planMentions, planWithoutDependent } from "./dependent-costs";
+import { DependentCosts } from "./dependent-costs-panel";
 import { updateHouseholdOnly, useDraftDoc } from "./use-finances";
 
 const Bundle = z.object({ household: HouseholdSchema, finances: CurrentFinances });
@@ -237,6 +240,46 @@ function HouseholdSheetBody() {
       });
   };
 
+  const removeDependent = async (d: Dependent) => {
+    const touched = plans.filter((p) => planMentions(p, d.id));
+    const costs = linkedCosts(plans, d.id).length;
+    if (touched.length) {
+      const ok = await confirmAction({
+        title: `Remove ${d.name}?`,
+        description: `${
+          costs
+            ? `${costs} linked ${costs === 1 ? "cost is" : "costs are"} removed${touched.length > 1 ? ` from ${touched.length} plans` : ""}. `
+            : ""
+        }Any other date that followed ${d.name}’s age keeps its current month. You can undo this.`,
+        confirmLabel: "Remove",
+        tone: "danger",
+      });
+      if (!ok) return;
+    }
+    editMany(
+      [
+        {
+          key: "household",
+          update: (v) => {
+            const e = v as HouseholdEntity;
+            return {
+              ...e,
+              household: {
+                ...e.household,
+                dependents: e.household.dependents.filter((y) => y.id !== d.id),
+              },
+            };
+          },
+        },
+        ...touched.map((p) => ({
+          key: planKey(p.id) as EntityKey,
+          update: (v: unknown) => planWithoutDependent(v as Plan, d),
+        })),
+      ],
+      "Remove dependant",
+    );
+  };
+
   return (
     <SheetContent
       eyebrow="Household"
@@ -384,7 +427,7 @@ function HouseholdSheetBody() {
 
       <FormSection
         title="Dependants"
-        description="Children or others you support. Used for childcare and education timing and tax credits."
+        description="Children or others you support. Costs added here follow their age; tax credits and the ACA household size count them until their “independent at” age."
         aside={
           <Button
             size="sm"
@@ -415,83 +458,81 @@ function HouseholdSheetBody() {
           <p className="text-[12px] text-ink-3">No dependants.</p>
         ) : null}
         {h.dependents.map((d, i) => (
-          <div key={d.id} className="grid items-end gap-2 sm:grid-cols-[1fr_150px_110px_auto]">
-            <FormField label="Name" error={issues.get(`household.dependents.${i}.name`)}>
-              {(id) => (
-                <Input
-                  id={id}
-                  value={d.name}
-                  onChange={(e) =>
-                    update(
-                      (x) => ({
-                        ...x,
-                        dependents: x.dependents.map((y) =>
-                          y.id === d.id ? { ...y, name: e.target.value } : y,
-                        ),
-                      }),
-                      "Edit dependant",
-                      `${d.id}:name`,
-                    )
-                  }
-                />
-              )}
-            </FormField>
-            <FormField label="Born" error={issues.get(`household.dependents.${i}.birthMonth`)}>
-              {(id) => (
-                <Input
-                  id={id}
-                  type="month"
-                  value={d.birthMonth}
-                  onChange={(e) =>
-                    update(
-                      (x) => ({
-                        ...x,
-                        dependents: x.dependents.map((y) =>
-                          y.id === d.id ? { ...y, birthMonth: e.target.value } : y,
-                        ),
-                      }),
-                      "Edit dependant",
-                      `${d.id}:birth`,
-                    )
-                  }
-                />
-              )}
-            </FormField>
-            <FormField label="Independent at">
-              {(id) => (
-                <NumberInput
-                  id={id}
-                  decimals={0}
-                  suffix="yrs"
-                  value={d.independentAtAge}
-                  onValueChange={(v) =>
-                    update(
-                      (x) => ({
-                        ...x,
-                        dependents: x.dependents.map((y) =>
-                          y.id === d.id ? { ...y, independentAtAge: Math.round(v ?? 18) } : y,
-                        ),
-                      }),
-                      "Edit dependant",
-                      `${d.id}:ind`,
-                    )
-                  }
-                />
-              )}
-            </FormField>
-            <Button
-              size="icon"
-              variant="ghost"
-              aria-label={`Remove ${d.name}`}
-              onClick={() =>
-                update(
-                  (x) => ({ ...x, dependents: x.dependents.filter((y) => y.id !== d.id) }),
-                  "Remove dependant",
-                )
-              }
-            >
-              <Trash2 />
-            </Button>
+          <div key={d.id} className="flex flex-col gap-2.5 rounded-lg border border-border p-3">
+            <div className="grid items-end gap-2 sm:grid-cols-[1fr_150px_110px_auto]">
+              <FormField label="Name" error={issues.get(`household.dependents.${i}.name`)}>
+                {(id) => (
+                  <Input
+                    id={id}
+                    value={d.name}
+                    onChange={(e) =>
+                      update(
+                        (x) => ({
+                          ...x,
+                          dependents: x.dependents.map((y) =>
+                            y.id === d.id ? { ...y, name: e.target.value } : y,
+                          ),
+                        }),
+                        "Edit dependant",
+                        `${d.id}:name`,
+                      )
+                    }
+                  />
+                )}
+              </FormField>
+              <FormField label="Born" error={issues.get(`household.dependents.${i}.birthMonth`)}>
+                {(id) => (
+                  <Input
+                    id={id}
+                    type="month"
+                    value={d.birthMonth}
+                    onChange={(e) =>
+                      update(
+                        (x) => ({
+                          ...x,
+                          dependents: x.dependents.map((y) =>
+                            y.id === d.id ? { ...y, birthMonth: e.target.value } : y,
+                          ),
+                        }),
+                        "Edit dependant",
+                        `${d.id}:birth`,
+                      )
+                    }
+                  />
+                )}
+              </FormField>
+              <FormField label="Independent at">
+                {(id) => (
+                  <NumberInput
+                    id={id}
+                    decimals={0}
+                    suffix="yrs"
+                    value={d.independentAtAge}
+                    onValueChange={(v) =>
+                      update(
+                        (x) => ({
+                          ...x,
+                          dependents: x.dependents.map((y) =>
+                            y.id === d.id ? { ...y, independentAtAge: Math.round(v ?? 18) } : y,
+                          ),
+                        }),
+                        "Edit dependant",
+                        `${d.id}:ind`,
+                      )
+                    }
+                  />
+                )}
+              </FormField>
+              <Button
+                size="icon"
+                variant="ghost"
+                aria-label={`Remove ${d.name}`}
+                onClick={() => removeDependent(d)}
+              >
+                <Trash2 />
+              </Button>
+            </div>
+            <DependentCosts dependent={d} doc={doc} refPlan={refPlan} />
           </div>
         ))}
       </FormSection>

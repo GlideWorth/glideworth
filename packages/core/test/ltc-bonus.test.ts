@@ -312,8 +312,8 @@ describe("bonus as a percentage of a salary: what-ifs", () => {
 });
 
 describe("schema 4 -> 5", () => {
-  it("is the current version", () => {
-    expect(SCHEMA_VERSION).toBe(5);
+  it("has a version 4 -> 5 step", () => {
+    expect(SCHEMA_VERSION).toBeGreaterThanOrEqual(5);
   });
 
   it("a version 4 document loads unchanged", () => {

@@ -9,7 +9,7 @@ export interface FormatContext {
   /** ISO 4217 code. Without it, amounts are formatted as plain grouped numbers. */
   currency?: string;
   locale?: string;
-  /** person id -> display name */
+  /** person or dependent id -> display name */
   people?: Record<string, string>;
   /** milestone id -> name */
   milestones?: Record<string, string>;
@@ -106,6 +106,10 @@ export function fmtDateRef(ref: DateRef, ctx: FormatContext = {}): string {
     case "age": {
       const who = personName(ref.personId, ctx);
       return `${who ? `${who}'s ` : ""}age ${fmtAge(ref.age, ctx)}${offset(ref.offsetMonths)}`;
+    }
+    case "dependentAge": {
+      const who = personName(ref.dependentId, ctx);
+      return `${who ? `${who}'s ` : "a dependent's "}age ${fmtAge(ref.age, ctx)}${offset(ref.offsetMonths)}`;
     }
     case "milestone":
       return `${ctx.milestones?.[ref.milestoneId] ?? ref.milestoneId}${offset(ref.offsetMonths)}`;

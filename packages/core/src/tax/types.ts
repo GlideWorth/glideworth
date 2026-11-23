@@ -116,7 +116,13 @@ export interface TaxYearInput {
   filingStatus: FilingStatus;
   location: Location;
   people: TaxPerson[];
-  dependents: { id: Id; age: number }[];
+  /**
+   * Household dependents with their age at the period start. `dependent` says whether they are
+   * still a dependent this period by the household's own setting (born by the period end and
+   * younger than their `independentAtAge`; engine/dependents.ts). Absent = counted once born
+   * (age >= 0). Read it through `householdDependents` so every plug-in uses the same rule.
+   */
+  dependents: { id: Id; age: number; dependent?: boolean }[];
   /** Cumulative inflation since the plan reference month; index real thresholds with it. */
   priceIndex: number;
   income: TaxIncomeItem[];
@@ -146,9 +152,10 @@ export interface TaxYearInput {
   /**
    * OPTIONAL (US ACA premium tax credit): benchmark (second-lowest silver) premium for the period,
    * household size and any advance credit already netted from premiums. Engine maps from a
-   * healthcare expense with `healthcare.kind === 'aca'`.
+   * healthcare expense with `healthcare.kind === 'aca'`. `householdSize` absent = automatic: the
+   * living adults on the return plus `householdDependents` (us-federal `acaHouseholdSize`).
    */
-  aca?: { benchmarkPremium: number; householdSize: number; advanceCredit?: number };
+  aca?: { benchmarkPremium: number; householdSize?: number; advanceCredit?: number };
   /**
    * OPTIONAL (cross-border plans): the people are taxed as NON-residents of this jurisdiction on
    * the items given (income sourced there). `personalAllowance[personId] === false` removes the

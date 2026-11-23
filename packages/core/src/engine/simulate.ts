@@ -61,8 +61,12 @@ import {
  * (no residency timeline, relocation effects, departure taxes, UK temporary non-residence or State
  * Pension freeze); items in another country are still taxed there and at home; `taxes.residence`
  * is gone from results).
+ * 0.7.0: one "still a dependent" rule (engine/dependents.ts: born by the period end and younger than
+ * `independentAtAge`) for the US child tax credit and exemptions, the automatic ACA household size
+ * and survivor filing status, so a dependent not yet born or past their own independence age no
+ * longer counts; ACA household size "auto"; `dependentAge` dates; `us.acaHouseholdSize` facts).
  */
-export const ENGINE_VERSION = "0.6.0";
+export const ENGINE_VERSION = "0.7.0";
 
 export interface SimulateDeps {
   /** Tax registry; defaults to createDefaultTaxRegistry(). Inject to add/replace jurisdictions. */

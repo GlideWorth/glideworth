@@ -104,3 +104,10 @@ export function yearNarrative(
   }
   return out;
 }
+
+/** " · household of 4 (automatic)" on the ACA credit line: the size the engine used this year. */
+export function acaSizeNote(label: string, facts: Record<string, number>): string {
+  const size = facts["us.acaHouseholdSize"];
+  if (!size || !label.startsWith("ACA premium tax credit")) return "";
+  return ` · household of ${size} (${facts["us.acaHouseholdSizeAuto"] ? "automatic" : "set by you"})`;
+}

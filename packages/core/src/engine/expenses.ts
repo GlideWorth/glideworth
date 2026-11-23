@@ -89,7 +89,8 @@ function medicareMonthly(e: Extract<ExpenseEvent, { type: "healthcare" }>): {
 
 /**
  * ACA marketplace coverage: the expense amount is the full (unsubsidised) premium. The benchmark
- * (second-lowest-cost silver) premium and household size go to the US federal plug-in, which
+ * (second-lowest-cost silver) premium and any manual household size go to the US federal plug-in
+ * (with "auto" it sizes the household from the tax return and dependents each year), which
  * computes the premium tax credit from ACA MAGI. With `advanceCreditShare` > 0 that share of the
  * expected credit (last year's credit, capped by the benchmark) is paid to the insurer in advance
  * and reduces the premium paid here; the difference is reconciled on the return. Returns the
@@ -109,9 +110,15 @@ function acaCoverage(
   const advance =
     h.advanceCreditShare > 0 ? h.advanceCreditShare * Math.min(benchmark, lastPtc) : 0;
   const prev = ps.aca;
+  // "auto" leaves the size to the US plug-in (the tax household that year). A number set on any
+  // ACA expense overrides it; with several, the largest wins.
+  const manual =
+    h.householdSize === "auto"
+      ? prev?.householdSize
+      : Math.max(prev?.householdSize ?? 0, h.householdSize);
   ps.aca = {
     benchmarkPremium: (prev?.benchmarkPremium ?? 0) + benchmark,
-    householdSize: Math.max(prev?.householdSize ?? 0, h.householdSize),
+    ...(manual !== undefined ? { householdSize: manual } : {}),
     ...(h.advanceCreditShare > 0 ? { advanceCredit: (prev?.advanceCredit ?? 0) + advance } : {}),
   };
   traceEvent(

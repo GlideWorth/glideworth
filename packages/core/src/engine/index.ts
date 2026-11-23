@@ -1,5 +1,6 @@
 export { UK_LUMP_SUM_ALLOWANCE, ukPensionAccessMonth } from "./accounts.js";
 export { activeMonths, changedValue, periodAmount, resolveWindow } from "./amounts.js";
+export { isDependentInPeriod } from "./dependents.js";
 export { buildPeriods, formatMonth, monthAtAge, type PeriodBounds, parseMonth } from "./dates.js";
 export { effectiveTaxRate } from "./metrics.js";
 export { type Phase, PIPELINE } from "./phases.js";

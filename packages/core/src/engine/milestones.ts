@@ -29,6 +29,15 @@ export function personBirth(ctx: Pick<EngineContext, "people">, personId: string
   return p.birth;
 }
 
+export function dependentBirth(
+  ctx: Pick<EngineContext, "household">,
+  dependentId: string,
+): MonthIndex {
+  const d = ctx.household.dependents.find((x) => x.id === dependentId);
+  if (!d) throw new ScenarioError(`unknown dependent '${dependentId}'`, { dependentId });
+  return parseMonth(d.birthMonth);
+}
+
 /** Resolve a DateRef to a month index, null (never) or 'pending' (milestone not yet resolved). */
 export function resolveRef(ctx: EngineContext, ref: DateRef): Resolved {
   switch (ref.kind) {
@@ -42,6 +51,8 @@ export function resolveRef(ctx: EngineContext, ref: DateRef): Resolved {
       return parseMonth(ref.date) + ref.offsetMonths;
     case "age":
       return monthAtAge(personBirth(ctx, ref.personId), ref.age) + ref.offsetMonths;
+    case "dependentAge":
+      return monthAtAge(dependentBirth(ctx, ref.dependentId), ref.age) + ref.offsetMonths;
     case "milestone": {
       const m = ctx.milestones.get(ref.milestoneId);
       if (!m)

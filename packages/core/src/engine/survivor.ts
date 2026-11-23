@@ -15,7 +15,8 @@
  *     child lives at home, then 'single' (unless a setFilingStatus effect says otherwise).
  */
 import { type AccountState, type EngineContext, type PeriodState, traceEvent } from "./context.js";
-import { ageAt, type MonthIndex, parseMonth, yearOf } from "./dates.js";
+import { type MonthIndex, yearOf } from "./dates.js";
+import { isDependentInPeriod } from "./dependents.js";
 import { resolveRef } from "./milestones.js";
 
 const COMMUNITY_PROPERTY = new Set(["AZ", "CA", "ID", "LA", "NV", "NM", "TX", "WA", "WI"]);
@@ -84,8 +85,8 @@ export function applyEffects(ctx: EngineContext, ps: PeriodState): void {
     for (const debt of ctx.debts) if (debt.owner === p.id) debt.owner = survivor;
     if (ctx.filingStatus === "married-joint" || ctx.filingStatus === "married-separate") {
       const deathYear = yearOf(d);
-      const childAtHome = ctx.household.dependents.some(
-        (dep) => ageAt(parseMonth(dep.birthMonth), at) < dep.independentAtAge,
+      const childAtHome = ctx.household.dependents.some((dep) =>
+        isDependentInPeriod(dep, at, at + 1),
       );
       ctx.filingStatus =
         childAtHome && ps.bounds.year <= deathYear + 2 ? "qualifying-surviving-spouse" : "single";

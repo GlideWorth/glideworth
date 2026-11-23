@@ -12,7 +12,7 @@ describe("public routes", () => {
   it("health", async () => {
     const r = await h.call("/health", { key: null });
     expect(r.status).toBe(200);
-    expect(r.json).toMatchObject({ status: "ok", schemaVersion: 5 });
+    expect(r.json).toMatchObject({ status: "ok", schemaVersion: 6 });
   });
   it("serves the docs UI", async () => {
     const r = await h.call("/docs", { key: null });

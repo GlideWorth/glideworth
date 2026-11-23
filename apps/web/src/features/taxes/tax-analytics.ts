@@ -14,10 +14,12 @@ import {
   createDefaultTaxRegistry,
   deflator,
   type GlideworthDocument,
+  isDependentInPeriod,
   marginalProgression,
   marginalRateFor,
   type PeriodResult,
   type Plan,
+  parseMonth,
   type ProjectionResult,
   type ResolvedTaxCharacter,
   runTaxStack,
@@ -121,9 +123,15 @@ export function reconstructTaxInput(
       ownerAge: p.ages[a.owner ?? def.owner] ?? p.ages[doc.household.people[0]?.id ?? ""] ?? 0,
     });
   }
+  const start = parseMonth(p.startMonth);
   const dependents = doc.household.dependents.map((d) => {
     const [y, m] = d.birthMonth.split("-").map(Number);
-    return { id: d.id, age: p.year - (y ?? p.year) - ((m ?? 1) - 1) / 12 };
+    return {
+      id: d.id,
+      age: p.year - (y ?? p.year) - ((m ?? 1) - 1) / 12,
+      // The engine's rule, so the credits here match the projection's.
+      dependent: isDependentInPeriod(d, start, start + p.months),
+    };
   });
   return {
     year: p.year,

@@ -9,6 +9,8 @@
  *     so `end: planEnd` covers the whole remaining plan.
  *   - age: the month the person reaches that age (birth month + age * 12, fractional ages
  *     allowed, e.g. 59.5).
+ *   - dependentAge: the same for a household dependent (Household.dependents), so a child's
+ *     costs move when their birth month changes.
  *   - milestone: the month the milestone resolves (see Milestone), or never if it never does.
  *   - offsetMonths shifts any resolved month (negative allowed).
  */
@@ -29,11 +31,19 @@ export const DateRef = z
       age: z.number().min(0).max(130),
       offsetMonths,
     }),
+    z.object({
+      kind: z.literal("dependentAge"),
+      /** Id of a dependent in Household.dependents (not a person). */
+      dependentId: Id,
+      age: z.number().min(0).max(130),
+      offsetMonths,
+    }),
     z.object({ kind: z.literal("milestone"), milestoneId: Id, offsetMonths }),
   ])
   .meta({
     id: "DateRef",
-    description: "A point in time resolved to a calendar month by the engine.",
+    description:
+      "A point in time resolved to a calendar month by the engine. 'age' follows a person (personId); 'dependentAge' follows a household dependent (dependentId), e.g. a child's costs from age 0 to 5.",
   });
 export type DateRef = z.infer<typeof DateRef>;
 export type DateRefInput = z.input<typeof DateRef>;

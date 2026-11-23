@@ -9,6 +9,21 @@ does not do. It is a planning tool, not financial, tax or legal advice.
 **Household.** The people you plan for (one, or two for a couple), their birth months, where they live and
 the currency. Dependents (children, people you support) are separate from the people.
 
+**Dependants and their costs.** Each dependant has a birth month and an "independent at" age (18 unless you change
+it). In About you, **Add a cost** under a dependant creates childcare, school, college or support costs timed by
+their age (from age 0 to 5 for childcare, say). You choose the ages and enter the amount yourself; Glideworth does
+not guess what children cost. Add the cost to the current plan or to every plan at once. Because the dates follow
+the dependant's age, changing the birth month moves every linked cost, and each dependant lists the costs linked
+to them. Removing a dependant removes their linked costs (you are asked first, and can undo it).
+
+**Who counts as a dependant in a year.** A dependant counts from the year they are born until the year they reach
+their "independent at" age. US plans use this one rule for the child tax credit (which also applies its own
+under-17 limit) and, when the ACA household size is **Automatic** (the default for new ACA cover), for the
+household size: the adults on your tax return plus the dependants counted that year. So the size grows when a
+child is born and shrinks when one becomes independent, and the two can never disagree. Choose **Set manually**
+to fix a number for every year instead; plans saved before this change keep the size you typed. Each year's
+detail shows the household size used next to the ACA credit.
+
 **Current finances.** Where you are today: accounts (cash, ISAs, pensions, investments), real assets (a
 home, a car, a rental) and debts, each with an owner. These are balances, not a forecast. You update them
 (by hand, by CSV import, or from a script) and every plan that starts "now" reads them. Each update can

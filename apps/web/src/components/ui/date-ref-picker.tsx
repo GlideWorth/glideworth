@@ -1,8 +1,9 @@
 /**
- * Editor for a DateRef: plan start/end, a calendar month, a person's age, or a milestone with an
- * offset. Shows the resolved meaning in words so users always know what "end" means.
+ * Editor for a DateRef: plan start/end, a calendar month, a person's or dependant's age, or a
+ * milestone with an offset. Shows the resolved meaning in words so users always know what "end"
+ * means.
  */
-import type { DateRef, Milestone, Person } from "@glideworth/core";
+import type { DateRef, Dependent, Milestone, Person } from "@glideworth/core";
 import { Input } from "./input";
 import { NumberInput } from "./number-input";
 import { Select } from "./select";
@@ -13,15 +14,19 @@ const KIND_OPTIONS: { value: Kind; label: string }[] = [
   { value: "planStart", label: "Plan start" },
   { value: "date", label: "Specific month" },
   { value: "age", label: "Age" },
+  { value: "dependentAge", label: "Dependant's age" },
   { value: "milestone", label: "Milestone" },
   { value: "planEnd", label: "Plan end" },
   { value: "never", label: "Never" },
 ];
 
+const NO_DEPENDENTS: Dependent[] = [];
+
 export function DateRefPicker({
   value,
   onChange,
   people,
+  dependents = NO_DEPENDENTS,
   milestones,
   allowNever = true,
   "aria-label": label,
@@ -29,6 +34,8 @@ export function DateRefPicker({
   value: DateRef;
   onChange: (v: DateRef) => void;
   people: Person[];
+  /** Household dependants; without any, "Dependant's age" is not offered. */
+  dependents?: Dependent[];
   milestones: Milestone[];
   allowNever?: boolean;
   "aria-label": string;
@@ -49,6 +56,13 @@ export function DateRefPicker({
         });
       case "age":
         return onChange({ kind: "age", personId: people[0]?.id ?? "", age: 65, offsetMonths: 0 });
+      case "dependentAge":
+        return onChange({
+          kind: "dependentAge",
+          dependentId: dependents[0]?.id ?? "",
+          age: 18,
+          offsetMonths: 0,
+        });
       case "milestone":
         return onChange({
           kind: "milestone",
@@ -66,7 +80,11 @@ export function DateRefPicker({
         aria-label={`${label}: reference`}
         value={value.kind}
         onValueChange={switchKind}
-        options={KIND_OPTIONS.filter((o) => allowNever || o.value !== "never")}
+        options={KIND_OPTIONS.filter(
+          (o) =>
+            (allowNever || o.value !== "never") &&
+            (o.value !== "dependentAge" || dependents.length > 0 || value.kind === "dependentAge"),
+        )}
         className="w-[150px]"
       />
       {value.kind === "date" ? (
@@ -85,6 +103,25 @@ export function DateRefPicker({
             value={value.personId}
             onValueChange={(personId) => onChange({ ...value, personId })}
             options={people.map((p) => ({ value: p.id, label: p.name }))}
+            className="w-[120px]"
+          />
+          <NumberInput
+            aria-label={`${label}: age`}
+            decimals={1}
+            value={value.age}
+            onValueChange={(age) => onChange({ ...value, age: age ?? 0 })}
+            className="w-[80px]"
+            suffix="yrs"
+          />
+        </>
+      ) : null}
+      {value.kind === "dependentAge" ? (
+        <>
+          <Select
+            aria-label={`${label}: dependant`}
+            value={value.dependentId}
+            onValueChange={(dependentId) => onChange({ ...value, dependentId })}
+            options={dependents.map((d) => ({ value: d.id, label: d.name }))}
             className="w-[120px]"
           />
           <NumberInput
@@ -122,7 +159,12 @@ export function DateRefPicker({
 }
 
 /** Plain-language description of a DateRef (used in lists and the plan editor). */
-export function describeDateRef(ref: DateRef, people: Person[], milestones: Milestone[]): string {
+export function describeDateRef(
+  ref: DateRef,
+  people: Person[],
+  milestones: Milestone[],
+  dependents: Dependent[] = [],
+): string {
   const off =
     "offsetMonths" in ref && ref.offsetMonths
       ? ` ${ref.offsetMonths > 0 ? "+" : "−"}${Math.abs(ref.offsetMonths)} mo`
@@ -138,6 +180,8 @@ export function describeDateRef(ref: DateRef, people: Person[], milestones: Mile
       return `${ref.date}${off}`;
     case "age":
       return `${people.find((p) => p.id === ref.personId)?.name ?? "?"} age ${ref.age}${off}`;
+    case "dependentAge":
+      return `${dependents.find((d) => d.id === ref.dependentId)?.name ?? "?"} age ${ref.age}${off}`;
     case "milestone":
       return `${milestones.find((m) => m.id === ref.milestoneId)?.name ?? "?"}${off}`;
   }

@@ -249,6 +249,8 @@ export function describeDate(d: { kind: string; [k: string]: unknown } | undefin
       return `${d.date}${off}`;
     case "age":
       return `${d.personId} age ${d.age}${off}`;
+    case "dependentAge":
+      return `dependent ${d.dependentId} age ${d.age}${off}`;
     case "milestone":
       return `milestone ${d.milestoneId}${off}`;
     default:

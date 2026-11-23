@@ -218,8 +218,11 @@ export interface PeriodState {
   tax: TaxConfig;
   location: Location;
   stack: TaxJurisdiction[];
-  /** ACA marketplace coverage this period (benchmark premium, household size, advance credit). */
-  aca: { benchmarkPremium: number; householdSize: number; advanceCredit?: number } | null;
+  /**
+   * ACA marketplace coverage this period (benchmark premium, household size, advance credit).
+   * `householdSize` is set only when an ACA expense overrides it; absent = the tax household.
+   */
+  aca: { benchmarkPremium: number; householdSize?: number; advanceCredit?: number } | null;
   /**
    * Wealth at the period start (custom wealth tax, ES wealth tax, NL box 3): net worth, liquid net
    * worth, portfolio, and the box-3 style split into cash, taxable investments and debts.

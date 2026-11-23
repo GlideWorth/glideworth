@@ -26,6 +26,7 @@ import {
 } from "./context.js";
 import { closeCrossBorderPeriod, type CrossBorderResult, crossBorderTaxes } from "./crossborder.js";
 import { monthOfYear, yearOf } from "./dates.js";
+import { isDependentInPeriod } from "./dependents.js";
 import { drawdown, payTargeted } from "./drawdown.js";
 import { activeParticipantKey, leftover, runFlows } from "./flows.js";
 import type { TaxLine } from "./types.js";
@@ -210,6 +211,7 @@ export function buildTaxInput(ctx: EngineContext, ps: PeriodState): TaxYearInput
     dependents: ctx.household.dependents.map((d) => ({
       id: d.id,
       age: (ps.bounds.start - parseMonthSafe(d.birthMonth)) / 12,
+      dependent: isDependentInPeriod(d, ps.bounds.start, ps.bounds.end),
     })),
     priceIndex: ps.piStart,
     income: ps.taxIncome,

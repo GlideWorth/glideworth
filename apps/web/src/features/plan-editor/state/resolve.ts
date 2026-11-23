@@ -5,6 +5,7 @@
  */
 import type {
   DateRef,
+  Dependent,
   GlideworthDocument,
   Milestone,
   Person,
@@ -18,6 +19,7 @@ export interface TimeContext {
   /** Exclusive end (the month after the last simulated month). */
   end: number;
   people: Person[];
+  dependents: Dependent[];
   milestones: Milestone[];
   milestoneMonth: Record<string, number | null>;
 }
@@ -42,6 +44,7 @@ export function timeContext(
     start,
     end: start + 12 * 60,
     people,
+    dependents: doc.household.dependents,
     milestones: plan.milestones,
     milestoneMonth,
   };
@@ -97,6 +100,10 @@ export function resolveRef(ref: DateRef, ctx: TimeContext): number | null {
     case "age": {
       const p = ctx.people.find((x) => x.id === ref.personId);
       return p ? monthIndex(p.birthMonth) + Math.round(ref.age * 12) + off : null;
+    }
+    case "dependentAge": {
+      const d = ctx.dependents.find((x) => x.id === ref.dependentId);
+      return d ? monthIndex(d.birthMonth) + Math.round(ref.age * 12) + off : null;
     }
     case "milestone": {
       const m = ctx.milestoneMonth[ref.milestoneId];

@@ -8,6 +8,7 @@ import type {
   AssetCost,
   Change,
   DateRef,
+  Dependent,
   Frequency,
   Milestone,
   Person,
@@ -35,6 +36,8 @@ import { describeMonth, resolveRef, type TimeContext } from "../state/resolve";
 
 export interface EditorScope {
   people: Person[];
+  /** Household dependants (age-based dates can follow them). Absent = none. */
+  dependents?: Dependent[];
   milestones: Milestone[];
   accounts: { id: string; name: string; type: string }[];
   tctx: TimeContext | null;
@@ -174,7 +177,7 @@ export function DateRefField({
   error?: string;
   excludeMilestoneId?: string;
 }) {
-  const { people, milestones, tctx } = useScope();
+  const { people, dependents, milestones, tctx } = useScope();
   const f = useFormat();
   const ms = milestones.filter((m) => m.id !== excludeMilestoneId);
   const resolved = tctx ? resolveRef(value, tctx) : null;
@@ -194,6 +197,7 @@ export function DateRefField({
           value={value}
           onChange={onChange}
           people={people}
+          dependents={dependents}
           milestones={ms}
           allowNever={allowNever}
         />
@@ -223,7 +227,7 @@ export function SchedulePointsEditor<P extends { at: DateRef }>({
   make: () => P;
   label?: string;
 }) {
-  const { people, milestones, tctx } = useScope();
+  const { people, dependents, milestones, tctx } = useScope();
   const f = useFormat();
   return (
     <div className="flex flex-col gap-2">
@@ -240,6 +244,7 @@ export function SchedulePointsEditor<P extends { at: DateRef }>({
                   value={p.at}
                   onChange={(at) => onChange(points.map((x, j) => (j === i ? { ...x, at } : x)))}
                   people={people}
+                  dependents={dependents}
                   milestones={milestones}
                   allowNever={false}
                 />

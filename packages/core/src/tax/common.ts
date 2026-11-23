@@ -124,6 +124,15 @@ export function alivePeople(input: TaxYearInput): TaxPerson[] {
   return alive.length > 0 ? alive : input.people.slice(0, 1);
 }
 
+/**
+ * The dependents counted this period: the household's own "still a dependent" rule
+ * (engine/dependents.ts, carried as `dependent` on the input). Plug-ins apply their own tax-law age
+ * tests on top of this list, never instead of it.
+ */
+export function householdDependents(input: TaxYearInput): TaxYearInput["dependents"] {
+  return input.dependents.filter((d) => d.dependent ?? d.age >= 0);
+}
+
 export function birthYearOf(p: TaxPerson, year: number): number {
   return p.birthYear ?? Math.floor(year - p.age);
 }

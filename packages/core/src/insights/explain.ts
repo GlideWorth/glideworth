@@ -592,6 +592,13 @@ export function explainYear(
       `Net worth ${netWorth.end >= netWorth.start ? "rose" : "fell"} from ${m(netWorth.start)} to ${m(netWorth.end)}.`,
     );
   if (shortfall > 0.005) sentences.push(`${m(shortfall)} of planned spending could not be paid.`);
+  const acaSize = p.taxes.facts["us.acaHouseholdSize"];
+  if (acaSize)
+    sentences.push(
+      p.taxes.facts["us.acaHouseholdSizeAuto"]
+        ? `The ACA premium tax credit used a household of ${acaSize}: the adults on the tax return plus the dependents still dependent this year.`
+        : `The ACA premium tax credit used a household of ${acaSize}, the size set on the ACA expense.`,
+    );
   return {
     periodIndex,
     year: p.year,

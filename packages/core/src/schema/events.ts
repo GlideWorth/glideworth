@@ -295,13 +295,29 @@ const ExpenseCommon = EventBase.extend({
   dependentId: Id.optional(),
 });
 
+/**
+ * ACA household size for the federal poverty line. "auto" (the default) follows the tax household
+ * each year: the living adults on the return plus the dependents still dependent that year (born,
+ * and younger than their own `independentAtAge`). A number is a manual override for every year.
+ */
+export const AcaHouseholdSize = z
+  .union([z.literal("auto"), z.number().int().min(1).max(20)])
+  .default("auto")
+  .meta({
+    id: "AcaHouseholdSize",
+    description:
+      "'auto' (default): each year, the living adults on the tax return plus the dependents still dependent that year (born and younger than their independentAtAge). A whole number (1-20) overrides it for every year.",
+  });
+
+export type AcaHouseholdSize = z.infer<typeof AcaHouseholdSize>;
+
 export const HealthcareDetails = z
   .discriminatedUnion("kind", [
     z.object({ kind: z.literal("standard") }),
     z.object({
       kind: z.literal("aca"),
       benchmarkPremium: Amount,
-      householdSize: z.number().int().min(1).max(20),
+      householdSize: AcaHouseholdSize,
       advanceCreditShare: Fraction.default(1),
     }),
     z.object({

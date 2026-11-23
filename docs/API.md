@@ -538,7 +538,7 @@ category, or `known: false` with the fallback), `/cross-border/wrappers?residenc
 **Audit.** `POST /plans/{id}/insights/audit` includes the cross-border checks: `XB_FOREIGN_ASSET_BASE_CURRENCY`,
 `XB_MISSING_FX`, `XB_TAX_FX_MISSING`, `XB_WRAPPER_NON_RESIDENT_CONTRIBUTIONS`, `XB_UNKNOWN_TREATY`.
 
-**Caching.** Results are cached per plan version, options, household version and engine version (0.6.0);
+**Caching.** Results are cached per plan version, options, household version and engine version (0.7.0);
 rows from another engine version are never served.
 
 **Stored plans from before 2026-11-19.** Plans, documents and branch patches saved with a residency timeline,
@@ -636,7 +636,7 @@ The same flow over MCP (`preview_changes` -> `propose_change_set` -> `apply_chan
 ## Export and import
 
 ```bash
-# Full backup of one household (GlideworthDocument, schema version 5: household, finances, plans, progress, settings)
+# Full backup of one household (GlideworthDocument, schema version 6: household, finances, plans, progress, settings)
 api $GLIDEWORTH/api/v1/households/hh-sample/export > backup.json
 
 # Restore into a clean database (409 if the household exists, unless "mode": "replace")

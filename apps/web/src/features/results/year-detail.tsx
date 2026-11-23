@@ -33,7 +33,7 @@ import { useFormat } from "../../lib/workspace";
 import { YearTaxByCountry } from "../crossborder/tax-by-country";
 import { bridge } from "./core-bridge";
 import { agesLabel, conv, type EntityIndex } from "./model";
-import { ledgerByKind, yearNarrative } from "./narrative";
+import { acaSizeNote, ledgerByKind, yearNarrative } from "./narrative";
 
 function Section({
   title,
@@ -456,7 +456,9 @@ function YearDetailBody({
               rows={p.taxes.lines.map((l) => [
                 l.label,
                 conv(p, l.amount, basis, "flow"),
-                l.basis ? `${l.country ?? l.jurisdictionId} · ${l.basis}` : l.jurisdictionId,
+                l.basis
+                  ? `${l.country ?? l.jurisdictionId} · ${l.basis}`
+                  : `${l.jurisdictionId}${acaSizeNote(l.label, p.taxes.facts)}`,
               ])}
               money={plain}
             />

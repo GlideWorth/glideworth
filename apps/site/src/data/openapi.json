@@ -959,6 +959,36 @@
        "kind": {
         "type": "string",
         "enum": [
+         "dependentAge"
+        ]
+       },
+       "dependentId": {
+        "$ref": "#/components/schemas/Id"
+       },
+       "age": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 130
+       },
+       "offsetMonths": {
+        "type": "integer",
+        "minimum": -1200,
+        "maximum": 1200,
+        "default": 0
+       }
+      },
+      "required": [
+       "kind",
+       "dependentId",
+       "age"
+      ]
+     },
+     {
+      "type": "object",
+      "properties": {
+       "kind": {
+        "type": "string",
+        "enum": [
          "milestone"
         ]
        },
@@ -978,7 +1008,7 @@
       ]
      }
     ],
-    "description": "A point in time resolved to a calendar month by the engine."
+    "description": "A point in time resolved to a calendar month by the engine. 'age' follows a person (personId); 'dependentAge' follows a household dependent (dependentId), e.g. a child's costs from age 0 to 5."
    },
    "HistoricalSeries": {
     "type": "string",
@@ -2683,7 +2713,7 @@
      "schemaVersion": {
       "type": "number",
       "enum": [
-       4
+       6
       ]
      },
      "exportedAt": {
@@ -7245,9 +7275,7 @@
         "$ref": "#/components/schemas/Amount"
        },
        "householdSize": {
-        "type": "integer",
-        "minimum": 1,
-        "maximum": 20
+        "$ref": "#/components/schemas/AcaHouseholdSize"
        },
        "advanceCreditShare": {
         "$ref": "#/components/schemas/Fraction"
@@ -7255,8 +7283,7 @@
       },
       "required": [
        "kind",
-       "benchmarkPremium",
-       "householdSize"
+       "benchmarkPremium"
       ]
      },
      {
@@ -7350,6 +7377,23 @@
     "default": {
      "kind": "standard"
     }
+   },
+   "AcaHouseholdSize": {
+    "anyOf": [
+     {
+      "type": "string",
+      "enum": [
+       "auto"
+      ]
+     },
+     {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 20
+     }
+    ],
+    "default": "auto",
+    "description": "'auto' (default): each year, the living adults on the tax return plus the dependents still dependent that year (born and younger than their independentAtAge). A whole number (1-20) overrides it for every year."
    },
    "CharityDetails": {
     "type": "object",

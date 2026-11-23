@@ -14,7 +14,11 @@
  */
 import { runTaxStack, stackTotal, withExtraIncome } from "./analytics.js";
 import { US_ACA_YEARS, US_IRMAA_YEARS } from "./data/us-federal.js";
-import { federalPovertyLine, irmaaThresholds } from "./jurisdictions/us-federal.js";
+import {
+  acaHouseholdSize,
+  federalPovertyLine,
+  irmaaThresholds,
+} from "./jurisdictions/us-federal.js";
 import { usTable } from "./jurisdictions/us-index.js";
 import type {
   ResolvedTaxCharacter,
@@ -37,8 +41,6 @@ export interface HeadroomOptions {
   max?: number;
   /** Precision in currency units (default 1). */
   tolerance?: number;
-  /** Household size for ACA targets (default: people + dependents). */
-  householdSize?: number;
 }
 
 function merged(outs: TaxYearOutput[]): Record<string, number> {
@@ -90,9 +92,7 @@ export function targetSatisfied(
       return (f.magi ?? 0) <= limit;
     }
     case "aca-fpl-multiple": {
-      const size =
-        input.aca?.householdSize ??
-        input.people.filter((p) => p.alive).length + input.dependents.length;
+      const size = acaHouseholdSize(input);
       const aca = usTable(US_ACA_YEARS, input);
       const fpl = federalPovertyLine(size, aca.factor, aca.row);
       return (f["us.acaMagi"] ?? f.agi ?? 0) <= target.multiple * fpl;

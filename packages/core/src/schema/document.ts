@@ -11,7 +11,7 @@ import { Timestamp } from "./primitives.js";
 import { ProgressSnapshot, UserSettings } from "./progress-settings.js";
 
 /** Bump when a breaking schema change ships, and add a migration below. */
-export const SCHEMA_VERSION = 5 as const;
+export const SCHEMA_VERSION = 6 as const;
 
 /** The `app` marker every document is written with. */
 export const DOCUMENT_APP = "glideworth" as const;
@@ -93,6 +93,14 @@ export const MIGRATIONS: Migration[] = [
     describe:
       "expenses may have type 'long-term-care'; a bonus may carry percentOfSalary { salaryIncomeId, rate }; no data change",
     up: (raw) => ({ ...raw }),
+  },
+  {
+    from: 5,
+    describe:
+      "ACA household size may be 'auto' (the new default for new ACA expenses) and a DateRef may follow a dependent's age ('dependentAge'). Stored data is unchanged: an ACA expense saved with a household size keeps that number, now read as a manual override, so its results do not move.",
+    // Additive change: nothing to rewrite. The version bump stops an older build from reading a
+    // document that uses 'auto' or 'dependentAge'.
+    up: (raw) => raw,
   },
 ];
 

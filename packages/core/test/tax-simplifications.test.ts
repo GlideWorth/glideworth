@@ -11,7 +11,7 @@ import { createDefaultTaxRegistry } from "../src/tax/registry.js";
 
 const EXPECTED_COUNT: Record<string, number> = {
   uk: 18,
-  "us-federal": 15,
+  "us-federal": 16, // +1 2026-11-23: who counts as a dependent (engine/dependents.ts)
   "us-payroll": 4,
   "us-state": 6,
   "us-local": 3,

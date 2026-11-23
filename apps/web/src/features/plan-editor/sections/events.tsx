@@ -6,6 +6,7 @@
  */
 
 import {
+  type AcaHouseholdSize,
   type ExpenseEvent,
   ExpenseEvent as ExpenseSchema,
   type ExpenseType,
@@ -13,6 +14,7 @@ import {
   type IncomeEvent,
   IncomeEvent as IncomeSchema,
   type IncomeType,
+  isDependentInPeriod,
   JOINT,
   type Plan,
 } from "@glideworth/core";
@@ -1792,6 +1794,65 @@ function IncomeSpecific({
   return <>{parts}</>;
 }
 
+/**
+ * ACA household size: "Automatic" follows the tax household each year (the adults on the return
+ * plus the dependants still dependent that year; the engine's rule, shown in each year's detail),
+ * "Set manually" fixes a number for every year.
+ */
+function AcaHouseholdSizeField({
+  value,
+  onChange,
+}: {
+  value: AcaHouseholdSize;
+  onChange: (v: AcaHouseholdSize) => void;
+}) {
+  const { people, dependents = [], tctx } = useScope();
+  const start = tctx?.start;
+  const depsNow =
+    start === undefined ? [] : dependents.filter((d) => isDependentInPeriod(d, start, start + 12));
+  const estimate = people.length + depsNow.length;
+  const auto = value === "auto";
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  return (
+    <FormField
+      label="Household size"
+      help="For the federal poverty line. Automatic counts the living adults on your tax return plus each dependant from birth until their “independent at” age (set in About you), year by year. Each year's detail shows the size used."
+      hint={
+        auto
+          ? `About ${estimate} now: ${plural(people.length, "adult", "adults")}, ${plural(depsNow.length, "dependant", "dependants")}. Changes as dependants are born or become independent.`
+          : "Used for every year of the plan."
+      }
+      className="sm:col-span-2"
+    >
+      {(fid) => (
+        <div className="flex flex-wrap items-center gap-2">
+          <Segmented<"auto" | "manual">
+            aria-label="Household size"
+            size="sm"
+            value={auto ? "auto" : "manual"}
+            onChange={(mode) => onChange(mode === "auto" ? "auto" : Math.max(1, estimate))}
+            options={[
+              { value: "auto", label: "Automatic" },
+              { value: "manual", label: "Set manually" },
+            ]}
+          />
+          {auto ? null : (
+            <NumberInput
+              id={fid}
+              aria-label="Household size (people)"
+              decimals={0}
+              value={value}
+              onValueChange={(v) => onChange(Math.min(20, Math.max(1, Math.round(v ?? 1))))}
+              className="w-[96px]"
+              suffix="people"
+            />
+          )}
+        </div>
+      )}
+    </FormField>
+  );
+}
+
 function ExpenseSpecific({
   event,
   set,
@@ -1820,7 +1881,7 @@ function ExpenseSpecific({
                       ? {
                           kind: "aca",
                           benchmarkPremium: { value: 600, basis: "real" },
-                          householdSize: people.length,
+                          householdSize: "auto",
                           advanceCreditShare: 1,
                         }
                       : {
@@ -1851,22 +1912,12 @@ function ExpenseSpecific({
                 />
               )}
             </FormField>
-            <FormField label="Household size">
-              {(fid) => (
-                <NumberInput
-                  id={fid}
-                  decimals={0}
-                  value={h.householdSize}
-                  onValueChange={(v) =>
-                    s(
-                      { healthcare: { ...h, householdSize: Math.max(1, Math.round(v ?? 1)) } },
-                      "Edit ACA",
-                      "acas",
-                    )
-                  }
-                />
-              )}
-            </FormField>
+            <AcaHouseholdSizeField
+              value={h.householdSize}
+              onChange={(householdSize) =>
+                s({ healthcare: { ...h, householdSize } }, "Edit ACA household size", "acas")
+              }
+            />
             <FormField label="Advance credit taken">
               {(fid) => (
                 <PercentInput

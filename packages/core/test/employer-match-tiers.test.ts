@@ -170,16 +170,12 @@ function v2Document(): Json {
 }
 
 describe("schema 2 -> 3: employer match tiers", () => {
-  it("is the current version", () => {
-    expect(SCHEMA_VERSION).toBe(3);
-  });
-
   it("migrates single-pair matches to one tier, with identical projections", () => {
     const raw = v2Document();
     const flow = ((raw.plans as Json[])[0]!.flows as Json[]).find((f) => f.employer)!;
     expect(flow.employer).toMatchObject({ matchShare: 1, upToShareOfPay: 0.05 });
     const migrated = migrateDocument(raw);
-    expect(migrated.schemaVersion).toBe(3);
+    expect(migrated.schemaVersion).toBe(SCHEMA_VERSION);
     const current = createUkSampleDocument();
     expect(migrated.plans).toEqual(current.plans);
     const before = simulate(buildSimulationInput(current, UK_SAMPLE_PLAN_ID));

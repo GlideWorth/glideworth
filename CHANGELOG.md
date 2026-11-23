@@ -14,6 +14,14 @@ listing every commit. Product news for people using the hosted service is on
   every deferral rate. Match rates above 100% are allowed. **API change:** `employer.matchShare` and
   `employer.upToShareOfPay` are replaced by `tiers`; stored plans, exports and branch patches migrate on read to a
   single tier with the same result (document schema version 3).
+- **Fixed employer contributions and the combined HSA limit**
+  ([#8](https://github.com/GlideWorth/glideworth/issues/8)): an employer contribution can be a fixed amount per
+  frequency (`employer.fixed`, in today's money or fixed dollars), with or without a match. In an HSA, employer
+  money (fixed or matched) now counts toward the owner's annual limit, including the 55+ catch-up
+  (IRC 223(b)(4)(B)), so an employee contributing "up to the limit" contributes the limit less the employer's
+  money; before, a match was added on top of a full employee contribution. Employer money is never an employee
+  deduction. Document schema version 4 (no data change: older builds refuse version 4 documents instead of
+  dropping the fixed amount).
 
 ## 1.0.0 - 2026-11-20
 

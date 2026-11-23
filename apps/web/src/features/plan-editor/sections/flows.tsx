@@ -603,7 +603,7 @@ function FlowSheetBody({ id, onClose }: { id: string; onClose: () => void }) {
           </FormSection>
           <FormSection
             title="Employer contribution"
-            description="Workplace pensions and 401(k)s: your employer adds money on top."
+            description="Workplace pensions, 401(k)s and HSAs: your employer adds money on top. In an HSA, employer money counts toward the yearly limit."
           >
             <SwitchField
               label="Employer contributes"
@@ -658,11 +658,67 @@ function FlowSheetBody({ id, onClose }: { id: string; onClose: () => void }) {
                 </FieldGrid>
                 <MatchTiers
                   tiers={fl.employer.tiers}
+                  canRemoveLast={!!fl.employer.fixed}
                   error={issues.get("employer.tiers")}
                   onChange={(tiers, label, key) =>
                     patch({ employer: { ...fl.employer!, tiers } } as Partial<Flow>, label, key)
                   }
                 />
+                <SwitchField
+                  label="Employer also pays a fixed amount"
+                  checked={!!fl.employer.fixed}
+                  onCheckedChange={(on) =>
+                    patch(
+                      {
+                        employer: {
+                          ...fl.employer!,
+                          fixed: on
+                            ? { amount: { value: 1_000, basis: "nominal" }, frequency: "yearly" }
+                            : undefined,
+                        },
+                      } as Partial<Flow>,
+                      on ? "Add fixed employer amount" : "Remove fixed employer amount",
+                    )
+                  }
+                />
+                {fl.employer.fixed ? (
+                  <div className="flex flex-wrap gap-2">
+                    <div className="min-w-[220px] flex-1">
+                      <AmountInput
+                        value={fl.employer.fixed.amount}
+                        onChange={(amount) =>
+                          patch(
+                            {
+                              employer: {
+                                ...fl.employer!,
+                                fixed: { ...fl.employer!.fixed!, amount },
+                              },
+                            } as Partial<Flow>,
+                            "Edit fixed employer amount",
+                            "fixed-amt",
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="w-[150px]">
+                      <FrequencySelect
+                        allowOnce={false}
+                        value={fl.employer.fixed.frequency}
+                        onChange={(frequency) =>
+                          patch(
+                            {
+                              employer: {
+                                ...fl.employer!,
+                                fixed: { ...fl.employer!.fixed!, frequency },
+                              },
+                            } as Partial<Flow>,
+                            "Edit fixed employer frequency",
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+                ) : null}
                 <SwitchField
                   label="Reduce employer money if I can’t fund mine"
                   checked={fl.employer.reduceIfUnderfunded}
@@ -1196,10 +1252,13 @@ type MatchTier = NonNullable<Extract<Flow, { kind: "contribution" }>["employer"]
  */
 function MatchTiers({
   tiers,
+  canRemoveLast,
   error,
   onChange,
 }: {
   tiers: MatchTier[];
+  /** True when the employer also pays a fixed amount, so the match may have no tiers. */
+  canRemoveLast: boolean;
   error?: string | undefined;
   onChange: (tiers: MatchTier[], label: string, key?: string) => void;
 }) {
@@ -1237,7 +1296,7 @@ function MatchTiers({
               )}
             </FormField>
           </FieldGrid>
-          {tiers.length > 1 ? (
+          {tiers.length > 1 || canRemoveLast ? (
             <Button
               variant="ghost"
               size="icon"

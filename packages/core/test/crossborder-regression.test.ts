@@ -30,6 +30,11 @@
  * 2026-66 limits) instead of 2026 indexed; US-CA adds California SDI at 1.4% from 2027 and the
  * senior exemption credit from 65. All four also carry the new `us.federalIncomeTax` fact and the
  * added cited sources; US-CA also carries the new state facts.
+ *
+ * Re-baselined 2026-11-22 for the HSA employer-contribution change (GlideWorth/glideworth#8): the four
+ * US hashes changed only in the cited sources carried in `meta.taxSources` (HSA source notes now give
+ * the Rev. Proc. sections and Publication 969). With the old source notes restored, all 31 hashes
+ * match the previous baseline, so no number changed.
  */
 import { describe, expect, it } from "vitest";
 import { simulate } from "../src/engine/simulate.js";
@@ -56,10 +61,10 @@ const BEFORE: Record<string, string> = {
   "GB-ENG-couple": "6a75d2004a2e2491",
   "GB-SCT-single": "46070e0e27a76ea1",
   "GB-SCT-couple": "2059ce0c001a722e",
-  "US-CA-single": "11cb3737d870a493",
-  "US-CA-couple": "2f28a3b2f4669683",
-  "US-TX-single": "2fd4d5f8bab37cf9",
-  "US-TX-couple": "7193dfba63cce91f",
+  "US-CA-single": "7edddf3d11a53849",
+  "US-CA-couple": "512ff527ffad5e5d",
+  "US-TX-single": "7387cb66596be6f7",
+  "US-TX-couple": "14f81ed009ca1031",
   // Re-recorded 2026-11-19 (CA/AU/NZ official-source check): Ontario surtax before the dividend
   // tax credit, base CPP 4.75% from 2027, no CPP from 70, age amount on net income after the OAS
   // repayment, and the cited sources.

@@ -737,7 +737,14 @@ export const US_LIMITS_2026: UsLimitsYear = {
       note: "2026 retirement plan limits",
     },
     { url: "https://www.irs.gov/pub/irs-drop/n-25-67.pdf", note: "Notice 2025-67" },
-    { url: "https://www.irs.gov/pub/irs-drop/rp-25-19.pdf", note: "Rev. Proc. 2025-19 (HSA 2026)" },
+    {
+      url: "https://www.irs.gov/pub/irs-drop/rp-25-19.pdf",
+      note: "Rev. Proc. 2025-19 section 2.01(1): 2026 HSA limits (re-read 2026-11-22)",
+    },
+    {
+      url: "https://www.irs.gov/publications/p969",
+      note: "Publication 969: $1,000 additional contribution from 55; excludable employer contributions reduce the limit (read 2026-11-22)",
+    },
   ],
 };
 
@@ -767,7 +774,7 @@ export const US_LIMITS_2027: UsLimitsYear = {
     },
     {
       url: "https://www.irs.gov/pub/irs-drop/rp-26-24.pdf",
-      note: "Rev. Proc. 2026-24 section 3.01: 2027 HSA limits",
+      note: "Rev. Proc. 2026-24 section 3.01(1): 2027 HSA limits (re-read 2026-11-22)",
     },
   ],
 };

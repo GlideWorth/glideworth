@@ -46,16 +46,31 @@ export type EmployerMatchTier = z.infer<typeof EmployerMatchTier>;
 export const EmployerMatch = z
   .object({
     incomeId: Id,
-    /** Match tiers in order, from the first percent of pay up. */
+    /** Match tiers in order, from the first percent of pay up (empty: no match). */
     tiers: z
       .array(EmployerMatchTier)
-      .min(1)
       .max(10)
       .refine((t) => t.reduce((s, x) => s + x.bandShareOfPay, 0) <= 1 + 1e-9, {
         message: "Tiers cover more than 100% of pay",
-      }),
+      })
+      .default([]),
+    /**
+     * A fixed employer contribution, whatever the employee contributes (an employer HSA deposit of
+     * $250 a quarter): paid in the periods the flow runs while the employee has pay from
+     * `incomeId`. `amount.basis` 'real' keeps it in today's money, 'nominal' fixes the dollars.
+     */
+    fixed: z
+      .object({
+        amount: Amount,
+        frequency: Frequency.exclude(["once"]).default("yearly"),
+      })
+      .optional(),
     designation: z.enum(["traditional", "roth"]).default("traditional"),
     reduceIfUnderfunded: z.boolean().default(false),
+  })
+  .refine((e) => e.tiers.length > 0 || e.fixed !== undefined, {
+    message: "Add a match tier or a fixed amount",
+    path: ["tiers"],
   })
   .meta({ id: "EmployerMatch" });
 export type EmployerMatch = z.infer<typeof EmployerMatch>;

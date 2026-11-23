@@ -45,7 +45,7 @@ omitted). The API generates its OpenAPI 3.1 document from these same schemas, na
 254 named components in self-host mode. The web client validates responses with them too.
 
 ```
-GlideworthDocument (schemaVersion = 3)       ← export/backup/import unit; what the web loads
+GlideworthDocument (schemaVersion = 4)       ← export/backup/import unit; what the web loads
 ├── household: Household               people (1–2, primary/partner; citizenships, US green card), dependents,
 │                                      location (where the household lives for the whole plan), currency, locale
 ├── finances: CurrentFinances          asOf month; accounts[], realAssets[], debts[]  (starting conditions)

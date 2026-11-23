@@ -11,7 +11,7 @@ import { Timestamp } from "./primitives.js";
 import { ProgressSnapshot, UserSettings } from "./progress-settings.js";
 
 /** Bump when a breaking schema change ships, and add a migration below. */
-export const SCHEMA_VERSION = 3 as const;
+export const SCHEMA_VERSION = 4 as const;
 
 /** The `app` marker every document is written with. */
 export const DOCUMENT_APP = "glideworth" as const;
@@ -75,6 +75,15 @@ export const MIGRATIONS: Migration[] = [
       if (Array.isArray(doc.plans)) doc.plans = doc.plans.map(tierEmployerMatchInPlan);
       return doc;
     },
+  },
+  {
+    from: 3,
+    // Nothing to convert: every version 3 document is a valid version 4 document. The bump makes
+    // builds that predate the fixed employer contribution refuse a version 4 document ("newer than
+    // supported") instead of silently dropping `employer.fixed`, or rejecting a match with no tiers.
+    describe:
+      "employer contributions: optional fixed amount (`employer.fixed`) and match tiers may be empty; no data change",
+    up: (raw) => ({ ...raw }),
   },
 ];
 

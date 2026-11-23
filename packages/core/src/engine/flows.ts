@@ -10,7 +10,11 @@
  *     employee contribution falling in its band (bandShareOfPay x pay), paid by the employer (not
  *     from the pool). The match is on the intended employee contribution, or with
  *     reduceIfUnderfunded on the amount actually funded (so a short year loses the upper tiers
- *     first). Roth-designated matches are taxable wages.
+ *     first). Roth-designated matches are taxable wages. A fixed employer contribution (an amount
+ *     per frequency) is paid while the employee has pay from the income, whatever they contribute.
+ *   - HSA: employer money shares the owner's annual limit (IRC 223(b)(4)(B)). A fixed employer
+ *     contribution comes off the limit first; the employee then contributes at most what leaves
+ *     room for the match their contribution earns, so employee + employer never exceed the limit.
  *   - Backdoor Roth: non-deductible IRA contribution converted the same day (tax-neutral; no
  *     pro-rata). Mega-backdoor Roth: after-tax space = 415(c) limit - deferrals - employer match.
  *   - fundFromAccountIds: the contribution is withdrawn from those accounts (ordered) instead of
@@ -185,6 +189,33 @@ function contribute(
     limit = Math.max(0, space);
     limitKey = `${a.owner}|after-tax`;
   }
+  const hsa = limitGroupOf(a.def.type) === "hsa";
+  let employerFixed = 0;
+  if (f.employer?.fixed && pay > 0) {
+    employerFixed = amountPerPeriod(
+      ps,
+      months,
+      f.employer.fixed.amount,
+      f.employer.fixed.frequency,
+    );
+    if (hsa && Number.isFinite(limit)) {
+      if (employerFixed > limit + 1e-9)
+        traceEvent(
+          ctx,
+          ps,
+          "flows",
+          "CONTRIBUTION_LIMITED",
+          () => `"${f.name}" employer contribution capped at the HSA limit (${fmt(limit)})`,
+          refs,
+          { desired: employerFixed, limit },
+        );
+      employerFixed = Math.min(employerFixed, Math.max(0, limit));
+      limit = Math.max(0, limit - employerFixed);
+    }
+  }
+  // Room for the employee's own HSA contribution once the match it earns is counted too.
+  if (hsa && f.employer && pay > 0 && Number.isFinite(limit))
+    limit = employeeRoomWithMatch(f.employer.tiers, pay, limit);
 
   let desired: number;
   switch (f.method.kind) {
@@ -294,7 +325,26 @@ function contribute(
       },
     );
   }
-  if (f.employer && pay > 0) employerMatch(ctx, ps, f, a, amount, intended, pay);
+  if (f.employer && pay > 0) {
+    if (employerFixed > 0) employerDeposit(ctx, ps, f, a, employerFixed, "fixed");
+    const match = tieredMatch(
+      f.employer.tiers,
+      f.employer.reduceIfUnderfunded ? amount : intended,
+      pay,
+    );
+    if (match > 0) {
+      employerDeposit(ctx, ps, f, a, match, "match");
+      traceEvent(
+        ctx,
+        ps,
+        "flows",
+        "EMPLOYER_MATCH",
+        () => `Employer matched ${fmt(match)} into ${a.def.name}`,
+        [f.id, a.def.id],
+        { match, employee: amount, intended },
+      );
+    }
+  }
   return remaining;
 }
 
@@ -373,30 +423,55 @@ function tieredMatch(
   return match;
 }
 
-function employerMatch(
+/**
+ * The largest employee contribution that, with the match it earns, fits in `room`: walks the tiers
+ * from the first, each unit of contribution in a tier costing 1 + its match rate.
+ */
+function employeeRoomWithMatch(
+  tiers: readonly { matchRate: number; bandShareOfPay: number }[],
+  pay: number,
+  room: number,
+): number {
+  let left = Math.max(0, room);
+  let employee = 0;
+  for (const t of tiers) {
+    const band = t.bandShareOfPay * pay;
+    const cost = band * (1 + t.matchRate);
+    if (left <= cost) return employee + left / (1 + t.matchRate);
+    employee += band;
+    left -= cost;
+  }
+  return employee + left;
+}
+
+/**
+ * Employer money paid into `a` (a match, or a fixed contribution): not from the household's
+ * cash, never an employee deduction, and counted in the owner's employer total (415(c)) and, for
+ * an HSA, in the owner's HSA limit.
+ */
+function employerDeposit(
   ctx: EngineContext,
   ps: PeriodState,
   f: Extract<Flow, { kind: "contribution" }>,
   a: AccountState,
-  actual: number,
-  intended: number,
-  pay: number,
+  amount: number,
+  kind: "match" | "fixed",
 ): void {
   const e = f.employer!;
-  const match = tieredMatch(e.tiers, e.reduceIfUnderfunded ? actual : intended, pay);
-  if (!(match > 0)) return;
-  a.balance += match;
-  a.p.contributions += match;
-  if (a.costBasis !== null) a.costBasis += match;
-  ps.limitUsed.set(`${a.owner}|employer`, (ps.limitUsed.get(`${a.owner}|employer`) ?? 0) + match);
-  const sourceId = `employer:${f.id}`;
+  a.balance += amount;
+  a.p.contributions += amount;
+  if (a.costBasis !== null) a.costBasis += amount;
+  ps.limitUsed.set(`${a.owner}|employer`, (ps.limitUsed.get(`${a.owner}|employer`) ?? 0) + amount);
+  if (limitGroupOf(a.def.type) === "hsa") useLimit(ps, `${a.owner}|hsa`, amount);
+  const sourceId = kind === "match" ? `employer:${f.id}` : `employer:${f.id}:fixed`;
+  const label = `${f.name} employer ${kind === "match" ? "match" : "contribution"}`;
   // Employer contributions count toward pension allowances (UK annual allowance) but never toward
   // the employee's income or deductions.
   if (a.info.taxTreatment === "tax-deferred")
     ps.taxDeductions.push({
       sourceId,
       kind: "pre-tax-contribution",
-      amount: match,
+      amount,
       itemized: false,
       levels: ["federal", "state", "local"],
       owner: a.owner,
@@ -407,9 +482,9 @@ function employerMatch(
   ps.incomeLines.push({
     sourceId,
     sourceKind: "income",
-    label: `${f.name} employer match`,
+    label,
     owner: a.owner,
-    amount: match,
+    amount,
     taxCharacter: e.designation === "roth" ? "wage" : "tax-free",
   });
   if (e.designation === "roth") {
@@ -417,38 +492,35 @@ function employerMatch(
       sourceId,
       owner: a.owner,
       character: "wage",
-      amount: match,
+      amount,
       exemptIn: [],
       incomeType: "employer-match",
     });
-    if (a.contributionBasis !== null) a.contributionBasis += match;
+    if (a.contributionBasis !== null) a.contributionBasis += amount;
   }
   const node = addNode(ps, {
     id: `income:${sourceId}`,
     kind: "income",
-    label: `${f.name} employer match`,
+    label,
     refId: f.id,
   });
   addLedger(ctx, ps, {
     from: node,
     to: accountNode(ps, a),
-    amount: match,
+    amount,
     kind: "contribution",
     causeId: f.id,
   });
-  traceEvent(
-    ctx,
-    ps,
-    "flows",
-    "EMPLOYER_MATCH",
-    () => `Employer matched ${fmt(match)} into ${a.def.name}`,
-    [f.id, a.def.id],
-    {
-      match,
-      employee: actual,
-      intended,
-    },
-  );
+  if (kind === "fixed")
+    traceEvent(
+      ctx,
+      ps,
+      "flows",
+      "EMPLOYER_CONTRIBUTION",
+      () => `Employer paid ${fmt(amount)} into ${a.def.name}`,
+      [f.id, a.def.id],
+      { amount },
+    );
 }
 
 /** A debt or financed asset loan a paydown flow can pay. */

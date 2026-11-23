@@ -2683,7 +2683,7 @@
      "schemaVersion": {
       "type": "number",
       "enum": [
-       3
+       4
       ]
      },
      "exportedAt": {
@@ -7572,8 +7572,32 @@
       "items": {
        "$ref": "#/components/schemas/EmployerMatchTier"
       },
-      "minItems": 1,
-      "maxItems": 10
+      "maxItems": 10,
+      "default": []
+     },
+     "fixed": {
+      "type": "object",
+      "properties": {
+       "amount": {
+        "$ref": "#/components/schemas/Amount"
+       },
+       "frequency": {
+        "type": "string",
+        "enum": [
+         "weekly",
+         "biweekly",
+         "semimonthly",
+         "monthly",
+         "quarterly",
+         "semiannually",
+         "yearly"
+        ],
+        "default": "yearly"
+       }
+      },
+      "required": [
+       "amount"
+      ]
      },
      "designation": {
       "type": "string",
@@ -7589,8 +7613,7 @@
      }
     },
     "required": [
-     "incomeId",
-     "tiers"
+     "incomeId"
     ]
    },
    "EmployerMatchTier": {

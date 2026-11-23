@@ -9,7 +9,7 @@ import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from 
 import { AppearanceDot, appearanceColor } from "../../../components/ui/appearance-picker";
 import { cn } from "../../../lib/cn";
 import { useFormat } from "../../../lib/workspace";
-import { monthIndex } from "../state/finance-math";
+import { timelineYearAge } from "../state/finance-math";
 import { amountUnit } from "../state/labels";
 import { formatMonthIndex, resolveRef, type TimeContext } from "../state/resolve";
 
@@ -303,14 +303,10 @@ export function Timeline({
 
             {/* people */}
             {tctx.people.map((p, pi) => {
-              const birth = monthIndex(p.birthMonth);
               const le = plan.milestones.find(
                 (m) => m.kind === "life-expectancy" && m.personId === p.id,
               );
               const leAt = le ? tctx.milestoneMonth[le.id] : null;
-              const ages: number[] = [];
-              const a0 = Math.ceil((start - birth) / 12 / 5) * 5;
-              for (let a = a0; birth + a * 12 <= end; a += 5) ages.push(a);
               return (
                 <div key={p.id} className="flex border-t border-border/70">
                   {rowLabel(
@@ -330,15 +326,22 @@ export function Timeline({
                       className="absolute top-[11px] h-px bg-border-strong"
                       style={{ left: 0, width: leAt != null ? x(leAt) : width }}
                     />
-                    {ages.map((a) => (
-                      <span
-                        key={a}
-                        className="num absolute top-1 -translate-x-1/2 rounded bg-surface px-1 text-[10.5px] text-ink-2"
-                        style={{ left: x(birth + a * 12) }}
-                      >
-                        {a}
-                      </span>
-                    ))}
+                    {ticks.map((y) => {
+                      // After life expectancy the results table leaves the age blank (not alive).
+                      if (leAt != null && y * 12 > leAt) return null;
+                      const age = timelineYearAge(p.birthMonth, y, { start, end });
+                      if (age === null) return null;
+                      return (
+                        <span
+                          key={y}
+                          title={`Age reached in ${y}`}
+                          className="num absolute top-1 -translate-x-1/2 rounded bg-surface px-1 text-[10.5px] text-ink-2"
+                          style={{ left: x(y * 12) }}
+                        >
+                          {age}
+                        </span>
+                      );
+                    })}
                     {leAt != null && leAt <= end ? (
                       <span
                         className="absolute top-1 -translate-x-full pr-1 text-[10.5px] text-ink-3"

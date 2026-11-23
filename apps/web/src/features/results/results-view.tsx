@@ -178,7 +178,12 @@ export function ResultsView() {
           ) : null}
         </div>
         <CardBody className="pt-3">
-          {isLoading ? <ChartLoading height={400} /> : null}
+          {isLoading ? (
+            <ChartLoading
+              height={400}
+              label={plan ? "Simulating in a background worker…" : "Loading your plan…"}
+            />
+          ) : null}
           {error ? <ErrorState error={error} title="Simulation failed" /> : null}
           {!isLoading && !error && !result ? (
             <EmptyState

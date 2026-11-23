@@ -27,6 +27,8 @@ export const DEMO_KEYS = {
   settings: `${DEMO_PREFIX}settings:v1`,
   /** Session storage: `demo_started` was already sent from this tab. */
   started: `${DEMO_PREFIX}started`,
+  /** Session storage: the demo's latest chance-of-success run, so a full page load can reuse it. */
+  chance: `${DEMO_PREFIX}chance:v1`,
 } as const;
 
 /**

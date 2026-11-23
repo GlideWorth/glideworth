@@ -43,10 +43,9 @@ import { useResolvedTheme } from "../../lib/theme";
 import { useFormat, useProjection } from "../../lib/workspace";
 import { successTone } from "../../stores/prefs";
 import { useUi } from "../../stores/ui";
-import { useMcStore } from "../chance/mc-store";
 import { ChangesSinceCheckInCard, useChangesSinceCheckin } from "../checkins/checkins";
 import { CalculatorHandoffBanner } from "../cloud/handoff-notice";
-import { useDemoChanceOfSuccess } from "../demo/demo-chance";
+import { useRememberedChance } from "../demo/demo-chance";
 import { attempt, bridge } from "../results/core-bridge";
 import {
   buildEntityIndex,
@@ -324,8 +323,7 @@ export function DashboardView() {
         (amount, currency) => f.moneyIn(amount, currency),
       )
     : null;
-  const mcEntry = useMcStore((s) => (plan ? s.byPlan[plan.id] : undefined));
-  const mc = mcEntry && mcEntry.planVersion === plan?.version ? mcEntry : undefined;
+  const mc = useRememberedChance(plan);
   // Without a run in this browser, the last check-in's chance of success (same plan version) stands in,
   // so the headline agrees with the check-in card below it.
   const lastCheckIn = useChangesSinceCheckin(plan?.id).data?.lastCheckIn;
@@ -334,7 +332,6 @@ export function DashboardView() {
   const accountName = useCloudSession()?.user.name;
   const fi = result ? fiMetrics(result, plan) : null;
   const fiTarget = fiTargetLabel(plan);
-  useDemoChanceOfSuccess(input, plan);
   const history = useMemo(() => {
     if (!doc) return [];
     return [...doc.progress]
@@ -383,7 +380,7 @@ export function DashboardView() {
     >
       <CalculatorHandoffBanner />
       <div className="grid gap-5 rounded-[var(--radius-card)] border border-border bg-surface px-5 py-4 shadow-card md:grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)]">
-        <div className="flex items-end justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <Stat
             label="Net worth today"
             value={f.money(now.netWorth, true)}
@@ -398,11 +395,11 @@ export function DashboardView() {
                     {f.money(Math.abs(now.netWorth - prevSnap), true)} since last snapshot
                   </div>
                 ) : null}
-                {leftOut ? <div className="text-ochre">{leftOut}</div> : null}
+                {leftOut ? <div className="text-ochre break-words">{leftOut}</div> : null}
               </>
             }
           />
-          <Link to="/progress" aria-label="Open progress history">
+          <Link to="/progress" aria-label="Open progress history" className="shrink-0 self-end">
             <Sparkline
               values={spark}
               width={130}

@@ -28,6 +28,7 @@ import { Segmented } from "../../components/ui/segmented";
 import { Select } from "../../components/ui/select";
 import { useMode } from "../../lib/auth";
 import { cn } from "../../lib/cn";
+import { isDemo } from "../../lib/demo";
 import { total } from "../../lib/money";
 import { periodShortLabel } from "../../lib/period";
 import { useResolvedTheme } from "../../lib/theme";
@@ -35,8 +36,10 @@ import { useFormat } from "../../lib/workspace";
 import { successTone, usePrefs } from "../../stores/prefs";
 import { runSimulation } from "../../workers/sim-client";
 import { foreignCurrencies } from "../currency/fx";
+import { cancelDemoChanceRun, useRememberedChance } from "../demo/demo-chance";
 import { exampleMonteCarlo, exampleTrialMarket } from "../results/fixtures";
 import { useAnalysis } from "../results/use-analysis";
+import { showDemoRunLoading, showNoRunYet } from "./chance-display";
 import {
   availableMetrics,
   FAN_LABEL,
@@ -579,10 +582,26 @@ export function ChanceView() {
   const [metric, setMetric] = useState<FanMetric>("netWorth");
   const [trial, setTrial] = useState<number | null>(null);
   const abort = useRef<AbortController | null>(null);
-  const stored = useMcStore((s) => (plan ? s.byPlan[plan.id] : undefined));
+  const stored = useRememberedChance(plan);
   const put = useMcStore((s) => s.put);
-  const mc = stored && stored.planVersion === plan?.version ? stored.result : undefined;
+  const demoPhase = useMcStore((s) => (plan ? s.demoPhase[plan.id] : undefined));
+  const mc = stored?.result;
   const example = !!stored?.example;
+  const demo = isDemo();
+  const emptyState = {
+    hasResult: !!mc,
+    status,
+    projectionLoading: isLoading,
+    demo,
+    demoPhase,
+  };
+  const demoBusy =
+    demo &&
+    !mc &&
+    !isLoading &&
+    status !== "running" &&
+    demoPhase !== "failed" &&
+    demoPhase !== "unavailable";
 
   useEffect(() => {
     if (plan) setSettings(plan.monteCarlo);
@@ -590,6 +609,7 @@ export function ChanceView() {
 
   const run = useCallback(async () => {
     if (!input || !plan) return;
+    cancelDemoChanceRun();
     abort.current?.abort();
     const ac = new AbortController();
     abort.current = ac;
@@ -671,7 +691,7 @@ export function ChanceView() {
             <SettingsPanel
               value={settings}
               onChange={setSettings}
-              disabled={status === "running"}
+              disabled={status === "running" || demoBusy}
               currencies={currencies}
               base={doc?.household.currency ?? ""}
             />
@@ -701,6 +721,14 @@ export function ChanceView() {
                   <Square /> Cancel
                 </Button>
               </div>
+            ) : demoBusy ? (
+              <div
+                className="flex items-center gap-1.5 text-[12.5px] text-ink-2"
+                aria-live="polite"
+              >
+                <Loader2 className="size-3.5 animate-spin" /> Running the same chance of success as
+                the dashboard…
+              </div>
             ) : (
               <Button variant="primary" onClick={run} disabled={!input || isLoading}>
                 <Play /> Run{" "}
@@ -721,7 +749,14 @@ export function ChanceView() {
         </Card>
 
         <div className="flex min-w-0 flex-col gap-5">
-          {isLoading ? <ChartLoading /> : null}
+          {isLoading && !mc ? (
+            <ChartLoading
+              label={plan ? "Simulating in a background worker…" : "Loading your plan…"}
+            />
+          ) : null}
+          {showDemoRunLoading(emptyState) ? (
+            <ChartLoading label="Running chance of success…" />
+          ) : null}
           {detError ? (
             <ErrorState error={detError} title="The plan could not be simulated" />
           ) : null}
@@ -740,7 +775,7 @@ export function ChanceView() {
               </Card>
             )
           ) : null}
-          {!mc && status !== "error" && status !== "running" && !isLoading ? (
+          {showNoRunYet(emptyState) ? (
             <Card>
               <EmptyState
                 icon={<Dices className="size-5" />}

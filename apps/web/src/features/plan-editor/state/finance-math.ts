@@ -163,3 +163,30 @@ export function monthFromIndex(i: number): string {
 export function ageAt(birthMonth: string, month: string): number {
   return Math.floor((monthIndex(month) - monthIndex(birthMonth)) / 12);
 }
+
+/**
+ * Age to print under a calendar year on the plan timeline.
+ *
+ * The same number the results table shows for that year (`periodAge`): the age reached during
+ * the part of the year the plan covers. A full January–December year is the birthday age
+ * (`year − birth year`), which is also "N this year" on Current finances. Placing that age on
+ * the year tick keeps November birthdays from sitting next to the following January and reading
+ * as one year younger.
+ *
+ * Null when the person is not in the slice (born after it ends, or the plan misses that year).
+ */
+export function timelineYearAge(
+  birthMonth: string,
+  year: number,
+  range: { start: number; end: number },
+): number | null {
+  const birth = monthIndex(birthMonth);
+  if (!Number.isFinite(birth)) return null;
+  const sliceStart = Math.max(year * 12, range.start);
+  const sliceEnd = Math.min(year * 12 + 12, range.end);
+  const aliveStart = Math.max(sliceStart, birth);
+  if (sliceEnd <= aliveStart) return null;
+  const ageAtStart = (aliveStart - birth) / 12;
+  const months = sliceEnd - aliveStart;
+  return Math.floor(ageAtStart + (months - 1) / 12 + 1e-9);
+}

@@ -48,6 +48,10 @@ import { ApiProblemHost } from "./api-problems-host";
 import { AuthGate, Splash } from "./auth-gate";
 import { GlideworthMark, Wordmark } from "./logo";
 import { DATA_NAV, NAV, type NavItem, SETTINGS_NAV } from "./nav";
+
+const DemoChanceHost = lazy(() =>
+  import("../../features/demo/demo-chance-host").then((m) => ({ default: m.DemoChanceHost })),
+);
 import { NextSteps } from "./next-steps";
 import { PlanSwitcher } from "./plan-switcher";
 import { ShortcutsOverlay, useGlobalShortcuts } from "./shortcuts";
@@ -750,6 +754,11 @@ function Frame() {
       data-app-frame
       className="flex h-dvh overflow-hidden bg-bg pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] text-ink"
     >
+      {isDemo() ? (
+        <Suspense fallback={null}>
+          <DemoChanceHost />
+        </Suspense>
+      ) : null}
       <Sidebar />
       <NavDrawer />
       <div className="flex min-w-0 flex-1 flex-col">

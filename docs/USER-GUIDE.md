@@ -82,6 +82,88 @@ same steps in the web app, or use the API/MCP calls shown.
    80s" or a very high early withdrawal rate, and offers a fix you can preview before applying.
 9. **Save what you decide** as a new plan version or branch; undo is always one step back through the history.
 
+### Importing balances and transactions from CSV
+
+You can bring in a spreadsheet or an export from a bank or budgeting app instead of typing figures in. In the
+web app, go to **Import**, open the **CSV files** tab and choose the file: it is read in your browser and nothing
+is saved until you press **Apply import**. Through the API it is `POST /households/{id}/import/csv` (see
+[API.md](API.md#csv-import-dry-run-first)); through MCP, `preview_csv_import` then `apply_csv_import`.
+
+**Three kinds of file.** Pick the one that matches what the file holds:
+
+- **Account balances** (`account-balances`). One row per account: a name and a balance, optionally a date and an
+  account type. Rows are matched to your existing accounts and debts by name (case and punctuation are
+  ignored); if a name appears more than once, the newest date wins. An account that does not exist yet is
+  added (**Add accounts that do not exist yet**, `createMissing`), mapped to one you choose (`accountMap`), or
+  skipped. A row whose type reads like a credit card, loan, mortgage or overdraft becomes a debt.
+- **Net-worth history** (`progress-snapshots`). One row per date with a net worth, or with assets and
+  liabilities (net worth is then assets minus liabilities). Columns for cash, taxable, tax-deferred, tax-free,
+  crypto, debt and loans are kept as a breakdown. Each date becomes a progress snapshot. With `mode: "merge"`
+  (the default) a snapshot on the same date as an existing one replaces it and the rest are kept; with
+  `mode: "replace"` the whole history is replaced by the file.
+- **Transactions → spending** (`transactions`). A bank or budgeting-app export with a date and an amount (one
+  signed amount column, or separate money-out and money-in columns). It is summarised by category into yearly
+  expenses, in today's money, added to the plan you choose; the plan's existing expenses are left alone, so
+  importing the same file twice adds them twice. Transfers, card payments, income and savings categories are
+  left out, and so is money coming in with no category. Money coming in with a category (a refund) is netted
+  against that category. The yearly figure comes from the last 12 months (the default, scaled up when the file
+  covers less), the latest full calendar year, or an average over all the data. You can leave out any other
+  category too.
+
+**Recognised exports.** When the headers match one of these, the columns (and, where the app needs it, the
+date format and the sign of amounts) are set for you, and the preview names the preset it picked:
+
+| Kind              | Preset                                      | id                     |
+| ----------------- | ------------------------------------------- | ---------------------- |
+| Transactions      | YNAB register export                        | `ynab-register`        |
+| Transactions      | Monarch Money transactions                  | `monarch-transactions` |
+| Transactions      | Mint transactions                           | `mint-transactions`    |
+| Transactions      | Copilot Money transactions                  | `copilot-transactions` |
+| Transactions      | Actual Budget transactions                  | `actual-budget`        |
+| Transactions      | Monzo transactions                          | `monzo`                |
+| Transactions      | Starling Bank transactions                  | `starling`             |
+| Transactions      | UK bank statement (Debit / Credit columns)  | `uk-bank-debit-credit` |
+| Account balances  | Account balances (Date, Account, Balance)   | `generic-balances`     |
+| Account balances  | Glideworth account balances                 | `glideworth-accounts`  |
+| Net-worth history | Glideworth progress export                  | `glideworth-progress`  |
+| Net-worth history | Generic net-worth tracker (Date, Net Worth) | `networth-tracker`     |
+
+Any other file still works: the columns are found from the header names and, failing that, from the values.
+You can also choose a preset yourself, or **No preset** (`"preset": "none"`).
+
+**Preview before you apply.** Every import is a dry run first. The web app shows what would change (matched,
+new and unmatched accounts with balances before and after, the snapshots, or the yearly spending per category)
+along with any problems, row by row. Through the API, `dryRun` defaults to `true`: you get the same preview and
+nothing is written. Send the same request with `"dryRun": false` to apply it; it is applied all at once or not
+at all.
+
+**Overriding a column.** If a column was picked wrongly or not found, choose the right one under **Column
+mapping**, or pass `columns` in the options, mapping a field to the header text in your file. A column you name
+always wins over the preset and the detection. For example, for a file with the headers
+`Posted,Shop,Spent,Group`:
+
+```json
+{
+  "kind": "transactions",
+  "planId": "plan-main",
+  "text": "Posted,Shop,Spent,Group\n2026-01-05,Corner Shop,-12.40,Groceries\n",
+  "options": { "columns": { "date": "Posted", "amount": "Spent", "category": "Group" } }
+}
+```
+
+The fields are `date`, `account`, `accountType` and `balance` for balances; `date`, `netWorth`, `assets`,
+`liabilities`, `cash`, `taxable`, `taxDeferred`, `taxFree`, `crypto`, `debt` and `loans` for history; and
+`date`, `amount`, `debit` (money out), `credit` (money in), `category`, `description`, `account` and `type` for
+transactions.
+
+**Dates and numbers.** Dates can be `2026-03-31`, `31/03/2026` (day first) or `03/31/2026` (month first). The
+format is worked out from the values; when every date fits both orders (`03/04/2026`), it is read day first
+unless the locale is US style (**Locale fallback** in the web app; `"locale": "en-US"` in the API, where a US
+app's preset also sets it), and the preview says so. Set `dateFormat` (**Dates** in the web app) to override it.
+Numbers can use a decimal point (`1,234.56`) or a decimal comma (`1.234,56`); set `decimalSeparator` (**Number
+format**) if it is read wrongly. Currency symbols, thousands separators and negatives written as `(12.40)` are
+understood. The file can be separated by commas, semicolons, tabs or `|`.
+
 ## 3. How results are calculated
 
 ### Time

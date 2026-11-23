@@ -124,8 +124,11 @@ new [release](https://github.com/GlideWorth/glideworth/releases), then run `dock
 - **Track progress**: balance snapshots over time against the plan, scheduled check-ins and notifications
   when the chance of success or a milestone moves.
 - **Share and collaborate**: owner, editor and viewer sign-ins, read-only share links.
-- **Import**: ProjectionLab JSON, bank/budgeting CSV (Monarch, YNAB and generic presets) and Glideworth's own
-  export. **Export**: JSON, CSV tables, printable report.
+- **Import**: ProjectionLab JSON, bank/budgeting CSV and Glideworth's own export. CSV presets: YNAB, Monarch,
+  Mint, Copilot, Actual Budget, Monzo, Starling, UK debit/credit bank statements, plain balance and net-worth
+  files, and Glideworth's own balance and progress exports
+  ([user guide](docs/USER-GUIDE.md#importing-balances-and-transactions-from-csv)). **Export**: JSON, CSV
+  tables, printable report.
 - **Integrate**: scoped API keys, signed webhooks, idempotent and conflict-safe writes, MCP over stdio or HTTP.
 
 ## For developers

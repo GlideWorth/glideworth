@@ -1,0 +1,43 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.GlideWorth/glideworth",
+  "title": "Glideworth",
+  "description": "Glideworth is a personal financial planning engine (retirement / life-plan projections).",
+  "websiteUrl": "https://glideworth.com/docs/api-and-mcp/mcp-setup/",
+  "repository": {
+    "url": "https://github.com/GlideWorth/glideworth",
+    "source": "github",
+    "id": "1460398723",
+    "subfolder": "apps/api/src/mcp"
+  },
+  "version": "1.0.0",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://app.glideworth.com/mcp",
+      "headers": [
+        {
+          "name": "Authorization",
+          "description": "Bearer workspace API key (gwk_...) or OAuth access token (gwa_...). With neither, the server returns 401 and WWW-Authenticate points at /.well-known/oauth-protected-resource/mcp (OAuth 2.1, PKCE S256). Browser session cookies are not accepted.",
+          "isRequired": false,
+          "isSecret": true,
+          "placeholder": "Bearer gwk_..."
+        }
+      ]
+    }
+  ],
+  "_meta": {
+    "io.modelcontextprotocol.registry/publisher-provided": {
+      "tools": {
+        "readOnly": 49,
+        "write": 18
+      },
+      "selfHosted": {
+        "documentation": "https://glideworth.com/self-hosting/",
+        "image": "ghcr.io/glideworth/glideworth",
+        "mcpHttpPath": "/mcp",
+        "stdio": "node apps/api/dist/mcp/stdio.js"
+      }
+    }
+  }
+}

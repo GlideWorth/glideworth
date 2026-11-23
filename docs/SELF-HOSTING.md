@@ -64,7 +64,7 @@ sed -i.bak -e "s/^GLIDEWORTH_SETUP_TOKEN=.*/GLIDEWORTH_SETUP_TOKEN=$(openssl ran
   `openssl rand -hex 24`). This stops a stranger who finds the port from choosing your passphrase first;
 - clear `GLIDEWORTH_BOOTSTRAP_KEY` (or set your own secret). `.env.example` ships the public development key,
   which the server refuses in production and warns about at start-up;
-- optionally pin a release by adding `GLIDEWORTH_VERSION=1.0.0` (without it you get `latest`). Pinning is
+- optionally pin a release by adding `GLIDEWORTH_VERSION=1.1.0` (without it you get `latest`). Pinning is
   recommended: you then upgrade when you choose to.
 
 Then start it:

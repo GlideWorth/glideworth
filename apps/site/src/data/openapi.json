@@ -2,7 +2,7 @@
  "openapi": "3.1.0",
  "info": {
   "title": "Glideworth API",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Glideworth planning API. Everything the web app does is available here, and it can run simulations.\n\n**Units.** Money is in major currency units (1234.56), rates are decimal fractions (0.07 = 7%). Simulation results are nominal with a per-period `priceIndex`; compact views default to real (today's) money.\n\n**Auth.** `Authorization: Bearer glideworth_<prefix>_<secret>`. Scopes: `read`, `simulate`, `write` (write implies the others).\n\n**Concurrency.** Plans and households return `ETag: \"<version>\"`. Send `If-Match: \"<version>\"` on writes; a stale version is `409 VERSION_CONFLICT`. `If-None-Match` on GET gives `304`.\n\n**Idempotency.** Send `Idempotency-Key: <unique>` on any write to make retries safe (replayed for 24h).\n\n**Errors.** `{ \"error\": { \"code\", \"message\", \"details\" } }`. 501 `NOT_IMPLEMENTED` carries `details.feature` and `details.workstream`.\n\n**Pagination.** List endpoints take `limit` and `cursor` and return `{ items, nextCursor, total }`."
  },
  "servers": [

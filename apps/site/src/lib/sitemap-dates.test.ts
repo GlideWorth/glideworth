@@ -152,7 +152,7 @@ describe("the built site's dates", () => {
   });
 
   it("dates the changelog from the newest entry", () => {
-    expect(lastmodForUrl("https://glideworth.com/changelog/")).toBe("2026-11-18");
+    expect(lastmodForUrl("https://glideworth.com/changelog/")).toBe("2026-11-23");
   });
 
   it("keeps source-dates.json equal to git when the clone has full history", () => {

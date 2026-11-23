@@ -278,7 +278,7 @@ export function createApp(opts: AppOptions) {
     openapi: "3.1.0",
     info: {
       title: "Glideworth API",
-      version: "1.0.0",
+      version: "1.1.0",
       description: cloud ? CLOUD_API_DESCRIPTION : API_DESCRIPTION,
     },
     servers: [{ url: "/" }],

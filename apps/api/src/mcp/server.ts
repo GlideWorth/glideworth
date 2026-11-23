@@ -131,7 +131,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
   const { services } = ctx;
   const actor: Actor = ctx.actor ?? { kind: "mcp", label: "mcp" };
   const server = new McpServer(
-    { name: "glideworth", version: "1.0.0" },
+    { name: "glideworth", version: "1.1.0" },
     { instructions: SERVER_INSTRUCTIONS },
   );
   const canRead = allows(ctx.scopes, "read");

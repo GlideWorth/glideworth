@@ -132,7 +132,7 @@ function ukSingle(): SimulationInputInput {
           mandatory: true,
           method: { kind: "percentOfIncome", incomeId: "sal", share: 0.05 },
           pensionScheme: "salary-sacrifice",
-          employer: { incomeId: "sal", matchShare: 1, upToShareOfPay: 0.03 },
+          employer: { incomeId: "sal", tiers: [{ matchRate: 1, bandShareOfPay: 0.03 }] },
         },
         {
           kind: "contribution",
@@ -371,7 +371,7 @@ function ukCouple(): SimulationInputInput {
           range: until("ret-b"),
           mandatory: true,
           method: { kind: "percentOfIncome", incomeId: "sal-b", share: 0.05 },
-          employer: { incomeId: "sal-b", matchShare: 1, upToShareOfPay: 0.03 },
+          employer: { incomeId: "sal-b", tiers: [{ matchRate: 1, bandShareOfPay: 0.03 }] },
         },
         {
           kind: "contribution",

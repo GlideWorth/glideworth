@@ -137,7 +137,7 @@ describe("engine -> tax inputs", () => {
               accountId: "wp",
               range: always,
               method: { kind: "percentOfIncome", incomeId: "sal", share: 0.05 },
-              employer: { incomeId: "sal", matchShare: 1, upToShareOfPay: 0.03 },
+              employer: { incomeId: "sal", tiers: [{ matchRate: 1, bandShareOfPay: 0.03 }] },
             },
             {
               kind: "transfer",

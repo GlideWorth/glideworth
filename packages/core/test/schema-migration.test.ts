@@ -82,15 +82,11 @@ function expectClean(plan: Json, expectedMilestones: number) {
 }
 
 describe("schema 1 -> 2: moving country removed", () => {
-  it("is the current version", () => {
-    expect(SCHEMA_VERSION).toBe(2);
-  });
-
   it("migrateDocument drops residency, relocate effects, removed switches and past residence", () => {
     const raw = v1Document();
     const before = (raw.plans as Json[])[0]!.milestones as Json[];
     const doc = migrateDocument(raw);
-    expect(doc.schemaVersion).toBe(2);
+    expect(doc.schemaVersion).toBe(SCHEMA_VERSION);
     for (const p of doc.household.people) {
       expect(p).not.toHaveProperty("residenceHistory");
       expect(p).not.toHaveProperty("statePensionRecords");
@@ -125,7 +121,7 @@ describe("schema 1 -> 2: moving country removed", () => {
     expect({ ...plan, milestones: untouched.milestones, tax: untouched.tax }).toEqual(untouched);
   });
 
-  it("a v2 plan is not migrated again", () => {
+  it("a current plan is not migrated again", () => {
     const plan = createUkSampleDocument().plans[0]!;
     expect(migratePlan(structuredClone(plan))).toEqual(plan);
   });

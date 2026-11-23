@@ -498,7 +498,7 @@ const ukSampleInput: GlideworthDocumentInput = {
             end: { kind: "milestone", milestoneId: "uk-retire" },
           },
           method: { kind: "percentOfIncome", incomeId: "uk-salary", share: 0.05 },
-          employer: { incomeId: "uk-salary", matchShare: 1, upToShareOfPay: 0.05 },
+          employer: { incomeId: "uk-salary", tiers: [{ matchRate: 1, bandShareOfPay: 0.05 }] },
           limit: { kind: "jurisdiction" },
           mandatory: true,
         },
@@ -697,8 +697,7 @@ function euroSample(s: EuroSampleSpec): GlideworthDocumentInput {
             },
             employer: {
               incomeId: `${s.planId}-salary`,
-              matchShare: 1,
-              upToShareOfPay: s.pensionFlow.employerShare,
+              tiers: [{ matchRate: 1, bandShareOfPay: s.pensionFlow.employerShare }],
             },
             limit: { kind: "jurisdiction" },
             mandatory: true,

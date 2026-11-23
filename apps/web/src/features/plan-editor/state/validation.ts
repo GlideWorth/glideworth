@@ -45,7 +45,7 @@ export function humanizeIssue(i: RawIssue): string {
 function formatBound(b: number | bigint | undefined, path: PropertyKey[]): string {
   const last = String(path[path.length - 1] ?? "");
   const n = Number(b);
-  if (/rate|share|apr|plus|cut|drawdown|yield|matchShare/i.test(last) && Math.abs(n) <= 10)
+  if (/rate|share|apr|plus|cut|drawdown|yield/i.test(last) && Math.abs(n) <= 10)
     return `${Math.round(n * 100)}%`;
   return String(n);
 }

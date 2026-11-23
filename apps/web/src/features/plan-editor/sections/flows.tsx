@@ -614,8 +614,7 @@ function FlowSheetBody({ id, onClose }: { id: string; onClose: () => void }) {
                     employer: on
                       ? {
                           incomeId: plan.income[0]?.id ?? "",
-                          matchShare: 0.05,
-                          upToShareOfPay: 1,
+                          tiers: [{ matchRate: 0.05, bandShareOfPay: 1 }],
                           designation: "traditional",
                           reduceIfUnderfunded: false,
                         }
@@ -640,41 +639,6 @@ function FlowSheetBody({ id, onClose }: { id: string; onClose: () => void }) {
                     }
                     options={plan.income.map((i) => ({ value: i.id, label: i.name }))}
                   />
-                  <FormField
-                    label="Employer adds"
-                    hint="Share of pay (or of your contribution for a match)."
-                  >
-                    {(fid) => (
-                      <PercentInput
-                        id={fid}
-                        value={fl.employer!.matchShare}
-                        onValueChange={(v) =>
-                          patch(
-                            { employer: { ...fl.employer!, matchShare: v ?? 0 } } as Partial<Flow>,
-                            "Edit employer",
-                            "match",
-                          )
-                        }
-                      />
-                    )}
-                  </FormField>
-                  <FormField label="Up to share of pay">
-                    {(fid) => (
-                      <PercentInput
-                        id={fid}
-                        value={fl.employer!.upToShareOfPay}
-                        onValueChange={(v) =>
-                          patch(
-                            {
-                              employer: { ...fl.employer!, upToShareOfPay: v ?? 1 },
-                            } as Partial<Flow>,
-                            "Edit employer",
-                            "upto",
-                          )
-                        }
-                      />
-                    )}
-                  </FormField>
                   {country === "US" ? (
                     <EnumField<"traditional" | "roth">
                       label="Employer money goes in as"
@@ -692,6 +656,13 @@ function FlowSheetBody({ id, onClose }: { id: string; onClose: () => void }) {
                     />
                   ) : null}
                 </FieldGrid>
+                <MatchTiers
+                  tiers={fl.employer.tiers}
+                  error={issues.get("employer.tiers")}
+                  onChange={(tiers, label, key) =>
+                    patch({ employer: { ...fl.employer!, tiers } } as Partial<Flow>, label, key)
+                  }
+                />
                 <SwitchField
                   label="Reduce employer money if I can’t fund mine"
                   checked={fl.employer.reduceIfUnderfunded}
@@ -1213,6 +1184,89 @@ function ContributionMethodEditor({
           Fills up to the limit below each year (or takes everything left if there’s no limit).
         </p>
       )}
+    </div>
+  );
+}
+
+type MatchTier = NonNullable<Extract<Flow, { kind: "contribution" }>["employer"]>["tiers"][number];
+
+/**
+ * Employer match tiers: one row per band of pay, matched in order from the first percent of pay up
+ * (a flat match is one row; "150% of the first 4%, 50% of the next 2%" is two).
+ */
+function MatchTiers({
+  tiers,
+  error,
+  onChange,
+}: {
+  tiers: MatchTier[];
+  error?: string | undefined;
+  onChange: (tiers: MatchTier[], label: string, key?: string) => void;
+}) {
+  const edit = (i: number, t: Partial<MatchTier>, key: string) =>
+    onChange(
+      tiers.map((x, j) => (j === i ? { ...x, ...t } : x)),
+      "Edit employer match",
+      `tier-${i}-${key}`,
+    );
+  return (
+    <div className="grid gap-2">
+      {tiers.map((t, i) => (
+        // oxlint-disable-next-line react/no-array-index-key -- tiers are positional bands with no ids
+        <div key={i} className="flex items-end gap-2">
+          <FieldGrid>
+            <FormField
+              label={tiers.length > 1 ? `Tier ${i + 1}: employer adds` : "Employer adds"}
+              hint="Share of your contribution in this band of pay that the employer matches."
+            >
+              {(fid) => (
+                <PercentInput
+                  id={fid}
+                  value={t.matchRate}
+                  onValueChange={(v) => edit(i, { matchRate: v ?? 0 }, "rate")}
+                />
+              )}
+            </FormField>
+            <FormField label={i === 0 ? "On the first share of pay" : "On the next share of pay"}>
+              {(fid) => (
+                <PercentInput
+                  id={fid}
+                  value={t.bandShareOfPay}
+                  onValueChange={(v) => edit(i, { bandShareOfPay: v ?? 0 }, "band")}
+                />
+              )}
+            </FormField>
+          </FieldGrid>
+          {tiers.length > 1 ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Remove tier ${i + 1}`}
+              onClick={() =>
+                onChange(
+                  tiers.filter((_, j) => j !== i),
+                  "Remove match tier",
+                )
+              }
+            >
+              <Trash2 />
+            </Button>
+          ) : null}
+        </div>
+      ))}
+      {error ? <span className="text-[12px] text-negative">{error}</span> : null}
+      {tiers.length < 10 ? (
+        <Button
+          variant="secondary"
+          size="sm"
+          className="justify-self-start"
+          onClick={() =>
+            onChange([...tiers, { matchRate: 0.5, bandShareOfPay: 0.02 }], "Add match tier")
+          }
+        >
+          <Plus /> Add tier
+        </Button>
+      ) : null}
     </div>
   );
 }

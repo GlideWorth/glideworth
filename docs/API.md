@@ -636,7 +636,7 @@ The same flow over MCP (`preview_changes` -> `propose_change_set` -> `apply_chan
 ## Export and import
 
 ```bash
-# Full backup of one household (GlideworthDocument, schema version 2: household, finances, plans, progress, settings)
+# Full backup of one household (GlideworthDocument, schema version 3: household, finances, plans, progress, settings)
 api $GLIDEWORTH/api/v1/households/hh-sample/export > backup.json
 
 # Restore into a clean database (409 if the household exists, unless "mode": "replace")

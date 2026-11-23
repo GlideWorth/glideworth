@@ -54,7 +54,7 @@ describe("flows: workplace plans", () => {
             contribution(
               "k",
               { kind: "percentOfIncome", incomeId: "sal", share: 0.06 },
-              { employer: { incomeId: "sal", matchShare: 0.5, upToShareOfPay: 0.06 } },
+              { employer: { incomeId: "sal", tiers: [{ matchRate: 0.5, bandShareOfPay: 0.06 }] } },
             ),
           ],
         },
@@ -83,8 +83,7 @@ describe("flows: workplace plans", () => {
                   {
                     employer: {
                       incomeId: "sal",
-                      matchShare: 0.5,
-                      upToShareOfPay: 0.06,
+                      tiers: [{ matchRate: 0.5, bandShareOfPay: 0.06 }],
                       reduceIfUnderfunded,
                     },
                   },
@@ -143,7 +142,7 @@ describe("flows: workplace plans", () => {
               { kind: "max" },
               {
                 limit: { kind: "jurisdiction" },
-                employer: { incomeId: "sal", matchShare: 1, upToShareOfPay: 0.01 },
+                employer: { incomeId: "sal", tiers: [{ matchRate: 1, bandShareOfPay: 0.01 }] },
               },
             ),
             contribution("rk", { kind: "max" }, { route: "mega-backdoor-roth" }),

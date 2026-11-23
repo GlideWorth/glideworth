@@ -2683,7 +2683,7 @@
      "schemaVersion": {
       "type": "number",
       "enum": [
-       2
+       3
       ]
      },
      "exportedAt": {
@@ -7375,34 +7375,7 @@
       "$ref": "#/components/schemas/ContributionLimit"
      },
      "employer": {
-      "type": "object",
-      "properties": {
-       "incomeId": {
-        "$ref": "#/components/schemas/Id"
-       },
-       "matchShare": {
-        "$ref": "#/components/schemas/Fraction"
-       },
-       "upToShareOfPay": {
-        "$ref": "#/components/schemas/Fraction"
-       },
-       "designation": {
-        "type": "string",
-        "enum": [
-         "traditional",
-         "roth"
-        ],
-        "default": "traditional"
-       },
-       "reduceIfUnderfunded": {
-        "type": "boolean",
-        "default": false
-       }
-      },
-      "required": [
-       "incomeId",
-       "matchShare"
-      ]
+      "$ref": "#/components/schemas/EmployerMatch"
      },
      "route": {
       "type": "string",
@@ -7587,6 +7560,55 @@
     "default": {
      "kind": "none"
     }
+   },
+   "EmployerMatch": {
+    "type": "object",
+    "properties": {
+     "incomeId": {
+      "$ref": "#/components/schemas/Id"
+     },
+     "tiers": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/EmployerMatchTier"
+      },
+      "minItems": 1,
+      "maxItems": 10
+     },
+     "designation": {
+      "type": "string",
+      "enum": [
+       "traditional",
+       "roth"
+      ],
+      "default": "traditional"
+     },
+     "reduceIfUnderfunded": {
+      "type": "boolean",
+      "default": false
+     }
+    },
+    "required": [
+     "incomeId",
+     "tiers"
+    ]
+   },
+   "EmployerMatchTier": {
+    "type": "object",
+    "properties": {
+     "matchRate": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 10
+     },
+     "bandShareOfPay": {
+      "$ref": "#/components/schemas/Fraction"
+     }
+    },
+    "required": [
+     "matchRate",
+     "bandShareOfPay"
+    ]
    },
    "DebtPaydownFlow": {
     "type": "object",
@@ -15501,34 +15523,7 @@
         "$ref": "#/components/schemas/ContributionLimit"
        },
        "employer": {
-        "type": "object",
-        "properties": {
-         "incomeId": {
-          "$ref": "#/components/schemas/Id"
-         },
-         "matchShare": {
-          "$ref": "#/components/schemas/Fraction"
-         },
-         "upToShareOfPay": {
-          "$ref": "#/components/schemas/Fraction"
-         },
-         "designation": {
-          "type": "string",
-          "enum": [
-           "traditional",
-           "roth"
-          ],
-          "default": "traditional"
-         },
-         "reduceIfUnderfunded": {
-          "type": "boolean",
-          "default": false
-         }
-        },
-        "required": [
-         "incomeId",
-         "matchShare"
-        ]
+        "$ref": "#/components/schemas/EmployerMatch"
        },
        "route": {
         "type": "string",

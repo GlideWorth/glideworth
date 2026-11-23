@@ -160,7 +160,7 @@ not a line-by-line audit of every edge case, and tax tables are for stated tax y
 | Maximize / % of remaining / % of income / amount   | Implemented | `schema/flows.ts` (`method`)                 |      |
 | Mandatory ("always fund"); reduce employer match   | Implemented | `schema/flows.ts`                            |      |
 | Contribution limits (US, UK, CA, AU) with catch-up | Implemented | `engine/limits.ts`, `tax/jurisdictions/*.ts` |      |
-| Employer match and Roth/traditional employer share | Implemented | `schema/flows.ts`, `engine/flows.ts`         |      |
+| Employer match (tiered) and Roth/traditional share | Implemented | `schema/flows.ts`, `engine/flows.ts`         |      |
 | Backdoor Roth, mega backdoor Roth                  | Implemented | `schema/flows.ts`, `engine/flows.ts`         |      |
 | Transfers between accounts and external            | Implemented | `schema/flows.ts` (`transfer`)               |      |
 | Debt paydown / extra payment flows                 | Implemented | `schema/flows.ts`                            |      |

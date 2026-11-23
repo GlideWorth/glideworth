@@ -114,7 +114,7 @@ describe("defects found in review (each failed before its fix)", () => {
               range: always,
               accountId: "k",
               method: { kind: "amount", amount: { value: 5_000, basis: "nominal" } },
-              employer: { incomeId: "sal", matchShare: 1, upToShareOfPay: 0.06 },
+              employer: { incomeId: "sal", tiers: [{ matchRate: 1, bandShareOfPay: 0.06 }] },
             },
           ],
         },

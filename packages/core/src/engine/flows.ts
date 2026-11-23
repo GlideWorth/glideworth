@@ -6,9 +6,11 @@
  *     the drawdown then covers from accounts.
  *   - Contribution limits: per owner and limit group per period (jurisdiction, custom, or the
  *     built-in fallback table), prorated by active months.
- *   - Employer match: matchShare x min(employee contribution, upToShareOfPay x pay), paid by the
- *     employer (not from the pool); with reduceIfUnderfunded the match scales with the share of the
- *     intended employee contribution actually funded. Roth-designated matches are taxable wages.
+ *   - Employer match: tier by tier from the first percent of pay up, each tier's matchRate x the
+ *     employee contribution falling in its band (bandShareOfPay x pay), paid by the employer (not
+ *     from the pool). The match is on the intended employee contribution, or with
+ *     reduceIfUnderfunded on the amount actually funded (so a short year loses the upper tiers
+ *     first). Roth-designated matches are taxable wages.
  *   - Backdoor Roth: non-deductible IRA contribution converted the same day (tax-neutral; no
  *     pro-rata). Mega-backdoor Roth: after-tax space = 415(c) limit - deferrals - employer match.
  *   - fundFromAccountIds: the contribution is withdrawn from those accounts (ordered) instead of
@@ -351,6 +353,26 @@ function lisaBonus(ctx: EngineContext, ps: PeriodState, a: AccountState, amount:
   });
 }
 
+/**
+ * Employer match on `employee` contributions out of `pay`: each tier matches the part of the
+ * contribution that falls in its band of pay, starting from the first tier.
+ */
+function tieredMatch(
+  tiers: readonly { matchRate: number; bandShareOfPay: number }[],
+  employee: number,
+  pay: number,
+): number {
+  let left = Math.max(0, employee);
+  let match = 0;
+  for (const t of tiers) {
+    if (left <= 0) break;
+    const inBand = Math.min(left, t.bandShareOfPay * pay);
+    match += t.matchRate * inBand;
+    left -= inBand;
+  }
+  return match;
+}
+
 function employerMatch(
   ctx: EngineContext,
   ps: PeriodState,
@@ -361,8 +383,7 @@ function employerMatch(
   pay: number,
 ): void {
   const e = f.employer!;
-  const basis = e.reduceIfUnderfunded ? actual : intended;
-  const match = e.matchShare * Math.min(basis, e.upToShareOfPay * pay);
+  const match = tieredMatch(e.tiers, e.reduceIfUnderfunded ? actual : intended, pay);
   if (!(match > 0)) return;
   a.balance += match;
   a.p.contributions += match;

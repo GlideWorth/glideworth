@@ -27,6 +27,39 @@ export const ContributionLimit = z
   ])
   .meta({ id: "ContributionLimit" });
 
+/**
+ * One tier of an employer match: the employer adds `matchRate` x the employee's contributions that
+ * fall in the next `bandShareOfPay` of pay. Tiers are consecutive bands from the first percent of
+ * pay up: the US safe-harbor basic match (100% of the first 3% of pay, 50% of the next 2%) is
+ * `[{ matchRate: 1, bandShareOfPay: 0.03 }, { matchRate: 0.5, bandShareOfPay: 0.02 }]`.
+ */
+export const EmployerMatchTier = z
+  .object({
+    /** Employer money per unit of employee contribution in this band (1.5 = 150%). */
+    matchRate: z.number().min(0).max(10),
+    /** Width of this band as a share of pay (0.04 = the next 4% of pay). */
+    bandShareOfPay: Fraction,
+  })
+  .meta({ id: "EmployerMatchTier" });
+export type EmployerMatchTier = z.infer<typeof EmployerMatchTier>;
+
+export const EmployerMatch = z
+  .object({
+    incomeId: Id,
+    /** Match tiers in order, from the first percent of pay up. */
+    tiers: z
+      .array(EmployerMatchTier)
+      .min(1)
+      .max(10)
+      .refine((t) => t.reduce((s, x) => s + x.bandShareOfPay, 0) <= 1 + 1e-9, {
+        message: "Tiers cover more than 100% of pay",
+      }),
+    designation: z.enum(["traditional", "roth"]).default("traditional"),
+    reduceIfUnderfunded: z.boolean().default(false),
+  })
+  .meta({ id: "EmployerMatch" });
+export type EmployerMatch = z.infer<typeof EmployerMatch>;
+
 const FlowBase = z.object({
   id: Id,
   name: z.string().min(1).max(120),
@@ -51,16 +84,7 @@ export const ContributionFlow = FlowBase.extend({
   method: ContributionMethod,
   limit: ContributionLimit.default({ kind: "none" }),
   /** Employer match on workplace plans. */
-  employer: z
-    .object({
-      incomeId: Id,
-      matchShare: Fraction,
-      /** Match applies up to this share of pay. */
-      upToShareOfPay: Fraction.default(1),
-      designation: z.enum(["traditional", "roth"]).default("traditional"),
-      reduceIfUnderfunded: z.boolean().default(false),
-    })
-    .optional(),
+  employer: EmployerMatch.optional(),
   /** US special contribution routes. */
   route: z.enum(["standard", "backdoor-roth", "mega-backdoor-roth"]).default("standard"),
   taxDeductible: z.boolean().optional(),

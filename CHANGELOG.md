@@ -8,7 +8,12 @@ listing every commit. Product news for people using the hosted service is on
 
 ## Unreleased
 
-Nothing yet.
+- **Tiered employer match** ([#9](https://github.com/GlideWorth/glideworth/issues/9)): a contribution's employer
+  match is an ordered list of tiers (`employer.tiers: [{ matchRate, bandShareOfPay }]`), matched band by band from
+  the first percent of pay up, so formulas such as 100% of the first 3% of pay and 50% of the next 2% are exact at
+  every deferral rate. Match rates above 100% are allowed. **API change:** `employer.matchShare` and
+  `employer.upToShareOfPay` are replaced by `tiers`; stored plans, exports and branch patches migrate on read to a
+  single tier with the same result (document schema version 3).
 
 ## 1.0.0 - 2026-11-20
 

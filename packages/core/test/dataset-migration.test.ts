@@ -16,6 +16,7 @@ import {
   Plan,
   registerLocalDataset,
   runMonteCarlo,
+  SCHEMA_VERSION,
   type SimulationInputInput,
   type SimWarning,
   simulate,
@@ -72,7 +73,7 @@ describe("retired dataset ids", () => {
     const doc = migrateDocument(JSON.parse(storedOldDocument("uk-1871")));
     const plan = doc.plans.find((p) => p.id === UK_SAMPLE_PLAN_ID)!;
     expect(doc.app).toBe("glideworth");
-    expect(doc.schemaVersion).toBe(2); // migrated from the stored version 1
+    expect(doc.schemaVersion).toBe(SCHEMA_VERSION); // migrated from the stored version 1
     expect(plan.monteCarlo.dataset).toBe("uk-1983");
     expect(plan.monteCarlo.replacedDataset).toBe("uk-1871");
 

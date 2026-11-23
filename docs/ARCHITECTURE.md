@@ -42,10 +42,10 @@ Production builds (`tsconfig.build.json`) clear `customConditions` and use `dist
 All domain types are Zod schemas in `packages/core/src/schema/*`. The TS types are inferred from
 them (`z.infer` for the stored/parsed shape, `z.input` for what callers may send, with defaults
 omitted). The API generates its OpenAPI 3.1 document from these same schemas, named with `.meta({ id })`:
-252 named components in self-host mode. The web client validates responses with them too.
+254 named components in self-host mode. The web client validates responses with them too.
 
 ```
-GlideworthDocument (schemaVersion = 2)       ← export/backup/import unit; what the web loads
+GlideworthDocument (schemaVersion = 3)       ← export/backup/import unit; what the web loads
 ├── household: Household               people (1–2, primary/partner; citizenships, US green card), dependents,
 │                                      location (where the household lives for the whole plan), currency, locale
 ├── finances: CurrentFinances          asOf month; accounts[], realAssets[], debts[]  (starting conditions)

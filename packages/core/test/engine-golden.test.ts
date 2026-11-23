@@ -203,7 +203,7 @@ describe("invariants (property style)", () => {
               range: always,
               accountId: "k",
               method: { kind: "percentOfIncome", incomeId: "sal", share: 0.1 },
-              employer: { incomeId: "sal", matchShare: 0.5, upToShareOfPay: 0.06 },
+              employer: { incomeId: "sal", tiers: [{ matchRate: 0.5, bandShareOfPay: 0.06 }] },
               limit: { kind: "jurisdiction" },
             },
             {

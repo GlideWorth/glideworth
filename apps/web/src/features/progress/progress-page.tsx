@@ -1,7 +1,8 @@
 import type { GlideworthDocument, ProgressSnapshot } from "@glideworth/core";
 import { useQueryClient } from "@tanstack/react-query";
+import { applyHistoryPlan } from "@glideworth/importers";
 import { Camera, Download, Pencil, Plus, Trash2, Upload, Wallet } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Chart } from "../../components/charts/echarts";
 import { categoryColor, slotColor } from "../../components/charts/palette";
 import { EmptyState, ErrorState } from "../../components/charts/states";
@@ -30,19 +31,22 @@ import { formatDay, formatMoney, formatSigned } from "../../lib/format";
 import { conv as toToday } from "../../lib/money";
 import type { Workspace } from "../../lib/workspace";
 import { useFormat, useProjection } from "../../lib/workspace";
-import { downloadText } from "../results/model";
 import { useAnalysis } from "../results/use-analysis";
 import { AccountHistory } from "./account-history";
+import { HistoryExportDialog } from "./history-export-dialog";
+import {
+  HistoryImportDialog,
+  type HistoryImportOutcome,
+  type HistoryImportRequest,
+} from "./history-import-dialog";
 import {
   deflatorFor,
-  importSnapshotsCsv,
   projectionPoints,
   RANGES,
   type RangeId,
   rangeStart,
   type SnapshotDraft,
   snapshotFromFinances,
-  snapshotsCsv,
   todayIso,
 } from "./progress-model";
 import { type BalanceUpdate, UpdateBalancesSheet } from "./update-balances-sheet";
@@ -129,11 +133,53 @@ function useSnapshotActions() {
           : ws,
       );
     },
-    async importMany(drafts: SnapshotDraft[]) {
+    /** Balance-history import: the server re-plans and writes; offline, the previewed plan is applied here. */
+    async importHistory(r: HistoryImportRequest): Promise<HistoryImportOutcome> {
       if (live) {
-        await api.importSnapshots(hh!, drafts);
-        await refresh();
-      } else local((l) => [...l, ...drafts.map((d) => toSnap(d))]);
+        const out = await api.importBalanceHistory(hh!, {
+          rows: r.rows,
+          mode: r.mode,
+          dryRun: false,
+          updateCurrentBalances: r.updateCurrent,
+          today: r.today,
+        });
+        await qc.invalidateQueries({ queryKey: ["workspace"] });
+        return { counts: out.counts, currentBalances: out.currentBalances !== null };
+      }
+      const c = r.updateCurrent ? r.plan.current : null;
+      qc.setQueryData<Workspace>(["workspace"], (ws) => {
+        if (!ws) return ws;
+        const stamp = Date.now().toString(36);
+        const progress = applyHistoryPlan(
+          ws.doc.progress,
+          r.plan,
+          ws.doc.household.id,
+          (_d, i) => `snap-${stamp}-${i}`,
+        );
+        if (!c) return { ...ws, doc: { ...ws.doc, progress } };
+        const acc = new Map(c.accounts.map((a) => [a.accountId, a.balance]));
+        const dbt = new Map(c.debts.map((d) => [d.debtId, d.balance]));
+        const ast = new Map(c.realAssets.map((a) => [a.assetId, a]));
+        const f = ws.doc.finances;
+        const finances = {
+          ...f,
+          accounts: f.accounts.map((a) => (acc.has(a.id) ? { ...a, balance: acc.get(a.id)! } : a)),
+          debts: f.debts.map((d) => (dbt.has(d.id) ? { ...d, balance: dbt.get(d.id)! } : d)),
+          realAssets: f.realAssets.map((a) => {
+            const u = ast.get(a.id);
+            if (!u) return a;
+            return {
+              ...a,
+              ...(u.currentValue !== undefined ? { currentValue: u.currentValue } : {}),
+              ...(u.loanBalance !== undefined && a.loan
+                ? { loan: { ...a.loan, balance: u.loanBalance } }
+                : {}),
+            };
+          }),
+        };
+        return { ...ws, doc: { ...ws.doc, progress, finances } };
+      });
+      return { counts: r.plan.counts, currentBalances: !!c };
     },
   };
 }
@@ -258,12 +304,9 @@ export function ProgressView() {
   const [account, setAccount] = useState<string>("");
   const [editing, setEditing] = useState<{ draft: SnapshotDraft; id?: string } | null>(null);
   const [balancesOpen, setBalancesOpen] = useState(false);
-  const [importState, setImportState] = useState<{
-    drafts: SnapshotDraft[];
-    errors: string[];
-  } | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [actionError, setActionError] = useState<unknown>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
   const overlayId = overlayPlan || plan?.id;
   const overlay = useProjection(overlayId);
   const proj = overlay.data?.result;
@@ -436,11 +479,6 @@ export function ProgressView() {
       overlayId,
     ],
   );
-
-  const onFile = async (file: File) => {
-    const text = await file.text();
-    setImportState(importSnapshotsCsv(text));
-  };
 
   return (
     <Page
@@ -633,68 +671,25 @@ export function ProgressView() {
           title="Recorded values"
           actions={
             <>
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".csv,text/csv"
-                className="hidden"
-                onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
-              />
-              <Button size="sm" variant="secondary" onClick={() => fileRef.current?.click()}>
-                <Upload /> Import CSV
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={!doc}
+                onClick={() => setImportOpen(true)}
+              >
+                <Upload /> Import history
               </Button>
               <Button
                 size="sm"
                 variant="secondary"
-                disabled={!snaps.length}
-                onClick={() =>
-                  downloadText(
-                    `glideworth-progress-${todayIso()}.csv`,
-                    snapshotsCsv(snaps, new Map([...index.accounts].map(([k, v]) => [k, v.name]))),
-                  )
-                }
+                disabled={!doc}
+                onClick={() => setExportOpen(true)}
               >
-                <Download /> CSV
+                <Download /> Export
               </Button>
             </>
           }
         />
-        {importState ? (
-          <div className="flex flex-col gap-2 border-b border-border bg-surface-2 px-4 py-3 text-[12.5px]">
-            <div>
-              <span className="font-semibold">{importState.drafts.length}</span> snapshot(s) ready
-              to import
-              {importState.errors.length ? `, ${importState.errors.length} problem(s):` : "."}
-            </div>
-            {importState.errors.slice(0, 5).map((e) => (
-              <div key={e} className="text-negative">
-                {e}
-              </div>
-            ))}
-            {importState.drafts.length ? (
-              <div className="text-ink-2">
-                {formatDay(importState.drafts[0]!.date, f.locale)} →{" "}
-                {formatDay(importState.drafts.at(-1)!.date, f.locale)}; latest net worth{" "}
-                {f.money(importState.drafts.at(-1)!.netWorth)}.
-              </div>
-            ) : null}
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="primary"
-                disabled={!importState.drafts.length}
-                onClick={() =>
-                  run(actions.importMany(importState.drafts).then(() => setImportState(null)))
-                }
-              >
-                Import {importState.drafts.length}
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => setImportState(null)}>
-                Cancel
-              </Button>
-            </div>
-          </div>
-        ) : null}
         <div className="max-h-[420px] overflow-y-auto">
           <Table>
             <THead>
@@ -767,8 +762,8 @@ export function ProgressView() {
           </Table>
         </div>
         <div className="border-t border-border px-4 py-2 text-[11.5px] text-ink-3">
-          CSV import columns: <code>date</code> (YYYY-MM-DD or DD/MM/YYYY), <code>netWorth</code> or{" "}
-          <code>assets</code> + <code>liabilities</code>, optional <code>note</code>.
+          Import history from a spreadsheet: a date column and one column per account (or net worth
+          totals). A blank cell means no value; 0 is a zero balance.
           {workspace?.source === "api" ? " Saved to your Glideworth server." : ""}
         </div>
       </Card>
@@ -779,6 +774,17 @@ export function ProgressView() {
           doc={doc}
           onSubmit={(u) => actions.updateBalances(doc, u)}
         />
+      ) : null}
+      {doc && importOpen ? (
+        <HistoryImportDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          doc={doc}
+          onImport={actions.importHistory}
+        />
+      ) : null}
+      {doc && exportOpen ? (
+        <HistoryExportDialog open={exportOpen} onOpenChange={setExportOpen} doc={doc} />
       ) : null}
       {editing ? (
         <SnapshotDialog

@@ -26,6 +26,24 @@ import { csrfHeaders } from "./auth";
 
 export { ApiRequestError, isMissingRoute } from "./api-error";
 
+/** The answer of POST /snapshots/history (only the fields the web app reads are checked). */
+const BalanceHistoryResult = z.looseObject({
+  applied: z.boolean(),
+  blocked: z.boolean(),
+  counts: z.object({
+    added: z.number(),
+    updated: z.number(),
+    removed: z.number(),
+    unchanged: z.number(),
+    snapshotsCreated: z.number(),
+    snapshotsUpdated: z.number(),
+    snapshotsRemoved: z.number(),
+  }),
+  currentBalances: z
+    .object({ accounts: z.number(), realAssets: z.number(), debts: z.number() })
+    .nullable(),
+});
+
 const ErrorBody = z.object({
   error: z.object({ code: z.string(), message: z.string(), details: z.unknown().optional() }),
 });
@@ -263,6 +281,23 @@ export function createApiClient(opts: ApiClientOptions = {}) {
           items,
           onConflict,
         },
+      ),
+    /** Balance-history import (see apps/api services/history.ts): dry run by default. */
+    importBalanceHistory: (
+      householdId: string,
+      body: {
+        rows: { date: string; values: Record<string, number | null>; note?: string }[];
+        mode: "merge" | "replace";
+        dryRun: boolean;
+        updateCurrentBalances?: boolean;
+        today?: string;
+      },
+    ) =>
+      request(
+        "POST",
+        `/api/v1/households/${encodeURIComponent(householdId)}/snapshots/history`,
+        BalanceHistoryResult,
+        body,
       ),
     replaceSnapshot: (
       householdId: string,

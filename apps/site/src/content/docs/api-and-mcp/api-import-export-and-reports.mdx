@@ -39,6 +39,25 @@ api -X POST $GLIDEWORTH/api/v1/households/hh-sample/import/csv -d '{
 }'
 ```
 
+## Balance history
+
+`POST /households/{id}/snapshots/history` imports balances per account over time. Send `rows` already mapped to keys
+(`account:<id>`, `asset:<realAssetId>`, `loan:<realAssetId>`, `debt:<id>`, or `netWorth`, `assets`, `liabilities`), or
+the `text` of a CSV/TSV file with optional `options` (`layout`, `dateFormat`, `decimalSeparator`, `columns`). `null`
+is a blank cell. `mode` is `merge` (default) or `replace`; **`dryRun` defaults to `true`** and returns the counts and
+each value change. An apply re-plans in one transaction, so repeating it changes nothing. Ambiguous dates are an error
+until you pass `options.dateFormat`; errors list dates, keys and cell references, never stored values.
+
+```bash
+api -X POST $GLIDEWORTH/api/v1/households/hh-sample/snapshots/history -d '{
+  "mode": "merge",
+  "rows": [
+    { "date": "2026-01-31", "values": { "account:acc-cash": 31250.4, "debt:debt-car": 8120 } },
+    { "date": "2026-02-28", "values": { "account:acc-cash": 32010, "debt:debt-car": null } }
+  ]
+}'
+```
+
 ## Tables and reports
 
 ```bash

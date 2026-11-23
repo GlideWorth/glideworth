@@ -1,0 +1,73 @@
+---
+title: Import balance history from a spreadsheet
+description: Bring years of per-account balances from a spreadsheet or another app's export into Progress, with a preview of every cell and a choice of merge or replace.
+section: Importing
+order: 3
+lastChecked: 2026-11-23
+---
+
+If you have tracked your balances in a spreadsheet, or exported them from another app, you can bring the whole history
+into **Progress**: one value per account and date, so the per-account charts and the net-worth line show what really
+happened. Nothing is saved until the last step.
+
+**Before you start:** your accounts, real assets and debts exist under Current finances. Columns are matched to them by
+name. Use **Download template** in the import dialog to get a file that already lists them.
+
+## Layouts it reads
+
+| Layout | Looks like |
+| --- | --- |
+| Dates in rows | A `Date` column, then one column per account. The usual spreadsheet. |
+| Dates in columns | Accounts down the first column, one column per date. Use **Swap rows and columns** if it was read the wrong way round. |
+| One row per value | `Date, Account, Balance` rows, as many apps export. |
+
+You can paste cells straight from a spreadsheet, or drop a CSV or TSV file. Commas, tabs and semicolons are detected.
+
+## Import it
+
+<Steps>
+1. On **Progress**, under Recorded values, choose **Import history**.
+2. Paste the cells or drop the file.
+3. Check the layout, the separator, the date format and the number format. If every date could be read month-first or
+   day-first (`03/04/2024`), Glideworth does not guess: pick the reading, shown for your first date.
+4. Check the column mapping. Each column is matched to an account, asset, loan or debt, or to a net worth, assets or
+   liabilities total. Columns marked **Check** are close matches; anything that is not a balance can be skipped.
+5. Review the preview: every cell, with problems flagged and what would be added, updated or removed. Choose **Merge**
+   or **Replace**, then import.
+</Steps>
+
+## How values are read
+
+- **Blank is not zero.** A blank cell means no value. `0`, and an accounting dash (`-`), mean a zero balance.
+- **Numbers** can be `1,234.56` or `1.234,56`, with currency symbols, and negatives as `-500` or `(500)`. When a file
+  only has numbers like `1,234`, the preview says which way it read them.
+- **Dates** can be `2024-01-31`, `01/31/2024`, `31/01/2024`, `Jan 2024`, `2024-01`, a year, or a spreadsheet date
+  number. A month or year without a day is dated on its last day (or its first, if you choose). A month that has not
+  ended yet is dated today. Future dates are flagged.
+- **Debts and loans** are amounts owed. A column of negative numbers is read as positive balances.
+- **Flagged cells** (a spreadsheet error such as `#N/A`, text, a date that does not exist) can be skipped: import the
+  clean cells now, fix the rest in your sheet, and import it again with Merge.
+
+## Merge or replace
+
+- **Merge** adds and updates the values in the file and leaves everything else alone.
+- **Replace** also clears, for each column you mapped, the saved values that the file does not have between its first
+  and last date. Other accounts, and dates outside that range, are not touched. Skipped cells are never cleared.
+
+Totals follow the accounts: when an account's value changes, that date's assets and net worth change by the same
+amount. A date that is new to your history records only the accounts in the file, and its net worth counts only
+those. Glideworth does not estimate the others.
+
+A row dated today updates your **current balances** only if you tick "Also update current balances from today's row".
+
+## Export it
+
+**Export**, next to Import history, writes the same layout: choose the accounts, dates in rows or columns, CSV or TSV,
+then copy it or download it. Importing an export back changes nothing, so you can edit the history in a spreadsheet and
+import it again.
+
+## Over the API and MCP
+
+`POST /api/v1/households/{id}/snapshots/history` takes the mapped rows or the file's text, with `mode` and `dryRun`
+(`true` by default). The MCP tools are `preview_balance_history_import` and `apply_balance_history_import`. See
+[Import, export and reports](/docs/api-and-mcp/api-import-export-and-reports/).

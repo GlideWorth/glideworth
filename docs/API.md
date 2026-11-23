@@ -10,7 +10,7 @@ are thin adapters over `apps/api/src/services.ts`, so they behave identically.
   page needs internet access, while `/openapi.json` and every API call work fully offline; the hosted service
   serves a server-rendered page with no script and nothing from another origin). Machine-readable:
   `GET /openapi.json` (OpenAPI 3.1, generated from the same Zod schemas as the engine, so request and
-  response shapes cannot drift). It has 250 operations in self-host mode, 291 in cloud mode and 298 in cloud mode with
+  response shapes cannot drift). It has 251 operations in self-host mode, 292 in cloud mode and 299 in cloud mode with
   "Sign in with Google" configured, as the hosted service is (see [Cloud mode](#cloud-mode-the-hosted-service)), each with a unique `operationId`, tags, a scope
   (`x-required-scope`) and an explicit `security` declaration (`[]` for the public auth routes). It passes
   Redocly and swagger-parser validation, and `npx openapi-typescript http://localhost:8787/openapi.json -o glideworth.d.ts`
@@ -352,9 +352,21 @@ edits do not reset it. Both return the resulting order of every id.
 | `POST /api/v1/households/{id}/snapshots`                          | create with explicit values                        |
 | `POST /api/v1/households/{id}/snapshots/record`                   | snapshot **current finances** (`{ date?, note? }`) |
 | `POST /api/v1/households/{id}/snapshots/bulk`                     | backfill (`{ items, onConflict }`)                 |
+| `POST /api/v1/households/{id}/snapshots/history`                  | per-account balance history (see below)            |
 | `GET/PUT/PATCH/DELETE /api/v1/households/{id}/snapshots/{snapId}` | one snapshot                                       |
 
 There is no `/api/v1/progress` route; the web client already calls the paths above, so no alias is needed.
+
+**Balance history** (`POST .../snapshots/history`) imports per-account balances over time. Send either `rows`
+(`[{ date, values: { "account:<id>": 1234.5, "debt:<id>": 800, "loan:<realAssetId>": null, "netWorth": ... } }]`;
+`null` is a blank cell, a key left out is not in the file) or `text` (a CSV/TSV file or pasted spreadsheet cells, with
+optional `options`: `layout`, `delimiter`, `dateFormat`, `decimalSeparator`, `periodDay`, `columns` header → key or
+`skip`; read in the import thread, and `parse` in the answer says how). `mode` is `merge` (default: add and update) or
+`replace` (also clears, per key in the import, saved values it does not have between its first and last date).
+`dryRun` defaults to `true` and returns the counts and the value changes; `dryRun: false` re-plans and writes in one
+transaction, so repeating it changes nothing. `updateCurrentBalances: true` also sets current balances from values
+dated today. Errors are `422 IMPORT_FAILED` listing dates, keys and cell references, never stored values. Ambiguous
+dates (`03/04/2024` in a column that fits both readings) are an error until `options.dateFormat` is given.
 
 **Auto-snapshots: at most one per day per household.** A finance write that moves a balance (account,
 real asset, debt, bulk `balances`, `current-finances`, CSV import) no longer creates a snapshot each time.
@@ -709,7 +721,8 @@ down) and **debts** (`debts[].balance`). For a mortgage, send `realAssets: [{ as
 asset id in `debts: [{ debtId: <assetId>, balance }]`; an asset without a loan is `422 SCENARIO`.
 
 A household created without `finances` (`POST /households` with only `household`) has empty balances dated
-**this month**, so plans that follow live finances start now. `POST .../snapshots/bulk` backfills history, and
+**this month**, so plans that follow live finances start now. `POST .../snapshots/bulk` backfills history
+(`POST .../snapshots/history` does it per account, from a spreadsheet), and
 `POST .../snapshots/record` snapshots the current finances.
 
 ## Share links

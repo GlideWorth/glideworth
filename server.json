@@ -29,8 +29,8 @@
   "_meta": {
     "io.modelcontextprotocol.registry/publisher-provided": {
       "tools": {
-        "readOnly": 49,
-        "write": 18
+        "readOnly": 50,
+        "write": 19
       },
       "selfHosted": {
         "documentation": "https://glideworth.com/self-hosting/",

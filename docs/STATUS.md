@@ -13,12 +13,12 @@ Where Glideworth stands, how to run it, and what not to trust yet. Feature-by-fe
 | Cross-border (`tax/crossborder`, `engine/crossborder.ts`) | Fixed residence (the household's location, for the whole plan) with accounts, property, debts and income in other countries: source-country taxation of non-residents (UK high fidelity, US citizenship-based taxation with FEIE/FTC, others basic), treaty table with credit relief (UK-UAE article by article; UK-US/AU/CA/ES/FR and US-CA for pensions, social security, dividends, interest and gains, checked 2026-11-19; US saving clauses), foreign-wrapper recognition, non-resident contribution bars; audit checks, tax by country and basis, per-item explanation. Engine 0.6.0; single-country results byte-identical. |
 | Stochastic (`packages/core/src/stochastic`)               | Monte Carlo (historical restart, sequential, block bootstrap, normal, lognormal, fat-tail), seeded, optional FX risk, failure analysis, milestone timing.                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | Solvers and insights                                      | Spending solver, earliest retirement, required savings, safe withdrawal rate, guardrails, tax-strategy comparison, explain, audit, branches, diff and merge, survivor scenarios.                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| Importers (`packages/importers`)                          | ProjectionLab JSON (with a key-path coverage report), CSV (Monarch, YNAB, generic), Glideworth JSON; exports JSON, CSV, report.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| API (`apps/api`)                                          | Hono REST + OpenAPI 3.1 (250 operations self-hosted, 298 on the hosted service), SQLite, worker-thread jobs (time and heap limits), scoped keys, sessions, OAuth 2.1, webhooks, scheduler, backup CLI. Cloud mode (`GLIDEWORTH_MODE=cloud`) integrated: one database per workspace, `@glideworth/cloud` loaded by dynamic import only, isolation sweep over every operation (`test/cloud-isolation.test.ts`).                                                                                                                                                                                                                      |
+| Importers (`packages/importers`)                          | ProjectionLab JSON (with a key-path coverage report), CSV (Monarch, YNAB, generic), balance history per account (pasted cells, CSV, TSV; merge or replace), Glideworth JSON; exports JSON, CSV, report.                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| API (`apps/api`)                                          | Hono REST + OpenAPI 3.1 (251 operations self-hosted, 299 on the hosted service), SQLite, worker-thread jobs (time and heap limits), scoped keys, sessions, OAuth 2.1, webhooks, scheduler, backup CLI. Cloud mode (`GLIDEWORTH_MODE=cloud`) integrated: one database per workspace, `@glideworth/cloud` loaded by dynamic import only, isolation sweep over every operation (`test/cloud-isolation.test.ts`).                                                                                                                                                                                                                      |
 | MCP                                                       | 67 tools (49 read/compute, 18 write behind a switch), resources, prompts; stdio and HTTP.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | Web (`apps/web`)                                          | React app: onboarding, plan editor, results, chance of success, cash flow, taxes, estate, compare, insights, progress, import, reports, settings, PWA; cross-border: citizenships and US green card per person, item countries, tax by country and basis, "how this is taxed and why".                                                                                                                                                                                                                                                                                                                                             |
 
-PARITY.md counts: 214 features checked, 171 implemented, 35 partial, 5 missing, 3 removed.
+PARITY.md counts: 215 features checked, 172 implemented, 35 partial, 5 missing, 3 removed.
 
 ### Added on 2026-11-23
 
@@ -63,6 +63,32 @@ Export JSON from ProjectionLab, then use Import in the web app (review the repor
 `POST /api/v1/import` with `{"format":"projectionlab","dryRun":true,"data":<file>}` first. The report lists issues
 by key path and never echoes values. Re-importing needs `"mode":"replace"`. Anything the report marks approximated
 or unsupported must be checked by hand.
+
+## Importing balance history from a spreadsheet
+
+Progress → Recorded values → **Import history** takes pasted cells or a CSV/TSV file of balances over time: a date
+column and one column per account (or dates across the top, or one row per date and account). It reads the dates and
+numbers, matches columns to accounts, assets, loans and debts by name, flags problem cells, and shows what Merge or
+Replace would add, update and remove before anything is saved. **Export** writes the same layout back. Choices made,
+and what to check by hand:
+
+- **Dates are never guessed.** A column where every date fits both month-first and day-first (`03/04/2024`) blocks the
+  import until you choose; the dialog shows how the first date reads each way. Month-only and year-only dates are dated
+  on the last day of the period (or the first, by choice); a period that has not ended is dated today.
+- **Blank is not zero.** A blank cell is no value: Merge ignores it, Replace clears a saved value there. `0` and an
+  accounting dash (`-`) are zero balances.
+- **Debts and loans are amounts owed**, stored as positive numbers. A column of negative numbers is read as positive;
+  a single negative cell in a positive column is read as its size and flagged.
+- **Totals move with the values.** Changing an account by N moves that date's assets and net worth by N (converted at
+  today's FX rate for a foreign-currency item), so hand-entered totals keep whatever the accounts did not cover. Totals
+  columns in the file (net worth, assets, liabilities) win for their date. A new date records only the accounts in the
+  file: nothing is estimated for the others, and the preview says so.
+- **Replace** clears, for each mapped column only, saved values the file does not have between its first and last
+  date. Cells skipped because of errors are never cleared, and Replace refuses a file with unreadable dates.
+- **Today's balances** change only when you tick "Also update current balances from today's row". An automatic daily
+  snapshot that the import changes becomes an `import` snapshot, so the next balance update does not overwrite it.
+- Over the API: `POST /api/v1/households/{id}/snapshots/history` (`dryRun` defaults to `true`; repeating an apply
+  changes nothing). MCP: `preview_balance_history_import`, then `apply_balance_history_import`.
 
 ## Connecting an AI assistant (MCP)
 

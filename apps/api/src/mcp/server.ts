@@ -15,6 +15,12 @@ import { allows, type Principal, type Scope } from "../auth.js";
 import { ApiError, describeError } from "../errors.js";
 import { baseConverter } from "../fx.js";
 import { findUnsafeInput } from "../security.js";
+import {
+  BalanceHistoryImportBody,
+  type BalanceHistoryImportResult,
+  HistoryParseOptions,
+  HistoryRowBody,
+} from "../services/history.js";
 import type { JobView } from "../services/jobs.js";
 import type { Services } from "../services.js";
 import {
@@ -61,7 +67,7 @@ export const SERVER_INSTRUCTIONS = [
   "ANALYSE: simulate_plan (deterministic), run_monte_carlo (chance of success), explain_projection / explain_year(s) / explain_difference, audit_plan, sensitivity, compare_plans, solve_* (max spending, earliest retirement, required savings / portfolio, safe withdrawal rate), evaluate_guardrails / guyton_klinger, optimise_tax_strategy.",
   "WHAT-IF: list_whatif_templates -> preview_whatif (nothing stored) -> create_branch_from_template; survivor_scenarios for couples.",
   "ASSETS ABROAD: the household lives in one country for the whole plan; accounts, property and income in another country are taxed there as a non-resident, with treaty relief at home. tax_by_country (rows by country and basis), explain_item_taxation (how one item is taxed and why), cross_border_rules (non-resident rules, treaties, wrapper recognition).",
-  "DATA: export_table / export_report for tables and report data; preview_csv_import (dry run) before apply_csv_import.",
+  "DATA: export_table / export_report for tables and report data; preview_csv_import (dry run) before apply_csv_import; balance history per account (a spreadsheet of dates x accounts): preview_balance_history_import before apply_balance_history_import.",
   "EDITS: plan changes are never overwrites. Use preview_changes for what-ifs, then propose_change_set -> show the user the diff + before/after -> apply_change_set only after they agree. Edits are RFC 6902 ops; address list items by id: /income/[id=salary]/amount/value.",
   "Household data (balances, snapshots, CSV imports) is written directly by update_account_balances / record_progress_snapshot / apply_csv_import; plan edits always go through change sets or branches.",
   "Read-only unless the server enables writes; write tools are absent otherwise.",
@@ -268,6 +274,79 @@ export function createMcpServer(ctx: McpContext): McpServer {
     .describe(
       "Household id from list_households. Default: the only household.",
     ) as unknown as z.ZodString;
+
+  // Balance-history import: one input shape for the preview and the apply tool.
+  const historyInput = {
+    householdId,
+    mode: z
+      .enum(["merge", "replace"])
+      .default("merge")
+      .describe(
+        "merge: add and update values only. replace: also clear saved values of the imported keys that the import does not have between its first and last date.",
+      ),
+    text: z
+      .string()
+      .max(2_000_000)
+      .optional()
+      .describe(
+        "CSV/TSV text or pasted spreadsheet cells: a Date column and one column per account (or dates across, or date/account/balance rows). Give this or rows.",
+      ),
+    rows: z
+      .array(HistoryRowBody)
+      .max(5000)
+      .optional()
+      .describe(
+        'Already-mapped values: [{date:"2026-01-31",values:{"account:<id>":1234.5,"debt:<id>":800,"loan:<realAssetId>":null}}]. Ids from list_accounts. null = blank (replace clears it).',
+      ),
+    options: HistoryParseOptions.optional().describe(
+      'With text: e.g. {"dateFormat":"DMY","columns":{"Savings":"account:acc-cash","Total":"skip"}}. Ambiguous dates are an error until dateFormat is given.',
+    ),
+    skipInvalid: z
+      .boolean()
+      .default(false)
+      .describe("With text: import the clean cells and leave out cells with errors."),
+    updateCurrentBalances: z
+      .boolean()
+      .default(false)
+      .describe("Also set current balances from values dated today."),
+  };
+  const compactHistory = (r: BalanceHistoryImportResult) => ({
+    applied: r.applied,
+    mode: r.mode,
+    blocked: r.blocked,
+    range: r.range,
+    counts: r.counts,
+    changes: r.changes.slice(0, 40).map((c) => ({
+      date: c.date,
+      field: c.label,
+      key: c.key,
+      kind: c.kind,
+      before: c.before === null ? null : roundMoney(c.before),
+      after: c.after === null ? null : roundMoney(c.after),
+    })),
+    changesTruncated: r.changes.length > 40 || r.changesTruncated,
+    currentBalances: r.currentBalances,
+    issues: r.issues.slice(0, 30),
+    ...(r.parse ? { parse: r.parse } : {}),
+  });
+  const runHistory = (
+    args: z.infer<z.ZodObject<typeof historyInput>>,
+    dryRun: boolean,
+  ): Promise<BalanceHistoryImportResult> =>
+    services.imports.importBalanceHistory(
+      args.householdId,
+      BalanceHistoryImportBody.parse({
+        mode: args.mode,
+        dryRun,
+        updateCurrentBalances: args.updateCurrentBalances,
+        skipInvalid: args.skipInvalid,
+        ...(args.text !== undefined ? { text: args.text } : {}),
+        ...(args.rows !== undefined ? { rows: args.rows } : {}),
+        ...(args.options ? { options: args.options } : {}),
+      }),
+      actor,
+    );
+
   const detail = z
     .enum(["summary", "full"])
     .default("summary")
@@ -699,6 +778,18 @@ export function createMcpServer(ctx: McpContext): McpServer {
           },
           actor,
         ),
+    );
+
+    tool(
+      "preview_balance_history_import",
+      {
+        title: "Preview a balance-history import (dry run)",
+        description:
+          "Per-account balances over time from a spreadsheet (pasted cells, CSV or TSV) or from already-mapped rows. Reads the dates and numbers, matches columns to accounts/assets/loans/debts (parse.columns shows the match and its confidence), flags problem cells by reference, and returns what merge or replace would add, update and remove. Writes nothing. Show the user the counts and changes, then call apply_balance_history_import with the same arguments.",
+        input: historyInput,
+        hint: { readOnly: true },
+      },
+      async (args) => compactHistory(await runHistory(args, true)),
     );
   }
 
@@ -1842,6 +1933,18 @@ export function createMcpServer(ctx: McpContext): McpServer {
         )) as { issueCount: number; changes: unknown; kind: string };
         return { kind: out.kind, applied: true, issueCount: out.issueCount, changes: out.changes };
       },
+    );
+
+    tool(
+      "apply_balance_history_import",
+      {
+        title: "Apply a balance-history import",
+        description:
+          "Write a balance-history import atomically (same arguments as preview_balance_history_import, which you must run first and show the user). Repeating it changes nothing. Errors change nothing and list dates, keys and cell references.",
+        input: historyInput,
+        hint: { readOnly: false, idempotent: true },
+      },
+      async (args) => compactHistory(await runHistory(args, false)),
     );
   }
 

@@ -4,8 +4,10 @@ import { type ImportDeps, importDeps } from "../deps.js";
 import { ApiError } from "../errors.js";
 import { checkImportSize, checkPlanCount } from "../jobs/import-limits.js";
 import { type ImportPool, sharedImportPool } from "../jobs/import-pool.js";
+import { historyTargets } from "@glideworth/importers";
 import {
   type DocumentImportResult,
+  type HistoryParseResult,
   type HouseholdImportResult,
   type ImportTask,
   type ImportTaskResult,
@@ -13,6 +15,7 @@ import {
   runImportTask,
 } from "../jobs/import-task.js";
 import type { ServiceCtx } from "./context.js";
+import type { BalanceHistoryImportBody, BalanceHistoryImportResult } from "./history.js";
 import type { HouseholdsService } from "./households.js";
 import type { PlansService } from "./plans.js";
 
@@ -235,6 +238,78 @@ export class ImportsService {
       actor,
       "the CSV has blocking errors; run with dryRun=true to inspect them",
     );
+  }
+
+  /**
+   * Balance-history import: rows already mapped (the web app), or CSV/TSV text read in the import thread with
+   * the same code the web app runs. Planning and writing happen in `HouseholdsService.importBalanceHistory`.
+   */
+  async importBalanceHistory(
+    householdId: string,
+    body: BalanceHistoryImportBody,
+    actor: Actor,
+  ): Promise<BalanceHistoryImportResult> {
+    const today = this.households.resolveToday(body.today);
+    const input = {
+      mode: body.mode,
+      dryRun: body.dryRun,
+      updateCurrent: body.updateCurrentBalances,
+      today,
+    };
+    if (body.rows)
+      return this.households.importBalanceHistory(
+        householdId,
+        { ...input, rows: body.rows },
+        actor,
+      );
+    const { household, finances } = this.households.get(householdId);
+    const o = body.options ?? {};
+    const r = await this.run<HistoryParseResult>({
+      op: "history-parse",
+      text: body.text ?? "",
+      options: {
+        targets: historyTargets(finances, household.currency),
+        today,
+        ...(o.delimiter ? { delimiter: o.delimiter } : {}),
+        ...(o.layout ? { layout: o.layout } : {}),
+        ...(o.dateFormat ? { dateFormat: o.dateFormat } : {}),
+        ...(o.decimalSeparator ? { decimalSeparator: o.decimalSeparator } : {}),
+        ...(o.periodDay ? { periodDay: o.periodDay } : {}),
+        ...(o.columns ? { columns: o.columns } : {}),
+      },
+    });
+    const issues = [...r.issues];
+    if (body.mode === "replace" && r.badDates > 0)
+      issues.unshift({
+        severity: "error",
+        code: "history.replace.bad-dates",
+        message:
+          "Replace needs every date to be readable: a row whose date could not be read might hold values Replace would clear",
+      });
+    const cellsBlock = !r.blocked && r.cellErrors > 0 && !body.skipInvalid;
+    if (cellsBlock)
+      issues.push({
+        severity: "error",
+        code: "history.cells.invalid",
+        message: `${r.cellErrors} cell${r.cellErrors === 1 ? " has" : "s have"} errors (listed with their cell references); fix them, or pass skipInvalid=true to import the rest`,
+      });
+    // Skipped cells are reported, but they no longer stop the import.
+    for (const i of r.cellIssues)
+      issues.push(
+        body.skipInvalid && i.severity === "error"
+          ? { ...i, severity: "warning", message: `skipped: ${i.message}` }
+          : i,
+      );
+    const out = this.households.importBalanceHistory(
+      householdId,
+      { ...input, rows: r.rows },
+      actor,
+      {
+        issues,
+        blocked: r.blocked || cellsBlock || (r.badDates > 0 && body.mode === "replace"),
+      },
+    );
+    return { ...out, parse: r.parse };
   }
 
   private requirePlan(planId: string | undefined): string {

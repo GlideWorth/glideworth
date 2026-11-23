@@ -87,6 +87,7 @@ export interface ImportDeps {
   tableBuilders: typeof importers.TABLE_BUILDERS;
   progressTable: typeof importers.progressTable;
   tableToCsv: typeof importers.tableToCsv;
+  parseBalanceHistory: typeof importers.parseBalanceHistory;
 }
 
 export const importDeps: ImportDeps = {
@@ -98,4 +99,5 @@ export const importDeps: ImportDeps = {
   tableBuilders: importers.TABLE_BUILDERS,
   progressTable: importers.progressTable,
   tableToCsv: importers.tableToCsv,
+  parseBalanceHistory: importers.parseBalanceHistory,
 };

@@ -18,6 +18,7 @@ import {
   type FinanceKind,
   SnapshotCreate,
 } from "../services/households.js";
+import { BalanceHistoryImportBody, BalanceHistoryImportResult } from "../services/history.js";
 import { CsvAnalyzeBody, CsvImportBody, ImportBody } from "../services/imports.js";
 import { type Page, PageQuery, pageOf, paginate } from "../util.js";
 import {
@@ -664,6 +665,12 @@ export function householdRoutes({ app, svc }: RouteCtx) {
     },
   );
 
+  /** Security review finding 4: imports are parsed in a worker thread; its limits, stated on every import route. */
+  const IMPORT_THREAD =
+    "The file is parsed in a separate import thread, so other requests are not held up. " +
+    "An import that runs longer than the time limit (15 s by default) is stopped: `422 IMPORT_TIMEOUT`, nothing written; one that needs more memory than allowed is `422 IMPORT_OUT_OF_MEMORY`. " +
+    "When every import thread is busy and the import queue is full the answer is `503 IMPORT_BUSY` with `Retry-After`; a workspace may run 2 imports at once, a third is `429 RATE_LIMITED` with `Retry-After`. " +
+    "An apply whose household changed while the file was being parsed is `409 VERSION_CONFLICT` and writes nothing.";
   // ----------------------------------------------------------------------------- progress snapshots
   const SnapQuery = PageQuery.extend({
     from: z
@@ -793,6 +800,39 @@ export function householdRoutes({ app, svc }: RouteCtx) {
     },
   );
   app.openapi(
+    route("write", {
+      method: "post",
+      path: `${H}/{id}/snapshots/history`,
+      operationId: "importBalanceHistory",
+      tags: ["Progress"],
+      summary: "Import per-account balance history (merge or replace; dryRun previews the diff)",
+      description:
+        "Per-account balances over time, from a spreadsheet. Send `rows` (values already mapped to `account:<id>`, `asset:<id>`, `loan:<realAssetId>`, `debt:<id>` or a total) or the `text` of a CSV/TSV file (read, matched and checked server-side; `parse` in the answer says how). " +
+        "Values on a date land on that date's snapshot (a new one when there is none); totals move with the values; totals given in the file win. " +
+        "`merge` adds and updates and keeps everything else; `replace` also clears, for each key in the import, saved values it does not have between its first and last date (a key left out of a row is never cleared). " +
+        "`dryRun: true` (the default) returns the diff and writes nothing; `dryRun: false` re-plans and writes in one transaction, so repeating a request changes nothing. Errors are a `422 IMPORT_FAILED` that lists dates, keys and cell references, never stored values. " +
+        "`updateCurrentBalances` also sets current balances from values dated today. " +
+        IMPORT_THREAD,
+      request: {
+        params: IdParam,
+        body: {
+          content: { "application/json": { schema: BalanceHistoryImportBody } },
+          required: true,
+        },
+      },
+      responses: { 200: json(BalanceHistoryImportResult, "Preview or result") },
+    }),
+    async (c) =>
+      c.json(
+        await svc(c).imports.importBalanceHistory(
+          c.req.valid("param").id,
+          c.req.valid("json"),
+          actorOf(c),
+        ),
+        200,
+      ),
+  );
+  app.openapi(
     route("read", {
       method: "get",
       path: `${H}/{id}/snapshots/{snapId}`,
@@ -861,12 +901,6 @@ export function householdRoutes({ app, svc }: RouteCtx) {
   );
 
   // ----------------------------------------------------------------------------- import
-  /** Security review finding 4: imports are parsed in a worker thread; its limits, stated on every import route. */
-  const IMPORT_THREAD =
-    "The file is parsed in a separate import thread, so other requests are not held up. " +
-    "An import that runs longer than the time limit (15 s by default) is stopped: `422 IMPORT_TIMEOUT`, nothing written; one that needs more memory than allowed is `422 IMPORT_OUT_OF_MEMORY`. " +
-    "When every import thread is busy and the import queue is full the answer is `503 IMPORT_BUSY` with `Retry-After`; a workspace may run 2 imports at once, a third is `429 RATE_LIMITED` with `Retry-After`. " +
-    "An apply whose household changed while the file was being parsed is `409 VERSION_CONFLICT` and writes nothing.";
   app.openapi(
     route("write", {
       method: "post",

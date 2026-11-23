@@ -20,6 +20,13 @@ import {
   RealAsset,
   SCHEMA_VERSION,
 } from "@glideworth/core";
+import {
+  type HistoryIssue,
+  type HistoryRow,
+  historyKeyLabel,
+  historyTargets,
+  planHistoryImport,
+} from "@glideworth/importers";
 import { and, asc, desc, eq, gte, lte } from "drizzle-orm";
 import { z } from "zod";
 import { households, plans, progressSnapshots } from "../db/schema.js";
@@ -27,6 +34,7 @@ import { ApiError, conflict, notFound } from "../errors.js";
 import { baseConverter } from "../fx.js";
 import { clone, mergePatch, newId, nowIso } from "../util.js";
 import type { ServiceCtx } from "./context.js";
+import type { BalanceHistoryImportResult } from "./history.js";
 import type { PlansService } from "./plans.js";
 import type { SettingsService } from "./settings.js";
 
@@ -993,6 +1001,120 @@ export class HouseholdsService {
       }
     });
     return result;
+  }
+
+  /**
+   * The date imports measure "the future" and "today" by: the caller's date when it is within a day of the
+   * server's (time zones), else the server's (UTC).
+   */
+  resolveToday(callerToday?: string): string {
+    const server = nowIso().slice(0, 10);
+    if (!callerToday) return server;
+    const gap = Math.abs(
+      Date.parse(`${callerToday}T00:00:00Z`) - Date.parse(`${server}T00:00:00Z`),
+    );
+    if (!(gap <= 864e5))
+      throw new ApiError(400, "VALIDATION", "`today` must be within one day of the server's date");
+    return callerToday;
+  }
+
+  /**
+   * Balance-history import (`@glideworth/importers` planHistoryImport): merge or replace per-account values
+   * over time. A dry run plans and returns the diff; an apply re-plans inside one transaction and writes it,
+   * so a repeat of the same request changes nothing. Errors name dates, keys and cells, never stored values.
+   */
+  importBalanceHistory(
+    householdId: string,
+    input: {
+      rows: HistoryRow[];
+      mode: "merge" | "replace";
+      dryRun: boolean;
+      updateCurrent: boolean;
+      today: string;
+    },
+    actor: Actor,
+    pre: { issues?: HistoryIssue[]; blocked?: boolean } = {},
+  ): Omit<BalanceHistoryImportResult, "parse"> {
+    const run = () => {
+      const { household, finances } = this.get(householdId);
+      const targets = historyTargets(finances, household.currency);
+      const plan = planHistoryImport({
+        existing: this.listSnapshots(householdId),
+        rows: input.rows,
+        mode: input.mode,
+        targets,
+        today: input.today,
+        updateCurrent: input.updateCurrent,
+      });
+      const issues = [...(pre.issues ?? []), ...plan.issues];
+      const blocked = !!pre.blocked || issues.some((i) => i.severity === "error");
+      const result = {
+        dryRun: input.dryRun,
+        applied: false,
+        mode: input.mode,
+        blocked,
+        range: plan.range,
+        counts: plan.counts,
+        changes: plan.changes
+          .slice(0, 500)
+          .map((c) => ({ ...c, label: historyKeyLabel(c.key, targets) })),
+        changesTruncated: plan.changes.length > 500,
+        currentBalances: plan.current
+          ? {
+              accounts: plan.current.accounts.length,
+              realAssets: plan.current.realAssets.length,
+              debts: plan.current.debts.length,
+            }
+          : null,
+        issues: issues.slice(0, 200),
+      };
+      if (input.dryRun) return result;
+      if (blocked)
+        throw new ApiError(
+          422,
+          "IMPORT_FAILED",
+          "the import has errors and nothing was written; run it with dryRun=true to see them",
+          { issues: issues.filter((i) => i.severity === "error").slice(0, 50) },
+        );
+      const createdAt = nowIso();
+      for (const d of plan.create) {
+        const snap = ProgressSnapshot.parse({ ...d, id: newId("snap"), householdId, createdAt });
+        this.db
+          .insert(progressSnapshots)
+          .values({
+            id: snap.id,
+            householdId,
+            date: snap.date,
+            schemaVersion: SCHEMA_VERSION,
+            body: snap,
+          })
+          .run();
+      }
+      for (const u of plan.update) {
+        const snap = ProgressSnapshot.parse({ ...u, householdId });
+        this.db
+          .update(progressSnapshots)
+          .set({ date: snap.date, body: snap })
+          .where(
+            and(eq(progressSnapshots.id, snap.id), eq(progressSnapshots.householdId, householdId)),
+          )
+          .run();
+      }
+      for (const id of plan.remove)
+        this.db
+          .delete(progressSnapshots)
+          .where(and(eq(progressSnapshots.id, id), eq(progressSnapshots.householdId, householdId)))
+          .run();
+      if (plan.current)
+        this.updateBalances(
+          householdId,
+          BalanceUpdate.parse({ ...plan.current, recordSnapshot: false }),
+          undefined,
+          actor,
+        );
+      return { ...result, applied: true };
+    };
+    return input.dryRun ? run() : this.db.transaction(run);
   }
 
   // ----------------------------------------------------------------------------- document export / import

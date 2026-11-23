@@ -7,7 +7,13 @@
  */
 import type { GlideworthDocument, Plan, ProgressSnapshot } from "@glideworth/core";
 import { migrateDocument } from "@glideworth/core";
-import type { CsvImportRequest, ImportIssue } from "@glideworth/importers";
+import type {
+  CsvImportRequest,
+  HistoryIssue,
+  HistoryRow,
+  ImportIssue,
+  ParseHistoryOptions,
+} from "@glideworth/importers";
 import type { ImportDeps } from "../deps.js";
 import {
   checkImportSize,
@@ -25,6 +31,7 @@ export type ImportTask =
       householdId?: string;
     }
   | { op: "csv-analyze"; text: string; kind: CsvImportRequest["kind"]; options?: unknown }
+  | { op: "history-parse"; text: string; options: ParseHistoryOptions }
   | {
       op: "csv";
       doc: GlideworthDocument;
@@ -72,9 +79,34 @@ export interface HouseholdImportResult {
   writes?: ImportWrites;
 }
 
+/** A balance-history file read, matched and checked: the clean rows and how the file was read. */
+export interface HistoryParseResult {
+  op: "history-parse";
+  rows: HistoryRow[];
+  /** File-level issues. */
+  issues: HistoryIssue[];
+  /** Up to 100 cell issues (cell references and messages, never cell contents). */
+  cellIssues: HistoryIssue[];
+  /** File-level errors (ambiguous dates, nothing mapped...). */
+  blocked: boolean;
+  cellErrors: number;
+  badDates: number;
+  parse: {
+    layout: string;
+    delimiter: string;
+    dateFormat: string | null;
+    dateFormatAmbiguous: boolean;
+    dateFormatSuggestion?: string;
+    decimalSeparator: string;
+    columns: { header: string; key: string | null; confidence: number; alternatives: string[] }[];
+    counts: { dates: number; values: number; blanks: number; errors: number; warnings: number };
+  };
+}
+
 export type ImportTaskResult =
   | DocumentImportResult
   | HouseholdImportResult
+  | HistoryParseResult
   | { op: "csv-analyze"; analysis: unknown };
 
 /** Run one import task. Throws what the importers throw (the pool carries errors across the thread). */
@@ -94,7 +126,69 @@ export function runImportTask(task: ImportTask, deps: ImportDeps): ImportTaskRes
       };
     case "csv":
       return csvImport(task, deps);
+    case "history-parse":
+      return historyParse(task, deps);
   }
+}
+
+function historyParse(
+  task: Extract<ImportTask, { op: "history-parse" }>,
+  deps: ImportDeps,
+): HistoryParseResult {
+  const { sheet, matches, preview } = deps.parseBalanceHistory(task.text, task.options);
+  const cellIssues: HistoryIssue[] = [];
+  for (const r of preview.records) {
+    if (r.dateStatus === "error")
+      cellIssues.push({
+        severity: "error",
+        code: r.dateCode ?? "history.date.invalid",
+        message: `date ${r.dateMessage ?? "is not valid"}`,
+        ref: r.dateRef,
+      });
+    r.cells.forEach((c, i) => {
+      if (c.status !== "error" && c.status !== "warning") return;
+      cellIssues.push({
+        severity: c.status,
+        code: c.code ?? "history.value.invalid",
+        message: c.message ?? "",
+        ref: c.ref,
+        ...(r.date ? { date: r.date } : {}),
+        ...(preview.mapping[i] ? { key: preview.mapping[i]! } : {}),
+      });
+    });
+  }
+  return {
+    op: "history-parse",
+    rows: preview.rows,
+    issues: preview.issues,
+    cellIssues: cellIssues.slice(0, 100),
+    blocked: preview.blocked,
+    cellErrors: preview.counts.errors,
+    badDates: preview.counts.badDates,
+    parse: {
+      layout: sheet.layout,
+      delimiter: sheet.delimiter,
+      dateFormat: preview.dateFormat.format,
+      dateFormatAmbiguous: preview.dateFormat.ambiguous,
+      ...(preview.dateFormat.suggestion
+        ? { dateFormatSuggestion: preview.dateFormat.suggestion }
+        : {}),
+      decimalSeparator: preview.decimal.used,
+      columns: matches.map((m, i) => ({
+        header: m.header,
+        key: preview.mapping[i] ?? null,
+        confidence: preview.mapping[i] === m.key ? m.confidence : 1,
+        alternatives: m.alternatives.map((a) => a.key),
+      })),
+      counts: {
+        dates: preview.counts.dates,
+        values: preview.counts.values,
+        blanks: preview.counts.blanks,
+        errors: preview.counts.errors,
+        warnings: preview.counts.warnings,
+      },
+    },
+  };
 }
 
 function documentImport(

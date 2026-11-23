@@ -11514,6 +11514,466 @@
      "liabilities"
     ]
    },
+   "BalanceHistoryImportResult": {
+    "type": "object",
+    "properties": {
+     "dryRun": {
+      "type": "boolean"
+     },
+     "applied": {
+      "type": "boolean"
+     },
+     "mode": {
+      "type": "string",
+      "enum": [
+       "merge",
+       "replace"
+      ]
+     },
+     "blocked": {
+      "type": "boolean",
+      "description": "True when errors stop the import (see `issues`)."
+     },
+     "range": {
+      "type": [
+       "object",
+       "null"
+      ],
+      "properties": {
+       "from": {
+        "type": "string"
+       },
+       "to": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "from",
+       "to"
+      ]
+     },
+     "counts": {
+      "type": "object",
+      "properties": {
+       "added": {
+        "type": "integer"
+       },
+       "updated": {
+        "type": "integer"
+       },
+       "removed": {
+        "type": "integer"
+       },
+       "unchanged": {
+        "type": "integer"
+       },
+       "snapshotsCreated": {
+        "type": "integer"
+       },
+       "snapshotsUpdated": {
+        "type": "integer"
+       },
+       "snapshotsRemoved": {
+        "type": "integer"
+       }
+      },
+      "required": [
+       "added",
+       "updated",
+       "removed",
+       "unchanged",
+       "snapshotsCreated",
+       "snapshotsUpdated",
+       "snapshotsRemoved"
+      ]
+     },
+     "changes": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "date": {
+         "type": "string"
+        },
+        "key": {
+         "type": "string"
+        },
+        "label": {
+         "type": "string"
+        },
+        "before": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "after": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "kind": {
+         "type": "string",
+         "enum": [
+          "added",
+          "updated",
+          "removed"
+         ]
+        }
+       },
+       "required": [
+        "date",
+        "key",
+        "label",
+        "before",
+        "after",
+        "kind"
+       ]
+      },
+      "description": "Value changes, oldest first (at most 500; see `changesTruncated`)."
+     },
+     "changesTruncated": {
+      "type": "boolean"
+     },
+     "currentBalances": {
+      "type": [
+       "object",
+       "null"
+      ],
+      "properties": {
+       "accounts": {
+        "type": "integer"
+       },
+       "realAssets": {
+        "type": "integer"
+       },
+       "debts": {
+        "type": "integer"
+       }
+      },
+      "required": [
+       "accounts",
+       "realAssets",
+       "debts"
+      ],
+      "description": "Current balances set from today's values (updateCurrentBalances)."
+     },
+     "issues": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "severity": {
+         "type": "string",
+         "enum": [
+          "error",
+          "warning",
+          "info"
+         ]
+        },
+        "code": {
+         "type": "string"
+        },
+        "message": {
+         "type": "string"
+        },
+        "ref": {
+         "type": "string"
+        },
+        "date": {
+         "type": "string"
+        },
+        "key": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "severity",
+        "code",
+        "message"
+       ]
+      }
+     },
+     "parse": {
+      "type": "object",
+      "properties": {
+       "layout": {
+        "type": "string"
+       },
+       "delimiter": {
+        "type": "string"
+       },
+       "dateFormat": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "dateFormatAmbiguous": {
+        "type": "boolean"
+       },
+       "dateFormatSuggestion": {
+        "type": "string"
+       },
+       "decimalSeparator": {
+        "type": "string"
+       },
+       "columns": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "header": {
+           "type": "string"
+          },
+          "key": {
+           "type": [
+            "string",
+            "null"
+           ]
+          },
+          "confidence": {
+           "type": "number"
+          },
+          "alternatives": {
+           "type": "array",
+           "items": {
+            "type": "string"
+           }
+          }
+         },
+         "required": [
+          "header",
+          "key",
+          "confidence",
+          "alternatives"
+         ]
+        }
+       },
+       "counts": {
+        "type": "object",
+        "properties": {
+         "dates": {
+          "type": "integer"
+         },
+         "values": {
+          "type": "integer"
+         },
+         "blanks": {
+          "type": "integer"
+         },
+         "errors": {
+          "type": "integer"
+         },
+         "warnings": {
+          "type": "integer"
+         }
+        },
+        "required": [
+         "dates",
+         "values",
+         "blanks",
+         "errors",
+         "warnings"
+        ]
+       }
+      },
+      "required": [
+       "layout",
+       "delimiter",
+       "dateFormat",
+       "dateFormatAmbiguous",
+       "decimalSeparator",
+       "columns",
+       "counts"
+      ],
+      "description": "With `text`: how the file was read."
+     }
+    },
+    "required": [
+     "dryRun",
+     "applied",
+     "mode",
+     "blocked",
+     "range",
+     "counts",
+     "changes",
+     "changesTruncated",
+     "currentBalances",
+     "issues"
+    ]
+   },
+   "BalanceHistoryImport": {
+    "type": "object",
+    "properties": {
+     "mode": {
+      "type": "string",
+      "enum": [
+       "merge",
+       "replace"
+      ],
+      "default": "merge",
+      "description": "merge: add and update values, keep everything else. replace: also clear, for each key in the import, saved values the import does not have between its first and last date."
+     },
+     "dryRun": {
+      "type": "boolean",
+      "default": true,
+      "description": "true (the default) returns the preview diff and writes nothing."
+     },
+     "updateCurrentBalances": {
+      "type": "boolean",
+      "default": false,
+      "description": "Values dated today also become the household's current balances."
+     },
+     "today": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "The caller's date (time zones); must be within a day of the server's. Dates after it are refused."
+     },
+     "rows": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "date": {
+         "type": "string",
+         "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "values": {
+         "type": "object",
+         "additionalProperties": {
+          "type": [
+           "number",
+           "null"
+          ]
+         },
+         "description": "Value per key in major units. `null` = a blank cell (no value; Replace clears a saved value). A key left out = not in the file (never cleared). Debts and loans are amounts owed: positive numbers."
+        },
+        "note": {
+         "type": "string",
+         "maxLength": 500
+        }
+       },
+       "required": [
+        "date",
+        "values"
+       ]
+      },
+      "maxItems": 5000,
+      "description": "Mapped values, one row per date."
+     },
+     "text": {
+      "type": "string",
+      "maxLength": 5000000,
+      "description": "Instead of rows: the CSV/TSV text (or cells pasted from a spreadsheet)."
+     },
+     "options": {
+      "type": "object",
+      "properties": {
+       "delimiter": {
+        "type": "string",
+        "enum": [
+         "auto",
+         ",",
+         ";",
+         "\t",
+         "|"
+        ]
+       },
+       "layout": {
+        "type": "string",
+        "enum": [
+         "auto",
+         "rows",
+         "columns",
+         "long"
+        ],
+        "description": "rows = one row per date; columns = one column per date; long = one row per date and account."
+       },
+       "dateFormat": {
+        "type": "string",
+        "enum": [
+         "auto",
+         "YMD",
+         "MDY",
+         "DMY"
+        ],
+        "description": "How to read all-numeric dates such as 03/04/2024. `auto` decides from the column and reports an ambiguous column as an error instead of guessing."
+       },
+       "decimalSeparator": {
+        "type": "string",
+        "enum": [
+         "auto",
+         ".",
+         ","
+        ]
+       },
+       "periodDay": {
+        "type": "string",
+        "enum": [
+         "end",
+         "start"
+        ],
+        "description": "Day a month-only or year-only date stands for (default: the last day)."
+       },
+       "columns": {
+        "type": "object",
+        "additionalProperties": {
+         "anyOf": [
+          {
+           "type": "string",
+           "pattern": "^((account|asset|loan|debt):[A-Za-z0-9_-]{1,64}|netWorth|assets|liabilities)$",
+           "description": "What a value is: `account:<id>`, `asset:<realAssetId>` (its value), `loan:<realAssetId>` (its loan balance), `debt:<id>`, or a total (`netWorth`, `assets`, `liabilities`)."
+          },
+          {
+           "type": "string",
+           "enum": [
+            "note"
+           ]
+          },
+          {
+           "type": "string",
+           "enum": [
+            "skip"
+           ]
+          }
+         ]
+        },
+        "description": "Header text -> key, `note` or `skip`. Overrides the automatic match."
+       }
+      },
+      "description": "With `text`: how to read it."
+     },
+     "skipInvalid": {
+      "type": "boolean",
+      "default": false,
+      "description": "With `text`: import the clean cells and leave out cells with errors (a left-out cell is never cleared)."
+     }
+    },
+    "examples": [
+     {
+      "mode": "merge",
+      "dryRun": true,
+      "rows": [
+       {
+        "date": "2026-01-31",
+        "values": {
+         "account:acc-cash": 31250.4,
+         "debt:debt-car": 8120
+        }
+       },
+       {
+        "date": "2026-02-28",
+        "values": {
+         "account:acc-cash": 32010,
+         "debt:debt-car": null
+        }
+       }
+      ]
+     }
+    ]
+   },
    "ImportRequest": {
     "type": "object",
     "properties": {
@@ -31486,6 +31946,147 @@
           "replaced",
           "skipped"
          ]
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Invalid request (VALIDATION)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing or invalid API key",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "API key lacks the required scope",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Not found",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "409": {
+      "description": "Conflict (duplicate id, version mismatch, in use)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Scenario is inconsistent (dangling reference, circular milestone...) or Idempotency-Key reused",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Rate limited",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "501": {
+      "description": "The plan uses a feature that is not implemented yet (details.feature, details.workstream)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/households/{id}/snapshots/history": {
+   "post": {
+    "operationId": "importBalanceHistory",
+    "tags": [
+     "Progress"
+    ],
+    "summary": "Import per-account balance history (merge or replace; dryRun previews the diff)",
+    "description": "Per-account balances over time, from a spreadsheet. Send `rows` (values already mapped to `account:<id>`, `asset:<id>`, `loan:<realAssetId>`, `debt:<id>` or a total) or the `text` of a CSV/TSV file (read, matched and checked server-side; `parse` in the answer says how). Values on a date land on that date's snapshot (a new one when there is none); totals move with the values; totals given in the file win. `merge` adds and updates and keeps everything else; `replace` also clears, for each key in the import, saved values it does not have between its first and last date (a key left out of a row is never cleared). `dryRun: true` (the default) returns the diff and writes nothing; `dryRun: false` re-plans and writes in one transaction, so repeating a request changes nothing. Errors are a `422 IMPORT_FAILED` that lists dates, keys and cell references, never stored values. `updateCurrentBalances` also sets current balances from values dated today. The file is parsed in a separate import thread, so other requests are not held up. An import that runs longer than the time limit (15 s by default) is stopped: `422 IMPORT_TIMEOUT`, nothing written; one that needs more memory than allowed is `422 IMPORT_OUT_OF_MEMORY`. When every import thread is busy and the import queue is full the answer is `503 IMPORT_BUSY` with `Retry-After`; a workspace may run 2 imports at once, a third is `429 RATE_LIMITED` with `Retry-After`. An apply whose household changed while the file was being parsed is `409 VERSION_CONFLICT` and writes nothing.\n\nScope: `write` (role owner or editor).",
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "x-required-scope": "write",
+    "parameters": [
+     {
+      "schema": {
+       "type": "string",
+       "minLength": 1,
+       "maxLength": 64
+      },
+      "required": true,
+      "name": "id",
+      "in": "path"
+     },
+     {
+      "schema": {
+       "type": "string",
+       "maxLength": 255,
+       "description": "Makes this write safe to retry: the first successful response is replayed for 24h."
+      },
+      "required": false,
+      "description": "Makes this write safe to retry: the first successful response is replayed for 24h.",
+      "name": "idempotency-key",
+      "in": "header"
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/BalanceHistoryImport"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Preview or result",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BalanceHistoryImportResult"
         }
        }
       }

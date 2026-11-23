@@ -59,6 +59,7 @@ names the candidates.
 | Tool | What it does |
 | --- | --- |
 | `preview_csv_import` | Dry run of a CSV import. Writes nothing. |
+| `preview_balance_history_import` | Dry run of a balance-history import (a spreadsheet of balances per account over time): column matches, flagged cells, what merge or replace would change. Writes nothing. |
 
 ## Compute tools (scope `simulate` or `read`)
 
@@ -144,6 +145,7 @@ assistant calls `get_job`. Clients that send a `progressToken` receive progress 
 | `update_account_balances` | Set many balances at once, all or nothing, including mortgage and loan balances. Updates today's automatic snapshot. |
 | `record_progress_snapshot` | Snapshot today's net worth from current balances. |
 | `apply_csv_import` | Apply a CSV import atomically (preview first). |
+| `apply_balance_history_import` | Write a balance-history import atomically (preview first; repeating it changes nothing). |
 | `set_fx_rate`, `unset_fx_rate` | Add, update or remove an exchange-rate pair. |
 
 ### Check-ins and sharing

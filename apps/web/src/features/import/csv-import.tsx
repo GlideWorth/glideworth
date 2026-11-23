@@ -180,6 +180,8 @@ function CsvWorkbench({
   const [annualise, setAnnualise] =
     useState<NonNullable<TransactionOptions["annualise"]>>("last-12-months");
   const [excluded, setExcluded] = useState<string[]>([]);
+  const [outflow, setOutflow] = useState<"auto" | "negative" | "positive">("auto");
+  const spentSign = outflow === "auto" ? {} : { outflow };
   const [progressMode, setProgressMode] = useState<"merge" | "replace">("merge");
   const [busy, setBusy] = useState(false);
 
@@ -200,21 +202,31 @@ function CsvWorkbench({
       annualise,
       excluded,
       progressMode,
+      spentSign,
     ]),
   );
   const outcome = useMemo((): { o?: CsvImportOutcome; error?: string } => {
     if (!doc) return {};
     // Inputs travel through one serialised, deferred value so typing never blocks the preview.
-    const [options, createMissing, accountMap, planId, annualise, excluded, progressMode] =
-      JSON.parse(deferred) as [
-        CsvOptions,
-        boolean,
-        Record<string, string>,
-        string | undefined,
-        NonNullable<TransactionOptions["annualise"]>,
-        string[],
-        "merge" | "replace",
-      ];
+    const [
+      options,
+      createMissing,
+      accountMap,
+      planId,
+      annualise,
+      excluded,
+      progressMode,
+      spentSign,
+    ] = JSON.parse(deferred) as [
+      CsvOptions,
+      boolean,
+      Record<string, string>,
+      string | undefined,
+      NonNullable<TransactionOptions["annualise"]>,
+      string[],
+      "merge" | "replace",
+      Pick<TransactionOptions, "outflow">,
+    ];
     try {
       const o =
         kind === "account-balances"
@@ -237,7 +249,7 @@ function CsvWorkbench({
                 {
                   kind,
                   planId: planId ?? doc.plans[0]?.id ?? "",
-                  options: { ...options, annualise, excludeCategories: excluded },
+                  options: { ...options, annualise, excludeCategories: excluded, ...spentSign },
                 },
                 { dryRun: !planId && !doc.plans[0] },
               );
@@ -282,7 +294,7 @@ function CsvWorkbench({
                   {
                     kind,
                     planId: chosenPlanId ?? "",
-                    options: { ...options, annualise, excludeCategories: excluded },
+                    options: { ...options, annualise, excludeCategories: excluded, ...spentSign },
                   },
                   { dryRun: false },
                 );
@@ -600,6 +612,20 @@ function CsvWorkbench({
                       { value: "last-12-months", label: "The last 12 months" },
                       { value: "latest-full-year", label: "The latest full calendar year" },
                       { value: "all", label: "An average over all the data" },
+                    ]}
+                  />
+                )}
+              </FormField>
+              <FormField label="Money spent is">
+                {(id) => (
+                  <Select
+                    id={id}
+                    value={outflow}
+                    onValueChange={setOutflow}
+                    options={[
+                      { value: "auto", label: "From the preset or the data" },
+                      { value: "negative", label: "Negative amounts" },
+                      { value: "positive", label: "Positive amounts" },
                     ]}
                   />
                 )}

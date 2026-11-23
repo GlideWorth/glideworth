@@ -113,20 +113,29 @@ is saved until you press **Apply import**. Through the API it is `POST /househol
 **Recognised exports.** When the headers match one of these, the columns (and, where the app needs it, the
 date format and the sign of amounts) are set for you, and the preview names the preset it picked:
 
-| Kind              | Preset                                      | id                     |
-| ----------------- | ------------------------------------------- | ---------------------- |
-| Transactions      | YNAB register export                        | `ynab-register`        |
-| Transactions      | Monarch Money transactions                  | `monarch-transactions` |
-| Transactions      | Mint transactions                           | `mint-transactions`    |
-| Transactions      | Copilot Money transactions                  | `copilot-transactions` |
-| Transactions      | Actual Budget transactions                  | `actual-budget`        |
-| Transactions      | Monzo transactions                          | `monzo`                |
-| Transactions      | Starling Bank transactions                  | `starling`             |
-| Transactions      | UK bank statement (Debit / Credit columns)  | `uk-bank-debit-credit` |
-| Account balances  | Account balances (Date, Account, Balance)   | `generic-balances`     |
-| Account balances  | Glideworth account balances                 | `glideworth-accounts`  |
-| Net-worth history | Glideworth progress export                  | `glideworth-progress`  |
-| Net-worth history | Generic net-worth tracker (Date, Net Worth) | `networth-tracker`     |
+| Kind              | Preset                                      | id                         |
+| ----------------- | ------------------------------------------- | -------------------------- |
+| Transactions      | YNAB register export                        | `ynab-register`            |
+| Transactions      | Monarch Money transactions                  | `monarch-transactions`     |
+| Transactions      | Mint transactions                           | `mint-transactions`        |
+| Transactions      | Copilot Money transactions                  | `copilot-transactions`     |
+| Transactions      | Actual Budget transactions                  | `actual-budget`            |
+| Transactions      | Lunch Money transactions                    | `lunch-money-transactions` |
+| Transactions      | Monzo transactions                          | `monzo`                    |
+| Transactions      | Starling Bank transactions                  | `starling`                 |
+| Transactions      | UK bank statement (Debit / Credit columns)  | `uk-bank-debit-credit`     |
+| Account balances  | Account balances (Date, Account, Balance)   | `generic-balances`         |
+| Account balances  | Glideworth account balances                 | `glideworth-accounts`      |
+| Net-worth history | Glideworth progress export                  | `glideworth-progress`      |
+| Net-worth history | Generic net-worth tracker (Date, Net Worth) | `networth-tracker`         |
+
+**Lunch Money and the sign of amounts.** Lunch Money does not document whether its CSV export shows money
+spent as positive or negative, so Glideworth reads it from your file: spending categories are mostly
+purchases, and income categories have the opposite sign. The preview says which way it read the amounts and
+why. If the file does not settle it, the import stops until you choose **Money spent is** (`"outflow":
+"negative"` or `"positive"` in the options). That choice also overrides any other preset. Rows whose category
+or category group reads as income or a transfer are left out; the export has no income or "exclude from
+totals" flag, so leave out any other such category yourself.
 
 Any other file still works: the columns are found from the header names and, failing that, from the values.
 You can also choose a preset yourself, or **No preset** (`"preset": "none"`).

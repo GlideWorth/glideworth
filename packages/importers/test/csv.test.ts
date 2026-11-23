@@ -634,6 +634,75 @@ describe("transactions -> annual expense events", () => {
     expect(c.categories[0]).toMatchObject({ category: "Groceries", total: 25 });
   });
 
+  describe("Lunch Money export (sign read from the data)", () => {
+    // Invented rows in the export's documented columns. Lunch Money does not document the sign of
+    // Amount in the export, so both conventions must work and the preview must say which was used.
+    const header =
+      "Date,Category Group,Category,Payee,Amount,Currency,Notes,Tags,Account Name,Original Name,Transaction number,Type,Parent ID,Recurring ID,Created At";
+    const lunchMoney = (groceries: string, refund: string, coffee: string, pay: string) =>
+      [
+        header,
+        `2026-01-03,Food,Groceries,Corner Shop,${groceries},usd,,,Checking,,1,,,,2026-01-03T10:00:00Z`,
+        `2026-01-04,Food,Groceries,Corner Shop,${refund},usd,refund,,Checking,,2,,,,2026-01-04T10:00:00Z`,
+        `2026-01-05,Food,Coffee,Cafe,${coffee},usd,,,Checking,,3,,,,2026-01-05T10:00:00Z`,
+        `2026-01-06,Food,Coffee,Cafe,${coffee},usd,,,Checking,,4,,,,2026-01-06T10:00:00Z`,
+        `2026-01-07,Food,Groceries,Corner Shop,${groceries},usd,,,Checking,,5,,,,2026-01-07T10:00:00Z`,
+        `2026-01-15,Earnings,Salary,Employer,${pay},usd,,,Checking,,6,,,,2026-01-15T10:00:00Z`,
+        `2026-01-20,Transfers,Payment Transfer,Card,${groceries},usd,,,Checking,,7,,,,2026-01-20T10:00:00Z`,
+        `2026-01-21,Income,Side Gig,Client,${pay},usd,,,Checking,,8,,,,2026-01-21T10:00:00Z`,
+      ].join("\n");
+    const totals = (s: ReturnType<typeof summariseTransactions>) =>
+      Object.fromEntries(s.categories.map((c) => [c.category, c.total]));
+
+    it("is auto-detected, sums spending as positive, nets the refund and skips income and transfers", () => {
+      const s = summariseTransactions(lunchMoney("40.00", "-10.00", "5.00", "-2000.00"), {
+        annualise: "all",
+      });
+      expect(s.analysis.preset?.id).toBe("lunch-money-transactions");
+      expect(totals(s)).toEqual({ Groceries: 70, Coffee: 10 });
+      expect(s.excluded.map((e) => e.category).sort()).toEqual([
+        "Payment Transfer",
+        "Salary",
+        "Side Gig",
+      ]);
+      const sign = s.issues.find((i) => i.code === "csv.sign-inferred");
+      expect(sign?.severity).toBe("warning");
+      expect(sign?.message).toContain("positive amounts are read as money spent");
+    });
+
+    it("reads the opposite convention (money spent negative) the same way", () => {
+      const s = summariseTransactions(lunchMoney("-40.00", "10.00", "-5.00", "2000.00"), {
+        annualise: "all",
+      });
+      expect(s.analysis.preset?.id).toBe("lunch-money-transactions");
+      expect(totals(s)).toEqual({ Groceries: 70, Coffee: 10 });
+      expect(s.issues.find((i) => i.code === "csv.sign-inferred")?.message).toContain(
+        "negative amounts are read as money spent",
+      );
+    });
+
+    it("blocks the import when the data does not settle the sign, until `outflow` is given", () => {
+      // Spending and income both positive: the file contradicts itself.
+      const csv = lunchMoney("40.00", "10.00", "5.00", "2000.00");
+      const s = summariseTransactions(csv, { annualise: "all" });
+      expect(s.issues.find((i) => i.code === "csv.sign-unknown")?.severity).toBe("error");
+      expect(s.categories).toEqual([]);
+      const chosen = summariseTransactions(csv, { annualise: "all", outflow: "positive" });
+      expect(chosen.issues.some((i) => i.code?.startsWith("csv.sign"))).toBe(false);
+      expect(totals(chosen)).toEqual({ Groceries: 90, Coffee: 10 });
+    });
+
+    it("an explicit `outflow` overrides the inferred sign", () => {
+      const s = summariseTransactions(lunchMoney("40.00", "-10.00", "5.00", "-2000.00"), {
+        annualise: "all",
+        outflow: "negative",
+      });
+      // Every purchase now reads as a refund, so no category has net spending left.
+      expect(s.issues.some((i) => i.code?.startsWith("csv.sign"))).toBe(false);
+      expect(totals(s)).toEqual({});
+    });
+  });
+
   it("Monzo export (en-GB dates, negative outflow, pot transfers ignored)", () => {
     const csv = [
       "Transaction ID,Date,Time,Type,Name,Emoji,Category,Amount,Currency,Local amount,Local currency,Notes and #tags,Address,Receipt,Description,Category split,Money Out,Money In",

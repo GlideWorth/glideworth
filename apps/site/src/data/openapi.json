@@ -11497,6 +11497,14 @@
        "replace"
       ],
       "description": "progress-snapshots: merge (default) or replace history."
+     },
+     "outflow": {
+      "type": "string",
+      "enum": [
+       "negative",
+       "positive"
+      ],
+      "description": "transactions: sign of money spent in a single Amount column. Overrides the preset and the sign read from the data (csv.sign-inferred / csv.sign-unknown)."
      }
     }
    },

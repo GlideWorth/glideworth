@@ -77,6 +77,12 @@ const CsvOptionsBody = z
       .enum(["merge", "replace"])
       .optional()
       .describe("progress-snapshots: merge (default) or replace history."),
+    outflow: z
+      .enum(["negative", "positive"])
+      .optional()
+      .describe(
+        "transactions: sign of money spent in a single Amount column. Overrides the preset and the sign read from the data (csv.sign-inferred / csv.sign-unknown).",
+      ),
   })
   .meta({ id: "CsvImportOptions" });
 

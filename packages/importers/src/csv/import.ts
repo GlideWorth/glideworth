@@ -16,11 +16,12 @@ import {
 } from "@glideworth/core";
 import type { CsvImportResult, CsvKind, CsvMapping, ImportIssue } from "../types.js";
 import { slug } from "../util/ids.js";
-import type { ColumnMapping, Field } from "./columns.js";
+import { type ColumnMapping, type Field, norm } from "./columns.js";
 import {
   type CsvAnalysis,
   type CsvOptions,
   missingFieldsIssue,
+  type Prepared,
   prepare,
   rowIssue,
 } from "./table.js";
@@ -489,6 +490,11 @@ export interface TransactionOptions extends CsvOptions {
   excludeCategories?: string[];
   /** Used when a row has no category. */
   uncategorised?: string;
+  /**
+   * Sign of money spent in a single signed `amount` column. Overrides the preset and anything read
+   * from the data; set it when the preview reports the sign as inferred wrongly or unknown.
+   */
+  outflow?: "negative" | "positive";
 }
 
 export interface TransactionRow {
@@ -607,6 +613,92 @@ function monthIndex(date: string): number {
   return Number(date.slice(0, 4)) * 12 + Number(date.slice(5, 7)) - 1;
 }
 
+/** Categories (or groups) that mean money earned, so their sign is the opposite of spending's. */
+const INCOME_CATEGORY =
+  /^(income|salary|paycheck|pay|wages|interest income|dividends?)\b|^income\s*[:/-]/i;
+
+/** Share of rows that must agree before a sign is read from the data (refunds are the rest). */
+const SIGN_MAJORITY = 0.75;
+
+/**
+ * Read the sign of money spent from a file whose vendor does not document it. Spending rows
+ * (categorised, not income, not transfers) are mostly purchases with a few refunds; income rows
+ * carry the opposite sign. The sign is taken only when the spending rows agree clearly and the
+ * income rows, if any, do not contradict them; otherwise the result is a blocking issue.
+ */
+function inferOutflow(
+  p: Prepared,
+  groupOf: (r: string[]) => string,
+  notSpending: (category: string, group: string, type: string) => boolean,
+  source: string,
+): { outflow?: "negative" | "positive"; issue: ImportIssue } {
+  const spend = { pos: 0, neg: 0 };
+  const income = { pos: 0, neg: 0 };
+  for (const r of p.rows) {
+    const v = p.num(r, "amount");
+    const category = p.cell(r, "category");
+    if (v === undefined || v === 0 || !category) continue;
+    const group = groupOf(r);
+    const bucket =
+      INCOME_CATEGORY.test(category) || (group !== "" && INCOME_CATEGORY.test(group))
+        ? income
+        : notSpending(category, group, p.cell(r, "type").toLowerCase())
+          ? undefined
+          : spend;
+    if (bucket) bucket[v > 0 ? "pos" : "neg"] += 1;
+  }
+  const lean = (c: { pos: number; neg: number }): "negative" | "positive" | undefined => {
+    const n = c.pos + c.neg;
+    if (n === 0) return undefined;
+    if (c.pos / n >= SIGN_MAJORITY) return "positive";
+    if (c.neg / n >= SIGN_MAJORITY) return "negative";
+    return undefined;
+  };
+  const spendSign = lean(spend);
+  const incomeSign = lean(income);
+  const flip = (s: "negative" | "positive") => (s === "negative" ? "positive" : "negative");
+  const outflow =
+    spendSign && (!incomeSign || incomeSign !== spendSign)
+      ? spendSign
+      : !spendSign && spend.pos + spend.neg === 0 && incomeSign
+        ? flip(incomeSign)
+        : undefined;
+  const count = (c: { pos: number; neg: number }, s: "negative" | "positive") =>
+    `${s === "positive" ? c.pos : c.neg} of ${c.pos + c.neg}`;
+  if (!outflow) {
+    return {
+      issue: {
+        severity: "error",
+        category: "invalid",
+        sourcePath: "csv:amount",
+        message:
+          `${source} does not document whether money spent is positive or negative, and this file does not settle it ` +
+          `(spending rows: ${spend.pos} positive, ${spend.neg} negative; income rows: ${income.pos} positive, ${income.neg} negative). ` +
+          "Choose the sign of money spent (`outflow`) to import it.",
+        code: "csv.sign-unknown",
+      },
+    };
+  }
+  const evidence = [
+    spend.pos + spend.neg > 0 ? `${count(spend, outflow)} spending rows are ${outflow}` : "",
+    income.pos + income.neg > 0
+      ? `${count(income, flip(outflow))} income rows are ${flip(outflow)}`
+      : "",
+  ].filter(Boolean);
+  return {
+    outflow,
+    issue: {
+      severity: "warning",
+      category: "defaulted",
+      sourcePath: "csv:amount",
+      message:
+        `${source} does not document the sign of Amount; ${outflow} amounts are read as money spent because ${evidence.join(" and ")}. ` +
+        "If that is wrong, choose the sign of money spent (`outflow`).",
+      code: "csv.sign-inferred",
+    },
+  };
+}
+
 /** Aggregate bank/budget CSV transactions into per-category annual spending. Pure; changes nothing. */
 export function summariseTransactions(
   text: string,
@@ -630,9 +722,28 @@ export function summariseTransactions(
   const preset = p.preset;
   const hasSplit = p.idx.debit !== undefined || p.idx.credit !== undefined;
   const nonExpenseTypes = new Set((preset?.nonExpenseTypes ?? []).map((t) => t.toLowerCase()));
+  const excludedCats = new Set((options.excludeCategories ?? []).map((c) => c.toLowerCase()));
+  const groupIdx = preset?.groupColumn
+    ? p.analysis.headers.findIndex((h) => norm(h) === norm(preset.groupColumn!))
+    : -1;
+  const groupOf = (r: string[]): string => (groupIdx < 0 ? "" : (r[groupIdx] ?? "").trim());
+  const notSpending = (category: string, group: string, type: string): boolean =>
+    nonExpenseTypes.has(type) ||
+    NON_EXPENSE_CATEGORY.test(category) ||
+    (group !== "" && NON_EXPENSE_CATEGORY.test(group)) ||
+    excludedCats.has(category.toLowerCase());
   // Sign convention for a single signed `amount` column.
-  let outflow: "negative" | "positive" = preset?.outflow ?? "negative";
-  if (!hasSplit && !preset?.outflow) {
+  let outflow: "negative" | "positive" =
+    options.outflow ?? (preset?.outflow === "positive" ? "positive" : "negative");
+  if (!hasSplit && !options.outflow && preset?.outflow === "from-data") {
+    const inferred = inferOutflow(p, groupOf, notSpending, preset.name);
+    issues.push(inferred.issue);
+    if (inferred.outflow) outflow = inferred.outflow;
+    else {
+      // Nothing is summarised on an unknown sign: income could be counted as spending.
+      return empty([]);
+    }
+  } else if (!hasSplit && !options.outflow && !preset?.outflow) {
     let neg = 0;
     let pos = 0;
     for (const r of p.rows.slice(0, 500)) {
@@ -652,7 +763,6 @@ export function summariseTransactions(
       });
     }
   }
-  const excludedCats = new Set((options.excludeCategories ?? []).map((c) => c.toLowerCase()));
   const rows: TransactionRow[] = [];
   const excludedMap = new Map<string, { count: number; total: number }>();
   const skip = (category: string, amount: number): void => {
@@ -718,11 +828,7 @@ export function summariseTransactions(
     }
     const category = given || options.uncategorised || "Uncategorised";
     const type = p.cell(r, "type").toLowerCase();
-    if (
-      nonExpenseTypes.has(type) ||
-      NON_EXPENSE_CATEGORY.test(category) ||
-      excludedCats.has(category.toLowerCase())
-    ) {
+    if (notSpending(category, groupOf(r), type)) {
       skip(category, spend);
       return;
     }

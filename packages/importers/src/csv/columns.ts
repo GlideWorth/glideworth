@@ -278,8 +278,14 @@ export interface CsvPreset {
   columns: ColumnMapping;
   locale: CsvLocale;
   dateFormat?: DateFormat;
-  /** Transactions: sign convention of `amount`. */
-  outflow?: "negative" | "positive";
+  /**
+   * Transactions: sign convention of `amount`. `from-data` when the vendor does not document it:
+   * the sign is read from the file (spending categories against income ones) and the preview says
+   * so, or the import is blocked until the caller sets `outflow`.
+   */
+  outflow?: "negative" | "positive" | "from-data";
+  /** Transactions: header of a category-group column; rows whose group reads as income or a transfer are not spending. */
+  groupColumn?: string;
   /** Transactions: values of the `type` column that mean income / transfers (ignored as expenses). */
   nonExpenseTypes?: string[];
   /** A layout shared by many tools (not one vendor's signature): never named after a vendor. */
@@ -391,6 +397,36 @@ export const PRESETS: CsvPreset[] = [
     },
     locale: "en-US",
     outflow: "negative",
+  },
+  {
+    // Columns from Lunch Money's help centre (Transactions > Other features > Export to CSV) and its
+    // changelog (#251, `category_group`). Headers match case- and punctuation-insensitively, so
+    // "Category Group" and "category_group" both fit. The export carries no income or
+    // exclude-from-totals flag, and Lunch Money does not document how it signs Amount, so the sign
+    // is read from the data (`outflow: "from-data"`).
+    id: "lunch-money-transactions",
+    name: "Lunch Money transactions",
+    kind: "transactions",
+    signature: [
+      "date",
+      "categorygroup",
+      "category",
+      "payee",
+      "amount",
+      "currency",
+      "notes",
+      "tags",
+    ],
+    columns: {
+      date: "Date",
+      description: "Payee",
+      category: "Category",
+      account: "Account Name",
+      amount: "Amount",
+    },
+    groupColumn: "Category Group",
+    locale: "en-US",
+    outflow: "from-data",
   },
   {
     id: "monzo",

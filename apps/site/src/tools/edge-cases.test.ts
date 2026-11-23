@@ -45,6 +45,7 @@ describe("edge cases", () => {
   it("zero balance", async () => {
     await run("coast-fire", { balance: 0 });
     await run("fire", { balance: 0 });
+    await run("fat-fire", { balance: 0 });
     const h = await run("how-long", { balance: 0 });
     expect(h.headline).toMatch(/nothing to withdraw/);
     const m = await run("monte-carlo", { balance: 0 });
@@ -58,6 +59,7 @@ describe("edge cases", () => {
     const h = await run("how-long", { ret: 0 });
     expect(h.figures[0]!.value).toBe("16.7 years");
     await run("fire", { ret: 0 });
+    await run("fat-fire", { ret: 0 });
     await run("barista-fire", { ret: 0 });
     await run("monte-carlo", { method: "parametric", mean: 0, vol: 0 });
   });
@@ -67,6 +69,9 @@ describe("edge cases", () => {
     expect(c.headline).toMatch(/You have reached Coast FIRE/);
     const f = await run("fire", { balance: 2_000_000 });
     expect(f.headline).toMatch(/already have/);
+    const fat = await run("fat-fire", { balance: 20_000_000 });
+    expect(fat.headline).toMatch(/already have/);
+    expect(fat.figures[1]!.value).toBe("Already there");
     expect(f.figures[1]!.value).toBe("Already there");
     const h = await run("how-long", { balance: 10_000_000 });
     expect(h.headline).toMatch(/does not run out/);
@@ -83,6 +88,7 @@ describe("edge cases", () => {
   it("very long horizons", async () => {
     await run("coast-fire", { age: 16, retire: 96 });
     await run("fire", { age: 16, save: 1, ret: -10 });
+    await run("fat-fire", { age: 16, save: 1, ret: -10 });
     await run("barista-fire", { age: 30, ptUntil: 31, planTo: 110 });
     await run("how-long", { ret: 6.5, spend: 1 });
     await run("monte-carlo", { years: 70 });
@@ -96,12 +102,15 @@ describe("edge cases", () => {
     expect(Number.parseFloat(h.figures[0]!.value)).toBeLessThan(500_000 / 30_000);
     await run("barista-fire", { ret: -5 });
     await run("fire", { ret: -10, save: 0 });
+    await run("fat-fire", { ret: -10, save: 0 });
     await run("monte-carlo", { method: "parametric", mean: -5, vol: 30 });
   });
 
   it("nothing to spend", async () => {
     await run("coast-fire", { spend: 0 });
     await run("fire", { spend: 0 });
+    const fat = await run("fat-fire", { spend: 0 });
+    expect(fat.headline).toMatch(/number is 0/);
     await run("barista-fire", { spend: 0, pt: 0 });
     await run("how-long", { spend: 0 });
     await run("monte-carlo", { spend: 0 });

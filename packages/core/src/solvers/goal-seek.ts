@@ -13,7 +13,13 @@ import {
   type SolverObjective,
   type SolverVariable,
 } from "./contracts.js";
-import { boundarySearch, type Metric, makeMetric, runDeterministic } from "./search.js";
+import {
+  boundarySearch,
+  type Bracket,
+  type Metric,
+  makeMetric,
+  runDeterministic,
+} from "./search.js";
 import {
   annualRecurringAmount,
   applyVariable,
@@ -67,12 +73,15 @@ export async function goalSeek(
     isCached: (v: number) => cache.has(v),
     ...(deps.signal ? { signal: deps.signal } : {}),
   };
+  // Sensitivity re-solves share this cache. Report those steps too, or the count freezes
+  // while the neighbouring targets are still being searched.
+  const report = (value: number, m: number, feasible: boolean, bracket: Bracket) =>
+    deps.onProgress?.(evaluations.length, { value, metric: m, feasible, bracket });
   const main = await boundarySearch({
     ...common,
     maxEvaluations: req.maxEvaluations,
     target: metric.target,
-    onStep: (value, m, feasible, bracket) =>
-      deps.onProgress?.(evaluations.length, { value, metric: m, feasible, bracket }),
+    onStep: report,
   });
 
   const deltas =
@@ -86,6 +95,7 @@ export async function goalSeek(
       ...common,
       maxEvaluations: Math.max(4, Math.ceil(req.maxEvaluations / 2)),
       target: t,
+      onStep: report,
     });
     sensitivity.push({ label: fmtTarget(req.objective, t), value: r.value });
   }

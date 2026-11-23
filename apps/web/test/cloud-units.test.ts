@@ -211,6 +211,17 @@ describe("calculator hand-off", () => {
         now,
       ),
     ).toEqual(["age 30", "$40,000 a year spending", "$50,000 invested", "USD"]);
+    const fat = parseHandoff(
+      "?from=tool&tool=fat-fire&v=1&cur=USD&age=40&spend=150000&lean=40000&reg=80000&wr=3.5&balance=500000&save=150000&ret=5",
+    )!;
+    expect(fat.values.lean).toBeUndefined();
+    expect(fat.values.reg).toBeUndefined();
+    expect(handoffHighlights(fat, now)).toEqual([
+      "age 40",
+      "$150,000 a year spending",
+      "$500,000 invested",
+      "USD",
+    ]);
     expect(
       handoffHighlights(
         parseHandoff(

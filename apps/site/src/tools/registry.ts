@@ -45,6 +45,19 @@ export const TOOLS: readonly ToolMeta[] = [
     },
   },
   {
+    id: "fat-fire",
+    path: "/tools/fat-fire-calculator/",
+    name: "Fat FIRE calculator",
+    summary:
+      "The portfolio a high yearly spend needs at a withdrawal rate below 4%, the years to reach it, and the gap versus lean and regular spending.",
+    question: "What does a high-spending retirement take?",
+    group: "fire",
+    article: {
+      href: "/blog/what-is-your-fire-number/",
+      title: "FIRE number: the 25x rule and its limits",
+    },
+  },
+  {
     id: "barista-fire",
     path: "/tools/barista-fire-calculator/",
     name: "Barista FIRE calculator",

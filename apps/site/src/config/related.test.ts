@@ -18,6 +18,7 @@ const CALCULATOR_ARTICLES: [string, string][] = [
 const TOOLS = [
   "/tools/",
   "/tools/fire-calculator/",
+  "/tools/fat-fire-calculator/",
   "/tools/coast-fire-calculator/",
   "/tools/barista-fire-calculator/",
   "/tools/retirement-withdrawal-calculator/",

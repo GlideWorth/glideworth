@@ -66,6 +66,7 @@ export function renderResults(vm: ViewModel): string {
     out.push(
       `<div class="tool-charts${vm.smallMultiples ? " tool-charts-multi" : ""}">${vm.charts.map(chartHtml).join("")}</div>`,
     );
+  for (const t of vm.extraTables ?? []) out.push(tableHtml(t, "summary"));
   if (vm.comparison) {
     const c = vm.comparison;
     out.push(

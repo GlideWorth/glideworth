@@ -8,6 +8,7 @@ import type {
   MonteCarloShard,
   ProjectionResult,
   SimulationInput,
+  StochasticMetric,
 } from "@glideworth/core";
 import type { WorkerErrorPayload } from "../../workers/protocol";
 
@@ -19,6 +20,8 @@ export type McRequest =
       settings: MonteCarloSettings;
       shardIndex: number;
       shardCount: number;
+      /** Omit to record every series. An empty list records none; the success rate still comes back. */
+      metrics?: readonly StochasticMetric[];
     }
   | {
       id: number;

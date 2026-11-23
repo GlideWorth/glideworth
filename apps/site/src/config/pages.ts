@@ -96,7 +96,7 @@ export const pages = {
   "/tools/": {
     title: "Free retirement and FIRE calculators",
     description:
-      "Free FIRE, Coast FIRE, Barista FIRE, withdrawal, longevity and Monte Carlo calculators that run the real planning engine in your browser, with no sign-up.",
+      "Free FIRE, fat FIRE, Coast FIRE, Barista FIRE, withdrawal, longevity and Monte Carlo calculators that run the planning engine in your browser, with no sign-up.",
     ogEyebrow: "Free tools",
   },
   // Calculators (src/pages/tools/, src/tools/README.md).
@@ -112,6 +112,13 @@ export const pages = {
     description:
       "Free FIRE calculator: your FIRE number from spending and a withdrawal rate, the years of saving it takes, and how that number fared in US market history.",
     ogTitle: "FIRE calculator",
+    ogEyebrow: "Free calculator",
+  },
+  "/tools/fat-fire-calculator/": {
+    title: "Fat FIRE calculator: number, years, gap",
+    description:
+      "Free fat FIRE calculator: your number from high yearly spending and a rate below 4%, the years to reach it, and the gap versus lean and regular targets.",
+    ogTitle: "Fat FIRE calculator",
     ogEyebrow: "Free calculator",
   },
   "/tools/barista-fire-calculator/": {

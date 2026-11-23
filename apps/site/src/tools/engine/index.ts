@@ -7,6 +7,7 @@ import type { ToolId, Values, ViewModel } from "../types";
 import { runBarista } from "./barista";
 import { runCoast } from "./coast";
 import type { RunOptions } from "./common";
+import { runFatFire } from "./fat-fire";
 import { runFire } from "./fire";
 import { runHowLong } from "./how-long";
 import { runMonteCarloTool } from "./monte-carlo";
@@ -15,6 +16,7 @@ import { runWithdrawal } from "./withdrawal";
 const RUNNERS: Record<ToolId, (v: Values, opts: RunOptions) => Promise<ViewModel>> = {
   "coast-fire": runCoast,
   fire: runFire,
+  "fat-fire": runFatFire,
   "barista-fire": runBarista,
   "how-long": runHowLong,
   withdrawal: runWithdrawal,

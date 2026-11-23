@@ -89,6 +89,14 @@ export const clusters: { subject: string; paths: string[] }[] = [
     ],
   },
   {
+    subject: "Fat FIRE",
+    paths: [
+      "/blog/what-is-your-fire-number/",
+      "/tools/fat-fire-calculator/",
+      "/tools/fire-calculator/",
+    ],
+  },
+  {
     subject: "FIRE number",
     paths: [
       "/blog/what-is-your-fire-number/",

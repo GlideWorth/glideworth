@@ -7,6 +7,7 @@
 export type ToolId =
   | "coast-fire"
   | "fire"
+  | "fat-fire"
   | "barista-fire"
   | "withdrawal"
   | "how-long"
@@ -139,6 +140,8 @@ export interface ViewModel {
   /** Grid of small charts that share a scale (withdrawal rules). */
   smallMultiples?: boolean;
   table?: Table;
+  /** Further tables after the charts (a history-failure list beside a comparison table). */
+  extraTables?: Table[];
   comparison?: Comparison;
   /** What this run used: method, dataset, seed, timing, tax. */
   method: string[];

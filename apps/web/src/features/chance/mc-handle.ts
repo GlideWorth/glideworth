@@ -28,6 +28,11 @@ const lookup = <F>(name: string, feature: string): F => {
   return f as F;
 };
 
+export interface ShardOptions {
+  /** Omit to record every series. An empty list records none; the success rate still comes back. */
+  metrics?: readonly core.StochasticMetric[];
+}
+
 /** Run shard `shardIndex` of `shardCount` and return core's raw MonteCarloShard. */
 export function runShard(
   input: SimulationInput,
@@ -36,6 +41,7 @@ export function runShard(
   shardCount: number,
   onProgress: (done: number, total: number) => void,
   shouldStop: () => boolean = () => false,
+  options: ShardOptions = {},
 ): core.MonteCarloShard {
   const create = lookup<
     (i: SimulationInput, s: MonteCarloSettings, o?: Record<string, unknown>) => Session
@@ -46,6 +52,7 @@ export function runShard(
   const session = create(input, settings, {
     trialOffset: from,
     trialCount: Math.max(0, to - from),
+    ...(options.metrics !== undefined ? { metrics: options.metrics } : {}),
   });
   const chunk = Math.max(5, Math.min(50, Math.ceil((to - from) / 20)));
   while (!session.step(chunk)) {
@@ -80,9 +87,10 @@ export function runOneTrial(
 export function mergeShards(
   shards: core.MonteCarloShard[],
   settings: MonteCarloSettings,
+  options: { keepTrials?: boolean } = {},
 ): core.MonteCarloResult {
   return core.summarizeMonteCarlo(core.mergeMonteCarloShards(shards), settings, {
-    keepTrials: true,
+    keepTrials: options.keepTrials ?? true,
   });
 }
 

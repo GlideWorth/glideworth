@@ -286,6 +286,9 @@ describe("Monte Carlo objective (common random numbers)", () => {
       expect(sorted[i]!.metric).toBeLessThanOrEqual(sorted[i - 1]!.metric + 1e-12);
     expect(progress.length).toBeGreaterThan(3);
     expect(progress).toEqual([...progress].sort((a, b) => a - b));
+    // Neighbouring targets (the sensitivity band) keep reporting, so the count reaches every
+    // evaluation the search actually ran, not only the main target.
+    expect(progress.at(-1)).toBe(r.evaluations.length);
   });
 
   it("honours a seed in the request settings", async () => {

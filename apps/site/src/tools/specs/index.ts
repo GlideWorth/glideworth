@@ -189,6 +189,66 @@ export const fireSpec: ToolSpec = {
   ],
 };
 
+export const fatFireSpec: ToolSpec = {
+  id: "fat-fire",
+  path: "/tools/fat-fire-calculator/",
+  mode: "instant",
+  fields: [
+    age("age", "Your age now", 40, "In whole years.", 16, 90),
+    money(
+      "spend",
+      "Fat yearly spending",
+      150_000,
+      "In today’s money. The fat FIRE number scales with this.",
+    ),
+    money(
+      "reg",
+      "Regular spending to compare",
+      80_000,
+      "A middle spending level for this same person. Not a fixed definition.",
+    ),
+    money(
+      "lean",
+      "Lean spending to compare",
+      40_000,
+      "A lower spending level for this same person. Not a fixed definition.",
+    ),
+    percent(
+      "wr",
+      "Withdrawal rate",
+      3.5,
+      "3.5% is a starting point for about 50 years. 4% was studied over about 30.",
+      0.5,
+      10,
+    ),
+    money(
+      "balance",
+      "Invested today",
+      500_000,
+      "Everything invested towards it, in today’s money.",
+    ),
+    money("save", "Yearly saving", 150_000, "Added every year until you reach the fat number."),
+    realReturnField(5, "Yearly growth after inflation while you save."),
+    taxField("Taken off each withdrawal, so it raises every target. Not a country tax estimate."),
+    yrs(
+      "hy",
+      "Retirement length to test",
+      50,
+      "Years of withdrawals in the history test of the fat number.",
+      10,
+      60,
+      { advanced: true },
+    ),
+    {
+      ...STOCKS_HISTORY,
+      help: "Mix used in the history test; the rest is in 10-year US Treasury bonds.",
+      advanced: true,
+    },
+    timingField(),
+    currencyField(),
+  ],
+};
+
 export const baristaSpec: ToolSpec = {
   id: "barista-fire",
   path: "/tools/barista-fire-calculator/",
@@ -365,6 +425,7 @@ export const monteCarloSpec: ToolSpec = {
 export const SPECS: Record<ToolId, ToolSpec> = {
   "coast-fire": coastSpec,
   fire: fireSpec,
+  "fat-fire": fatFireSpec,
   "barista-fire": baristaSpec,
   "how-long": howLongSpec,
   withdrawal: withdrawalSpec,

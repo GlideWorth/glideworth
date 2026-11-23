@@ -16,7 +16,7 @@ carry.ts            the hand-off link into the full planner (format below)
 registry.ts         names, paths, articles: the /tools/ index and "read next" links
 engine/             the only code that imports @glideworth/core
   model.ts          inputs -> SimulationInput (one person, one account, flat tax, fixed horizon)
-  coast.ts fire.ts barista.ts how-long.ts withdrawal.ts monte-carlo.ts   one module per calculator
+  coast.ts fire.ts fat-fire.ts barista.ts how-long.ts withdrawal.ts monte-carlo.ts   one module per calculator
   index.ts          runTool(id, values, { signal, onProgress }) -> ViewModel
 worker/             engine.worker.ts (Web Worker), handle.ts (shared handler), client.ts (page side)
 ui/mount.ts         page controller: plain DOM, no framework
@@ -56,6 +56,7 @@ ui/mount.ts         page controller: plain DOM, no framework
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
 | Coast FIRE (`coast-fire`)     | `simulate` of a 1,000,000 balance (growth factors), of your balance with yearly saving (coast age = first year end at or above that age's coast number), and with saving stopped at the coast age | Formula: target ÷ (1 + r)^n, agrees to 0.01         |
 | FIRE (`fire`)                 | `simulate` with yearly saving and a `financial-independence` milestone (portfolio ≥ FIRE number); `runMonteCarlo` `historical-sequential` on `us-1928` starting with the FIRE number              | Engine years = formula rounded up                   |
+| Fat FIRE (`fat-fire`)         | The same `simulate` milestone three times (fat, regular and lean spending at one withdrawal rate); `historical-sequential` history test of the fat number only                                    | Same year-end check as FIRE; comparison is the gap  |
 | Barista FIRE (`barista-fire`) | `solveRequiredPortfolio` (objective `noShortfall`, tolerance 1e-7) with spending, part-time pay until an age, flat tax; same for full retirement                                                  | Formula: present value of the net withdrawals       |
 | How long (`how-long`)         | `simulate` for 100 years (years = whole funded years + funded share of the first short year); `runMonteCarlo` `historical-sequential`, 40-year window                                             | Formula: −ln(1 − rB/W′) ÷ ln(1 + r)                 |
 | Withdrawal (`withdrawal`)     | `withdrawalStrategy` with `initial-percent`, `fixed-percent`, `guyton-klinger` (20%, 10%), `vpw`; `createMonteCarloSession` per rule, same seed; per-trial income from the shard                  | Log-normal real returns or `us-1928` random restart |
@@ -78,38 +79,41 @@ The planner box links to sign-up with the calculator's inputs, so the app can pr
 https://app.glideworth.com/signup?from=tool&tool=<id>&v=1&<key>=<value>&...
 ```
 
-- `from=tool` marks a calculator hand-off; `tool` is one of `coast-fire`, `fire`, `barista-fire`,
+- `from=tool` marks a calculator hand-off; `tool` is one of `coast-fire`, `fire`, `fat-fire`, `barista-fire`,
   `how-long`, `withdrawal`, `monte-carlo`; `v` is the format version (1). Unknown keys must be ignored.
+  For `fat-fire`, `spend` is the fat spending level. `lean` and `reg` are comparison levels for the calculator
+  only; the planner does not apply them.
 - The keys are exactly the calculator page's own query keys (a shared result URL is the same format
   without `from` and `tool`). Every key is always present.
 - Money: whole or decimal major units, **today's money, per year**, no grouping (`spend=40000`).
   Percentages: percent numbers (`ret=5` is 5%, `tax=12.5` is 12.5%). Ages and years: whole numbers.
 - Only shown while `site.cloudLaunched` is true; until then the box points to self-hosting.
 
-| Key              | Meaning                                                                                               | Used by                                               |
-| ---------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `cur`            | Display currency, ISO 4217 (USD, GBP, EUR, CAD, AUD, NZD, CHF, AED, SGD); no conversion               | all                                                   |
-| `timing`         | Cash-flow timing: `start`, `mid` or `end` (→ `assumptions.cashFlowTiming`)                            | all                                                   |
-| `age`            | Age now (Barista: age leaving full-time work; Monte Carlo/withdrawal have none)                       | coast-fire, fire, barista-fire, how-long              |
-| `retire`         | Retirement age                                                                                        | coast-fire                                            |
-| `balance`        | Invested today / portfolio at the start                                                               | all                                                   |
-| `spend`          | Yearly spending (how-long: yearly withdrawal), today's money, rising with inflation                   | all but withdrawal                                    |
-| `wr`             | Withdrawal rate used for the FIRE number, %                                                           | coast-fire, fire                                      |
-| `ret`            | Steady return after inflation, % a year                                                               | coast-fire, fire, barista-fire, how-long              |
-| `save`           | Yearly saving into the portfolio until coast / FI, after tax                                          | coast-fire, fire                                      |
-| `tax`            | Flat tax on portfolio withdrawals, %                                                                  | fire, barista-fire, how-long, withdrawal, monte-carlo |
-| `hy`             | Retirement length (years) for the history test of the FIRE number                                     | fire                                                  |
-| `stocks`         | Stock share of the portfolio in history runs, % (rest in 10-year Treasuries)                          | fire, how-long, withdrawal, monte-carlo               |
-| `pt`             | Part-time pay after tax, per year                                                                     | barista-fire                                          |
-| `ptUntil`        | Age the part-time pay stops                                                                           | barista-fire                                          |
-| `planTo`         | Age the plan runs to                                                                                  | barista-fire                                          |
-| `rate`           | Initial withdrawal rate, %                                                                            | withdrawal                                            |
-| `years`          | Length of retirement / plan, years                                                                    | withdrawal, monte-carlo                               |
-| `method`         | Market model: `parametric`, `history` (random start years), `block` (5-year blocks, Monte Carlo only) | withdrawal, monte-carlo                               |
-| `mean`, `vol`    | Log-normal real return: average and standard deviation, % (with `method=parametric`)                  | withdrawal, monte-carlo                               |
-| `trials`         | Number of simulations                                                                                 | withdrawal, monte-carlo                               |
-| `seed`           | Random seed (0 to 4294967295)                                                                         | withdrawal, monte-carlo                               |
-| `inc`, `incFrom` | Other income after tax per year, starting after `incFrom` years                                       | monte-carlo                                           |
+| Key              | Meaning                                                                                                      | Used by                                                         |
+| ---------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| `cur`            | Display currency, ISO 4217 (USD, GBP, EUR, CAD, AUD, NZD, CHF, AED, SGD); no conversion                      | all                                                             |
+| `timing`         | Cash-flow timing: `start`, `mid` or `end` (→ `assumptions.cashFlowTiming`)                                   | all                                                             |
+| `age`            | Age now (Barista: age leaving full-time work; Monte Carlo/withdrawal have none)                              | coast-fire, fire, fat-fire, barista-fire, how-long              |
+| `retire`         | Retirement age                                                                                               | coast-fire                                                      |
+| `balance`        | Invested today / portfolio at the start                                                                      | all                                                             |
+| `spend`          | Yearly spending (how-long: yearly withdrawal; fat-fire: the fat level), today's money, rising with inflation | all but withdrawal                                              |
+| `wr`             | Withdrawal rate used for the FIRE number, %                                                                  | coast-fire, fire, fat-fire                                      |
+| `ret`            | Steady return after inflation, % a year                                                                      | coast-fire, fire, fat-fire, barista-fire, how-long              |
+| `save`           | Yearly saving into the portfolio until coast / FI, after tax                                                 | coast-fire, fire, fat-fire                                      |
+| `tax`            | Flat tax on portfolio withdrawals, %                                                                         | fire, fat-fire, barista-fire, how-long, withdrawal, monte-carlo |
+| `hy`             | Retirement length (years) for the history test of the FIRE number                                            | fire, fat-fire                                                  |
+| `stocks`         | Stock share of the portfolio in history runs, % (rest in 10-year Treasuries)                                 | fire, fat-fire, how-long, withdrawal, monte-carlo               |
+| `lean`, `reg`    | Yearly spending for the lean and regular comparison, today's money. Not applied by the planner.              | fat-fire                                                        |
+| `pt`             | Part-time pay after tax, per year                                                                            | barista-fire                                                    |
+| `ptUntil`        | Age the part-time pay stops                                                                                  | barista-fire                                                    |
+| `planTo`         | Age the plan runs to                                                                                         | barista-fire                                                    |
+| `rate`           | Initial withdrawal rate, %                                                                                   | withdrawal                                                      |
+| `years`          | Length of retirement / plan, years                                                                           | withdrawal, monte-carlo                                         |
+| `method`         | Market model: `parametric`, `history` (random start years), `block` (5-year blocks, Monte Carlo only)        | withdrawal, monte-carlo                                         |
+| `mean`, `vol`    | Log-normal real return: average and standard deviation, % (with `method=parametric`)                         | withdrawal, monte-carlo                                         |
+| `trials`         | Number of simulations                                                                                        | withdrawal, monte-carlo                                         |
+| `seed`           | Random seed (0 to 4294967295)                                                                                | withdrawal, monte-carlo                                         |
+| `inc`, `incFrom` | Other income after tax per year, starting after `incFrom` years                                              | monte-carlo                                                     |
 
 Suggested mapping in the app: one person aged `age`, one investment account with `balance`, a living
 expense of `spend` (real, yearly), an income of `save` routed to that account until retirement, a

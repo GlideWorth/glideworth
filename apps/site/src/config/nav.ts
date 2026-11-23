@@ -35,6 +35,7 @@ export const footerNav: { heading: string; links: NavLink[] }[] = [
     links: [
       { label: "All free calculators", href: "/tools/" },
       { label: "FIRE calculator", href: "/tools/fire-calculator/" },
+      { label: "Fat FIRE calculator", href: "/tools/fat-fire-calculator/" },
       { label: "Coast FIRE calculator", href: "/tools/coast-fire-calculator/" },
       { label: "Barista FIRE calculator", href: "/tools/barista-fire-calculator/" },
       {

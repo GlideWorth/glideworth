@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
 import { accountColors, categoryColor, SERIES } from "../src/components/charts/palette";
 import { buildSankey } from "../src/features/cashflow/sankey";
 import { mergeShards, runShard } from "../src/features/chance/mc-handle";
+import { createChancePool } from "../src/features/chance/mc-pool";
 import { attributeDifference, compareMetrics } from "../src/features/compare/compare-model";
 import { scaleExpenses, shiftMilestoneAge } from "../src/features/insights/plan-edits";
 import {
@@ -302,5 +303,54 @@ describe("chance of success", () => {
     );
     expect(two.trials).toBe(24);
     expect(two.successRate).toBe(one.successRate);
+  });
+  it("records no percentile series when a search only needs the success rate", () => {
+    let full: ReturnType<typeof mergeShards>;
+    try {
+      full = mergeShards([runShard(input, settings, 0, 1, () => {})], settings);
+    } catch (e) {
+      expect((e as { code?: string }).code).toBe("NOT_IMPLEMENTED");
+      return;
+    }
+    const lean = mergeShards(
+      [
+        runShard(
+          input,
+          settings,
+          0,
+          1,
+          () => {},
+          () => false,
+          { metrics: [] },
+        ),
+      ],
+      settings,
+      { keepTrials: false },
+    );
+    expect(lean.trials).toBe(full.trials);
+    expect(lean.successRate).toBe(full.successRate);
+    expect(lean.percentiles).toEqual([]);
+    expect(lean.trialSummaries).toEqual([]);
+  });
+  it("reuses one inline pool across evaluations and refuses a second run at once", async () => {
+    const pool = createChancePool(0);
+    const seen: number[] = [];
+    try {
+      const first = pool.run(input, settings, {
+        metrics: [],
+        keepTrials: false,
+        onProgress: (done, total) => seen.push(done, total),
+      });
+      await expect(pool.run(input, settings)).rejects.toThrow(/already running/);
+      const a = await first;
+      const b = await pool.run(input, settings, { metrics: [], keepTrials: false });
+      expect(a.trials).toBe(24);
+      expect(b.successRate).toBe(a.successRate);
+      expect(seen.at(-2)).toBe(24);
+      expect(seen.at(-1)).toBe(24);
+    } finally {
+      pool.close();
+    }
+    await expect(pool.run(input, settings)).rejects.toThrow(/Cancelled/);
   });
 });

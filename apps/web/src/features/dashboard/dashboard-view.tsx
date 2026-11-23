@@ -3,6 +3,7 @@ import {
   type Finding,
   type GlideworthDocument,
   type Plan,
+  type ProgressSnapshot,
   type ProjectionResult,
 } from "@glideworth/core";
 import { Link } from "@tanstack/react-router";
@@ -31,7 +32,12 @@ import { Card, CardBody, CardHeader } from "../../components/ui/card";
 import { Stat } from "../../components/ui/stat";
 import { useCloudSession } from "../../lib/auth";
 import { formatMonth } from "../../lib/format";
-import { financesInBase, unconvertedHoldings, unconvertedSentence } from "../../lib/fx-math";
+import {
+  financesInBase,
+  fxRateToBase,
+  unconvertedHoldings,
+  unconvertedSentence,
+} from "../../lib/fx-math";
 import { firstFullYear, total } from "../../lib/money";
 import { useResolvedTheme } from "../../lib/theme";
 import { useFormat, useProjection } from "../../lib/workspace";
@@ -72,6 +78,40 @@ export function currentNetWorth(doc: GlideworthDocument | undefined) {
     (fin?.debts.reduce((s, d) => s + d.balance, 0) ?? 0) +
     (fin?.realAssets.reduce((s, r) => s + (r.loan?.balance ?? 0), 0) ?? 0);
   return { assets, liabilities, netWorth: assets - liabilities };
+}
+
+type SnapshotBalances = Pick<ProgressSnapshot, "netWorth" | "accounts" | "realAssets" | "debts">;
+
+/**
+ * Net worth of a progress snapshot on the same basis as `currentNetWorth`.
+ *
+ * A snapshot stores each balance in its own currency and a total that counted a missing exchange
+ * rate at face value. Today's total leaves those holdings out, so subtracting the stored total
+ * reports the exclusion as a loss. Value the recorded balances with today's rates instead: a
+ * currency with no rate counts on neither side. A snapshot that only stored a total is kept as
+ * recorded — there are no balances to revalue.
+ */
+export function snapshotNetWorthLikeToday(
+  doc: GlideworthDocument,
+  snapshot: SnapshotBalances,
+): number {
+  if (snapshot.accounts.length + snapshot.realAssets.length + snapshot.debts.length === 0)
+    return snapshot.netWorth;
+  const base = doc.household.currency;
+  const rates = doc.finances.fxRates;
+  const accountCurrency = new Map(doc.finances.accounts.map((a) => [a.id, a.currency]));
+  const assetCurrency = new Map(doc.finances.realAssets.map((r) => [r.id, r.currency]));
+  const debtCurrency = new Map(doc.finances.debts.map((d) => [d.id, d.currency]));
+  const inBase = (amount: number, currency: string | undefined) => {
+    const rate = fxRateToBase(currency, base, rates);
+    return rate === null ? 0 : amount * rate;
+  };
+  let net = 0;
+  for (const a of snapshot.accounts) net += inBase(a.balance, accountCurrency.get(a.accountId));
+  for (const r of snapshot.realAssets)
+    net += inBase(r.value - r.loanBalance, assetCurrency.get(r.assetId));
+  for (const d of snapshot.debts) net -= inBase(d.balance, debtCurrency.get(d.debtId));
+  return net;
 }
 
 /**
@@ -295,13 +335,12 @@ export function DashboardView() {
   const fi = result ? fiMetrics(result, plan) : null;
   const fiTarget = fiTargetLabel(plan);
   useDemoChanceOfSuccess(input, plan);
-  const history = useMemo(
-    () =>
-      [...(doc?.progress ?? [])]
-        .sort((a, b) => a.date.localeCompare(b.date))
-        .map((s) => s.netWorth),
-    [doc],
-  );
+  const history = useMemo(() => {
+    if (!doc) return [];
+    return [...doc.progress]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((s) => snapshotNetWorthLikeToday(doc, s));
+  }, [doc]);
   const spark = [...history, now.netWorth];
   const prevSnap = history.at(-1);
   const audit = useMemo((): { findings: Finding[]; source: "audit" | "warnings" } => {

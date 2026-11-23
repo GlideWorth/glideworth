@@ -22,6 +22,7 @@ import { isDemo } from "../../lib/demo";
 export const HANDOFF_TOOLS = {
   "coast-fire": "Coast FIRE calculator",
   fire: "FIRE calculator",
+  "fat-fire": "Fat FIRE calculator",
   "barista-fire": "Barista FIRE calculator",
   "how-long": "How long will my money last calculator",
   withdrawal: "Withdrawal strategies calculator",

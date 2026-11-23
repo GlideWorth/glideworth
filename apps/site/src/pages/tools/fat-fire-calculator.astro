@@ -1,0 +1,266 @@
+---
+import ToolPage from '../../components/tools/ToolPage.astro';
+import { fireNumber, sustainableRate, yearsToTarget } from '../../tools/closed-form';
+import { fatFireNumbers, fatHistory } from '../../tools/engine/fat-fire';
+import { HISTORY_DATASET } from '../../tools/engine/model';
+import { money, pct, wholeYears } from '../../tools/format';
+import { fatFireSpec } from '../../tools/specs';
+import { defaults, num, rate, str } from '../../tools/state';
+import type { Timing } from '../../tools/types';
+import { MARKET_DATASETS } from '@glideworth/core';
+
+const m = (x: number) => money(x, 'USD');
+const ds = MARKET_DATASETS[HISTORY_DATASET];
+// Worked example: the calculator’s own defaults, computed by its own code at build time.
+const ex = defaults(fatFireSpec);
+const spend = num(ex, 'spend');
+const regSpend = num(ex, 'reg');
+const leanSpend = num(ex, 'lean');
+const wr = rate(ex, 'wr');
+const balance = num(ex, 'balance');
+const save = num(ex, 'save');
+const ret = rate(ex, 'ret');
+const age = num(ex, 'age');
+const hy = num(ex, 'hy');
+const levels = fatFireNumbers(ex);
+const formula = yearsToTarget(balance, save, ret, levels.fat.target, str(ex, 'timing') as Timing);
+const hist = fatHistory(ex, levels);
+const taxedWithdrawal = spend / 0.85;
+const taxedNumber = fireNumber(spend, wr, 0.15);
+const rateRows = [3, 3.5, 4, 4.5].map((r) => [
+  `${r}%`,
+  `${(100 / r).toFixed(1)}×`,
+  m(fireNumber(spend, r / 100)),
+]);
+const levelRows = [
+  ['Fat', spend, levels.fat.target, levels.fat.years],
+  ['Regular', regSpend, levels.regular.target, levels.regular.years],
+  ['Lean', leanSpend, levels.lean.target, levels.lean.years],
+] as const;
+
+const faq = [
+  {
+    q: 'What is fat FIRE?',
+    a: '<p>A name for financial independence at a high level of yearly spending. The portfolio is still spending divided by a withdrawal rate, so a higher spend is a proportionally larger number. This site does not treat any dollar amount as the definition. The <a href="/tools/fire-calculator/">FIRE calculator</a> is the general case, with 4% as the starting rate.</p>',
+  },
+  {
+    q: 'How much do you need for fat FIRE?',
+    a: `<p>Yearly spending divided by the withdrawal rate you choose. With this page’s defaults, ${m(spend)} at ${pct(wr, 1)} is ${m(levels.fat.target)}, or ${(1 / wr).toFixed(1)} times spending. Change either input and the number changes by the same formula. A flat tax, which you set, grosses it up.</p>`,
+  },
+  {
+    q: 'How is fat FIRE different from lean FIRE?',
+    a: `<p>Lean FIRE is a low spending target and fat FIRE is a high one. The formula is the same. This calculator runs both, plus a regular level, on one portfolio and one savings rate. At the defaults, ${m(leanSpend)} needs ${m(levels.lean.target)} and ${m(spend)} needs ${m(levels.fat.target)}. <a href="/blog/coast-fire-explained/">Coast FIRE</a> and <a href="/blog/barista-fire-part-time-income/">Barista FIRE</a> are different questions: one is about stopping contributions, the other about part-time income.</p>`,
+  },
+  {
+    q: 'Is 4% safe for fat FIRE?',
+    a: '<p>William Bengen’s 1994 article treated 4% as a first-year withdrawal that, in his US data, did not exhaust a portfolio before 33 years, for a retirement of at least about 30 years. The same article called about 3.5% (and 3%) the rates whose inflation-adjusted withdrawals lasted at least 50 years in every start year he charted, “to the extent history is a guide”. A fat plan is often a longer retirement, and tax on a large withdrawal was outside his main case. The history test on this page counts how the number you entered would have fared. It is not a guarantee.</p>',
+  },
+  {
+    q: 'Does the fat FIRE number include tax and health insurance?',
+    a: '<p>Only if they are inside the spending you enter, or in the flat tax rate. The flat rate is one rate you choose, not a country tax estimate. Health insurance before Medicare is a cost to put in that spending; this page does not add a premium. Country tax estimates, including the US model’s ACA premium tax credit, are in the <a href="/planning/us/">United States planning page</a> and the <a href="/features/tax-estimates/">tax estimates</a> feature.</p>',
+  },
+];
+---
+
+<ToolPage
+  id="fat-fire"
+  heading="Fat FIRE calculator: a high spending target, and the gap to reach it"
+  lede="The portfolio a high yearly spend needs, the years of saving to reach it, and how that target compares with lean and regular spending for the same person. The fat number is then tested against US market history. It runs the Glideworth planning engine in your browser; nothing you type is sent anywhere."
+  faq={faq}
+  adds="A fat FIRE number is one high spending figure at one withdrawal rate."
+  related={[
+    { href: '/tools/fire-calculator/', label: 'FIRE calculator for a general spending level and a 4% starting rate' },
+    { href: '/planning/us/', label: 'What the US tax estimate models, including the ACA premium tax credit' },
+    { href: '/features/tax-estimates/', label: 'Tax estimates in the planner' },
+    { href: '/blog/what-a-tax-estimate-leaves-out/', label: 'What a tax estimate leaves out' },
+    { href: '/docs/methodology/historical-data/', label: 'The historical data the engine uses' },
+  ]}
+>
+  <h2>What this page answers</h2>
+  <p>
+    Fat FIRE is the same arithmetic as any other FIRE number, applied to a high level of spending. The portfolio is
+    yearly spending divided by a withdrawal rate, so the number scales with spending, and a retirement that starts
+    earlier has to last longer. This page starts from that case: a high spending input, a withdrawal rate that starts
+    at 3.5% rather than 4%, and two lower spending levels for the same person so the gap in the portfolio and in the
+    years of saving is visible.
+  </p>
+  <p>
+    Lean and regular here are inputs, not definitions. This site does not treat any dollar amount as the cutoff for
+    lean, regular or fat FIRE. The <a href="/tools/fire-calculator/">FIRE calculator</a> is the general case: any
+    spending you enter, a 4% starting rate and a 30-year history test.
+  </p>
+
+  <h2>How the calculator works</h2>
+  <ol>
+    <li>
+      <strong>Three numbers, one rate.</strong> Fat, regular and lean yearly spending are each divided by the
+      withdrawal rate. With the optional flat tax on withdrawals, spending is first grossed up: spending ÷ (1 − tax
+      rate).
+    </li>
+    <li>
+      <strong>Years to each number.</strong> The engine projects one invested balance, with your yearly saving added
+      each year at your return after inflation, and marks the first year end where the portfolio is at or above each
+      target.
+    </li>
+    <li>
+      <strong>A history test of the fat number.</strong> The engine then starts a portfolio of exactly that number in
+      every year of US history from {ds.firstYear} that leaves room for the retirement length you chose (50 years by
+      default), spends your fat spending each year rising with inflation, and counts the start years in which every
+      year was paid. The mix is 60% stocks and 40% bonds by default, rebalanced yearly.
+    </li>
+  </ol>
+
+  <h2>The formula</h2>
+  <p class="formula">Fat FIRE number = spending ÷ withdrawal rate</p>
+  <p>
+    At {pct(wr, 1)} the multiple is {(1 / wr).toFixed(1)} times spending, against 25 times at 4%. The years of saving
+    use the same formula as the <a href="/tools/fire-calculator/">FIRE calculator</a>.
+  </p>
+  <div class="table-scroll" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
+    <table>
+      <caption>Portfolio for spending of {m(spend)}, before tax</caption>
+      <thead>
+        <tr><th>Withdrawal rate</th><th>Multiple of spending</th><th>Portfolio</th></tr>
+      </thead>
+      <tbody>
+        {rateRows.map((r) => (
+          <tr>
+            {r.map((c) => (
+              <td>{c}</td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Worked example</h2>
+  <p>
+    Computed by this calculator’s own code when the page was built, from its default inputs. Fat spending of {m(spend)}{' '}
+    at {pct(wr, 1)} gives {m(levels.fat.target)}. A {age}-year-old with {m(balance)} invested saves {m(save)} a year at{' '}
+    {pct(ret, 0)} after inflation. The formula gives {formula.toFixed(2)} years to the fat number; the engine, checking
+    each year end, first finds the portfolio at or above {m(levels.fat.target)} after{' '}
+    {levels.fat.years === null ? 'more than its horizon' : wholeYears(levels.fat.years)}, when it holds{' '}
+    {m(levels.fat.path[levels.fat.years ?? 0] ?? 0)}.
+  </p>
+  <div class="table-scroll" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
+    <table>
+      <caption>The same person at three spending levels and {pct(wr, 1)}</caption>
+      <thead>
+        <tr><th>Level</th><th>Yearly spending</th><th>Portfolio</th><th>Years</th></tr>
+      </thead>
+      <tbody>
+        {levelRows.map((row) => (
+          <tr>
+            <td>{row[0]}</td>
+            <td>{m(row[1])}</td>
+            <td>{m(row[2])}</td>
+            <td>{row[3] === null ? 'Beyond the horizon' : row[3] === 0 ? 'Already there' : wholeYears(row[3])}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  {
+    hist && (
+      <p>
+        Tested against history ({ds.label}), a portfolio of {m(levels.fat.target)} paying {m(spend)} a year in today’s
+        money, {pct(rate(ex, 'stocks'), 0)} stocks, withdrawals {str(ex, 'timing') === 'mid' ? 'in the middle' : `at the ${str(ex, 'timing')}`} of
+        each year, paid every year of a {hy}-year retirement in {Math.round(hist.successRate * hist.trials)} of{' '}
+        {hist.trials} start years from {hist.firstYear} to {hist.lastStartYear} ({pct(hist.successRate, 1)}).
+        {hist.failures.length > 0 &&
+          ` The shortest-lived started in ${hist.failures[0]!.startYear} and paid ${wholeYears(hist.failures[0]!.yearsFunded)} in full.`}
+      </p>
+    )
+  }
+
+  <h2>Why the withdrawal rate starts at 3.5%</h2>
+  <p>
+    William Bengen’s article <a
+      rel="noopener noreferrer"
+      href="https://www.financialplanningassociation.org/sites/default/files/2021-04/MAR04%20Determining%20Withdrawal%20Rates%20Using%20Historical%20Data.pdf"
+      >“Determining Withdrawal Rates Using Historical Data”</a
+    > (<em>Journal of Financial Planning</em>, October 1994) tested inflation-adjusted withdrawals against US history
+    from 1926. For a minimum of about 30 years of portfolio life, he wrote that a first-year withdrawal of 4% “should
+    be safe”: in no past case did it exhaust the portfolio before 33 years. For a longer chart, he wrote that an
+    “absolutely safe” initial withdrawal, “to the extent history is a guide”, is 3%, because portfolio longevity was
+    never less than 50 years, and that this was also true for rates “as high as approximately 3.5%”. He counselled
+    clients to withdraw at no more than 4% in the early years of retirement, especially if they retired at 60 or
+    younger. The main case was a tax-deferred account, with no investment costs.
+  </p>
+  <p>
+    A constant real return, with no volatility, gives an upper bound: the rate that spends a portfolio exactly over{' '}
+    <code>n</code> years is r ÷ (1 − (1 + r)<sup>−n</sup>). At 3% after inflation that is {pct(sustainableRate(0.03, 30), 2)}{' '}
+    for 30 years and {pct(sustainableRate(0.03, 50), 2)} for 50 years. The bound is higher than Bengen’s historical
+    rates because it has no bad sequence in it. The <a href="/blog/what-is-your-fire-number/">FIRE number article</a>{' '}
+    sets out the 30-year studies, including the 1998 Trinity study, and where they do not carry over.
+  </p>
+
+  <h2>Tax on large withdrawals</h2>
+  <p>
+    A larger portfolio throws off a larger withdrawal, and that withdrawal can cross higher tax bands. The size of the
+    tax depends on the country and on which account the money comes from. Bengen’s follow-up, <a
+      rel="noopener noreferrer"
+      href="https://www.financialplanningassociation.org/sites/default/files/2021-10/AUG96%20-%20JFP%20Bengen%20PDF.pdf"
+      >“Asset Allocation for a Lifetime”</a
+    > (<em>Journal of Financial Planning</em>, August 1996), compared taxable and tax-deferred portfolios. He wrote that
+    withdrawal rates on the taxable chart were about half a percentage point or more lower than on the tax-deferred
+    chart. In his example of a 50-year-old planning a 45-year taxable portfolio, at a 35% tax rate, the point he
+    identified on the chart “corresponds to a withdrawal rate of about 3.0%”. That is one example from his chart, not a
+    rate this page applies for you.
+  </p>
+  <p>
+    This calculator’s only tax input is a single flat rate. At 15%, {m(spend)} to spend needs {m(taxedWithdrawal)}{' '}
+    withdrawn, and the fat number at {pct(wr, 1)} becomes {m(taxedNumber)}. The 15% is a rate you can type. It is not a
+    US tax estimate. The planner estimates tax from the country’s rules and lists what each estimate leaves out. For
+    the United States that includes federal income tax, capital gains and qualified dividends at 0%, 15% and 20%, the
+    net investment income tax, payroll tax, and state tax, and it includes the ACA premium tax credit. The SALT cap is
+    not applied automatically. See <a href="/planning/us/">retirement planning in the United States</a>,{' '}
+    <a href="/features/tax-estimates/">tax estimates</a>, and{' '}
+    <a href="/blog/what-a-tax-estimate-leaves-out/">what a tax estimate leaves out</a>. Other countries are on the{' '}
+    <a href="/planning/">planning-by-country</a> pages.
+  </p>
+
+  <h2>Health insurance before Medicare</h2>
+  <p>
+    In the United States, Medicare is generally for people aged 65 or older who meet citizenship or residency
+    requirements (<a rel="noopener noreferrer" href="https://www.medicare.gov/basics/get-started-with-medicare">medicare.gov</a>).
+    Someone who leaves a job before then has to replace the cover the job provided. healthcare.gov says that if you
+    lose job-based coverage you can enrol in a Marketplace plan, which you need to apply for within 60 days of losing
+    it, or sign up for COBRA to stay on the job-based plan. It says COBRA coverage typically lasts about 18 months and
+    that you usually pay the full premium plus a small administrative fee (<a
+      rel="noopener noreferrer"
+      href="https://www.healthcare.gov/have-job-based-coverage/if-you-lose-job-based-coverage/">healthcare.gov</a
+    >). The premium depends on age, where you live and income, including any premium tax credit. This page does not
+    add a figure for it. Put the premium you expect into yearly spending. The planner’s US model includes the ACA
+    premium tax credit; the <a href="/planning/us/">United States page</a> lists that among what it models.
+  </p>
+
+  <h2>Sequence of returns on a large portfolio</h2>
+  <p>
+    The order of returns matters more than the average when you are withdrawing. Bengen’s 1994 article describes the
+    1973–74 decline reaching back to retirements that began “as much as 20 or more years earlier”, and warns against
+    raising a withdrawal after a few good early years because those returns may be needed later. At the same withdrawal
+    rate, a larger portfolio withdraws more dollars, so an early loss removes more spending power.
+  </p>
+  <p>
+    The history test is that check for the fat number you entered: one trial per US start year, spending fixed in
+    today’s money, counted as a pass only when every year is paid. The result is what happened in the {ds.label}{' '}
+    series (Aswath Damodaran, <em>Historical Returns on Stocks, Bonds and Bills</em>, NYU Stern, and US Bureau of Labor
+    Statistics CPI-U). It is not a probability. The method is described with the{' '}
+    <a href="/docs/methodology/historical-data/">historical data</a>.
+  </p>
+
+  <h2>What this assumes and leaves out</h2>
+  <ul>
+    <li>One steady return while you save, the same every year. Real returns vary.</li>
+    <li>Spending fixed in today’s money for the whole retirement, with no pension or other income to lower it.</li>
+    <li>No health-insurance premium unless you include it in spending.</li>
+    <li>No tax unless you set the flat rate, which is a single rate you choose, not a country estimate.</li>
+    <li>
+      The history test uses one country’s history ({ds.label}) and only the fat number. Its result is what happened
+      there, not a probability.
+    </li>
+    <li>No fees, no contribution limits and no accounts locked until an access age.</li>
+  </ul>
+</ToolPage>

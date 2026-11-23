@@ -22,8 +22,11 @@ import {
 } from "./closed-form";
 import { baristaNumbers, requiredPortfolio } from "./engine/barista";
 import { coastNumbers, engineGrowth } from "./engine/coast";
+import { fatFireNumbers, fatHistory, runFatFire } from "./engine/fat-fire";
 import { fireYears } from "./engine/fire";
 import { engineYears } from "./engine/how-long";
+import { SPECS } from "./specs";
+import { defaults } from "./state";
 import type { Timing } from "./types";
 
 const TIMINGS: Timing[] = ["start", "mid", "end"];
@@ -299,5 +302,45 @@ describe("engine matches the formulas when configured like them", () => {
 
   it("coast age formula handles a zero return", () => {
     expect(yearsToCoast(100_000, 50_000, 0, 1_000_000, 30, "end")).toBeCloseTo(18, 10);
+  });
+});
+
+describe("fat FIRE", () => {
+  const v = defaults(SPECS["fat-fire"]);
+
+  it("scales one withdrawal rate across fat, regular and lean spending", () => {
+    const n = fatFireNumbers(v);
+    const wr = 0.035;
+    expect(n.fat.target).toBeCloseTo(fireNumber(150_000, wr), 6);
+    expect(n.regular.target).toBeCloseTo(fireNumber(80_000, wr), 6);
+    expect(n.lean.target).toBeCloseTo(fireNumber(40_000, wr), 6);
+    expect(n.fat.target).toBeGreaterThan(n.regular.target);
+    expect(n.regular.target).toBeGreaterThan(n.lean.target);
+  });
+
+  it("years to the fat number match the FIRE engine, rounded up from the formula", () => {
+    const n = fatFireNumbers(v);
+    const formula = yearsToTarget(500_000, 150_000, 0.05, n.fat.target, "mid");
+    expect(n.fat.years).toBe(Math.ceil(formula - 1e-9));
+    expect(n.fat.years).not.toBeNull();
+    expect(n.regular.years).not.toBeNull();
+    expect(n.lean.years).not.toBeNull();
+    expect(n.fat.years!).toBeGreaterThan(n.regular.years!);
+    expect(n.regular.years!).toBeGreaterThan(n.lean.years!);
+    // The same milestone the FIRE calculator uses, at the fat spending.
+    expect(fireYears(v).years).toBe(n.fat.years);
+  });
+
+  it("tests the fat number against US history and shows the three targets", async () => {
+    const n = fatFireNumbers(v);
+    const h = fatHistory(v, n);
+    const vm = await runFatFire(v);
+    expect(h).not.toBeNull();
+    expect(vm.tool).toBe("fat-fire");
+    expect(vm.table?.rows.map((row) => row[0])).toEqual(["Fat", "Regular", "Lean"]);
+    const history = vm.figures.find((f) => f.label.includes("US history"));
+    expect(history?.value).toBe(`${Math.round(h!.successRate * h!.trials)} of ${h!.trials} lasted`);
+    if (h!.failures.length > 0) expect(vm.extraTables?.[0]?.rows).toHaveLength(h!.failures.length);
+    else expect(vm.extraTables).toBeUndefined();
   });
 });

@@ -23,7 +23,7 @@ import {
   TrendingDown,
   Wrench,
 } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Chart } from "../../components/charts/echarts";
 import { slotColor } from "../../components/charts/palette";
 import { SeriesChart } from "../../components/charts/series-chart";
@@ -46,14 +46,14 @@ import { Page } from "../../components/layout/app-shell";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardBody, CardHeader } from "../../components/ui/card";
-import { Field, Input } from "../../components/ui/input";
+import { Field } from "../../components/ui/input";
 import { Segmented } from "../../components/ui/segmented";
 import { Select } from "../../components/ui/select";
 import { cn } from "../../lib/cn";
 import { formatMoney, formatMonth, formatSigned } from "../../lib/format";
 import { total } from "../../lib/money";
 import { useFormat } from "../../lib/workspace";
-import { runChanceOfSuccess } from "../chance/mc-pool";
+import { createChancePool, runChanceOfSuccess } from "../chance/mc-pool";
 import { CrossBorderFix } from "../crossborder/audit-fix";
 import { attempt, bridge } from "../results/core-bridge";
 import { exampleExplanation, exampleFindings, exampleGoalSeek } from "../results/fixtures";
@@ -61,6 +61,12 @@ import type { EntityIndex } from "../results/model";
 import { yearNarrative } from "../results/narrative";
 import { useAnalysis } from "../results/use-analysis";
 import { StrategyMatrixPanel } from "./analysis-panels";
+import {
+  GOAL_SEEK_TRIALS_DEFAULT,
+  GoalSeekSearchStatus,
+  type GoalSeekTrialsHandle,
+  GoalSeekTrialsField,
+} from "./goal-seek-controls";
 import {
   DRIVERS,
   outcomeOf,
@@ -244,7 +250,8 @@ function GoalSeekPanel({
   const f = useFormat();
   const [kind, setKind] = useState<SeekKind>("spending");
   const [target, setTarget] = useState(0.9);
-  const [trials, setTrials] = useState(300);
+  const [trials, setTrials] = useState(GOAL_SEEK_TRIALS_DEFAULT);
+  const trialsField = useRef<GoalSeekTrialsHandle>(null);
   const retireMs = plan.milestones.filter((m) => m.kind === "retirement");
   // Only flows with an amount or share can be solved for; `max` flows fill a limit (core decides).
   const scalable = new Set(scalableFlowIds(plan));
@@ -258,25 +265,49 @@ function GoalSeekPanel({
     error?: unknown;
     example?: boolean;
     evals: number;
-  }>({ status: "idle", evals: 0 });
+    trialsDone: number;
+    trialsTotal: number;
+  }>({ status: "idle", evals: 0, trialsDone: 0, trialsTotal: 0 });
   const abort = useRef<AbortController | null>(null);
+  const idle = { status: "idle" as const, evals: 0, trialsDone: 0, trialsTotal: 0 };
+  useEffect(() => {
+    return () => abort.current?.abort();
+  }, []);
 
   const run = async () => {
+    const trialCount = trialsField.current?.commit() ?? trials;
     abort.current?.abort();
     const ac = new AbortController();
     abort.current = ac;
-    setState({ status: "running", evals: 0 });
+    setState({ status: "running", evals: 0, trialsDone: 0, trialsTotal: 0 });
     const mc: MonteCarloSettings = {
       ...plan.monteCarlo,
-      trials,
+      trials: trialCount,
       seed: plan.monteCarlo.seed ?? 20260101,
     };
+    // One pool for the whole search: each candidate is a Monte Carlo, and spawning workers per
+    // candidate spends the search on startup. Only the success rate is read, so percentile series
+    // are not recorded.
+    const pool = createChancePool();
     const deps = {
       signal: ac.signal,
       evaluate: (inp: SimulationInput) =>
-        runChanceOfSuccess(inp, inp.plan.monteCarlo ?? mc, { signal: ac.signal }),
+        pool.run(inp, inp.plan.monteCarlo ?? mc, {
+          signal: ac.signal,
+          metrics: [],
+          keepTrials: false,
+          onProgress: (done, total) =>
+            setState((s) =>
+              s.status === "running" ? { ...s, trialsDone: done, trialsTotal: total } : s,
+            ),
+        }),
       onProgress: (n: unknown) =>
-        setState((s) => ({ ...s, evals: typeof n === "number" ? n : s.evals + 1 })),
+        setState((s) => {
+          if (s.status !== "running") return s;
+          const evals = typeof n === "number" ? n : s.evals + 1;
+          if (evals === s.evals) return s;
+          return { ...s, evals, trialsDone: 0, trialsTotal: 0 };
+        }),
     };
     try {
       const r =
@@ -297,10 +328,18 @@ function GoalSeekPanel({
                 { flowId, targetSuccessRate: target, monteCarlo: mc },
                 deps,
               );
-      setState({ status: "done", result: r, evals: r.evaluations.length });
+      setState({
+        status: "done",
+        result: r,
+        evals: r.evaluations.length,
+        trialsDone: 0,
+        trialsTotal: 0,
+      });
     } catch (e) {
-      if (ac.signal.aborted) setState({ status: "idle", evals: 0 });
-      else setState({ status: "error", error: e, evals: 0 });
+      if (ac.signal.aborted) setState(idle);
+      else setState({ status: "error", error: e, evals: 0, trialsDone: 0, trialsTotal: 0 });
+    } finally {
+      pool.close();
     }
   };
   const r = state.result;
@@ -343,8 +382,9 @@ function GoalSeekPanel({
           aria-label="What to solve for"
           value={kind}
           onChange={(k) => {
+            abort.current?.abort();
             setKind(k);
-            setState({ status: "idle", evals: 0 });
+            setState(idle);
           }}
           options={[
             { value: "spending", label: "Max spending" },
@@ -397,24 +437,13 @@ function GoalSeekPanel({
               a year.
             </div>
           )}
-          <Field
-            label="Trials per evaluation"
-            hint="Fixed seed: every candidate sees the same markets"
-          >
-            {(id) => (
-              <Input
-                id={id}
-                type="number"
-                min={100}
-                max={2000}
-                step={100}
-                value={trials}
-                onChange={(e) =>
-                  setTrials(Math.max(100, Math.min(2000, Number(e.target.value) || 100)))
-                }
-              />
-            )}
-          </Field>
+          <GoalSeekTrialsField
+            ref={trialsField}
+            value={trials}
+            onCommit={setTrials}
+            format={f.number}
+            disabled={state.status === "running"}
+          />
         </div>
         {kind === "savings" && unsolvable.length ? (
           <p className="text-[12px] text-ink-3">
@@ -424,20 +453,28 @@ function GoalSeekPanel({
             {unsolvable.length === 1 ? "it" : "them"} here.
           </p>
         ) : null}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2">
           {state.status === "running" ? (
-            <>
-              <Button variant="secondary" onClick={() => abort.current?.abort()}>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+              <Button type="button" variant="secondary" onClick={() => abort.current?.abort()}>
                 Cancel
               </Button>
-              <span className="flex items-center gap-1.5 text-[12.5px] text-ink-2">
-                <Loader2 className="size-3.5 animate-spin" /> Searching…{" "}
-                {state.evals ? `${state.evals} evaluations` : ""}
-              </span>
-            </>
+              <GoalSeekSearchStatus
+                evals={state.evals}
+                trialsDone={state.trialsDone}
+                trialsTotal={state.trialsTotal}
+                format={f.number}
+              />
+            </div>
           ) : (
             <Button
+              type="button"
               variant="primary"
+              onMouseDown={(e) => {
+                // Blur would commit the trials field and reflow this button before mouseup,
+                // so the click would land on empty space. Commit happens inside run().
+                e.preventDefault();
+              }}
               onClick={run}
               disabled={(kind === "retirement" && !milestoneId) || (kind === "savings" && !flowId)}
             >
@@ -461,6 +498,8 @@ function GoalSeekPanel({
                   result: exampleGoalSeek(kind, cur),
                   example: true,
                   evals: 6,
+                  trialsDone: 0,
+                  trialsTotal: 0,
                 });
               }}
             />

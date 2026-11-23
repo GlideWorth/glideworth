@@ -23,6 +23,8 @@ self.onmessage = (e: MessageEvent<McRequest>) => {
             post({ id: req.id, kind: "progress", done, total });
           }
         },
+        () => false,
+        req.metrics !== undefined ? { metrics: req.metrics } : {},
       );
       const s = shard as {
         values?: Float64Array;

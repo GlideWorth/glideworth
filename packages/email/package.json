@@ -22,7 +22,7 @@
     "preview": "tsx --conditions=@glideworth/source scripts/preview.ts"
   },
   "dependencies": {
-    "nodemailer": "10.3.1"
+    "nodemailer": "10.6.0"
   },
   "devDependencies": {
     "tsx": "4.23.15"

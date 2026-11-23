@@ -50,11 +50,11 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   {
     id: "appearance",
     label: "Appearance",
-    description: "Theme, density, motion and chart preferences.",
+    description: "Theme, density, hide amounts, motion and chart preferences.",
     icon: Palette,
     group: "You",
     keywords:
-      "theme dark light density compact charts animation colour blind patterns transparency motion",
+      "theme dark light density compact charts animation colour blind patterns transparency motion privacy hide amounts mask screen share",
   },
   {
     id: "planning",

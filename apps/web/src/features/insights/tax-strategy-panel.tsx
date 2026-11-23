@@ -24,6 +24,7 @@ import { cn } from "../../lib/cn";
 import { useActivePlan, useFormat } from "../../lib/workspace";
 import { applyToPlan, saveAsBranch } from "./save-plan";
 import { rankStrategies } from "./strategy-client";
+import { PrivateText } from "../../components/ui/private-text";
 
 const OBJECTIVES: { value: StrategyObjective; label: string }[] = [
   { value: "endNetWorthReal", label: "Highest net worth at the end" },
@@ -148,7 +149,9 @@ export function TaxStrategyPanel({ input, plan }: { input: SimulationInput; plan
         ) : null}
         {cmp && base ? (
           <>
-            <p className="text-[13px] font-medium">{cmp.explanation}</p>
+            <p className="text-[13px] font-medium">
+              <PrivateText>{cmp.explanation}</PrivateText>
+            </p>
             <div className="overflow-x-auto">
               <Table>
                 <THead>
@@ -180,7 +183,7 @@ export function TaxStrategyPanel({ input, plan }: { input: SimulationInput; plan
                               ) : null}
                             </div>
                             <div className="max-w-[420px] text-[11.5px] text-ink-3">
-                              {r.description}
+                              <PrivateText>{r.description}</PrivateText>
                             </div>
                           </TD>
                           <TD numeric>

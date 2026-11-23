@@ -5,6 +5,7 @@
 import { X } from "lucide-react";
 import { create } from "zustand";
 import { cn } from "../../lib/cn";
+import { privateChildren } from "./private-text";
 
 export interface ToastInput {
   title: string;
@@ -63,9 +64,9 @@ export function Toaster() {
             )}
           />
           <div className="min-w-0 flex-1">
-            <div className="text-[13px] font-medium text-ink">{t.title}</div>
+            <div className="text-[13px] font-medium text-ink">{privateChildren(t.title)}</div>
             {t.description ? (
-              <div className="mt-0.5 text-[12px] text-ink-2">{t.description}</div>
+              <div className="mt-0.5 text-[12px] text-ink-2">{privateChildren(t.description)}</div>
             ) : null}
           </div>
           {t.action ? (

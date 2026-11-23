@@ -461,6 +461,7 @@ export function SetupPage() {
                             aria-label={`${acc.name || "Account"} balance`}
                             locale={a.locale}
                             prefix={sym}
+                            sensitive
                             decimals={0}
                             value={acc.balance}
                             onValueChange={(v) =>
@@ -570,6 +571,7 @@ export function SetupPage() {
                       id={id}
                       locale={a.locale}
                       prefix={sym}
+                      sensitive
                       decimals={0}
                       value={a.salary.me}
                       onValueChange={(v) => update({ salary: { ...a.salary, me: v ?? 0 } })}
@@ -583,6 +585,7 @@ export function SetupPage() {
                         id={id}
                         locale={a.locale}
                         prefix={sym}
+                        sensitive
                         decimals={0}
                         value={a.salary.partner}
                         onValueChange={(v) => update({ salary: { ...a.salary, partner: v ?? 0 } })}
@@ -623,6 +626,7 @@ export function SetupPage() {
                       id={id}
                       locale={a.locale}
                       prefix={sym}
+                      sensitive
                       decimals={0}
                       value={a.spending.essential}
                       onValueChange={(v) =>
@@ -640,6 +644,7 @@ export function SetupPage() {
                       id={id}
                       locale={a.locale}
                       prefix={sym}
+                      sensitive
                       decimals={0}
                       value={a.spending.discretionary}
                       onValueChange={(v) =>

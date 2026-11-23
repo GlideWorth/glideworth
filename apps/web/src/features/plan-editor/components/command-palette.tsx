@@ -41,6 +41,7 @@ import {
   REAL_ASSET_TYPES_LABEL,
 } from "../state/labels";
 import { usePalette } from "./palette-store";
+import { PrivateText } from "../../../components/ui/private-text";
 
 export { openPalette, usePalette } from "./palette-store";
 
@@ -424,7 +425,9 @@ export function CommandPalette() {
                     <c.icon
                       className={cn("size-3.5 shrink-0", i === sel ? "text-accent" : "text-ink-3")}
                     />
-                    <span className="min-w-0 flex-1 truncate">{c.label}</span>
+                    <span className="min-w-0 flex-1 truncate">
+                      <PrivateText>{c.label}</PrivateText>
+                    </span>
                     {c.hint ? (
                       <span
                         className={cn(
@@ -432,7 +435,7 @@ export function CommandPalette() {
                           i === sel ? "text-ink-2" : "text-ink-3",
                         )}
                       >
-                        {c.hint}
+                        <PrivateText>{c.hint}</PrivateText>
                       </span>
                     ) : null}
                     {i === sel ? <CornerDownLeft className="size-3.5 text-ink-3" /> : null}

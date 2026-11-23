@@ -37,6 +37,7 @@ import { exampleDiff } from "../results/fixtures";
 import { useAnalysis } from "../results/use-analysis";
 import { attributeDifference, type CompareMetrics, compareMetrics } from "./compare-model";
 import { type SessionScenario, useScenarioStore } from "./scenario-store";
+import { PrivateText } from "../../components/ui/private-text";
 
 interface Candidate {
   id: string;
@@ -447,7 +448,7 @@ export function CompareView() {
                               >
                                 {ch.kind === "removed" ? "−" : ch.kind === "added" ? "+" : "~"}
                               </span>
-                              {ch.description}
+                              <PrivateText>{ch.description}</PrivateText>
                             </li>
                           ))}
                         </ul>
@@ -508,7 +509,9 @@ export function CompareView() {
                             </span>
                           </div>
                           {exp.value ? (
-                            <p className="mb-2 text-[12.5px] text-ink-2">{exp.value.headline}</p>
+                            <p className="mb-2 text-[12.5px] text-ink-2">
+                              <PrivateText>{exp.value.headline}</PrivateText>
+                            </p>
                           ) : null}
                           <div className="flex flex-col gap-1">
                             {a.parts.map((p) => (

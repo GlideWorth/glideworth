@@ -33,6 +33,7 @@ import { countryLabel } from "../../lib/countries";
 import { periodShortLabel } from "../../lib/period";
 import { useViewFormat as useFormat } from "../results/format-context";
 import { countrySlot } from "./model";
+import { PrivateText } from "../../components/ui/private-text";
 
 type Row = { country: string; basis: TaxBasisKind; amount: number };
 
@@ -399,7 +400,9 @@ export function ItemTaxationPanel({
         {e && "error" in e ? <p className="text-[12.5px] text-negative">{e.error}</p> : null}
         {e && "value" in e && e.value ? (
           <>
-            <p className="text-[13px]">{e.value.summary}</p>
+            <p className="text-[13px]">
+              <PrivateText>{e.value.summary}</PrivateText>
+            </p>
             <div className="text-[12px] text-ink-2">
               In {countryLabel(e.value.country)}, held in {e.value.currency}. You live in{" "}
               {countryLabel(e.value.residence)}.

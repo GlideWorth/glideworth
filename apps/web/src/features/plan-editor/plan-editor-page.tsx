@@ -56,6 +56,7 @@ import {
 import { timeContext } from "./state/resolve";
 import { collectIssues } from "./state/validation";
 import { WhatIfPanel } from "./whatif/what-if-panel";
+import { PrivateText } from "../../components/ui/private-text";
 
 const NAV = SECTIONS.filter((s) => s.id !== "timeline");
 
@@ -461,7 +462,7 @@ function ValidationSummary({
               className="text-left underline decoration-dotted underline-offset-2 hover:text-accent"
               onClick={i.go}
             >
-              {i.where}: {i.message}
+              {i.where}: <PrivateText>{i.message}</PrivateText>
             </button>
           </li>
         ))}

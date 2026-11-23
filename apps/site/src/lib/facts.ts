@@ -71,8 +71,8 @@ export const facts = {
   mcpWriteTools: 19,
 
   // From docs/STATUS.md and docs/PARITY.md, checked 2026-11-23 (not used in page text).
-  featuresChecked: 215,
-  featuresImplemented: 172,
+  featuresChecked: 216,
+  featuresImplemented: 173,
 } as const;
 
 /**

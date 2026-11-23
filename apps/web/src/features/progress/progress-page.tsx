@@ -21,6 +21,7 @@ import { Card, CardBody, CardHeader } from "../../components/ui/card";
 import { confirmAction } from "../../components/ui/confirm-dialog";
 import { Dialog, DialogContent } from "../../components/ui/dialog";
 import { Field, Input } from "../../components/ui/input";
+import { CurrencyInput } from "../../components/ui/number-input";
 import { Segmented } from "../../components/ui/segmented";
 import { Select } from "../../components/ui/select";
 import { Stat } from "../../components/ui/stat";
@@ -241,24 +242,20 @@ function SnapshotDialog({
           <div className="grid grid-cols-2 gap-3">
             <Field label="Assets">
               {(id) => (
-                <Input
+                <CurrencyInput
                   id={id}
-                  type="number"
-                  step="any"
                   value={d.assets}
-                  onChange={(e) => setD({ ...d, assets: Number(e.target.value) })}
+                  onValueChange={(v) => setD({ ...d, assets: v ?? 0 })}
                 />
               )}
             </Field>
             <Field label="Liabilities">
               {(id) => (
-                <Input
+                <CurrencyInput
                   id={id}
-                  type="number"
-                  step="any"
                   min={0}
                   value={d.liabilities}
-                  onChange={(e) => setD({ ...d, liabilities: Number(e.target.value) })}
+                  onValueChange={(v) => setD({ ...d, liabilities: v ?? 0 })}
                 />
               )}
             </Field>

@@ -91,6 +91,15 @@ export function AppearanceSection() {
           />
         </SettingRow>
       </SettingsGroup>
+      <SettingsGroup title="Privacy">
+        <Toggle
+          label="Hide amounts"
+          where="device"
+          hint="For sharing your screen, streaming or screenshots: every money amount shows as dots, and charts keep their shape without axis values. Percentages, ages, years and the chance of success stay visible. Fields show the real figure while you edit them. Exports and downloads are not hidden; printing is. Press ⇧H anywhere."
+          checked={ui.hideAmounts}
+          onChange={ui.setHideAmounts}
+        />
+      </SettingsGroup>
       <SettingsGroup title="Motion and transparency">
         <Toggle
           label="Reduce motion"

@@ -20,7 +20,7 @@ not a line-by-line audit of every edge case, and tax tables are for stated tax y
 
 ## Summary
 
-215 features checked: **172 Implemented, 35 Partial, 5 Missing, 3 Removed** (moving country, departure tax and OFX/QIF import, removed on 2026-11-19 for lack of evidence of demand). A few features on the list could not be confirmed from public documentation (marked UNCONFIRMED); they are counted only where Glideworth has a row for them.
+216 features checked: **173 Implemented, 35 Partial, 5 Missing, 3 Removed** (moving country, departure tax and OFX/QIF import, removed on 2026-11-19 for lack of evidence of demand). A few features on the list could not be confirmed from public documentation (marked UNCONFIRMED); they are counted only where Glideworth has a row for them.
 
 ## 1. Plan modelling
 
@@ -255,6 +255,7 @@ not a line-by-line audit of every edge case, and tax tables are for stated tax y
 | Shareable read-only links                                                                             | Partial     | `apps/api/src/services/shares.ts`; API `/plans/{id}/share-links`, public `GET /shared/{token}`; MCP `create_share_link` | expiring, revocable, results-only snapshot with full / percent / hidden amounts, rate limited; the `/share/<token>` page is the web's. |
 | Plan setup wizard, sandbox persona                                                                    | Implemented | `apps/web/src/features/onboarding`, `core/src/samples`                                                                  |                                                                                                                                        |
 | Dark theme, command palette, keyboard shortcuts                                                       | Implemented | `apps/web/src/features/settings/appearance-section.tsx`, `components/command`                                           |                                                                                                                                        |
+| Hide amounts (privacy mode for screen sharing)                                                        | Implemented | `apps/web/src/lib/format.ts`, `stores/ui.ts`, `components/ui/private-text.tsx`                                          | per device (eye, ⇧H, palette, Settings): "$•••••" at fixed width, blank money axes, fields reveal on focus; exports not masked         |
 | PWA                                                                                                   | Implemented | `apps/web/src/lib/pwa.ts`, `apps/web/public/sw.js`                                                                      |                                                                                                                                        |
 
 ## 3. Platform

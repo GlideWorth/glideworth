@@ -3,14 +3,15 @@ title: Reports, exports and settings
 description: Print a plan report, export tables and backups, and what each section of Settings controls, from locale and planning defaults to API keys and webhooks.
 section: Planning
 order: 9
-lastChecked: 2026-11-16
+lastChecked: 2026-11-23
 ---
 
 ## Reports
 
 Open **Report** in the sidebar for a printable report of a plan: key figures, milestones, assumptions, current
 finances, a year-by-year table and standing caveats. Printing uses the browser's print dialog, so a PDF is a
-"print to PDF". The report does not produce a PDF on the server.
+"print to PDF". The report does not produce a PDF on the server. If amounts are hidden (below), the printout
+hides them too; the report says so above the print button.
 
 ## Exports
 
@@ -21,6 +22,28 @@ Under **Import &amp; export**, the **Backup &amp; export** tab offers:
   account-balances. Plots cannot be exported as tables; four tables are available.
 - A progress history as CSV.
 
+Exports always contain the real figures, even while amounts are hidden: a download is something you asked for.
+
+## Hiding amounts
+
+Before you share your screen, stream or take a screenshot, press **⇧H** (Shift and H) anywhere outside a text
+field, click the eye in the top bar, run **Hide amounts** from the command palette, or turn on **Hide amounts**
+in Settings → Appearance. While it is on:
+
+- every money amount shows as the currency symbol and five dots ("$•••••"), whatever its size, in tiles, tables,
+  the year detail, the plan editor, insights, notifications and the command palette;
+- charts keep their shape and tooltips, but money axes have no values;
+- a money field shows its figure while you edit it, then hides it again;
+- percentages, rates, ages, years, dates, counts and the chance of success stay visible;
+- screen readers say "amount hidden" instead of reading the dots;
+- an **Amounts hidden** badge stays in the top bar.
+
+The setting belongs to this device (and the demo keeps its own). Shared read-only links have their own amounts
+setting (full, percent or hidden), chosen when you create the link.
+
+What it does not hide: the shape of a chart (that net worth doubles, or that spending falls at retirement), and
+colours that mark a figure as a gain or a loss.
+
 ## Settings
 
 Open **Settings**. Its sections, by group:
@@ -28,7 +51,7 @@ Open **Settings**. Its sections, by group:
 | Group | Section | What it controls |
 | --- | --- | --- |
 | You | Profile &amp; locale | Currency, number and date formats, tax year. |
-| You | Appearance | Theme, density, motion and chart preferences. |
+| You | Appearance | Theme, density, hide amounts, motion and chart preferences. |
 | Planning | Planning defaults | New-plan assumptions, spending and tax definitions, simulation and success bands. |
 | Planning | Check-ins | Scheduled plan health checks and notification thresholds. |
 | People | Share links | Links to a plan's results. |

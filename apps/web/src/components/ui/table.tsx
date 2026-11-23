@@ -1,5 +1,6 @@
 import type { ComponentProps } from "react";
 import { cn } from "../../lib/cn";
+import { privateChildren } from "./private-text";
 
 /**
  * A box that scrolls. A scrollable box is a keyboard stop (otherwise a keyboard user cannot reach the
@@ -56,8 +57,15 @@ export function TH({ className, numeric, ...props }: ComponentProps<"th"> & { nu
     />
   );
 }
-export function TD({ className, numeric, ...props }: ComponentProps<"td"> & { numeric?: boolean }) {
+export function TD({
+  className,
+  numeric,
+  children,
+  ...props
+}: ComponentProps<"td"> & { numeric?: boolean }) {
   return (
-    <td className={cn("px-3 py-1.5 text-ink", numeric && "num text-right", className)} {...props} />
+    <td className={cn("px-3 py-1.5 text-ink", numeric && "num text-right", className)} {...props}>
+      {privateChildren(children)}
+    </td>
   );
 }

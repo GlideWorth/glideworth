@@ -80,6 +80,7 @@ import { scaleExpenses, scaleFlows, type Variant } from "./plan-edits";
 import { PlanChangePreview, SOLVER_PROJECTION_NOTE } from "./plan-preview";
 import { SurvivorPanel, TemplateGallery } from "./scenario-panels";
 import { TaxStrategyPanel } from "./tax-strategy-panel";
+import { PrivateText } from "../../components/ui/private-text";
 
 // ---------------------------------------------------------------------------------------------
 // Why did this fail?
@@ -114,14 +115,22 @@ function WhyCard({
       <CardBody className="flex flex-col gap-3">
         {explanation ? (
           <>
-            <p className="text-[14px] font-medium leading-snug">{explanation.headline}</p>
+            <p className="text-[14px] font-medium leading-snug">
+              <PrivateText>{explanation.headline}</PrivateText>
+            </p>
             <ul className="flex flex-col gap-2">
               {explanation.findings.map((x) => (
                 <li key={x.code + x.title} className="flex gap-2 text-[13px]">
                   <SeverityIcon s={x.severity} />
                   <div>
-                    <div className="font-medium">{x.title}</div>
-                    {x.message ? <div className="text-ink-2">{x.message}</div> : null}
+                    <div className="font-medium">
+                      <PrivateText>{x.title}</PrivateText>
+                    </div>
+                    {x.message ? (
+                      <div className="text-ink-2">
+                        <PrivateText>{x.message}</PrivateText>
+                      </div>
+                    ) : null}
                     {x.periodIndex !== null && result.periods[x.periodIndex] ? (
                       <div className="text-[11.5px] text-ink-3">
                         In {result.periods[x.periodIndex]!.year}
@@ -167,7 +176,7 @@ function WhyCard({
                       ) : (
                         <Info className="mt-0.5 size-3.5 shrink-0 text-ink-3" />
                       )}
-                      {l.text}
+                      <PrivateText>{l.text}</PrivateText>
                     </li>
                   ))}
                 </ul>
@@ -520,7 +529,9 @@ function GoalSeekPanel({
               ) : null}
               <Badge>{r.evaluations.length} evaluations</Badge>
             </div>
-            <p className="text-[13px] text-ink-2">{r.explanation}</p>
+            <p className="text-[13px] text-ink-2">
+              <PrivateText>{r.explanation}</PrivateText>
+            </p>
             {r.sensitivity.length ? (
               <div className="flex flex-wrap gap-2">
                 {r.sensitivity.map((s) => (
@@ -685,7 +696,7 @@ function GuardrailsPanel({ input, plan }: { input: SimulationInput; plan: Plan }
                 </div>
                 <div className="text-[12px] text-ink-2">
                   Chance of success at that level: {f.percent(v.current.successRate, 0)}.{" "}
-                  {v.explanation}
+                  <PrivateText>{v.explanation}</PrivateText>
                 </div>
               </div>
             </div>
@@ -836,11 +847,16 @@ function AuditPanel({ input, result }: { input: SimulationInput; result: Project
               <div className="flex gap-2">
                 <SeverityIcon s={x.severity} />
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium">{x.title}</div>
-                  <div className="text-[12.5px] text-ink-2">{x.message}</div>
+                  <div className="font-medium">
+                    <PrivateText>{x.title}</PrivateText>
+                  </div>
+                  <div className="text-[12.5px] text-ink-2">
+                    <PrivateText>{x.message}</PrivateText>
+                  </div>
                   {x.suggestion ? (
                     <div className="mt-0.5 text-[12.5px]">
-                      <span className="text-ink-3">Example change:</span> {x.suggestion}
+                      <span className="text-ink-3">Example change:</span>{" "}
+                      <PrivateText>{x.suggestion}</PrivateText>
                     </div>
                   ) : null}
                 </div>
@@ -1138,7 +1154,9 @@ function ScenarioGallery({
                 )}
               >
                 <div className="font-semibold">{s.title}</div>
-                <div className="text-[12px] text-ink-2">{s.description}</div>
+                <div className="text-[12px] text-ink-2">
+                  <PrivateText>{s.description}</PrivateText>
+                </div>
                 {ok ? (
                   <div className="mt-auto flex flex-wrap gap-x-3 text-[12px]">
                     <span

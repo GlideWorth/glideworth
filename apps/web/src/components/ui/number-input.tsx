@@ -2,11 +2,21 @@
  * Locale-aware numeric inputs. Values are plain numbers (major units / decimal fractions);
  * display uses Intl for the active locale and currency. Editing shows the raw number, blur
  * re-formats. No hard-coded currency symbols.
+ *
+ * Money inputs (`CurrencyInput`, `AmountInput`) honour "Hide amounts": while amounts are hidden the
+ * field shows the mask until it is focused, shows the real value while it is being edited, and
+ * masks again on blur. Screen readers hear "amount hidden" instead of the dots.
  */
 import type { Amount, ValueBasis } from "@glideworth/core";
-import { type ComponentProps, useEffect, useState } from "react";
+import { type ComponentProps, useEffect, useId, useState } from "react";
 import { cn } from "../../lib/cn";
-import { currencySymbol, formatNumber, parseLocaleNumber } from "../../lib/format";
+import {
+  AMOUNT_MASK,
+  AMOUNT_MASK_SPOKEN,
+  currencySymbol,
+  formatNumber,
+  parseLocaleNumber,
+} from "../../lib/format";
 import { useFormat } from "../../lib/workspace";
 import { inputBase } from "./input";
 
@@ -17,6 +27,8 @@ type BaseProps = Omit<ComponentProps<"input">, "value" | "onChange" | "prefix"> 
   prefix?: string;
   suffix?: string;
   locale?: string;
+  /** A money amount: masked while amounts are hidden, except while the field has focus. */
+  sensitive?: boolean;
 };
 
 export function NumberInput({
@@ -26,14 +38,20 @@ export function NumberInput({
   prefix,
   suffix,
   locale,
+  sensitive = false,
   className,
   ...rest
 }: BaseProps) {
   const fmt = useFormat();
+  const masked = sensitive && fmt.hidden;
   const loc = locale ?? fmt.locale;
   const display = (v: number | null) => (v === null ? "" : formatNumber(v, loc, decimals));
   const [text, setText] = useState(display(value));
   const [focused, setFocused] = useState(false);
+  const maskNoteId = useId();
+  const showMask = masked && !focused && value !== null;
+  const describedBy =
+    [rest["aria-describedby"], showMask ? maskNoteId : null].filter(Boolean).join(" ") || undefined;
   useEffect(() => {
     if (!focused) setText(display(value));
     // oxlint-disable-next-line react-hooks/exhaustive-deps -- re-sync display only when value/focus/locale change
@@ -50,7 +68,7 @@ export function NumberInput({
       <input
         inputMode="decimal"
         className="num min-w-0 flex-1 self-stretch bg-transparent text-right outline-none"
-        value={text}
+        value={showMask ? AMOUNT_MASK : text}
         onFocus={() => setFocused(true)}
         onBlur={() => {
           setFocused(false);
@@ -64,7 +82,13 @@ export function NumberInput({
           if (n !== null) onValueChange(n);
         }}
         {...rest}
+        aria-describedby={describedBy}
       />
+      {showMask ? (
+        <span id={maskNoteId} className="sr-only">
+          {AMOUNT_MASK_SPOKEN}
+        </span>
+      ) : null}
       {suffix ? <span className="text-ink-3 text-[12px] select-none">{suffix}</span> : null}
     </div>
   );
@@ -79,6 +103,7 @@ export function CurrencyInput({
   return (
     <NumberInput
       decimals={2}
+      sensitive
       prefix={currencySymbol({ locale: fmt.locale, currency: currency ?? fmt.currency })}
       {...props}
     />

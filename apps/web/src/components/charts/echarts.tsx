@@ -6,7 +6,9 @@
 import type { ECharts, EChartsCoreOption } from "echarts/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useResolvedTheme } from "../../lib/theme";
+import { AMOUNT_MASK } from "../../lib/format";
 import { usePrefs } from "../../stores/prefs";
+import { useAmountsHidden } from "../../stores/ui";
 import { prefersReducedMotion, useChartPrefs } from "./chart-prefs";
 import { onPrintLayout } from "./print";
 import { type ChartTokens, readChartTokens } from "./tokens";
@@ -58,15 +60,16 @@ export function Chart({
   const patterns = useChartPrefs((s) => s.patterns);
   const animation = usePrefs((s) => s.chartAnimation);
   const smooth = usePrefs((s) => s.smoothCurves);
-  const option = useMemo(
-    () =>
-      applyChartPrefs(build(readChartTokens()), {
-        animate: animation && !prefersReducedMotion(),
-        smooth,
-      }),
-    // oxlint-disable-next-line react-hooks/exhaustive-deps -- theme/patterns/prefs change must re-read tokens
-    [build, theme, patterns, animation, smooth],
-  );
+  // Hide amounts: rebuild so every money formatter in the option masks, then blank masked axes.
+  const hidden = useAmountsHidden();
+  const option = useMemo(() => {
+    const o = applyChartPrefs(build(readChartTokens()), {
+      animate: animation && !prefersReducedMotion(),
+      smooth,
+    });
+    return hidden ? hideChartAmounts(o, ariaLabel) : o;
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- theme/patterns/prefs/hidden change must re-read tokens and re-format
+  }, [build, theme, patterns, animation, smooth, hidden, ariaLabel]);
 
   useEffect(() => {
     let disposed = false;
@@ -133,6 +136,54 @@ export function Chart({
       style={{ height, width: "100%" }}
     />
   );
+}
+
+const AXES = ["xAxis", "yAxis", "radiusAxis", "angleAxis", "singleAxis"] as const;
+type Formatter = (...args: unknown[]) => unknown;
+
+/**
+ * "Hide amounts" on top of a chart's own option. Money formatters already return the mask, so the
+ * chart keeps its shape and its tooltips read "$•••••"; this step:
+ *  - blanks axis labels that would be a column of identical masks (the gridlines stay);
+ *  - drops raw-value templates ("{c}", "{@value}") from series labels, which bypass the formatter;
+ *  - replaces ECharts' generated screen-reader description, which lists the data values.
+ */
+export function hideChartAmounts(option: ChartOption, ariaLabel: string): ChartOption {
+  const o = { ...(option as Record<string, unknown>) };
+  const blankMasked = (axis: unknown) => {
+    const a = axis as Record<string, unknown> | null;
+    const label = a?.axisLabel as Record<string, unknown> | undefined;
+    if (!a || !label || typeof label.formatter !== "function") return axis;
+    const f = label.formatter as Formatter;
+    return {
+      ...a,
+      axisLabel: {
+        ...label,
+        formatter: (...args: unknown[]) => {
+          const r = f(...args);
+          return typeof r === "string" && r.includes(AMOUNT_MASK) ? "" : r;
+        },
+      },
+    };
+  };
+  for (const k of AXES) {
+    const v = o[k];
+    if (v) o[k] = Array.isArray(v) ? v.map(blankMasked) : blankMasked(v);
+  }
+  if (Array.isArray(o.series))
+    o.series = (o.series as Record<string, unknown>[]).map((s) => {
+      const label = s?.label as Record<string, unknown> | undefined;
+      return typeof label?.formatter === "string" && /\{(?:c|@[^}]*)\}/.test(label.formatter)
+        ? { ...s, label: { ...label, formatter: "{b}" } }
+        : s;
+    });
+  const aria = (o.aria as Record<string, unknown> | undefined) ?? {};
+  o.aria = {
+    ...aria,
+    enabled: true,
+    label: { enabled: true, description: `${ariaLabel}. Amounts hidden.` },
+  };
+  return o as ChartOption;
 }
 
 /**

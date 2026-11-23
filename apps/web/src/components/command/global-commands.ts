@@ -11,6 +11,8 @@ import {
   Compass,
   Dices,
   Download,
+  Eye,
+  EyeOff,
   FileUp,
   Keyboard,
   type LucideIcon,
@@ -24,7 +26,14 @@ import { useActivePlan } from "../../lib/workspace";
 import { usePrefs } from "../../stores/prefs";
 import { useUi } from "../../stores/ui";
 import { NAV } from "../layout/nav";
-import { downloadBackup, recordSnapshot, runChance, toggleBasis, toggleTheme } from "./actions";
+import {
+  downloadBackup,
+  recordSnapshot,
+  runChance,
+  toggleBasis,
+  toggleHideAmounts,
+  toggleTheme,
+} from "./actions";
 
 export interface PaletteCommand {
   id: string;
@@ -44,6 +53,7 @@ export function useGlobalCommands(): PaletteCommand[] {
   const qc = useQueryClient();
   const { plan, workspace } = useActivePlan();
   const basis = useUi((s) => s.basis);
+  const hideAmounts = useUi((s) => s.hideAmounts);
   const setShortcuts = useUi((s) => s.setShortcutsOpen);
   const mode = useMode();
 
@@ -72,6 +82,15 @@ export function useGlobalCommands(): PaletteCommand[] {
         icon: CircleDollarSign,
         keywords: "inflation real nominal basis toggle money mode",
         run: toggleBasis,
+      },
+      {
+        id: "g:hide-amounts",
+        group: "Actions",
+        label: hideAmounts ? "Show amounts" : "Hide amounts",
+        hint: "⇧H",
+        icon: hideAmounts ? Eye : EyeOff,
+        keywords: "privacy private mask blur screen share sharing stream screenshot balances",
+        run: toggleHideAmounts,
       },
       {
         id: "g:theme",
@@ -174,5 +193,5 @@ export function useGlobalCommands(): PaletteCommand[] {
         run: () => void navigate({ to: "/settings/$section", params: { section: s.id } }),
       });
     return out;
-  }, [navigate, qc, plan, workspace, basis, setShortcuts, mode]);
+  }, [navigate, qc, plan, workspace, basis, hideAmounts, setShortcuts, mode]);
 }

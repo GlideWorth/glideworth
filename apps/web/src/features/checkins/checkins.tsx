@@ -34,6 +34,7 @@ import {
 import { cn } from "../../lib/cn";
 import { formatMoney, relativeTime } from "../../lib/format";
 import { useFormat, useWorkspace } from "../../lib/workspace";
+import { PrivateText } from "../../components/ui/private-text";
 
 const online = (ws: ReturnType<typeof useWorkspace>["data"]) => ws?.source === "api";
 const missingRoute = (e: unknown) =>
@@ -264,7 +265,9 @@ function ChangeRow({ c }: { c: CheckInChange }) {
   return (
     <li className="flex gap-2 text-[13px]">
       <SeverityIcon severity={c.severity} className="mt-0.5 shrink-0" />
-      <span>{c.title}</span>
+      <span>
+        <PrivateText>{c.title}</PrivateText>
+      </span>
     </li>
   );
 }

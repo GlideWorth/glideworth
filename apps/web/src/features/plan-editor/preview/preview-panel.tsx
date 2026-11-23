@@ -17,6 +17,7 @@ import { useUi } from "../../../stores/ui";
 import { DismissDatasetNotice, isDatasetReplaced } from "../../results/dataset-notice";
 import { editPlan } from "../state/doc-store";
 import { type KeyMetrics, keyMetrics, usePreview } from "./use-live-projection";
+import { PrivateText } from "../../../components/ui/private-text";
 
 function Delta({
   now,
@@ -328,7 +329,7 @@ export function PreviewPanel({ plan, className }: { plan: Plan | undefined; clas
               {warnings.slice(0, 30).map((w, i) => (
                 // oxlint-disable-next-line react/no-array-index-key -- warnings have no ids
                 <li key={i} className="py-0.5">
-                  {w.message}
+                  <PrivateText>{w.message}</PrivateText>
                   {plan && isDatasetReplaced(w) ? (
                     <DismissDatasetNotice
                       plan={plan}

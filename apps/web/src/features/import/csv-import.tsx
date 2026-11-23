@@ -35,6 +35,7 @@ import { FileDrop, formatBytes, type PickedFile } from "./file-drop";
 import { CATEGORY_META } from "./import-model";
 import { persistWorkspace } from "./persist";
 import { useImportTarget } from "./starter";
+import { useAmountsHidden } from "../../stores/ui";
 
 const KINDS: { value: CsvKind; label: string; description: string }[] = [
   {
@@ -724,6 +725,7 @@ function Preview({
   excluded: string[];
   setExcluded: (c: string[]) => void;
 }) {
+  useAmountsHidden(); // re-render when amounts are hidden or shown: `money` masks then
   const money = (v: number) => formatMoney(v, { locale, currency });
   const nf = new Intl.NumberFormat(locale);
   if (o.analysis.missing.length)

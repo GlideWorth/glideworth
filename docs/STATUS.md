@@ -18,7 +18,7 @@ Where Glideworth stands, how to run it, and what not to trust yet. Feature-by-fe
 | MCP                                                       | 67 tools (49 read/compute, 18 write behind a switch), resources, prompts; stdio and HTTP.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | Web (`apps/web`)                                          | React app: onboarding, plan editor, results, chance of success, cash flow, taxes, estate, compare, insights, progress, import, reports, settings, PWA; cross-border: citizenships and US green card per person, item countries, tax by country and basis, "how this is taxed and why".                                                                                                                                                                                                                                                                                                                                             |
 
-PARITY.md counts: 215 features checked, 172 implemented, 35 partial, 5 missing, 3 removed.
+PARITY.md counts: 216 features checked, 173 implemented, 35 partial, 5 missing, 3 removed.
 
 ### Added on 2026-11-23
 

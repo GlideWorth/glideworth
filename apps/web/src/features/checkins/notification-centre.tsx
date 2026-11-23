@@ -15,6 +15,7 @@ import { ApiRequestError, loadApi } from "../../lib/api-lazy";
 import { cn } from "../../lib/cn";
 import { relativeTime } from "../../lib/format";
 import { useFormat, useWorkspace } from "../../lib/workspace";
+import { PrivateText } from "../../components/ui/private-text";
 
 function SeverityIcon({ severity, className }: { severity: string; className?: string }) {
   return severity === "critical" ? (
@@ -118,11 +119,13 @@ export function NotificationCentre() {
                       <SeverityIcon severity={n.severity} className="mt-0.5 shrink-0" />
                       <span className="min-w-0 flex-1">
                         <span className={cn("block text-[13px]", !n.read && "font-semibold")}>
-                          {n.title}
+                          <PrivateText>{n.title}</PrivateText>
                           {!n.read ? <span className="sr-only"> (unread)</span> : null}
                         </span>
                         {typeof n.body === "string" && n.body ? (
-                          <span className="block text-[12px] text-ink-2">{n.body}</span>
+                          <span className="block text-[12px] text-ink-2">
+                            <PrivateText>{n.body}</PrivateText>
+                          </span>
                         ) : null}
                         <span className="block text-[11px] text-ink-3">
                           {relativeTime(n.createdAt, f.locale)}

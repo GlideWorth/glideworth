@@ -21,6 +21,7 @@ import { attempt, bridge, diffFormat } from "../results/core-bridge";
 import { outcomeOf, runVariant } from "./insights-model";
 import type { Variant } from "./plan-edits";
 import { applyToPlan, saveAsBranch } from "./save-plan";
+import { PrivateText } from "../../components/ui/private-text";
 
 export function Delta({
   label,
@@ -155,7 +156,10 @@ export function PlanChangePreview({
       <ul className="flex flex-col gap-0.5 text-[12.5px]">
         {(diff?.length ? diff.map((c) => c.description) : variant.changes).map((c) => (
           <li key={c} className="flex gap-1.5">
-            <span className="text-accent">•</span> {c}
+            <span className="text-accent" aria-hidden="true">
+              •
+            </span>{" "}
+            <PrivateText>{c}</PrivateText>
           </li>
         ))}
       </ul>

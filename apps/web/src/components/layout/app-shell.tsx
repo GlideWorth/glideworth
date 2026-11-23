@@ -9,6 +9,7 @@ import {
   ChartArea,
   Ellipsis,
   Eye,
+  EyeOff,
   Keyboard,
   LayoutDashboard,
   ListTree,
@@ -56,6 +57,7 @@ import { NextSteps } from "./next-steps";
 import { PlanSwitcher } from "./plan-switcher";
 import { ShortcutsOverlay, useGlobalShortcuts } from "./shortcuts";
 import { Tour } from "./tour";
+import { toggleHideAmounts } from "../command/actions";
 
 // ------------------------------------------------------------------------------------ navigation
 
@@ -408,6 +410,49 @@ function BasisToggle({ compact }: { compact?: boolean }) {
   );
 }
 
+/**
+ * Hide amounts (privacy mode for screen sharing). Off: a plain eye icon. On: an ochre "Amounts
+ * hidden" pill that stays in the top bar on every page, so nobody forgets it is on.
+ */
+function HideAmountsButton() {
+  const hidden = useUi((s) => s.hideAmounts);
+  return (
+    <Tooltip
+      content={
+        hidden
+          ? "Amounts are hidden on this device. Click to show them · ⇧H"
+          : "Hide amounts, for sharing your screen · ⇧H"
+      }
+    >
+      <button
+        type="button"
+        data-tour="hide-amounts"
+        aria-pressed={hidden}
+        aria-keyshortcuts="Shift+H"
+        onClick={toggleHideAmounts}
+        className={cn(
+          "flex h-8 shrink-0 items-center justify-center gap-1.5 pointer-coarse:h-11 pointer-coarse:min-w-11",
+          hidden
+            ? "rounded-full bg-ochre-soft px-2.5 text-[12px] font-semibold text-ochre ring-1 ring-ochre/40 ring-inset hover:brightness-95"
+            : "w-8 rounded-md text-ink-2 hover:bg-surface-2 hover:text-ink",
+        )}
+      >
+        {hidden ? (
+          <>
+            <EyeOff className="size-4" aria-hidden="true" />
+            <span className="max-sm:sr-only">Amounts hidden</span>
+          </>
+        ) : (
+          <>
+            <Eye className="size-4" aria-hidden="true" />
+            <span className="sr-only">Hide amounts</span>
+          </>
+        )}
+      </button>
+    </Tooltip>
+  );
+}
+
 function ThemeButton() {
   const theme = useUi((s) => s.theme);
   const setTheme = useUi((s) => s.setTheme);
@@ -472,6 +517,7 @@ function TopBar() {
           <span className="hidden flex-1 text-left lg:inline">Search or run…</span>
           <Kbd className="hidden lg:inline-flex">{modKey}K</Kbd>
         </button>
+        <HideAmountsButton />
         <BasisToggle compact={!md} />
         {md ? (
           <>

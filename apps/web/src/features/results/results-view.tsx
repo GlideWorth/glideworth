@@ -23,6 +23,7 @@ import { ProjectionChart, type ZoomRange } from "./projection-chart";
 import { useAnalysis } from "./use-analysis";
 import { YearDetailSheet } from "./year-detail";
 import { YearTable } from "./year-table";
+import { PrivateText } from "../../components/ui/private-text";
 
 export function ChartControls({ people }: { people: { id: string; name: string }[] }) {
   const mode = useChartPrefs((s) => s.projectionMode);
@@ -267,7 +268,9 @@ export function ResultsView() {
                   {warns.slice(0, 4).map((w) =>
                     isDatasetReplaced(w) ? (
                       <div key={w.message} className="flex flex-wrap items-start gap-x-2">
-                        <span className="min-w-0 flex-1">{w.message}</span>
+                        <span className="min-w-0 flex-1">
+                          <PrivateText>{w.message}</PrivateText>
+                        </span>
                         {plan ? <DismissDatasetNotice plan={plan} /> : null}
                       </div>
                     ) : (
@@ -277,7 +280,7 @@ export function ResultsView() {
                         className="text-left hover:underline"
                         onClick={() => w.periodIndex !== null && setSelected(w.periodIndex)}
                       >
-                        {w.message}
+                        <PrivateText>{w.message}</PrivateText>
                       </button>
                     ),
                   )}

@@ -58,6 +58,16 @@ the plan. Prefer today's money when you think about whether you can afford a lif
 2060 is not a pound today. Be careful when you type "£2,000 a month": the frequency matters as much as the
 number.
 
+**Hiding amounts.** To share your screen with a partner or an adviser, stream, or post a screenshot without
+showing what you have, press **⇧H** (or the eye in the top bar, or **Hide amounts** in Settings → Appearance).
+Every amount then shows as the currency symbol and five dots ("£•••••"), whatever its size, so not even the
+number of digits gives it away. Charts keep their shape but lose their money axis values. Percentages, ages,
+years, dates and the chance of success stay visible. A money field shows its figure only while you are editing
+it. An "Amounts hidden" badge stays in the top bar until you turn it off. The setting is for this device only.
+Downloads (CSV tables, backups) always contain the real figures, because you asked for them; a printed or PDF
+report is hidden if amounts are hidden when you print it. The relative shape of a chart still shows, for example
+that net worth doubles or that spending falls at retirement.
+
 **Chance of success.** One projection uses one fixed set of assumptions (say 5% a year). Reality varies, so
 Glideworth also replays your plan many times with different market histories and counts how often **every year's
 spending is fully funded**. "85% chance of success" means 85 of 100 replays never ran short. It is a measure

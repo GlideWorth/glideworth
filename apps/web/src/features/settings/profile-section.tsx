@@ -56,8 +56,8 @@ export function ProfileSection() {
         <div className="min-w-0 flex-1">
           <div className="eyebrow">Preview</div>
           <div className="num mt-1 flex flex-wrap gap-x-6 gap-y-1 text-[15px] font-semibold text-ink">
-            <span>{formatMoney(1234567.89, { locale, currency, decimals: 2 })}</span>
-            <span>{formatMoney(1234567, { locale, currency, compact: true })}</span>
+            <span>{formatMoney(1234567.89, { locale, currency, decimals: 2, reveal: true })}</span>
+            <span>{formatMoney(1234567, { locale, currency, compact: true, reveal: true })}</span>
             <span>{formatPercent(0.0425, locale, 2)}</span>
             <span>{formatDateStyle(sample, locale, prefs.dateStyle)}</span>
           </div>

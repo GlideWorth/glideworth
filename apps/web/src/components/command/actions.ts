@@ -31,6 +31,23 @@ export function toggleBasis() {
   });
 }
 
+/**
+ * Hide amounts (privacy mode for screen sharing): every money figure shows as "$•••••" on this
+ * device until it is turned off. The toast never shows a figure itself.
+ */
+export function toggleHideAmounts() {
+  const ui = useUi.getState();
+  const next = !ui.hideAmounts;
+  ui.setHideAmounts(next);
+  toast({
+    title: next ? "Amounts hidden" : "Amounts shown",
+    description: next
+      ? "Safe to share your screen. Exports still contain the real figures."
+      : "Money amounts are visible again.",
+    duration: 2200,
+  });
+}
+
 /** Snapshot today's balances into Progress. */
 export async function recordSnapshot(qc: QueryClient) {
   const ws = qc.getQueryData<Workspace>(["workspace"]);

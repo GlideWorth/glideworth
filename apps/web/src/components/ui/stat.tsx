@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "../../lib/cn";
+import { privateChildren } from "./private-text";
 
 export function Stat({
   label,
@@ -24,9 +25,9 @@ export function Stat({
           tone === "positive" && "text-positive",
         )}
       >
-        {value}
+        {privateChildren(value)}
       </div>
-      {sub ? <div className="mt-1.5 text-[12px] text-ink-3">{sub}</div> : null}
+      {sub ? <div className="mt-1.5 text-[12px] text-ink-3">{privateChildren(sub)}</div> : null}
     </div>
   );
 }

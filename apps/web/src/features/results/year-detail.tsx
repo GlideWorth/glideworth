@@ -34,6 +34,7 @@ import { YearTaxByCountry } from "../crossborder/tax-by-country";
 import { bridge } from "./core-bridge";
 import { agesLabel, conv, type EntityIndex } from "./model";
 import { acaSizeNote, ledgerByKind, yearNarrative } from "./narrative";
+import { PrivateText } from "../../components/ui/private-text";
 
 function Section({
   title,
@@ -324,7 +325,9 @@ function YearDetailBody({
                       <span className="block size-3.5 text-center text-ink-3">•</span>
                     )}
                   </span>
-                  <span>{l.text}</span>
+                  <span>
+                    <PrivateText>{l.text}</PrivateText>
+                  </span>
                 </li>
               ))}
               {findings?.map((x) => (
@@ -332,7 +335,8 @@ function YearDetailBody({
                   key={x.code + x.title}
                   className="rounded-md bg-surface-2 px-2.5 py-1.5 text-[12.5px]"
                 >
-                  <span className="font-semibold">{x.title}.</span> {x.message}
+                  <span className="font-semibold">{x.title}.</span>{" "}
+                  <PrivateText>{x.message}</PrivateText>
                 </li>
               ))}
             </ul>

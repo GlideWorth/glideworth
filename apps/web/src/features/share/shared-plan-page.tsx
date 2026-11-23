@@ -15,10 +15,17 @@ import { Stat } from "../../components/ui/stat";
 import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/table";
 import { ApiRequestError, api, type SharedPlan } from "../../lib/api";
 import { formatDay, formatMoney, formatMonth, formatPercent } from "../../lib/format";
+import { useAmountsHidden } from "../../stores/ui";
 
 const locale = typeof navigator !== "undefined" ? navigator.language : "en-GB";
 
+/**
+ * Amounts as the link's owner chose (full, percent of the starting net worth, or hidden: the API
+ * then sends no amounts at all). On top of that, this device's own "Hide amounts" masks full
+ * amounts through the shared money formatter, like everywhere else in the app.
+ */
 function useAmount(s: SharedPlan | undefined) {
+  const hiddenHere = useAmountsHidden();
   return useMemo(() => {
     const unit = s?.privacy;
     return (v: number | null, compact = false): string => {
@@ -26,7 +33,8 @@ function useAmount(s: SharedPlan | undefined) {
       if (unit === "percent") return formatPercent(v / 100, locale, 1);
       return formatMoney(v, { locale, currency: s?.currency ?? "USD", compact });
     };
-  }, [s]);
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- formatMoney reads the hidden flag
+  }, [s, hiddenHere]);
 }
 
 export function SharedPlanPage() {

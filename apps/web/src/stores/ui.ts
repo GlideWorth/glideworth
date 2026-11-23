@@ -2,6 +2,7 @@ import type { ValueBasis } from "@glideworth/core";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { demoAwareStorage } from "../lib/demo";
+import { setAmountsHidden } from "../lib/format";
 
 export type ThemePref = "system" | "light" | "dark";
 export type Density = "comfortable" | "compact";
@@ -23,6 +24,11 @@ interface UiState {
   /** Dismissed contextual hints, by id. */
   dismissedHints: Record<string, true>;
   shortcutsOpen: boolean;
+  /**
+   * Hide amounts (privacy mode for screen sharing): money shows as "$•••••" everywhere on this
+   * device until turned off. Exports are never masked.
+   */
+  hideAmounts: boolean;
   /** The signed-in person may only look (viewer role): edits are refused before they happen. */
   readOnly: boolean;
   /** Why: the person's role, or (cloud) the workspace's plan being read-only. */
@@ -40,6 +46,7 @@ interface UiState {
   dismissHint: (id: string) => void;
   resetHints: () => void;
   setShortcutsOpen: (open: boolean) => void;
+  setHideAmounts: (v: boolean) => void;
 }
 
 /** Local UI preferences (per browser). Durable user settings live in the API (UserSettings). */
@@ -57,6 +64,7 @@ export const useUi = create<UiState>()(
       reduceMotion: false,
       dismissedHints: {},
       shortcutsOpen: false,
+      hideAmounts: false,
       readOnly: false,
       readOnlyWhy: "role",
       setReadOnly: (readOnly, why = "role") => set({ readOnly, readOnlyWhy: why }),
@@ -72,6 +80,7 @@ export const useUi = create<UiState>()(
       dismissHint: (id) => set((s) => ({ dismissedHints: { ...s.dismissedHints, [id]: true } })),
       resetHints: () => set({ dismissedHints: {} }),
       setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
+      setHideAmounts: (hideAmounts) => set({ hideAmounts }),
     }),
     {
       name: "glideworth-ui",
@@ -82,6 +91,14 @@ export const useUi = create<UiState>()(
     },
   ),
 );
+
+// The money formatter (lib/format) masks from a module flag; keep it in step with the preference.
+// A store listener runs synchronously inside `set`, so the flag is right before React re-renders.
+setAmountsHidden(useUi.getState().hideAmounts);
+useUi.subscribe((s) => setAmountsHidden(s.hideAmounts));
+
+/** Whether amounts are hidden on this device (subscribes the component to changes). */
+export const useAmountsHidden = (): boolean => useUi((s) => s.hideAmounts);
 
 export function resolvedTheme(pref: ThemePref): "light" | "dark" {
   if (pref !== "system") return pref;

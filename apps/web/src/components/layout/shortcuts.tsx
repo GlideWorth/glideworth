@@ -8,7 +8,7 @@ import { X } from "lucide-react";
 import { Dialog as D } from "radix-ui";
 import { Fragment, useEffect, useRef } from "react";
 import { useUi } from "../../stores/ui";
-import { recordSnapshot, toggleBasis, toggleTheme } from "../command/actions";
+import { recordSnapshot, toggleBasis, toggleHideAmounts, toggleTheme } from "../command/actions";
 import { Kbd, modKey } from "../ui/kbd";
 
 export const GO_TO: { key: string; to: string; label: string }[] = [
@@ -40,6 +40,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: [["?"]], label: "Show keyboard shortcuts" },
       { keys: [["B"]], label: "Toggle today's / future money" },
       { keys: [["⇧", "D"]], label: "Toggle light / dark theme" },
+      { keys: [["⇧", "H"]], label: "Hide or show amounts (for screen sharing)" },
       { keys: [["⇧", "S"]], label: "Record a progress snapshot" },
       { keys: [["["]], label: "Collapse or expand the sidebar" },
       { keys: [["Esc"]], label: "Close a dialog, menu or drawer" },
@@ -103,6 +104,9 @@ export function useGlobalShortcuts() {
       } else if (k === "D" && e.shiftKey) {
         e.preventDefault();
         toggleTheme();
+      } else if (k === "H" && e.shiftKey) {
+        e.preventDefault();
+        toggleHideAmounts();
       } else if (k === "S" && e.shiftKey) {
         e.preventDefault();
         void recordSnapshot(qc);

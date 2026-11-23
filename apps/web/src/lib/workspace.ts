@@ -8,17 +8,19 @@
 import type { GlideworthDocument, Plan } from "@glideworth/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { useUi } from "../stores/ui";
+import { useAmountsHidden, useUi } from "../stores/ui";
 import { runSimulation } from "../workers/sim-client";
 import { ApiRequestError, loadApi } from "./api-lazy";
 import { type SessionState, sessionAfterUnauthorized } from "./auth";
 import { isDemo } from "./demo";
 import {
+  amountsHidden,
   type FormatOptions,
   formatMoney,
   formatNumber,
   formatPercent,
   formatSigned,
+  maskAmountsInText,
 } from "./format";
 
 export interface Workspace {
@@ -179,14 +181,22 @@ export function useFormat() {
     locale: s?.locale ?? data?.doc.household.locale ?? navigator.language,
     currency: s?.displayCurrency ?? data?.doc.household.currency ?? "USD",
   };
+  // A new formatter when amounts are hidden or shown, so memoised views re-render with the mask.
+  const hidden = useAmountsHidden();
   // oxlint-disable-next-line react-hooks/exhaustive-deps -- opts is derived from locale + currency only
-  return useMemo(() => makeFormatter(opts), [opts.locale, opts.currency]);
+  return useMemo(() => makeFormatter(opts, hidden), [opts.locale, opts.currency, hidden]);
 }
 
-/** Formatting helpers bound to one locale and currency (see `useFormat`). */
-export function makeFormatter(opts: FormatOptions) {
+/**
+ * Formatting helpers bound to one locale and currency (see `useFormat`). Money masks itself while
+ * amounts are hidden (lib/format); `hidden` only records which state this formatter was made in.
+ */
+export function makeFormatter(opts: FormatOptions, hidden = amountsHidden()) {
   return {
     ...opts,
+    hidden,
+    /** Prose that may carry money it did not format (insight sentences, diffs): masked when hidden. */
+    text: (s: string) => maskAmountsInText(s),
     money: (v: number, compact = false) => formatMoney(v, { ...opts, compact }),
     percent: (v: number, d = 1) => formatPercent(v, opts.locale, d),
     /** An amount in another currency (original-currency figures of foreign holdings). */

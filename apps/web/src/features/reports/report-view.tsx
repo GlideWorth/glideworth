@@ -20,6 +20,7 @@ import { cellValue, conv, downloadText, projectionCsv, tableColumns } from "../r
 import { ProjectionChart } from "../results/projection-chart";
 import { useAnalysis } from "../results/use-analysis";
 import { byKindSeries, kindLabel, taxRegime } from "../taxes/tax-model";
+import { PrivateText } from "../../components/ui/private-text";
 
 const PRINT_CSS = `
 @media print {
@@ -98,6 +99,7 @@ export function ReportView() {
   const f = useFormat();
   const theme = useUi((s) => s.theme);
   const setTheme = useUi((s) => s.setTheme);
+  const hidden = useUi((s) => s.hideAmounts);
   const mcEntry = useMcStore((s) => (plan ? s.byPlan[plan.id] : undefined));
   const mc = mcEntry && mcEntry.planVersion === plan?.version ? mcEntry : undefined;
   const fi = result ? fiMetrics(result, plan) : null;
@@ -145,6 +147,12 @@ export function ReportView() {
       <div className="report-noprint flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface px-4 py-2.5 shadow-card">
         <span className="text-[12.5px] text-ink-2">
           Print or save as PDF from your browser. Printing uses the light theme and A4 pages.
+          {hidden ? (
+            <strong className="mt-1 block font-medium text-ochre">
+              Amounts are hidden, so the printout hides them too. Show amounts (⇧H) to print the
+              figures; the Table CSV always has them.
+            </strong>
+          ) : null}
         </span>
         <div className="flex gap-2">
           {result ? (
@@ -357,7 +365,9 @@ export function ReportView() {
                 .filter((w) => w.severity !== "info")
                 .slice(0, 8)
                 .map((w) => (
-                  <li key={w.message}>{w.message}</li>
+                  <li key={w.message}>
+                    <PrivateText>{w.message}</PrivateText>
+                  </li>
                 ))}
               <li>
                 This is a deterministic projection: markets grow at the plan's assumed rates every

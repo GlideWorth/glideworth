@@ -15,6 +15,7 @@ import { Card, CardBody, CardHeader } from "../../components/ui/card";
 import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/table";
 import { formatMoney, formatSigned } from "../../lib/format";
 import type { EntityIndex } from "../results/model";
+import { useAmountsHidden } from "../../stores/ui";
 
 export interface AccountHistoryRow {
   id: string;
@@ -62,9 +63,11 @@ export function AccountHistory({
   conv: (date: string, v: number) => number;
 }) {
   const rows = useMemo(() => accountHistory(snaps, index), [snaps, index]);
+  const hidden = useAmountsHidden();
   const money = useCallback(
     (v: number, compact = true) => formatMoney(v, { locale, currency, compact }),
-    [locale, currency],
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- formatMoney reads the hidden flag
+    [locale, currency, hidden],
   );
   const build = useCallback(
     (t: ChartTokens) => {

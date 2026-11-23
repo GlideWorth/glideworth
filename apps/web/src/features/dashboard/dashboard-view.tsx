@@ -55,6 +55,7 @@ import {
 } from "../results/model";
 import { ProjectionChart } from "../results/projection-chart";
 import { useAnalysis } from "../results/use-analysis";
+import { PrivateText } from "../../components/ui/private-text";
 
 const WIDGETS = [
   ["metrics", "Plan headline metrics"],
@@ -593,7 +594,9 @@ export function DashboardView() {
                   <AlertTriangle
                     className={`mt-0.5 size-3.5 shrink-0 ${x.severity === "critical" ? "text-negative" : x.severity === "warning" ? "text-warning" : "text-ink-3"}`}
                   />
-                  <span>{x.title}</span>
+                  <span>
+                    <PrivateText>{x.title}</PrivateText>
+                  </span>
                 </div>
               ))}
             </CardBody>

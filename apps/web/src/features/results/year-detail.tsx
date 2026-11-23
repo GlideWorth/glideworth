@@ -200,6 +200,16 @@ function YearDetailBody({
   const early = result.warnings.filter(
     (w) => w.periodIndex === i && w.code === "EARLY_WITHDRAWAL_PENALTY",
   );
+  // How a bonus set as a share of a salary was worked out this year (engine trace).
+  const bonusBasis = new Map(
+    result.trace
+      .filter((t) => t.periodIndex === i && t.code === "BONUS_FROM_SALARY")
+      .map((t) => {
+        const rate = Number((t.data as { rate?: number } | undefined)?.rate ?? 0);
+        const salary = p.income.find((l) => l.sourceId === t.refs[1])?.label ?? "salary";
+        return [t.refs[0], `${f.percent(rate)} of ${salary}`] as const;
+      }),
+  );
   const T = p.totals;
   const annualise = useAnnualise();
   const partial = isPartialPeriod(p);
@@ -413,9 +423,15 @@ function YearDetailBody({
               rows={p.income.map((l) => [
                 l.label,
                 conv(p, l.amount, basis, "flow"),
-                l.currency && l.amountOriginal !== undefined
-                  ? `${index.ownerName(l.owner)} · ${f.moneyIn(l.amountOriginal, l.currency)}`
-                  : index.ownerName(l.owner),
+                [
+                  index.ownerName(l.owner),
+                  bonusBasis.get(l.sourceId),
+                  l.currency && l.amountOriginal !== undefined
+                    ? f.moneyIn(l.amountOriginal, l.currency)
+                    : undefined,
+                ]
+                  .filter(Boolean)
+                  .join(" · "),
               ])}
               money={plain}
             />

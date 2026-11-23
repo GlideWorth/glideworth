@@ -207,8 +207,8 @@ describe("fixed employer HSA contribution and the combined limit", () => {
 });
 
 describe("schema 3 -> 4", () => {
-  it("is the current version", () => {
-    expect(SCHEMA_VERSION).toBe(4);
+  it("has a version 3 -> 4 step", () => {
+    expect(SCHEMA_VERSION).toBeGreaterThanOrEqual(4);
   });
 
   it("a version 3 document loads unchanged", () => {

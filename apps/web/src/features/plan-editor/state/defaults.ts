@@ -215,6 +215,17 @@ export function newExpense(type: ExpenseType, ctx: Ctx, healthcarePremium = 0.02
         amount: { value: 150, basis: "real" },
         change: { kind: "inflation", plus: healthcarePremium },
       });
+    case "long-term-care":
+      return make({
+        name: "Long-term care",
+        amount: { value: 30_000, basis: "real" },
+        frequency: "yearly",
+        range: {
+          start: { kind: "age", personId: primary(h).id, age: 85, offsetMonths: 0 },
+          end: planEnd,
+        },
+        change: { kind: "inflation", plus: healthcarePremium },
+      });
     case "childcare":
       return make({
         name: "Childcare",

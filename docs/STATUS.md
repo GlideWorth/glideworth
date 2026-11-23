@@ -18,7 +18,19 @@ Where Glideworth stands, how to run it, and what not to trust yet. Feature-by-fe
 | MCP                                                       | 67 tools (49 read/compute, 18 write behind a switch), resources, prompts; stdio and HTTP.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | Web (`apps/web`)                                          | React app: onboarding, plan editor, results, chance of success, cash flow, taxes, estate, compare, insights, progress, import, reports, settings, PWA; cross-border: citizenships and US green card per person, item countries, tax by country and basis, "how this is taxed and why".                                                                                                                                                                                                                                                                                                                                             |
 
-PARITY.md counts: 210 features checked, 167 implemented, 35 partial, 5 missing, 3 removed.
+PARITY.md counts: 212 features checked, 169 implemented, 35 partial, 5 missing, 3 removed.
+
+### Added on 2026-11-23
+
+- **Long-term-care expense type** (`long-term-care`). It works like a healthcare expense: it counts as qualified
+  medical use for HSA withdrawals, and new events (editor default, the long-term-care what-if) grow at
+  healthcare inflation. No tax deduction for care costs or long-term-care insurance premiums is modelled, the
+  same as for healthcare. ProjectionLab imports do not map to it: the export format we have seen has no care
+  type.
+- **Bonus as a percentage of a salary** (`percentOfSalary` on a `bonus`). Each year the bonus is the given
+  share of the linked salary's pay that year, after the salary's growth. A year without the salary pays no
+  bonus. The bonus is taxed as before. A link to a missing or non-salary income stops the projection with a
+  clear error.
 
 ### Removed on 2026-11-19 (no evidence of demand)
 

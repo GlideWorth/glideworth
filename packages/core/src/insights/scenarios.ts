@@ -144,7 +144,11 @@ export function careerBreakScenario(
   const p = person(input, opts.personId);
   const ids = input.plan.income
     .filter(
-      (i) => i.owner === p.id && ["salary", "hourly", "self-employment", "bonus"].includes(i.type),
+      (i) =>
+        i.owner === p.id &&
+        ["salary", "hourly", "self-employment", "bonus"].includes(i.type) &&
+        // A bonus set as a share of a salary already follows the salary's part-time share.
+        !(i.type === "bonus" && i.percentOfSalary),
     )
     .map((i) => i.id);
   if (ids.length === 0)
@@ -353,17 +357,20 @@ export function longTermCareScenario(
   opts: { personId?: string; fromAge: number; annualCost: number; years?: number },
 ): ScenarioTemplate {
   const p = person(input, opts.personId);
+  // Healthcare inflation, as for healthcare expenses: general inflation plus the plan's premium.
+  const premium = input.plan.assumptions.healthcareInflationPremium;
+  const pct = `${Number((premium * 100).toFixed(2))}%`;
   return {
     id: slug(`ltc-${p.id}-${opts.fromAge}`),
     title: `${p.name} needs care from ${opts.fromAge}`,
-    description: `Care costs of ${money(input, opts.annualCost)} a year (today's money, rising 2% above inflation) for ${p.name} from age ${opts.fromAge}${opts.years ? ` for ${opts.years} years` : ""}.`,
+    description: `Care costs of ${money(input, opts.annualCost)} a year (today's money, rising ${pct} above inflation) for ${p.name} from age ${opts.fromAge}${opts.years ? ` for ${opts.years} years` : ""}.`,
     patch: [
       {
         op: "add",
         path: "/expenses/-",
         value: {
           id: slug(`exp-ltc-${p.id}-${opts.fromAge}`),
-          type: "healthcare",
+          type: "long-term-care",
           name: `${p.name} care`,
           owner: p.id,
           amount: { value: opts.annualCost, basis: "real" },
@@ -374,7 +381,7 @@ export function longTermCareScenario(
               ? { kind: "age", personId: p.id, age: opts.fromAge + opts.years, offsetMonths: 0 }
               : { kind: "planEnd", offsetMonths: 0 },
           },
-          change: { kind: "inflation", plus: 0.02 },
+          change: { kind: "inflation", plus: premium },
           spendingType: "essential",
         },
       },

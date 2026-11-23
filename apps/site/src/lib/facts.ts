@@ -70,9 +70,9 @@ export const facts = {
   mcpReadTools: 49,
   mcpWriteTools: 18,
 
-  // From docs/STATUS.md and docs/PARITY.md, checked 2026-11-19 (not used in page text).
-  featuresChecked: 210,
-  featuresImplemented: 167,
+  // From docs/STATUS.md and docs/PARITY.md, checked 2026-11-23 (not used in page text).
+  featuresChecked: 212,
+  featuresImplemented: 169,
 } as const;
 
 /**

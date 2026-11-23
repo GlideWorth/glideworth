@@ -58,7 +58,11 @@ export const INCOME_TYPES: TypeMeta<IncomeType>[] = [
     hint: "Employment income; optional defined-benefit pension accrual.",
   },
   { value: "self-employment", label: "Self-employment", hint: "Sole trader or contractor profit." },
-  { value: "bonus", label: "Bonus", hint: "Irregular employment income." },
+  {
+    value: "bonus",
+    label: "Bonus",
+    hint: "Irregular employment income: a fixed amount or a % of a salary.",
+  },
   {
     value: "state-pension",
     label: "State Pension",
@@ -115,6 +119,11 @@ export const EXPENSE_TYPES: TypeMeta<ExpenseType>[] = [
     value: "healthcare",
     label: "Healthcare",
     hint: "Insurance, care and medical costs. Grows faster than inflation by default.",
+  },
+  {
+    value: "long-term-care",
+    label: "Long-term care",
+    hint: "Care home, home care or nursing later in life. Grows like healthcare by default.",
   },
   { value: "childcare", label: "Childcare", hint: "Nursery, childminders, after-school care." },
   { value: "education", label: "Education", hint: "School or university fees." },

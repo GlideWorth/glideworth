@@ -11,7 +11,7 @@ import { Timestamp } from "./primitives.js";
 import { ProgressSnapshot, UserSettings } from "./progress-settings.js";
 
 /** Bump when a breaking schema change ships, and add a migration below. */
-export const SCHEMA_VERSION = 4 as const;
+export const SCHEMA_VERSION = 5 as const;
 
 /** The `app` marker every document is written with. */
 export const DOCUMENT_APP = "glideworth" as const;
@@ -83,6 +83,15 @@ export const MIGRATIONS: Migration[] = [
     // supported") instead of silently dropping `employer.fixed`, or rejecting a match with no tiers.
     describe:
       "employer contributions: optional fixed amount (`employer.fixed`) and match tiers may be empty; no data change",
+    up: (raw) => ({ ...raw }),
+  },
+  {
+    from: 4,
+    // Nothing to convert: every version 4 document is a valid version 5 document. The bump makes
+    // older builds refuse a document with a long-term-care expense or a bonus set as a percentage of
+    // a salary ("newer than supported") instead of rejecting or misreading it.
+    describe:
+      "expenses may have type 'long-term-care'; a bonus may carry percentOfSalary { salaryIncomeId, rate }; no data change",
     up: (raw) => ({ ...raw }),
   },
 ];

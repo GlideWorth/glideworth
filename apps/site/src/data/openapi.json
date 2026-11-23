@@ -3977,6 +3977,9 @@
         "enum": [
          "bonus"
         ]
+       },
+       "percentOfSalary": {
+        "$ref": "#/components/schemas/BonusPercentOfSalary"
        }
       },
       "required": [
@@ -5530,6 +5533,23 @@
      "scheme"
     ]
    },
+   "BonusPercentOfSalary": {
+    "type": "object",
+    "properties": {
+     "salaryIncomeId": {
+      "$ref": "#/components/schemas/Id"
+     },
+     "rate": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 10
+     }
+    },
+    "required": [
+     "salaryIncomeId",
+     "rate"
+    ]
+   },
    "SocialSecurityEstimate": {
     "type": "object",
     "properties": {
@@ -5834,6 +5854,91 @@
        },
        "healthcare": {
         "$ref": "#/components/schemas/HealthcareDetails"
+       }
+      },
+      "required": [
+       "id",
+       "name",
+       "owner",
+       "amount",
+       "frequency",
+       "range",
+       "type"
+      ]
+     },
+     {
+      "type": "object",
+      "properties": {
+       "id": {
+        "$ref": "#/components/schemas/Id"
+       },
+       "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 120
+       },
+       "owner": {
+        "$ref": "#/components/schemas/Owner"
+       },
+       "amount": {
+        "$ref": "#/components/schemas/NonNegativeAmount"
+       },
+       "frequency": {
+        "$ref": "#/components/schemas/Frequency"
+       },
+       "range": {
+        "$ref": "#/components/schemas/TimeRange"
+       },
+       "change": {
+        "$ref": "#/components/schemas/Change"
+       },
+       "changeLimit": {
+        "$ref": "#/components/schemas/ChangeLimit"
+       },
+       "growFromToday": {
+        "type": "boolean",
+        "default": true
+       },
+       "inflationCategory": {
+        "$ref": "#/components/schemas/Id"
+       },
+       "currency": {
+        "$ref": "#/components/schemas/CurrencyCode"
+       },
+       "recurrence": {
+        "$ref": "#/components/schemas/Recurrence"
+       },
+       "enabled": {
+        "type": "boolean",
+        "default": true
+       },
+       "notes": {
+        "type": "string",
+        "maxLength": 20000
+       },
+       "appearance": {
+        "$ref": "#/components/schemas/Appearance"
+       },
+       "spendingType": {
+        "$ref": "#/components/schemas/SpendingType"
+       },
+       "discretionaryShare": {
+        "$ref": "#/components/schemas/Fraction"
+       },
+       "payFrom": {
+        "$ref": "#/components/schemas/AccountRouting"
+       },
+       "tax": {
+        "$ref": "#/components/schemas/ExpenseTax"
+       },
+       "dependentId": {
+        "$ref": "#/components/schemas/Id"
+       },
+       "type": {
+        "type": "string",
+        "enum": [
+         "long-term-care"
+        ]
        }
       },
       "required": [
@@ -12636,6 +12741,9 @@
         "enum": [
          "bonus"
         ]
+       },
+       "percentOfSalary": {
+        "$ref": "#/components/schemas/BonusPercentOfSalary"
        }
       },
       "required": [
@@ -14140,6 +14248,94 @@
        },
        "healthcare": {
         "$ref": "#/components/schemas/HealthcareDetails"
+       }
+      },
+      "required": [
+       "name",
+       "owner",
+       "amount",
+       "frequency",
+       "range",
+       "type"
+      ]
+     },
+     {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64,
+        "pattern": "^[A-Za-z0-9_-]+$",
+        "description": "Omit to generate one."
+       },
+       "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 120
+       },
+       "owner": {
+        "$ref": "#/components/schemas/Owner"
+       },
+       "amount": {
+        "$ref": "#/components/schemas/NonNegativeAmount"
+       },
+       "frequency": {
+        "$ref": "#/components/schemas/Frequency"
+       },
+       "range": {
+        "$ref": "#/components/schemas/TimeRange"
+       },
+       "change": {
+        "$ref": "#/components/schemas/Change"
+       },
+       "changeLimit": {
+        "$ref": "#/components/schemas/ChangeLimit"
+       },
+       "growFromToday": {
+        "type": "boolean",
+        "default": true
+       },
+       "inflationCategory": {
+        "$ref": "#/components/schemas/Id"
+       },
+       "currency": {
+        "$ref": "#/components/schemas/CurrencyCode"
+       },
+       "recurrence": {
+        "$ref": "#/components/schemas/Recurrence"
+       },
+       "enabled": {
+        "type": "boolean",
+        "default": true
+       },
+       "notes": {
+        "type": "string",
+        "maxLength": 20000
+       },
+       "appearance": {
+        "$ref": "#/components/schemas/Appearance"
+       },
+       "spendingType": {
+        "$ref": "#/components/schemas/SpendingType"
+       },
+       "discretionaryShare": {
+        "$ref": "#/components/schemas/Fraction"
+       },
+       "payFrom": {
+        "$ref": "#/components/schemas/AccountRouting"
+       },
+       "tax": {
+        "$ref": "#/components/schemas/ExpenseTax"
+       },
+       "dependentId": {
+        "$ref": "#/components/schemas/Id"
+       },
+       "type": {
+        "type": "string",
+        "enum": [
+         "long-term-care"
+        ]
        }
       },
       "required": [

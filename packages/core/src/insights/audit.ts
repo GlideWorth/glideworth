@@ -368,7 +368,9 @@ export function auditAssumptions(input: SimulationInput, opts: AuditOptions = {}
   // --- Healthcare / care costs late in life.
   const primary = household.people.find((p) => p.role === "primary")!;
   const isCare = (e: ExpenseEvent) =>
-    e.type === "healthcare" || /care|health|medical|nursing/i.test(e.name);
+    e.type === "healthcare" ||
+    e.type === "long-term-care" ||
+    /care|health|medical|nursing/i.test(e.name);
   const runsLate = (end: DateRef) =>
     end.kind === "planEnd" ||
     end.kind === "never" ||
@@ -405,7 +407,7 @@ export function auditAssumptions(input: SimulationInput, opts: AuditOptions = {}
                 path: "/expenses/-",
                 value: {
                   id: "exp-later-life-care",
-                  type: "healthcare",
+                  type: "long-term-care",
                   name: "Later-life care",
                   owner: "joint",
                   amount: { value: amount, basis: "real" },

@@ -305,7 +305,7 @@ export function runIncome(ctx: EngineContext, ps: PeriodState): void {
       continue;
     }
     const character = resolvedCharacter(e.tax.character, incomeDefaultCharacter(ps, e));
-    const { own, survivor, cutoff } = eventAmounts(ctx, ps, e);
+    const { own, survivor, cutoff } = eventAmounts(ctx, ps, e, bonusOverrides(ctx, ps, e));
     const routing = e.sendTo.kind === "accounts" ? e.sendTo.accountIds : undefined;
     const common = {
       refId: e.id,
@@ -332,7 +332,7 @@ export function runIncome(ctx: EngineContext, ps: PeriodState): void {
         label: `${e.name} (survivor)`,
       });
     }
-    if (isForeign(ctx, e.currency)) {
+    if (isForeign(ctx, e.currency) && !(e.type === "bonus" && e.percentOfSalary)) {
       // Original-currency detail at the period's opening rate (amounts are valued then).
       const rate = fxAt(ctx, e.currency, ps.bounds.start);
       for (let k = before; k < ps.incomeLines.length; k++) {
@@ -346,6 +346,48 @@ export function runIncome(ctx: EngineContext, ps: PeriodState): void {
     if (e.type === "salary" && e.endOfService) endOfServiceGratuity(ctx, ps, e, cutoff);
   }
   survivorBenefits(ctx, ps);
+}
+
+/**
+ * A bonus set as a share of a salary (`percentOfSalary`): this year's amount per occurrence is
+ * `rate` x the salary's pay in this period, annualised over the period's months, divided by the
+ * bonus's occurrences a year (a one-off gets the whole annual share). The salary's pay already
+ * includes its growth, part-time share and the owner's death, and is 0 before it starts and after
+ * it ends. The bonus keeps its own range, frequency, recurrence and owner cutoff; the figure is in
+ * the base currency, so its own amount, change rule and currency are ignored. Fixed bonuses: none.
+ */
+function bonusOverrides(
+  ctx: EngineContext,
+  ps: PeriodState,
+  e: IncomeEvent,
+): Partial<PeriodAmountArgs> | undefined {
+  if (e.type !== "bonus" || !e.percentOfSalary) return undefined;
+  const link = e.percentOfSalary;
+  const salary = ctx.plan.income.find((x) => x.id === link.salaryIncomeId);
+  // validateReferences guarantees a salary; a disabled salary pays nothing, so neither does this.
+  const paid = salary && salary.enabled ? eventAmounts(ctx, ps, salary).own : 0;
+  const annualSalary = (paid * 12) / ps.bounds.months;
+  const annualBonus = link.rate * annualSalary;
+  const perOccurrence =
+    e.frequency === "once" ? annualBonus : annualBonus / FREQUENCY_PER_YEAR[e.frequency];
+  if (paid > 0)
+    traceEvent(
+      ctx,
+      ps,
+      "income",
+      "BONUS_FROM_SALARY",
+      () =>
+        `${e.name}: ${Number((link.rate * 100).toFixed(2))}% of ${salary!.name} (${fmt(annualSalary)} a year) = ${fmt(annualBonus)} a year`,
+      [e.id, link.salaryIncomeId],
+      { rate: link.rate, salary: paid, annualSalary, annualBonus },
+    );
+  return {
+    amount: { value: perOccurrence, basis: "nominal" },
+    change: { kind: "none" },
+    changeLimit: undefined,
+    inflationCategory: undefined,
+    currency: undefined,
+  };
 }
 
 /**

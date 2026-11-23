@@ -139,6 +139,24 @@ export const EndOfServiceBenefit = z
   .meta({ id: "EndOfServiceBenefit" });
 export type EndOfServiceBenefit = z.infer<typeof EndOfServiceBenefit>;
 
+/**
+ * A bonus set as a share of a salary instead of a fixed amount. Each year the bonus is `rate` times
+ * the linked salary's pay that year (after the salary's own growth, part-time share and the owner's
+ * death; prorated when the salary runs for part of the year, 0 in a year with no salary). The
+ * bonus's own frequency spreads that annual figure, and its range, recurrence and part-time share
+ * apply as usual; its `amount`, `change`, `changeLimit`, `inflationCategory` and `currency` are
+ * ignored.
+ */
+export const BonusPercentOfSalary = z
+  .object({
+    /** Id of a `salary` income event in the same plan. */
+    salaryIncomeId: Id,
+    /** Share of the annual salary, as a fraction (0.1 = 10%). */
+    rate: z.number().min(0).max(10),
+  })
+  .meta({ id: "BonusPercentOfSalary" });
+export type BonusPercentOfSalary = z.infer<typeof BonusPercentOfSalary>;
+
 export const DefinedBenefitPension = z
   .object({
     employeeContribution: z.discriminatedUnion("kind", [
@@ -188,7 +206,11 @@ export const IncomeEvent = z
       pension: DefinedBenefitPension.optional(),
     }),
     IncomeCommon.extend({ type: z.literal("self-employment") }),
-    IncomeCommon.extend({ type: z.literal("bonus") }),
+    IncomeCommon.extend({
+      type: z.literal("bonus"),
+      /** Absent: the bonus is the fixed `amount`. Present: a share of a linked salary. */
+      percentOfSalary: BonusPercentOfSalary.optional(),
+    }),
     IncomeCommon.extend({
       type: z.literal("rsu"),
       /** Vesting schedule: amount (in `amount.basis`) vesting at each point. Overrides amount/frequency. */
@@ -316,6 +338,13 @@ export const ExpenseEvent = z
       type: z.literal("healthcare"),
       healthcare: HealthcareDetails.default({ kind: "standard" }),
     }),
+    /**
+     * Long-term care (care home, home care, nursing). Treated like a healthcare expense: qualified
+     * medical use for HSA withdrawals; new events default to healthcare inflation (general
+     * inflation + `assumptions.healthcareInflationPremium`). Start it at an age or milestone with
+     * `range.start`.
+     */
+    ExpenseCommon.extend({ type: z.literal("long-term-care") }),
     ExpenseCommon.extend({ type: z.literal("education") }),
     ExpenseCommon.extend({ type: z.literal("childcare") }),
     ExpenseCommon.extend({ type: z.literal("dependent-support") }),

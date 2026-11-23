@@ -179,8 +179,28 @@ export function typeLabel(kind: Kind, type: string) {
   );
 }
 
-/** A year's worth of an event, as the engine counts it (an hourly wage is paid weekly). */
-export function annual(e: AnyEvent): number | null {
+type PercentBonus = Extract<IncomeEvent, { type: "bonus" }> & {
+  percentOfSalary: NonNullable<Extract<IncomeEvent, { type: "bonus" }>["percentOfSalary"]>;
+};
+
+/** A bonus set as a share of a salary (its own amount is then ignored). */
+function percentBonus(e: AnyEvent): PercentBonus | null {
+  return e.type === "bonus" && "percentOfSalary" in e && e.percentOfSalary
+    ? (e as PercentBonus)
+    : null;
+}
+
+/**
+ * A year's worth of an event, as the engine counts it (an hourly wage is paid weekly; a bonus set
+ * as a share of a salary is that share of the salary's year, given the plan's income).
+ */
+export function annual(e: AnyEvent, income: readonly IncomeEvent[] = []): number | null {
+  const pb = percentBonus(e);
+  if (pb) {
+    const sal = income.find((x) => x.id === pb.percentOfSalary.salaryIncomeId);
+    const base = sal ? annual(sal) : null;
+    return base === null ? null : base * pb.percentOfSalary.rate;
+  }
   if (e.type === "hourly" && "hoursPerWeek" in e)
     return e.amount.value * e.hoursPerWeek * FREQUENCY_PER_YEAR.weekly;
   if (e.frequency === "once") return null;
@@ -217,7 +237,7 @@ export function EventsSection({ kind, onOpen }: { kind: Kind; onOpen: (id: strin
       const st = resolveRef(e.range.start, tctx);
       const en = resolveRef(e.range.end, tctx);
       const active = st !== null && st <= tctx.start && (en === null || en > tctx.start);
-      return s + (active ? (annual(e) ?? 0) : 0);
+      return s + (active ? (annual(e, plan.income) ?? 0) : 0);
     }, 0);
   return (
     <Card>
@@ -258,7 +278,8 @@ export function EventsSection({ kind, onOpen }: { kind: Kind; onOpen: (id: strin
       ) : (
         <ul className="divide-y divide-border">
           {items.map((e, i) => {
-            const yr = annual(e);
+            const yr = annual(e, plan.income);
+            const pb = percentBonus(e);
             return (
               <li
                 key={e.id}
@@ -302,12 +323,26 @@ export function EventsSection({ kind, onOpen }: { kind: Kind; onOpen: (id: strin
                 </button>
                 <div className="text-right">
                   <div className="num text-[13px]">
-                    {f.moneyIn(e.amount.value, e.currency ?? f.currency)}
-                    <span className="text-ink-3"> {amountUnit(e) || "once"}</span>
+                    {pb ? (
+                      <>
+                        {fmtRate(pb.percentOfSalary.rate)}
+                        <span className="text-ink-3">
+                          {" "}
+                          of{" "}
+                          {plan.income.find((x) => x.id === pb.percentOfSalary.salaryIncomeId)
+                            ?.name ?? "a missing salary"}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        {f.moneyIn(e.amount.value, e.currency ?? f.currency)}
+                        <span className="text-ink-3"> {amountUnit(e) || "once"}</span>
+                      </>
+                    )}
                   </div>
                   <div className="num text-[11px] text-ink-3">
-                    {yr !== null && (e.frequency !== "yearly" || e.type === "hourly")
-                      ? `${f.money(yr, true)}/yr`
+                    {yr !== null && (pb || e.frequency !== "yearly" || e.type === "hourly")
+                      ? `${pb ? "≈ " : ""}${f.money(yr, true)}/yr`
                       : e.amount.basis === "nominal"
                         ? "future money"
                         : "today's money"}
@@ -502,7 +537,8 @@ function EventSheetBody({ kind, id, onClose }: { kind: Kind; id: string; onClose
     );
   };
 
-  const yr = annual(event);
+  const yr = annual(event, plan.income);
+  const pb = percentBonus(event);
   const once = event.frequency === "once";
   const start = tctx ? resolveRef(event.range.start, tctx) : null;
   const end = tctx ? resolveRef(event.range.end, tctx) : null;
@@ -628,33 +664,44 @@ function EventSheetBody({ kind, id, onClose }: { kind: Kind; id: string; onClose
       </FormSection>
 
       <FormSection title="Amount">
+        {event.type === "bonus" ? (
+          <BonusBasis
+            event={event as Extract<IncomeEvent, { type: "bonus" }>}
+            salaries={plan.income.filter((x) => x.type === "salary")}
+            annualAmount={yr}
+            set={set}
+            error={issues.under("percentOfSalary")}
+          />
+        ) : null}
         <FieldGrid>
-          <FormField
-            label={event.type === "hourly" ? "Hourly rate" : "Amount"}
-            help={HELP.basis}
-            error={
-              issues.under("amount") ??
-              (event.amount.value < 0
-                ? kind === "income"
-                  ? "Enter a positive amount. For money going out, add an expense instead."
-                  : "Enter a positive amount. For money coming in, add an income instead."
-                : undefined)
-            }
-            hint={
-              yr !== null && (event.frequency !== "yearly" || event.type === "hourly")
-                ? `≈ ${f.money(yr)} a year`
-                : undefined
-            }
-          >
-            {(fid) => (
-              <AmountInput
-                id={fid}
-                currency={event.currency}
-                value={event.amount}
-                onChange={(amount) => patch({ amount }, "Edit amount", "amount")}
-              />
-            )}
-          </FormField>
+          {pb ? null : (
+            <FormField
+              label={event.type === "hourly" ? "Hourly rate" : "Amount"}
+              help={HELP.basis}
+              error={
+                issues.under("amount") ??
+                (event.amount.value < 0
+                  ? kind === "income"
+                    ? "Enter a positive amount. For money going out, add an expense instead."
+                    : "Enter a positive amount. For money coming in, add an income instead."
+                  : undefined)
+              }
+              hint={
+                yr !== null && (event.frequency !== "yearly" || event.type === "hourly")
+                  ? `≈ ${f.money(yr)} a year`
+                  : undefined
+              }
+            >
+              {(fid) => (
+                <AmountInput
+                  id={fid}
+                  currency={event.currency}
+                  value={event.amount}
+                  onChange={(amount) => patch({ amount }, "Edit amount", "amount")}
+                />
+              )}
+            </FormField>
+          )}
           {event.type === "hourly" ? null : (
             <FormField label="How often" help={HELP.frequency}>
               {(fid) => (
@@ -697,45 +744,47 @@ function EventSheetBody({ kind, id, onClose }: { kind: Kind; id: string; onClose
             </FormField>
           ) : null}
         </FieldGrid>
-        <FieldGrid>
-          <FormField
-            label="Currency"
-            hint={
-              event.currency
-                ? `Paid in ${event.currency}; converted to ${draftCurrency} at the rate for the month it is valued.`
-                : undefined
-            }
-          >
-            {(fid) => (
-              <CurrencySelect
-                id={fid}
-                value={event.currency}
-                base={draftCurrency}
-                onChange={(currency) => patch({ currency }, "Change currency")}
-              />
-            )}
-          </FormField>
-          {!once ? (
+        {pb ? null : (
+          <FieldGrid>
             <FormField
-              label="Rises with"
+              label="Currency"
               hint={
-                (plan?.assumptions.inflationCategories?.length ?? 0) === 0
-                  ? "Add healthcare, education or housing inflation in Assumptions to choose one here."
-                  : "Used when it changes with inflation, and for its today’s-money value."
+                event.currency
+                  ? `Paid in ${event.currency}; converted to ${draftCurrency} at the rate for the month it is valued.`
+                  : undefined
               }
             >
               {(fid) => (
-                <InflationCategorySelect
+                <CurrencySelect
                   id={fid}
-                  value={event.inflationCategory}
-                  onChange={(inflationCategory) =>
-                    patch({ inflationCategory }, "Change inflation category")
-                  }
+                  value={event.currency}
+                  base={draftCurrency}
+                  onChange={(currency) => patch({ currency }, "Change currency")}
                 />
               )}
             </FormField>
-          ) : null}
-        </FieldGrid>
+            {!once ? (
+              <FormField
+                label="Rises with"
+                hint={
+                  (plan?.assumptions.inflationCategories?.length ?? 0) === 0
+                    ? "Add healthcare, education or housing inflation in Assumptions to choose one here."
+                    : "Used when it changes with inflation, and for its today’s-money value."
+                }
+              >
+                {(fid) => (
+                  <InflationCategorySelect
+                    id={fid}
+                    value={event.inflationCategory}
+                    onChange={(inflationCategory) =>
+                      patch({ inflationCategory }, "Change inflation category")
+                    }
+                  />
+                )}
+              </FormField>
+            ) : null}
+          </FieldGrid>
+        )}
         {event.amount.basis === "real" ? (
           <SwitchField
             label="Grow from today"
@@ -1031,6 +1080,93 @@ function SpendingSection({
         onChange={(payFrom) => patch({ payFrom } as Partial<ExpenseEvent>, "Edit paid from")}
       />
     </FormSection>
+  );
+}
+
+const fmtRate = (r: number) => `${Number((r * 100).toFixed(2))}%`;
+
+/**
+ * A bonus's amount: a fixed amount, or a share of one of the plan's salaries. The engine takes the
+ * share of that salary's pay each year (after its growth; nothing in a year without the salary).
+ */
+function BonusBasis({
+  event,
+  salaries,
+  annualAmount,
+  set,
+  error,
+}: {
+  event: Extract<IncomeEvent, { type: "bonus" }>;
+  salaries: IncomeEvent[];
+  annualAmount: number | null;
+  set: (fn: (e: AnyEvent) => AnyEvent, l: string, k?: string) => void;
+  error?: string;
+}) {
+  const f = useFormat();
+  const link = event.percentOfSalary;
+  const mode = link ? "percent" : "fixed";
+  const setLink = (next: typeof link, label: string, key?: string) =>
+    set((e) => ({ ...e, percentOfSalary: next }) as AnyEvent, label, key);
+  return (
+    <>
+      <EnumField<"fixed" | "percent">
+        label="Amount"
+        value={mode}
+        onChange={(m) => {
+          if (m === "fixed") setLink(undefined, "Fixed bonus");
+          else if (salaries[0])
+            setLink(
+              { salaryIncomeId: salaries[0].id, rate: link?.rate ?? 0.1 },
+              "Bonus as % of salary",
+            );
+        }}
+        options={[
+          { value: "fixed", label: "Fixed amount" },
+          { value: "percent", label: "% of salary" },
+        ]}
+        hint={
+          mode === "percent" && salaries.length === 0
+            ? "Add a salary first: the bonus is a share of one."
+            : undefined
+        }
+      />
+      {link ? (
+        <FieldGrid>
+          <FormField
+            label="Salary"
+            error={error}
+            hint="Each year the bonus is this share of the salary paid that year, after its growth. No salary that year, no bonus."
+          >
+            {(fid) => (
+              <Select
+                id={fid}
+                value={link.salaryIncomeId}
+                placeholder="Choose a salary"
+                onValueChange={(salaryIncomeId) =>
+                  setLink({ ...link, salaryIncomeId }, "Link bonus to salary")
+                }
+                options={salaries.map((x) => ({ value: x.id, label: x.name || "Untitled" }))}
+              />
+            )}
+          </FormField>
+          <FormField
+            label="Share of salary"
+            hint={annualAmount !== null ? `≈ ${f.money(annualAmount)} a year today` : undefined}
+          >
+            {(fid) => (
+              <PercentInput
+                id={fid}
+                className="w-[120px]"
+                value={link.rate}
+                onValueChange={(v) =>
+                  setLink({ ...link, rate: Math.max(0, v ?? 0) }, "Edit bonus share", "bonus-rate")
+                }
+              />
+            )}
+          </FormField>
+        </FieldGrid>
+      ) : null}
+    </>
   );
 }
 

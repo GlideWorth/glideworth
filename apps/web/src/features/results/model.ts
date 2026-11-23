@@ -448,7 +448,11 @@ function uniqueLines(P: PeriodResult[], pick: (p: PeriodResult) => string[][]): 
   return [...m.entries()];
 }
 
+/** Category names the generic rule below would get wrong. */
+const CATEGORY_NAMES: Record<string, string> = { "long-term-care": "Long-term care" };
+
 export function categoryName(cat: string): string {
+  if (CATEGORY_NAMES[cat]) return CATEGORY_NAMES[cat];
   const s = cat.replace(/[-_]/g, " ");
   return s.charAt(0).toUpperCase() + s.slice(1);
 }

@@ -291,6 +291,17 @@ export function validateReferences(ctx: EngineContext): void {
   }
   for (const e of ctx.plan.income) {
     if (e.sendTo.kind === "accounts") accounts(e.sendTo.accountIds, "income", e.id);
+    // A bonus may only follow a salary, and a salary cannot follow anything, so links are acyclic.
+    if (e.type === "bonus" && e.percentOfSalary) {
+      const target = ctx.plan.income.find((x) => x.id === e.percentOfSalary!.salaryIncomeId);
+      need(
+        target?.type === "salary",
+        target
+          ? `bonus '${e.id}' is a percentage of '${target.id}', which is not a salary`
+          : `bonus '${e.id}' is a percentage of unknown salary '${e.percentOfSalary.salaryIncomeId}'`,
+        e.id,
+      );
+    }
     if (e.type === "rsu" && e.destinationAccountId)
       accounts([e.destinationAccountId], "income", e.id);
   }

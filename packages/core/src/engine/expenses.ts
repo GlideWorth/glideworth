@@ -168,7 +168,8 @@ export function runExpenses(ctx: EngineContext, ps: PeriodState): void {
     if (e.type === "healthcare" && e.healthcare.kind === "aca" && amount > 0)
       amount -= acaCoverage(ctx, ps, e, base);
     if (!(amount > 0)) continue;
-    if (e.type === "healthcare") ps.qualified.healthcare += amount;
+    // Long-term care counts as medical spending exactly as healthcare does (HSA qualified use).
+    if (e.type === "healthcare" || e.type === "long-term-care") ps.qualified.healthcare += amount;
     if (e.type === "education") ps.qualified.education += amount;
     if (e.type === "tax-deduction") {
       addTaxDeduction(

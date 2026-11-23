@@ -185,8 +185,10 @@ Figures that could not be confirmed or are provisional:
   confirmed and are not modelled.
 - Assets abroad (checked 2026-11-19 against the treaty texts on gov.uk and canada.ca, HMRC DT4604/DT4610, IRS
   Publications 54, 514 and 519 and Rev. Procs. 2025-32 and 2026-35, Revenue.ie, the Agencia Tributaria, BOFiP and
-  §50 EStG). **Not confirmed**: Australia's foreign-resident rates (ato.gov.au refused access), so Australian tax
-  on a foreign resident's Australian income uses the resident calculation and is too low; whether the US exempts
+  §50 EStG). Australia's foreign-resident rates, and that foreign residents get no LITO or Medicare levy, were read
+  in the Income Tax Rates Act 1986 Schedule 7 Part II, ITAA 1997 s 61-110 and ITAA 1936 ss 251T and 251U on
+  legislation.gov.au on 2026-11-22; the 50% CGT discount is still applied to a foreign resident's Australian property
+  gains, so that tax is too low. **Not confirmed**: whether the US exempts
   the UK tax-free lump sum of a US resident under UK-US Art. 17(1)(b) (taxed in full here; no IRS guidance found);
   whether the UK applies the UK-US saving clause to its residents' US lump sums (not applied); which countries
   have a US social security agreement (ssa.gov refused access; foreign social security contributions are never

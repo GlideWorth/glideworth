@@ -403,7 +403,8 @@ const AU: NonResidentRules = {
     },
   ],
   simplifications: [
-    "Foreign residents have no tax-free threshold and their own rates, but Glideworth uses the resident calculation (with the tax-free threshold, less the Medicare levy), so Australian tax on Australian pay, rent and property gains of foreign residents is understated. The foreign-resident rates could not be read from ato.gov.au in this check (access refused) and are not applied.",
+    "Australian pay, rent and property gains of foreign residents are taxed at the foreign-resident rates (Income Tax Rates Act 1986 Schedule 7 Part II: 30% to 135,000, 37% to 190,000, 45% above, no tax-free threshold), without the low income tax offset (ITAA 1997 s 61-110) or the Medicare levy (ITAA 1936 ss 251T, 251U(1)(d)). The person is taken to be a foreign resident for the whole income year with no Australian-resident dependants.",
+    "The 50% CGT discount is still applied to a foreign resident's Australian property gains, although the rule above says foreign residents do not get it, so that tax is understated.",
     "Unfranked dividends to foreign residents carry 30% withholding (15% under most treaties); Glideworth treats all Australian dividends as franked (no Australian tax).",
     "Super paid to someone under 60 is not taxed in Australia here.",
   ],
@@ -411,6 +412,21 @@ const AU: NonResidentRules = {
     {
       url: "https://www.ato.gov.au/individuals-and-families/investments-and-assets/capital-gains-tax/foreign-residents-and-capital-gains-tax/how-changing-residency-affects-cgt",
       year: "2026",
+    },
+    {
+      url: "https://www.legislation.gov.au/C2004A03348/2026-07-01/2026-07-01/text/original/epub/OEBPS/document_1/document_1.html",
+      year: "2026",
+      note: "Income Tax Rates Act 1986 (Compilation No. 66, 1 July 2026), Schedule 7 Part II foreign-resident rates for 2024-25 and later years (read 2026-11-22)",
+    },
+    {
+      url: "https://www.legislation.gov.au/C2004A05138/2026-10-01/2026-10-01/text/original/epub/OEBPS/document_2/document_2.html",
+      year: "2026",
+      note: "ITAA 1997 (Compilation No. 268, 1 October 2026) s 61-110(1)(a): LITO only for Australian residents (read 2026-11-22)",
+    },
+    {
+      url: "https://www.legislation.gov.au/C1936A00027/2026-10-01/2026-10-01/text/original/epub/OEBPS/document_4/document_4.html",
+      year: "2026",
+      note: "ITAA 1936 (Compilation No. 193, 1 October 2026) ss 251T(a), 251U(1)(d): no Medicare levy for a non-resident all year (read 2026-11-22)",
     },
   ],
 };

@@ -88,7 +88,7 @@ export const CA_PROVINCE_SIMPLIFICATIONS: readonly string[] = [
 
 export const AU_SIMPLIFICATIONS: readonly string[] = [
   "Income years 2025-26 and 2026-27 and the legislated 2027-28 rates (Income Tax Rates Act 1986 as amended in 2024 and 2025). Rates and thresholds are not indexed in law, so they keep their legislated values through 2027-28; later years carry the 2027-28 rates forward and index thresholds with the plan threshold policy.",
-  "Residents only; non-resident and working-holiday rates are not modelled. The Age Pension is not modelled: enter it as income.",
+  "Foreign-resident rates (no tax-free threshold, no LITO, no Medicare levy) apply only to Australian income of someone living in another country; working-holiday-maker rates are not modelled. The Age Pension is not modelled: enter it as income.",
   "Medicare levy uses the single low-income threshold (28,011 from 2025-26, Act No. 58 of 2026) for each person, or the seniors and pensioners threshold (44,268) from 67 without SAPTO’s other tests; family thresholds and the Medicare levy surcharge (private cover) are not modelled.",
   "Offsets: the low income tax offset and franking credits only (credits assume the 30% company rate, not the 25% base rate entity rate); SAPTO, the private health insurance rebate and HELP/HECS repayments are not modelled.",
   "Super: 15% contributions tax on concessional contributions, Division 293 and excess concessional contributions are modelled; carry-forward of unused concessional cap, the transfer balance cap, excess non-concessional tax and Division 296 tax on earnings for total super balances over $3 million (law from 2026-27) are not. The 2026-27 caps (32,500 and 130,000) could not be confirmed on the ATO site.",

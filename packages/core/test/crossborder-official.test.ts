@@ -308,3 +308,31 @@ describe("non-resident rules (official pages read 2026-11-19)", () => {
     expect(NON_RESIDENT_RULES.DE!.propertyGainsExemptAfterYears).toBe(10);
   });
 });
+
+describe("Australian foreign residents (legislation read 2026-11-22)", () => {
+  // Income Tax Rates Act 1986 Schedule 7 Part II (Compilation No. 66, 1 July 2026): 30% to
+  // 135,000, 37% to 190,000, 45% above, no tax-free threshold. No LITO (ITAA 1997 s 61-110(1)(a))
+  // and no Medicare levy (ITAA 1936 ss 251T(a), 251U(1)(d)). The UAE taxes nothing.
+  const aussieInDubai = (amount: number) =>
+    simulate(
+      household({
+        country: "AE",
+        currency: "AUD",
+        citizenships: ["AU"],
+        income: [{ type: "salary", amount, country: "AU" }],
+        fx: [{ from: "AED", to: "AUD", rate: 0.41 }],
+      }),
+    );
+
+  it("A$30,000 of Australian pay of a UAE resident: 30% from the first dollar = 9,000 (the resident calculation gave 1,268.90)", () => {
+    const p = aussieInDubai(30_000).periods.find((x) => x.year === 2026)!;
+    expect(linesOf(p, (l) => l.country === "AU" && l.basis === "source")).toBeCloseTo(9_000, 6);
+    expect(linesOf(p, (l) => /Medicare|offset/i.test(l.label))).toBeCloseTo(0, 6);
+    expect(linesOf(p, (l) => l.country === "AE")).toBeCloseTo(0, 6);
+  });
+
+  it("A$150,000: 40,500 + 37% x 15,000 = 46,050", () => {
+    const p = aussieInDubai(150_000).periods.find((x) => x.year === 2026)!;
+    expect(linesOf(p, (l) => l.country === "AU" && l.basis === "source")).toBeCloseTo(46_050, 6);
+  });
+});

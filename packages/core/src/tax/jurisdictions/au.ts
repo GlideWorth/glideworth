@@ -1,12 +1,17 @@
 /**
- * Australia (residents): progressive income tax per person, Medicare levy with low-income
- * shade-in, low income tax offset, 50% CGT discount (assets held > 12 months), franked dividends
+ * Australia: progressive income tax per person, Medicare levy with low-income shade-in, low
+ * income tax offset, 50% CGT discount (assets held > 12 months), franked dividends
  * (gross-up + refundable franking credit), super: 15% contributions tax on concessional
  * contributions, Division 293, excess concessional contributions, benefits tax-free from 60,
  * pension-phase earnings untaxed (no tax items arise), minimum pension drawdowns. Data: ../data/au.ts.
  *
+ * Foreign residents (`input.nonResident` set, from the cross-border engine): Income Tax Rates Act
+ * 1986 Schedule 7 Part II rates with no tax-free threshold, no LITO (ITAA 1997 s 61-110(1)(a)) and
+ * no Medicare levy (ITAA 1936 ss 251T(a), 251U(1)(d)). They are treated as foreign residents for
+ * the whole income year, with no Australian-resident dependants (s 251U(2)).
+ *
  * Not modelled: Medicare levy surcharge (needs private-cover status), SAPTO, HELP repayments,
- * non-resident rates, family Medicare thresholds (each person uses the single threshold),
+ * working-holiday-maker rates, family Medicare thresholds (each person uses the single threshold),
  * Division 296 tax on large super balances, the Age Pension.
  */
 
@@ -51,6 +56,8 @@ function compute(input: TaxYearInput): { out: TaxYearOutput; total: number } {
   let grossTotal = 0;
   const bracketFacts: Record<string, number> = {};
   const S = d.super;
+  // Foreign residents have no tax-free threshold, no LITO and no Medicare levy (see the header).
+  const foreignResident = input.nonResident !== undefined;
   for (const p of people) {
     const sfx = multi ? ` (${p.id})` : "";
     const b = collectIncome(input, ID, p.id, people);
@@ -103,15 +110,16 @@ function compute(input: TaxYearInput): { out: TaxYearOutput; total: number } {
       concessional -
       deductions;
     const taxable = clamp0(nonGain + netGain);
-    const brackets = bands(d.brackets, fs);
+    const brackets = bands(foreignResident ? d.foreignResidentBrackets : d.brackets, fs);
     const it = sliceTax(brackets, 0, taxable);
     const incomeTax = it.tax;
     bracketFacts[`tax.ordinaryBracketRate.${p.id}`] = taxable > 0 ? it.marginal : 0;
     if (people[0] === p) bracketFacts["tax.ordinaryBracketRate"] = taxable > 0 ? it.marginal : 0;
     const withoutGains = sliceTax(brackets, 0, clamp0(nonGain)).tax;
     const L = d.lito;
-    const lito =
-      taxable <= L.taper1Start * fs
+    const lito = foreignResident
+      ? 0
+      : taxable <= L.taper1Start * fs
         ? L.max * fs
         : taxable <= L.taper2Start * fs
           ? L.max * fs - L.taper1Rate * (taxable - L.taper1Start * fs)
@@ -127,7 +135,9 @@ function compute(input: TaxYearInput): { out: TaxYearOutput; total: number } {
     const M = d.medicare;
     const thr = (p.age >= 67 ? M.seniorSingleThreshold : M.singleThreshold) * fs;
     const medicare =
-      taxable <= thr ? 0 : Math.min(M.rate * taxable, M.shadeInRate * (taxable - thr));
+      foreignResident || taxable <= thr
+        ? 0
+        : Math.min(M.rate * taxable, M.shadeInRate * (taxable - thr));
     const contribTax = S.contributionsTax * Math.min(totalConcessional, cap);
     const div293Income = taxable + Math.min(totalConcessional, cap);
     const div293 =
@@ -202,7 +212,8 @@ function requiredDistribution(q: RequiredDistributionQuery): number {
 
 export const auJurisdiction: TaxJurisdiction = {
   id: ID,
-  label: "Australia (resident income tax, Medicare levy, super, CGT, franking)",
+  label:
+    "Australia (resident and foreign-resident income tax, Medicare levy, super, CGT, franking)",
   level: "national",
   country: "AU",
   status: "implemented",

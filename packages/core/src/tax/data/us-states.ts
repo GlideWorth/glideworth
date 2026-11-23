@@ -704,13 +704,40 @@ export const US_STATES_2026: StateRow[] = [
     "ID",
     "Idaho",
     0.053,
+    // tax.idaho.gov and legislature.idaho.gov refuse automated clients (2026-11-16, -19 and -22),
+    // so each official page below was read from its Internet Archive copy on 2026-11-22.
     [
       {
-        url: "https://tax.idaho.gov/",
-        note: `official site; refused connections on 2026-11-16 and 2026-11-19 (legislature.idaho.gov likewise)`,
+        url: "https://web.archive.org/web/20261115031950/https://legislature.idaho.gov/statutesrules/idstat/Title63/T63CH30/SECT63-3024/",
+        note: `Idaho Code 63-3024(2): 5.3% of taxable income over $2,500 ($5,000 joint, head of household and surviving spouse); (3) thresholds indexed yearly by CPI. Last amended 2025, ch. 13 (copy of 2026-11-15, read 2026-11-22)`,
+      },
+      {
+        url: "https://web.archive.org/web/20260725141433/https://legislature.idaho.gov/sessioninfo/2026/legislation/h0589/",
+        note: `H0589 (2026), which would have changed the rate, was introduced and printed only (copy of 2026-07-25, read 2026-11-22)`,
+      },
+      {
+        url: "https://web.archive.org/web/20261117200424/https://tax.idaho.gov/wp-content/uploads/forms/EIN00046/EIN00046_03-02-2026.pdf",
+        note: `EIN00046 2025 Form 40 instructions: p. 2 rate 5.3% from 1 Jan 2025 and conformity to the IRC as of 1 Jan 2026; p. 8 federal standard deduction; p. 9 line 18 subtracts federal Form 1040 lines 13a and 13b (QBI and Schedule 1-A, which holds the senior deduction); p. 9 line 20 worksheet: tax = 5.3% of taxable income over $4,811 ($9,622 joint) (read 2026-11-22)`,
+      },
+      {
+        url: "https://web.archive.org/web/20261101171420/https://tax.idaho.gov/taxes/income-tax/individual-income/individual-income-tax-rate-schedule/",
+        note: `Rate schedule: latest year shown is 2025, 0% to $4,811 ($9,622 married), 5.3% above; no 2026 amounts yet (copy of 2026-11-01, read 2026-11-22)`,
+      },
+      {
+        url: "https://web.archive.org/web/20261115031950/https://legislature.idaho.gov/statutesrules/idstat/Title63/T63CH30/SECT63-3022/",
+        note: `Idaho Code 63-3022(j): the standard deduction as defined in IRC section 63; (l) taxable Social Security deducted; no addition for the federal senior deduction (copy of 2026-11-15, read 2026-11-22)`,
+      },
+      {
+        url: "https://web.archive.org/web/20260906190743/https://legislature.idaho.gov/statutesrules/idstat/title63/t63ch30/sect63-3004/",
+        note: `Idaho Code 63-3004: the IRC as in effect on 1 January 2026, so the 2026 federal standard deduction ($16,100 / $32,200) and the senior deduction apply (copy of 2026-09-06, read 2026-11-22)`,
+      },
+      {
+        url: "https://web.archive.org/web/20261102184905/https://tax.idaho.gov/wp-content/uploads/pubs/EPB00744/EPB00744_07-23-2026.pdf",
+        note: `EPB00744 (07-23-2026) withholding tables: annual 5.3% of wages over $16,100 single, $32,200 married (read 2026-11-22)`,
       },
     ],
     {
+      // 2025 amounts (EIN00046 p. 9); the 2026 amounts are indexed and not yet published.
       single: [
         [0, 0],
         [4_811, 0.053],
@@ -720,8 +747,11 @@ export const US_STATES_2026: StateRow[] = [
         [9_622, 0.053],
       ],
       standardDeduction: { single: 16_100, mfj: 32_200 },
+      federalDeduction: "taxable-income",
+      approx:
+        "when the federal return itemises, Idaho's addback of state income and sales taxes is not applied",
       unconfirmed:
-        "all Idaho figures: the 5.3% rate, the zero-rate band ($4,811 / $9,622 appear to be the 2025 amounts; the 2026 amounts are indexed), the standard deduction and how Idaho treats the federal senior deduction (tax.idaho.gov and legislature.idaho.gov refused connections)",
+        "the 2026 zero-rate band: Idaho indexes it each year and had not published the 2026 amounts, so the 2025 amounts ($4,811 / $9,622) are used",
     },
   ),
   FLAT(

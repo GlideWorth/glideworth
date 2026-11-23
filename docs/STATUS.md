@@ -112,12 +112,15 @@ Figures that could not be confirmed or are provisional:
   partial exemption for qualifying pension annuities (not applied, so pensions are taxed in full); how the Bituach
   Leumi old-age allowance is taxed (taxed as ordinary income); and how indexation resumes in 2028 after the 2025-2027
   freeze (Glideworth indexes from 2027 with the plan's threshold policy).
-- US states: **not confirmed from an official source** (2026-11-19): all figures for Idaho (its official sites refused
-  connections); Arizona's 2.5% rate (confirmed only by a 2025 legislative fiscal note) and whether voters approved a
-  2.0% rate from 2027; whether Colorado adds back the federal senior deduction; and 2026 amounts not yet published,
-  for which the 2025 amounts are used: Louisiana's final standard deduction, Maine's pension deduction phase-out,
-  Montana's senior subtraction, Ohio's exemptions, Rhode Island's retirement income limits, South Carolina's
-  dependent exemption and Vermont's brackets. Each is named in that state's simplifications.
+- US states: **not confirmed from an official source** (2026-11-19): Idaho's 2026 zero-rate band (indexed yearly and
+  not yet published, so the 2025 amounts, $4,811 / $9,622, are used; Idaho's 5.3% rate, federal standard deduction
+  and federal senior deduction were confirmed on 2026-11-22 from Idaho Code 63-3024, 63-3022 and 63-3004 and the 2025
+  Form 40 instructions, read from Internet Archive copies as both official sites refuse automated access); Arizona's
+  2.5% rate (confirmed only by a 2025 legislative fiscal note) and whether voters approved a 2.0% rate from 2027;
+  whether Colorado adds back the federal senior deduction; and 2026 amounts not yet published, for which the 2025
+  amounts are used: Louisiana's final standard deduction, Maine's pension deduction phase-out, Montana's senior
+  subtraction, Ohio's exemptions, Rhode Island's retirement income limits, South Carolina's dependent exemption and
+  Vermont's brackets. Each is named in that state's simplifications.
 - Canada (checked 2026-11-19): Quebec's three lower rates (14% / 19% / 24%) and Quebec's dividend tax credits are
   **not confirmed from an official source** (Revenu Québec refused automated access); Quebec's thresholds and basic
   amount are confirmed from Quebec's Ministère des Finances and the 25.75% top rate from the Manitoba Budget 2026.
@@ -203,7 +206,7 @@ Tax sources, checked 2026-11-16 and 2026-11-19 (the status of each country's sou
 | Country                           | Sourcing status                                                                                                   |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | US federal, payroll               | ok (IRS, SSA, CMS; 2027 figures checked 2026-11-19)                                                               |
-| US states and cities              | ok for 49 states, DC and 5 cities (2026-11-19); Idaho and some figures of 9 states not confirmed (above)          |
+| US states and cities              | ok for 50 states, DC, 5 cities (2026-11-19; ID 11-22); not confirmed: ID 2026 zero band, 9 states' figures above  |
 | Canada                            | ok (CRA, provinces; 2026-11-19); Quebec lower rates and Manitoba bracket conflict not confirmed (above)           |
 | Israel                            | ok on brackets, credit point, surtax and NI (Knesset, NII; 2026-11-19); capital-income rates not confirmed        |
 | United Arab Emirates              | ok (u.ae, FTA, DIFC, GPSSA; 2026-11-19)                                                                           |

@@ -298,6 +298,35 @@ describe("US states 2026: retirement income and Social Security (checked 2026-11
   });
 });
 
+describe("Idaho 2026 (checked 2026-11-22)", () => {
+  // Idaho Code 63-3024(2): 5.3% of taxable income over the zero-rate band. EIN00046 (2025 Form 40
+  // instructions) p. 9, line 20 worksheet: 5.3% x (taxable income - 4,811; 9,622 joint), zero or
+  // less is zero. Taxable income = federal AGI less the federal standard deduction (Idaho Code
+  // 63-3022(j), 63-3004): 16,100 single, 32,200 joint for 2026. The band is the 2025 amount; the
+  // 2026 amount is not yet published (see the row's `unconfirmed`).
+  const id = (amount: number, o: Parameters<typeof taxInput>[0] = {}) =>
+    total(state("ID", { ...o, income: wages(amount) }));
+
+  it("single: zero just below, at and 5.3% just above the 4,811 band", () => {
+    expect(id(20_000)).toBeCloseTo(0, 6); // taxable 3,900
+    expect(id(20_911)).toBeCloseTo(0, 6); // taxable 4,811
+    expect(id(20_912)).toBeCloseTo(0.053, 6); // taxable 4,812: 5.3% x 1
+    expect(id(21_911)).toBeCloseTo(53, 6); // taxable 5,811: 5.3% x 1,000
+  });
+
+  it("joint: zero just below, at and 5.3% just above the 9,622 band", () => {
+    expect(id(41_000, joint)).toBeCloseTo(0, 6); // taxable 8,800
+    expect(id(41_822, joint)).toBeCloseTo(0, 6); // taxable 9,622
+    expect(id(41_823, joint)).toBeCloseTo(0.053, 6); // taxable 9,623: 5.3% x 1
+    expect(id(42_822, joint)).toBeCloseTo(53, 6); // taxable 10,622: 5.3% x 1,000
+  });
+
+  it("single 70: the federal 65+ amount and the senior deduction (Form 40 line 18) apply", () => {
+    // 50,000 - (16,100 + 2,050 + 6,000) = 25,850; 5.3% x (25,850 - 4,811 = 21,039) = 1,115.067
+    expect(id(50_000, { people: [{ age: 70 }] })).toBeCloseTo(1_115.067, 6);
+  });
+});
+
 describe("US states 2026: other corrections (checked 2026-11-19)", () => {
   it("Ohio: 332 plus 2.75% above 26,050; exemption 1,900 above 80,000 of income", () => {
     // 100,000 - 1,900 = 98,100: 332 + 2.75% x 72,050 = 332 + 1,981.375

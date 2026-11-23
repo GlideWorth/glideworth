@@ -173,7 +173,9 @@ Figures that could not be confirmed or are provisional:
   limit are confirmed for 2025 and 2026 from the BOE consolidated text of the IRPF law; social security for 2026 from
   the Seguridad Social; the wealth tax and the solidarity tax on large fortunes from the AEAT 2025 manual and Ley
   38/2022. **Not confirmed**: the 2026 regional IRPF scales and 2026 regional wealth tax rules (the 2025 ones are used).
-  Only four regions have their own scales; any other region is assumed to have a scale equal to the state scale.
+  Only five regions have their own scales (Galicia's 2025 scale checked 2026-11-22 against the AEAT 2025 manual and
+  art. 4 of Decreto Legislativo 1/2011 in the BOE; Galicia's own wealth tax scale and 50% bonificación are not
+  modelled); any other region is assumed to have a scale equal to the state scale.
 - No preset has been checked line by line against an official calculator for every case.
 - UAE (checked 2026-11-19): no personal income tax, so no rate is modelled; the gratuity, savings scheme, DEWS and
   GPSSA figures were confirmed on the government portal, the DIFC Employment Law and GPSSA. The gratuity's daily wage

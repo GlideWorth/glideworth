@@ -178,6 +178,24 @@ export const ES_REGIONAL_SCALES: Record<string, EsRegion> = {
     source: `${AEAT}/c15-calculo-impuesto-determinacion-cuotas-integras/gravamen-base-liquidable-general/gravamen-autonomico/comunitat-valenciana.html`,
     wealthSource: `${PATRIMONIO}/c-4-determinacion-base-liquidable-integra/determinacion-cuota-integra/regla-general/escalas-autonomicas/comunitat-valenciana.html`,
   },
+  // Galicia, checked 2026-11-22: AEAT Manual práctico de Renta 2025, cap. 15, "Comunidad Autónoma de
+  // Galicia" (page updated 17/03/2026), and the same table in art. 4 of the Texto Refundido approved by
+  // Decreto Legislativo 1/2011 (BOE-A-2011-18161), wording in force from 01/01/2023 (Ley 7/2022 art. 1).
+  GA: {
+    code: "GA",
+    name: "Galicia",
+    general: [
+      [0, 0.09],
+      [12_985.35, 0.1165],
+      [21_068.6, 0.149],
+      [35_200, 0.184],
+      [60_000, 0.225],
+    ],
+    // Wealth tax NOT modelled for Galicia: the state scale and 700,000 exempt are used. Galicia has its own
+    // scale (art. 13 bis DL 1/2011, top rate 2.5%), a 50% bonificación on the cuota (art. 13 quater) and
+    // deductions (art. 13 ter); its mínimo exento is 700,000 (art. 13).
+    source: `${AEAT}/c15-calculo-impuesto-determinacion-cuotas-integras/gravamen-base-liquidable-general/gravamen-autonomico/comunidad-autonoma-galicia.html`,
+  },
 };
 
 /** Region code aliases (ISO 3166-2:ES suffixes and common names). */
@@ -196,6 +214,9 @@ export const ES_REGION_ALIASES: Record<string, string> = {
   VALENCIA: "VC",
   "COMUNITAT VALENCIANA": "VC",
   "ES-VC": "VC",
+  GALICIA: "GA",
+  GALIZA: "GA",
+  "ES-GA": "GA",
 };
 
 const Y2025: EsYear = {
@@ -277,6 +298,10 @@ const Y2025: EsYear = {
         note: `${r.name} general scale 2025 (used for 2026; 2026 scale not confirmed)`,
       })),
     {
+      url: "https://www.boe.es/buscar/act.php?id=BOE-A-2011-18161#a4",
+      note: "Galicia: art. 4 Texto Refundido (Decreto Legislativo 1/2011), regional general scale in force from 01/01/2023, same as the AEAT 2025 table. Checked 2026-11-22",
+    },
+    {
       url: `${AEAT}/c14-adecuacion-impuesto-circunstancias-personales/minimo-contribuyente.html`,
       note: "Mínimo personal (art. 57): 5,550; +1,150 from 65; +1,400 more from 75 (state amounts). Checked 2026-11-19",
     },
@@ -317,13 +342,13 @@ export const ES_YEARS: readonly EsYear[] = [Y2025];
 
 export const ES_SIMPLIFICATIONS: readonly string[] = [
   "IRPF: the state scales, minimums and work-income rules are the law in force for 2025 and 2026 (BOE, checked 2026-11-19); the regional scales are the 2025 tables (AEAT), used for 2026 too because the 2026 regional scales could not be confirmed. Later years carry these forward with the plan's threshold policy, although Spain does not index its scales by law. Social security uses 2026 rates.",
-  "Region: only Madrid, Cataluña, Andalucía and Comunitat Valenciana have their own scales. Every other region (and a plan with no region) is assumed to have a regional scale equal to the state scale, which is not any region's real scale. Navarra and the País Vasco (foral regimes) are not modelled.",
+  "Region: only Madrid, Cataluña, Andalucía, Comunitat Valenciana and Galicia have their own scales. Every other region (and a plan with no region) is assumed to have a regional scale equal to the state scale, which is not any region's real scale. Navarra and the País Vasco (foral regimes) are not modelled.",
   "Individual returns only (the joint-return option and its 3,400 EUR reduction are not modelled). Regional personal and family minimums and all regional deductions are not modelled (state minimums are used for both halves).",
   "Descendant minimums are split evenly between two parents and count dependents under 25 (their own income limit of 8,000 EUR is not checked); ascendant and disability minimums, and the maternity deduction, are not modelled.",
   "Pensions and pension-plan withdrawals are work income (the 2,000 EUR other expenses and the art. 20 reduction apply); the 40% reduction for pre-2007 contributions withdrawn as capital is not modelled.",
   "Pension-plan contributions are limited to 1,500 EUR and 30% of net work and activity income. The extra 8,500 EUR for employer contributions (and employee contributions matched by them) and the extra 4,250 EUR for self-employed plans are not modelled: employer contributions are left out of income and deductions alike.",
   "Rental income: no 50-90% housing reduction and no expenses. Self-employed: no social contributions (RETA) and no expense deductions.",
   "Social security: employee contributions on salary up to the 2026 maximum base. The solidarity contribution above the base, fixed-term contract rates (1.60% unemployment) and the exemption from most contributions for employees past the state pension age are not modelled.",
-  "Wealth tax (law toggle es.wealthTax, off by default) taxes period-start net worth per person (split evenly) with the regional scale and mínimo exento (state 700,000 EUR; Cataluña 500,000 and its own scale; Valencia 1,000,000 and its own scale). The solidarity tax on large fortunes (above 3,000,000 EUR of base after the 700,000 exemption) is added where it exceeds the wealth tax; in Madrid and Andalucía the 100% bonificación only removes the wealth tax above it. The main-home exemption (300,000), exempt business assets, other regional bonificaciones and the 60% cap on income plus wealth tax are not modelled.",
+  "Wealth tax (law toggle es.wealthTax, off by default) taxes period-start net worth per person (split evenly) with the regional scale and mínimo exento (state 700,000 EUR; Cataluña 500,000 and its own scale; Valencia 1,000,000 and its own scale; Galicia's own scale, 50% bonificación and deductions are not modelled, so Galicia uses the state scale). The solidarity tax on large fortunes (above 3,000,000 EUR of base after the 700,000 exemption) is added where it exceeds the wealth tax; in Madrid and Andalucía the 100% bonificación only removes the wealth tax above it. The main-home exemption (300,000), exempt business assets, other regional bonificaciones and the 60% cap on income plus wealth tax are not modelled.",
   "Main-home sale gains are not excluded (the exemption depends on age 65+ or reinvestment).",
 ];

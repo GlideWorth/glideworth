@@ -391,7 +391,7 @@ A household that holds nothing abroad sees none of this except the country field
     (switchable), and their income is kept inside the wrapper automatically; the PER is available from 64
     (the 2023 reform's legal age; its 2025 suspension is not modelled); flat tax is 31.4% from 2026;
     no high-income contribution or IFI.
-  - _Spain:_ only Madrid, Cataluña, Andalucía and Valencia have their own scales (others use a scale equal
+  - _Spain:_ only Madrid, Cataluña, Andalucía, Valencia and Galicia have their own scales (others use a scale equal
     to the state one); individual returns only; no regional minimums or deductions; wealth tax is off by
     default and ignores the main-home exemption and the large-fortunes solidarity tax.
   - _Israel:_ capital gains are taxed on the nominal gain (Israel taxes only the real, inflation-adjusted

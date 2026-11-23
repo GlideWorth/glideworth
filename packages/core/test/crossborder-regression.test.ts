@@ -82,9 +82,11 @@ const BEFORE: Record<string, string> = {
   "FR-single": "08863fa29cecad70",
   "FR-couple": "8103ae0c4b8ddc27",
   // Spain re-recorded 2026-11-19: the art. 20 work-income reduction is measured before the 2,000
-  // other expenses, and the 65+ minimum applies from 65 (LIRPF; AEAT manual).
-  "ES-MD-single": "045245a1f290b11e",
-  "ES-MD-couple": "8ae5596f32411536",
+  // other expenses, and the 65+ minimum applies from 65 (LIRPF; AEAT manual). Re-recorded 2026-11-22:
+  // only the cited sources changed (Galicia's AEAT and BOE sources added); with those two entries
+  // left out, the old hashes still match.
+  "ES-MD-single": "b3f83dbbed7055e4",
+  "ES-MD-couple": "05533d93dcbac628",
   // Israel re-recorded 2026-11-19: the pension credit is capped at 658 a month, the extra 2% surtax
   // applies only to capital income above the threshold, and tax amounts are frozen through 2027.
   "IL-single": "d202482725f634d3",

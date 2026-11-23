@@ -10,7 +10,7 @@ taxYears:
   - 2026 (social security)
 modelled:
   - IRPF with the state and regional general scales, the savings scale, and personal and family minimums
-  - Own regional scales for Madrid, Cataluña, Andalucía and Comunitat Valenciana
+  - Own regional scales for Madrid, Cataluña, Andalucía, Comunitat Valenciana and Galicia
   - Work income with the 2,000 euro other-expenses allowance and the reduction for low earners
   - Employee social security up to the 2026 maximum base
   - Pensions and pension-plan withdrawals taxed as work income, and the 1,500 euro pension plan contribution limit
@@ -39,8 +39,8 @@ The state income tax scales and minimums are the law in force for both 2025 and 
 be confirmed. Later years carry the tables forward with the plan's threshold policy. Social security uses 2026 rates.
 The model covers the territorio común, not Navarra or the País Vasco.
 
-**Which region is assumed.** Set your region in the plan to use its scale. Madrid, Cataluña, Andalucía and Comunitat
-Valenciana have their own scales. Any other region, or a plan with no region, is assumed to have a regional scale
+**Which region is assumed.** Set your region in the plan to use its scale. Madrid, Cataluña, Andalucía, Comunitat
+Valenciana and Galicia have their own scales. Any other region, or a plan with no region, is assumed to have a regional scale
 equal to the state scale. That is a simplification, not any region's real scale.
 
 ## What is modelled
@@ -60,7 +60,8 @@ equal to the state scale. That is a simplification, not any region's real scale.
   the pension amount yourself.
 - **Wealth tax and solidarity tax** (off by default): net worth is split evenly between the people in the household.
   The wealth tax uses the state scale above a €700,000 exemption per person, except in Cataluña (its own scale, €500,000
-  exempt) and Comunitat Valenciana (its own scale, €1,000,000 exempt). The solidarity tax on large fortunes applies to
+  exempt) and Comunitat Valenciana (its own scale, €1,000,000 exempt). Galicia's own wealth tax scale and 50% bonus are
+  not modelled, so Galicia uses the state scale. The solidarity tax on large fortunes applies to
   wealth above €3,000,000 after a €700,000 exemption (1.7%, 2.1% and 3.5%), and only where it is larger than the wealth
   tax. Madrid and Andalucía have a 100% wealth tax bonus, but while the solidarity tax is in force the bonus only removes
   the wealth tax above it, so residents there pay the solidarity tax amount.

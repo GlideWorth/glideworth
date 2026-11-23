@@ -62,13 +62,33 @@ describe("Spain: employees (single, 40, no children)", () => {
   it("regional hook: Andalucía, Valencia and aliases resolve; unknown names are rejected", () => {
     expect(esRegion("Andalucia").code).toBe("AN");
     expect(esRegion("ES-VC").code).toBe("VC");
-    expect(esRegion("GA").code).toBe("DEFAULT");
+    // Aragón has no row: an unmodelled ISO 3166-2 code falls back to the state-scale mirror
+    expect(esRegion("AR").code).toBe("DEFAULT");
+    expect(esRegion("ES-AR").code).toBe("DEFAULT");
     expect(() => esRegion("Atlantis")).toThrow();
     const vc = es("VC", wage(30_000));
     // Valencia: 1,080 + 1,200 (12,000-22,000 at 12%) + 15% x 4,050 = 2,887.50 less 9% x 5,550 = 499.50
     expect(sumLabel(vc, /Comunitat Valenciana/)).toBeCloseTo(2_887.5 - 499.5, 6);
     expect(defaultStackIds({ country: "ES", region: "MD" })).toEqual(["es:MD"]);
     expect(createDefaultTaxRegistry().get("es:AN").id).toBe("es:AN");
+  });
+
+  it("median, 30,000 in Galicia: base 26,050; Galicia scale 2,852.61 less 9% x 5,550 = 2,353.11", () => {
+    // Galicia 2025 (AEAT Manual práctico de Renta 2025; art. 4 DL 1/2011, BOE), worked by hand:
+    // 2,110.380125 at 21,068.60 (1,168.6815 + 11.65% x 8,083.25) + 14.90% x (26,050 - 21,068.60)
+    // = 2,110.380125 + 742.2286 = 2,852.608725; less 9% x 5,550 (state mínimo) = 499.50 -> 2,353.108725
+    const o = es("GA", wage(30_000));
+    expect(o.facts["es.baseGeneral.p1"]).toBeCloseTo(26_050, 6);
+    expect(sumLabel(o, /cuota estatal/)).toBeCloseTo(2_463, 6);
+    expect(sumLabel(o, /Galicia/)).toBeCloseTo(2_353.108725, 6);
+    expect(o.facts["tax.ordinaryBracketRate"]).toBeCloseTo(0.15 + 0.149, 12);
+  });
+
+  it("Galicia aliases: ISO 3166-2 ES-GA, GA, Galicia and Galiza", () => {
+    for (const c of ["GA", "ga", "ES-GA", "Galicia", "GALIZA"]) expect(esRegion(c).code).toBe("GA");
+    expect(esJurisdiction.parameterize!("Galicia").id).toBe("es:GA");
+    expect(defaultStackIds({ country: "ES", region: "GA" })).toEqual(["es:GA"]);
+    expect(createDefaultTaxRegistry().get("es:GA").id).toBe("es:GA");
   });
 
   it("work-income reduction (art. 20) phases out between 14,852 and 19,747.50; none with other income above 6,500", () => {
@@ -233,6 +253,26 @@ describe("Spain: official scale tables (cumulative cuota at each band edge)", ()
     expect(cuota(vc, 100_000)).toBeCloseTo(19_700, 6);
     expect(cuota(vc, 150_000)).toBeCloseTo(33_450, 6);
     expect(cuota(vc, 200_000)).toBeCloseTo(47_700, 6);
+  });
+
+  it("Galicia general scale 2025 (AEAT Manual práctico de Renta 2025; art. 4 DL 1/2011): cuota column and rates at each edge", () => {
+    const ga = ES_REGIONAL_SCALES.GA!.general;
+    // Cuota íntegra column as published (rounded to cents)
+    expect(cuota(ga, 12_985.35)).toBeCloseTo(1_168.68, 2);
+    expect(cuota(ga, 21_068.6)).toBeCloseTo(2_110.38, 2);
+    expect(cuota(ga, 35_200)).toBeCloseTo(4_215.96, 2);
+    expect(cuota(ga, 60_000)).toBeCloseTo(8_779.16, 2);
+    // Just below, at and just above each edge: the rate up to the edge, then the next rate
+    const rates: [number, number, number][] = [
+      [12_985.35, 0.09, 0.1165],
+      [21_068.6, 0.1165, 0.149],
+      [35_200, 0.149, 0.184],
+      [60_000, 0.184, 0.225],
+    ];
+    for (const [edge, below, above] of rates) {
+      expect(cuota(ga, edge) - cuota(ga, edge - 1)).toBeCloseTo(below, 9);
+      expect(cuota(ga, edge + 1) - cuota(ga, edge)).toBeCloseTo(above, 9);
+    }
   });
 
   it("wealth tax scales 2025 (AEAT Manual práctico de Patrimonio 2025) and the ITSGF (Ley 38/2022 art. 3)", () => {

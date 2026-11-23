@@ -35,6 +35,12 @@
  * US hashes changed only in the cited sources carried in `meta.taxSources` (HSA source notes now give
  * the Rev. Proc. sections and Publication 969). With the old source notes restored, all 31 hashes
  * match the previous baseline, so no number changed.
+ *
+ * Re-baselined 2026-11-23 for the traditional IRA deduction phase-out (IRC 219(g),
+ * GlideWorth/glideworth#10): the four US hashes changed only in `meta.taxSources` (the IR-2025-111
+ * and IR-2026-136 notes now name the phase-out ranges, and Publication 590-A is cited). With those
+ * three source entries restored to the previous text, all 31 hashes match the previous baseline,
+ * so no number changed.
  */
 import { describe, expect, it } from "vitest";
 import { simulate } from "../src/engine/simulate.js";
@@ -61,10 +67,10 @@ const BEFORE: Record<string, string> = {
   "GB-ENG-couple": "6a75d2004a2e2491",
   "GB-SCT-single": "46070e0e27a76ea1",
   "GB-SCT-couple": "2059ce0c001a722e",
-  "US-CA-single": "7edddf3d11a53849",
-  "US-CA-couple": "512ff527ffad5e5d",
-  "US-TX-single": "7387cb66596be6f7",
-  "US-TX-couple": "14f81ed009ca1031",
+  "US-CA-single": "6bd35686edac7b46",
+  "US-CA-couple": "d14fa959fd265c30",
+  "US-TX-single": "ea9899fb1065835c",
+  "US-TX-couple": "f6349a850c3f985e",
   // Re-recorded 2026-11-19 (CA/AU/NZ official-source check): Ontario surtax before the dividend
   // tax credit, base CPP 4.75% from 2027, no CPP from 70, age amount on net income after the OAS
   // repayment, and the cited sources.

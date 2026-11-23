@@ -93,6 +93,36 @@ export function runFlows(ctx: EngineContext, ps: PeriodState, available: number)
   return remaining;
 }
 
+/**
+ * Workplace plans whose contributions make their owner an active participant for the traditional
+ * IRA deduction phase-out: 401(a) plans (401(k), solo 401(k), 401(a)), 403(b), plans of the United
+ * States (TSP), SEPs and SIMPLE IRAs. An eligible 457(b) plan is not one (IRC 219(g)(5), last
+ * sentence). A defined contribution plan covers the year in which amounts are contributed or
+ * allocated to the account (Pub. 590-A, "Defined contribution plan"). 26 U.S.C. 219(g)(5),
+ * https://www.govinfo.gov/content/pkg/USCODE-2024-title26/html/USCODE-2024-title26-subtitleA-chap1-subchapB-partVII-sec219.htm
+ * and https://www.irs.gov/publications/p590a (both read 2026-11-23).
+ */
+const US_ACTIVE_PARTICIPANT_PLANS: ReadonlySet<string> = new Set([
+  "401k",
+  "roth-401k",
+  "403b",
+  "roth-403b",
+  "tsp",
+  "roth-tsp",
+  "solo-401k",
+  "401a",
+  "sep-ira",
+  "simple-ira",
+]);
+
+/** Key in `limitUsed` marking an owner as an active participant this period (IRC 219(g)). */
+export const activeParticipantKey = (owner: string) => `${owner}|us-active-participant`;
+
+function markCoverage(ps: PeriodState, a: AccountState, amount: number): void {
+  if (amount > 0 && US_ACTIVE_PARTICIPANT_PLANS.has(a.def.type))
+    useLimit(ps, activeParticipantKey(a.owner), amount);
+}
+
 function useLimit(ps: PeriodState, key: string, amount: number): void {
   ps.limitUsed.set(key, (ps.limitUsed.get(key) ?? 0) + amount);
 }
@@ -282,6 +312,7 @@ function contribute(
     }
     if (sub) useLimit(ps, sub.key, amount);
     if (!limitKey) useLimit(ps, `${a.owner}|${limitGroupOf(a.def.type)}`, amount);
+    markCoverage(ps, a, amount);
     const deductible =
       f.route === "standard" &&
       (f.taxDeductible ??
@@ -463,6 +494,7 @@ function employerDeposit(
   if (a.costBasis !== null) a.costBasis += amount;
   ps.limitUsed.set(`${a.owner}|employer`, (ps.limitUsed.get(`${a.owner}|employer`) ?? 0) + amount);
   if (limitGroupOf(a.def.type) === "hsa") useLimit(ps, `${a.owner}|hsa`, amount);
+  markCoverage(ps, a, amount);
   const sourceId = kind === "match" ? `employer:${f.id}` : `employer:${f.id}:fixed`;
   const label = `${f.name} employer ${kind === "match" ? "match" : "contribution"}`;
   // Employer contributions count toward pension allowances (UK annual allowance) but never toward
@@ -745,6 +777,8 @@ function transfer(
       sameTaxable && src.costBasis !== null ? basisBefore - src.costBasis : r.gross;
     if (dst.costBasis !== null) dst.costBasis += movedBasis;
     if (dst.contributionBasis !== null) dst.contributionBasis += r.gross;
+    // A rollover between traditional IRAs keeps the nondeductible basis.
+    if (rollover && r.iraBasis && dst.def.type === "traditional-ira") dst.iraBasis += r.iraBasis;
   }
   traceEvent(
     ctx,

@@ -101,6 +101,11 @@ export interface TaxPerson {
   birthYear?: number;
   /** OPTIONAL: calendar birth month 1-12 (month-accurate State Pension age cohorts). */
   birthMonth?: number;
+  /**
+   * OPTIONAL (US IRC 219(g)): an active participant in a workplace plan this period (money went
+   * into their 401(k)-type, 403(b), 401(a), TSP, SEP or SIMPLE account). Absent = not covered.
+   */
+  activeParticipant?: boolean;
 }
 
 export interface TaxYearInput {

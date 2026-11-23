@@ -428,6 +428,22 @@ export const US_FIXED = {
     joint: 500_000,
     source: "https://www.irs.gov/taxtopics/tc701",
   },
+  /**
+   * Traditional IRA deduction phase-out (IRC 219(g)), statutory parts. The deduction limit falls in
+   * proportion to MAGI above the applicable dollar amount over `range` ($20,000 on a joint return,
+   * $10,000 otherwise and for a spouse who is not an active participant, 219(g)(2)(A)(ii) and
+   * (g)(7)(B)); a married person filing separately starts at zero (219(g)(3)(B)(iii)), not indexed.
+   * The reduction is rounded down to $10 (219(g)(2)(C)) and the limit is not reduced below $200
+   * until it is reduced to zero (219(g)(2)(B)). 26 U.S.C. 219(g), United States Code 2024 edition,
+   * https://www.govinfo.gov/content/pkg/USCODE-2024-title26/html/USCODE-2024-title26-subtitleA-chap1-subchapB-partVII-sec219.htm
+   * (read 2026-11-23).
+   */
+  iraDeduction: {
+    range: { joint: 20_000, other: 10_000, spouseNotCovered: 10_000 },
+    separateStart: 0,
+    rounding: 10,
+    minimum: 200,
+  },
   /** HSA non-qualified distributions: 20% additional tax before 65 (IRC §223(f)(4)). */
   hsaNonQualifiedPenalty: 0.2,
   hsaPenaltyFreeAge: 65,
@@ -714,6 +730,13 @@ export interface UsLimitsYear {
   simpleCatchUp60to63: number;
   sepOrSoloTotal: number;
   hsa: { self: number; family: number; catchUp55: number };
+  /**
+   * Traditional IRA deduction phase-out starts (IRC 219(g)(3)(B) and (g)(7)(A), indexed under
+   * (g)(8)): `joint` for an active participant on a joint return (and a qualifying surviving
+   * spouse, Pub. 590-A), `other` for an active participant who is single or head of household,
+   * `spouseNotCovered` for a married person who is not an active participant but whose spouse is.
+   */
+  iraDeductionPhaseout: { joint: number; other: number; spouseNotCovered: number };
   sources: { url: string; note?: string }[];
 }
 
@@ -731,15 +754,23 @@ export const US_LIMITS_2026: UsLimitsYear = {
   simpleCatchUp60to63: 5_250,
   sepOrSoloTotal: 72_000,
   hsa: { self: 4_400, family: 8_750, catchUp55: 1_000 },
+  // IR-2025-111, "Highlights of changes for 2026", phase-out ranges: $81,000-$91,000 single
+  // covered, $129,000-$149,000 joint covered, $242,000-$252,000 for a contributor not covered
+  // whose spouse is (read 2026-11-23).
+  iraDeductionPhaseout: { joint: 129_000, other: 81_000, spouseNotCovered: 242_000 },
   sources: [
     {
       url: "https://www.irs.gov/newsroom/401k-limit-increases-to-24500-for-2026-ira-limit-increases-to-7500",
-      note: "2026 retirement plan limits",
+      note: "IR-2025-111: 2026 retirement plan limits and IRA deduction phase-out ranges (re-read 2026-11-23)",
     },
     { url: "https://www.irs.gov/pub/irs-drop/n-25-67.pdf", note: "Notice 2025-67" },
     {
       url: "https://www.irs.gov/pub/irs-drop/rp-25-19.pdf",
       note: "Rev. Proc. 2025-19 section 2.01(1): 2026 HSA limits (re-read 2026-11-22)",
+    },
+    {
+      url: "https://www.irs.gov/publications/p590a",
+      note: "Publication 590-A (2025), What's New for 2026: the joint range also applies to a qualifying surviving spouse, the single range to a head of household; Appendix B: MAGI with taxable Social Security figured before the IRA deduction (read 2026-11-23)",
     },
     {
       url: "https://www.irs.gov/publications/p969",
@@ -763,6 +794,10 @@ export const US_LIMITS_2027: UsLimitsYear = {
   sepOrSoloTotal: 75_000,
   // The $1,000 HSA catch-up (55+) is statutory and not indexed (IRC 223(b)(3)).
   hsa: { self: 4_500, family: 9_000, catchUp55: 1_000 },
+  // IR-2026-136, "Highlights of changes for 2027", phase-out ranges: $83,000-$93,000 single
+  // covered, $133,000-$153,000 joint covered, $250,000-$260,000 for a contributor not covered
+  // whose spouse is (read 2026-11-23).
+  iraDeductionPhaseout: { joint: 133_000, other: 83_000, spouseNotCovered: 250_000 },
   sources: [
     {
       url: "https://www.irs.gov/pub/irs-drop/n-26-66.pdf",
@@ -770,7 +805,7 @@ export const US_LIMITS_2027: UsLimitsYear = {
     },
     {
       url: "https://www.irs.gov/newsroom/401k-limit-increases-to-25500-for-2027-ira-limit-remains-7500",
-      note: "IRS news release on the 2027 limits",
+      note: "IR-2026-136: 2027 limits and IRA deduction phase-out ranges (re-read 2026-11-23)",
     },
     {
       url: "https://www.irs.gov/pub/irs-drop/rp-26-24.pdf",

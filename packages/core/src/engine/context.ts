@@ -92,6 +92,11 @@ export interface AccountState {
   balance: number;
   costBasis: number | null;
   contributionBasis: number | null;
+  /**
+   * US traditional IRA: nondeductible contributions not yet withdrawn (Form 8606 basis). Each
+   * withdrawal or conversion takes a pro-rata share of it tax-free (IRC 72, 408(d)(1)).
+   */
+  iraBasis: number;
   /** Static open month (null = open from the start). */
   opensAt: MonthIndex | null;
   /** Planned accounts opening at a dynamic (metric) milestone: re-resolved every period. */

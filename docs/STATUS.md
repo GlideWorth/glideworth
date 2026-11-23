@@ -220,6 +220,14 @@ Tax sources, checked 2026-11-16 and 2026-11-19 (the status of each country's sou
 | Spain                             | ok (BOE, AEAT, Seguridad Social; 2026-11-19); 2026 regional scales not confirmed                                  |
 | Assets abroad (`tax/crossborder`) | ok for the treaty pairs and the US, UK, Irish, Spanish, French and German rules checked on 2026-11-19; gaps above |
 
+US traditional IRA deduction phase-out (IRC 219(g), checked 2026-11-23): the statute (26 U.S.C. 219(g), United
+States Code 2024 edition on govinfo.gov), the 2026 ranges in IR-2025-111 and the 2027 ranges in IR-2026-136 on
+irs.gov, and Publication 590-A for the qualifying-surviving-spouse and head-of-household ranges and the MAGI worksheet.
+Not modelled: defined benefit pension coverage (a person is covered only when money goes into a defined contribution
+workplace account in the year), married people filing separately who lived apart all year (the separate-return
+range is used), the Roth IRA contribution phase-out, and Form 8606 aggregation of basis across all of an owner's
+IRAs (basis is tracked per account).
+
 Each country's full list of simplifications is `TAX_SIMPLIFICATIONS`
 (`packages/core/src/tax/data/simplifications.ts`) and is shown with the tax results. Highlights: US SALT cap and
 itemised phase-outs not applied, AMT adds back only the standard and senior deductions, no EITC or education credits; Canada no

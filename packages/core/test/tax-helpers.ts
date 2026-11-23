@@ -15,6 +15,7 @@ export interface PersonSpec {
   age?: number;
   birthYear?: number;
   alive?: boolean;
+  activeParticipant?: boolean;
 }
 
 export function taxInput(opts: {
@@ -41,6 +42,7 @@ export function taxInput(opts: {
     age: p.age ?? 40,
     alive: p.alive ?? true,
     ...(p.birthYear !== undefined ? { birthYear: p.birthYear } : {}),
+    ...(p.activeParticipant ? { activeParticipant: true } : {}),
   }));
   const config = TaxConfig.parse({ mode: "estimate", ...(opts.config ?? {}) });
   return {

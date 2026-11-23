@@ -158,7 +158,6 @@ function computeFederal(input: TaxYearInput, explain: boolean): FedCore {
   const payroll = usPayroll(input);
 
   // ---- income
-  const preTax = sumDeductions(input, "pre-tax-contribution", { level: "federal" });
   const aboveLine = sumDeductions(input, "deduction", { level: "federal", itemized: false });
   const itemizedItems = sumDeductions(input, "deduction", { level: "federal", itemized: true });
   const userCredits = sumDeductions(input, "credit", { level: "federal" });
@@ -173,6 +172,18 @@ function computeFederal(input: TaxYearInput, explain: boolean): FedCore {
     b.gainsShort +
     b.deferredWithdrawals;
   const prefIncome = b.qualifiedDividends + b.gainsLong;
+  const preTaxClaimed = sumDeductions(input, "pre-tax-contribution", { level: "federal" });
+  const ira = iraDeductionPhaseout(input, {
+    agiExSsBeforeIra:
+      ordinaryIncome +
+      prefIncome -
+      aboveLine -
+      payroll.seDeduction -
+      (preTaxClaimed - traditionalIraTotal(input)),
+    socialSecurity: b.socialSecurity,
+    scale,
+  });
+  const preTax = preTaxClaimed - ira.nondeductible;
   const agiExSs = ordinaryIncome + prefIncome - preTax - aboveLine - payroll.seDeduction;
   const taxableSs = taxableSocialSecurity(b.socialSecurity, agiExSs, status, scale);
   const agi = agiExSs + taxableSs;
@@ -374,6 +385,11 @@ function computeFederal(input: TaxYearInput, explain: boolean): FedCore {
   };
   if (fplMultiple > 0) facts["us.fplMultiple"] = fplMultiple;
   if (irmaa > 0) facts["us.irmaaMagi"] = lookbackMagi;
+  if (ira.nondeductible > 0) {
+    facts["us.iraMagi"] = ira.magi;
+    facts["us.iraNondeductible"] = ira.nondeductible;
+    for (const [owner, v] of ira.byOwner) facts[`us.iraNondeductible.${owner}`] = v;
+  }
   const gross = ordinaryIncome + prefIncome + b.socialSecurity + b.deferredTaxFree;
   const out: TaxYearOutput = {
     lines: sink.lines,
@@ -384,6 +400,97 @@ function computeFederal(input: TaxYearInput, explain: boolean): FedCore {
   };
   if (explain) out.brackets = fill;
   return { out, total: sink.total() };
+}
+
+/** Traditional IRA contributions this period that claim a federal deduction (not employer money). */
+function traditionalIraItems(input: TaxYearInput) {
+  return input.deductions.filter(
+    (d) =>
+      d.kind === "pre-tax-contribution" &&
+      d.accountType === "traditional-ira" &&
+      !d.employer &&
+      d.amount > 0 &&
+      d.levels.includes("federal"),
+  );
+}
+
+function traditionalIraTotal(input: TaxYearInput): number {
+  return traditionalIraItems(input).reduce((s, d) => s + d.amount, 0);
+}
+
+/**
+ * IRC 219(g): the traditional IRA deduction limit of a person who, or whose spouse, is an active
+ * participant in a workplace plan is reduced in proportion to MAGI above the applicable dollar
+ * amount; the part of a contribution above the reduced limit is nondeductible (it stays in the
+ * IRA as basis). 26 U.S.C. 219(g)(1)-(3), (7), (8), United States Code 2024 edition,
+ * https://www.govinfo.gov/content/pkg/USCODE-2024-title26/html/USCODE-2024-title26-subtitleA-chap1-subchapB-partVII-sec219.htm
+ * (read 2026-11-23). Ranges: IR-2025-111 (2026) and IR-2026-136 (2027), in US_LIMITS_YEARS,
+ * indexed after 2027 like the other US tables (us-index.ts).
+ *
+ * MAGI is AGI without the IRA deduction (219(g)(3)(A)), with taxable Social Security figured
+ * before the IRA deduction, as in Pub. 590-A Appendix B, Worksheet 1
+ * (https://www.irs.gov/publications/p590a, read 2026-11-23). The exclusions 219(g)(3)(A) adds
+ * back (85(c), 135, 137, 221, 911) are not modelled by the engine, so none are added back.
+ * Each spouse's deduction is figured separately (Pub. 590-A, "How To Figure Your Reduced IRA
+ * Deduction").
+ */
+export function iraDeductionPhaseout(
+  input: TaxYearInput,
+  o: { agiExSsBeforeIra: number; socialSecurity: number; scale: number },
+): { magi: number; nondeductible: number; byOwner: Map<string, number> } {
+  const byOwner = new Map<string, number>();
+  const items = traditionalIraItems(input);
+  if (items.length === 0) return { magi: 0, nondeductible: 0, byOwner };
+  const contributed = new Map<string, number>();
+  for (const d of items) contributed.set(d.owner, (contributed.get(d.owner) ?? 0) + d.amount);
+  const status = input.filingStatus;
+  const magi =
+    o.agiExSsBeforeIra +
+    taxableSocialSecurity(o.socialSecurity, o.agiExSsBeforeIra, status, o.scale);
+  const { row: L, factor: f } = usTable(US_LIMITS_YEARS, input);
+  const R = US_FIXED.iraDeduction;
+  const married = status === "married-joint" || status === "married-separate";
+  const joint = status === "married-joint" || status === "qualifying-surviving-spouse";
+  let nondeductible = 0;
+  for (const [owner, amount] of contributed) {
+    const person = input.people.find((p) => p.id === owner);
+    if (!person) continue;
+    const covered = !!person.activeParticipant;
+    const spouseCovered =
+      married && input.people.some((p) => p.id !== owner && p.alive && p.activeParticipant);
+    if (!covered && !spouseCovered) continue;
+    // Applicable dollar amount and phase-out range (219(g)(2)(A)(ii), (g)(3)(B), (g)(7)).
+    let start: number;
+    let range: number;
+    if (status === "married-separate") {
+      start = R.separateStart;
+      range = R.range.other;
+    } else if (!covered) {
+      start = L.iraDeductionPhaseout.spouseNotCovered * f;
+      range = R.range.spouseNotCovered;
+    } else if (joint) {
+      start = L.iraDeductionPhaseout.joint * f;
+      range = R.range.joint;
+    } else {
+      start = L.iraDeductionPhaseout.other * f;
+      range = R.range.other;
+    }
+    // In annual terms: the deductible amount with the 50+ catch-up (219(b)(5)), MAGI annualised.
+    const dollarLimit = (L.ira + (person.age >= 50 ? L.iraCatchUp : 0)) * f;
+    const excess = clamp0((o.scale > 0 ? magi / o.scale : magi) - start);
+    let reduced = 0;
+    if (excess < range) {
+      const reduction = Math.floor((dollarLimit * excess) / range / R.rounding + 1e-9) * R.rounding;
+      reduced = clamp0(dollarLimit - reduction);
+      if (reduced > 0 && reduced < R.minimum) reduced = R.minimum;
+    }
+    const nd = clamp0(amount - reduced * o.scale);
+    if (nd > 0) {
+      byOwner.set(owner, nd);
+      nondeductible += nd;
+    }
+  }
+  return { magi, nondeductible, byOwner };
 }
 
 function totalOnly(input: TaxYearInput): number {

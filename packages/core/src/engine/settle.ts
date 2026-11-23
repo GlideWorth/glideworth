@@ -27,7 +27,7 @@ import {
 import { closeCrossBorderPeriod, type CrossBorderResult, crossBorderTaxes } from "./crossborder.js";
 import { monthOfYear, yearOf } from "./dates.js";
 import { drawdown, payTargeted } from "./drawdown.js";
-import { leftover, runFlows } from "./flows.js";
+import { activeParticipantKey, leftover, runFlows } from "./flows.js";
 import type { TaxLine } from "./types.js";
 
 interface Snapshot {
@@ -35,6 +35,7 @@ interface Snapshot {
     balance: number;
     costBasis: number | null;
     contributionBasis: number | null;
+    iraBasis: number;
     pclsTaken: boolean;
     p: AccountPeriodAcc;
   }[];
@@ -73,6 +74,7 @@ function snapshot(ctx: EngineContext, ps: PeriodState): Snapshot {
       balance: a.balance,
       costBasis: a.costBasis,
       contributionBasis: a.contributionBasis,
+      iraBasis: a.iraBasis,
       pclsTaken: a.pclsTaken,
       p: { ...a.p },
     })),
@@ -115,6 +117,7 @@ function restore(ctx: EngineContext, ps: PeriodState, s: Snapshot): void {
     a.balance = x.balance;
     a.costBasis = x.costBasis;
     a.contributionBasis = x.contributionBasis;
+    a.iraBasis = x.iraBasis;
     a.pclsTaken = x.pclsTaken;
     a.p = { ...x.p };
   });
@@ -200,6 +203,9 @@ export function buildTaxInput(ctx: EngineContext, ps: PeriodState): TaxYearInput
       alive: ps.alive[p.id] ?? true,
       birthYear: yearOf(p.birth),
       birthMonth: monthOfYear(p.birth) + 1,
+      ...((ps.limitUsed.get(activeParticipantKey(p.id)) ?? 0) > 0
+        ? { activeParticipant: true }
+        : {}),
     })),
     dependents: ctx.household.dependents.map((d) => ({
       id: d.id,
@@ -267,6 +273,42 @@ export function withheldFor(ctx: EngineContext, ps: PeriodState, liability: numb
   }
   void ctx;
   return withheld;
+}
+
+/**
+ * US traditional IRA contributions above the deduction limit (IRC 219(g)) stay in the IRA as
+ * nondeductible basis. The federal plug-in reports each owner's nondeductible amount as the fact
+ * `us.iraNondeductible.<owner>`; it is shared among that owner's traditional IRA contributions this
+ * period pro rata.
+ */
+function addIraBasis(ctx: EngineContext, ps: PeriodState, facts: Record<string, number>): void {
+  const byOwner = new Map<string, { accountId: string; amount: number }[]>();
+  for (const d of ps.taxDeductions) {
+    if (d.kind !== "pre-tax-contribution" || d.employer || d.accountType !== "traditional-ira")
+      continue;
+    if (!d.accountId || !(d.amount > 0)) continue;
+    const list = byOwner.get(d.owner) ?? [];
+    list.push({ accountId: d.accountId, amount: d.amount });
+    byOwner.set(d.owner, list);
+  }
+  for (const [owner, items] of byOwner) {
+    const nd = facts[`us.iraNondeductible.${owner}`] ?? 0;
+    const total = items.reduce((s, x) => s + x.amount, 0);
+    if (!(nd > 0) || !(total > 0)) continue;
+    for (const x of items) {
+      const a = ctx.accountById.get(x.accountId);
+      if (a) a.iraBasis += (Math.min(nd, total) * x.amount) / total;
+    }
+    traceEvent(
+      ctx,
+      ps,
+      "flows",
+      "IRA_NONDEDUCTIBLE",
+      () => `${nd.toFixed(2)} of traditional IRA contributions is not deductible (IRC 219(g))`,
+      items.map((x) => x.accountId),
+      { amount: nd },
+    );
+  }
 }
 
 /**
@@ -411,6 +453,7 @@ export function runSettle(ctx: EngineContext, ps: PeriodState): void {
   else for (const o of result.outputs) for (const [k, v] of Object.entries(o.facts)) facts[k] = v;
   const topUp = facts["uk.reliefAtSourceTopUp"] ?? 0;
   if (topUp > 1e-9) depositReliefAtSource(ctx, ps, topUp);
+  if ((facts["us.iraNondeductible"] ?? 0) > 1e-9) addIraBasis(ctx, ps, facts);
   applyCashFlowTiming(ctx, ps);
   const settlement = nextMode ? prior + (isLast ? result.total - withheld : 0) : 0;
   ctx.pendingSettlement = nextMode && !isLast ? result.total - withheld : 0;

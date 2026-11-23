@@ -233,6 +233,7 @@ export function simulate(
       ...(isForeign(ctx, def.currency) ? { currency: def.currency } : {}),
       opensAt,
       opensRef: null,
+      iraBasis: 0,
       pclsTaken: false,
       sepp: null,
       bondShare: 0,

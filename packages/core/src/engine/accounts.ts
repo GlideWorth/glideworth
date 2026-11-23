@@ -314,6 +314,8 @@ const DEPLETION_CAUSE: Record<WithdrawOptions["purpose"], string> = {
 export interface WithdrawResult {
   gross: number;
   taxable: number;
+  /** US traditional IRA basis (nondeductible contributions) that left with this withdrawal. */
+  iraBasis?: number;
   /** Tax-free pension cash included in gross (UK). */
   taxFreeCash: number;
 }
@@ -475,6 +477,14 @@ export function withdraw(
   }
   if (ukPension && taxable > 0 && a.info.taxTreatment === "tax-deferred")
     ctx.flexiblyAccessed.add(a.owner);
+  // US traditional IRA basis: a pro-rata share of each distribution is the return of
+  // nondeductible contributions and is not taxed (IRC 72, 408(d)(1); Form 8606).
+  let basisOut = 0;
+  if (a.iraBasis > 0 && a.balance > 0) {
+    basisOut = Math.min(a.iraBasis, (w * a.iraBasis) / a.balance);
+    a.iraBasis -= basisOut;
+    if (!o.taxExempt) taxable = Math.max(0, taxable - basisOut);
+  }
   a.balance -= w;
   if (o.asTransfer) a.p.transfersOut += w;
   else a.p.withdrawals += w;
@@ -570,7 +580,7 @@ export function withdraw(
       periodIndex: ps.bounds.index,
       refs: [a.def.id],
     });
-  return { gross: w, taxable, taxFreeCash };
+  return { gross: w, taxable, taxFreeCash, ...(basisOut > 0 ? { iraBasis: basisOut } : {}) };
 }
 
 /**

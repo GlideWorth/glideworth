@@ -88,8 +88,8 @@ export const TOOLS: readonly ToolMeta[] = [
     path: "/tools/retirement-withdrawal-calculator/",
     name: "Retirement withdrawal calculator",
     summary:
-      "Four withdrawal rules side by side on the same simulated markets: income, cuts and running out.",
-    question: "Which withdrawal rule suits me?",
+      "A safe withdrawal rate and the 4% rule, then four withdrawal rules on the same simulated markets.",
+    question: "What rate lasts, and which rule suits me?",
     group: "retirement",
     article: {
       href: "/blog/withdrawal-strategies-compared/",

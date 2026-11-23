@@ -8,7 +8,7 @@
   "apps/site/src/content/blog/titles.test.ts": "2026-11-19",
   "apps/site/src/content/blog/what-a-tax-estimate-leaves-out.mdx": "2026-11-20",
   "apps/site/src/content/blog/what-is-your-fire-number.mdx": "2026-11-23",
-  "apps/site/src/content/blog/withdrawal-strategies-compared.mdx": "2026-11-19",
+  "apps/site/src/content/blog/withdrawal-strategies-compared.mdx": "2026-11-23",
   "apps/site/src/content/changelog/2026-11-15-first-complete-planner.mdx": "2026-11-16",
   "apps/site/src/content/changelog/2026-11-16-data-licence-audit.mdx": "2026-11-16",
   "apps/site/src/content/changelog/2026-11-16-engine-0-5-0-market-history-replaced.mdx": "2026-11-16",
@@ -138,5 +138,5 @@
   "apps/site/src/pages/tools/how-long-will-my-money-last.astro": "2026-11-19",
   "apps/site/src/pages/tools/index.astro": "2026-11-19",
   "apps/site/src/pages/tools/monte-carlo-retirement-calculator.astro": "2026-11-19",
-  "apps/site/src/pages/tools/retirement-withdrawal-calculator.astro": "2026-11-16"
+  "apps/site/src/pages/tools/retirement-withdrawal-calculator.astro": "2026-11-23"
 }

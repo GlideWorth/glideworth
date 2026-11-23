@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { buildInput, HISTORY_DATASET, monteCarloSettings, START_YEAR } from "./engine/model";
 import { simulatePlan } from "./engine/monte-carlo";
-import { compareRules } from "./engine/withdrawal";
+import { compareRules, constantRealSurvival } from "./engine/withdrawal";
 import { runTool } from "./engine";
 import { SPECS } from "./specs";
 import { defaults } from "./state";
@@ -160,6 +160,44 @@ describe("determinism", () => {
     const v = { ...defaults(SPECS.withdrawal), trials: "500" };
     expect(await compareRules(v)).toEqual(await compareRules(v));
   });
+  it("the constant-real survival grid matches that comparison and does not rise with the rate or the horizon", async () => {
+    const v = {
+      ...defaults(SPECS.withdrawal),
+      trials: "400",
+      method: "parametric",
+      mean: 5,
+      vol: 12,
+      timing: "start",
+      tax: 0,
+      seed: 2026,
+      balance: 1_000_000,
+      rate: 4,
+      years: 30,
+    };
+    const [stats, same, grid, again] = await Promise.all([
+      compareRules(v),
+      constantRealSurvival(v, [4], [30]),
+      constantRealSurvival(v, [3, 5], [30, 50]),
+      constantRealSurvival(v, [3, 5], [30, 50]),
+    ]);
+    const constant = stats.find((s) => s.id === "constant")!;
+    expect(same[0]!.lasted).toBeCloseTo(1 - constant.shortAny, 10);
+    expect(same[0]!.medianEnd).toBeCloseTo(constant.medianEnd, 6);
+    expect(same[0]!.preserved).toBeCloseTo(constant.preserved, 10);
+    expect(again).toEqual(grid);
+    const at = (rate: number, years: number) =>
+      grid.find((c) => c.rate === rate && c.years === years)!.lasted;
+    expect(at(5, 30)).toBeLessThanOrEqual(at(3, 30));
+    expect(at(5, 50)).toBeLessThanOrEqual(at(3, 50));
+    expect(at(3, 50)).toBeLessThanOrEqual(at(3, 30));
+    expect(at(5, 50)).toBeLessThanOrEqual(at(5, 30));
+    for (const c of grid) {
+      expect(c.lasted).toBeGreaterThanOrEqual(0);
+      expect(c.lasted).toBeLessThanOrEqual(1);
+      expect(c.preserved).toBeGreaterThanOrEqual(0);
+      expect(c.preserved).toBeLessThanOrEqual(1);
+    }
+  }, 60_000);
   it("the full view model is identical on a second run (what the static page shows is what the browser computes)", async () => {
     for (const spec of Object.values(SPECS)) {
       const v = { ...defaults(spec), ...(spec.mode === "simulation" ? { trials: "500" } : {}) };

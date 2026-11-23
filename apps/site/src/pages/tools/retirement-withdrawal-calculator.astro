@@ -1,7 +1,13 @@
 ---
 import ToolPage from '../../components/tools/ToolPage.astro';
-import { compareRules, CUT_LINE } from '../../tools/engine/withdrawal';
-import { money, pct } from '../../tools/format';
+import { pct, pctInput, money, whole } from '../../tools/format';
+import {
+  compareRules,
+  constantRealSurvival,
+  CUT_LINE,
+  SWR_RATES,
+  SWR_YEARS,
+} from '../../tools/engine/withdrawal';
 
 const m = (x: number) => money(x, 'USD');
 // The article's market model, computed by the calculator's own engine code at build time.
@@ -30,9 +36,49 @@ const rows = stats.map((s) => [
   pct(s.shortAny, 1),
 ]);
 const constant = stats.find((s) => s.id === 'constant')!;
+const guardrails = stats.find((s) => s.id === 'guardrails')!;
+const percentRule = stats.find((s) => s.id === 'percent')!;
+
+// Same engine path and the same inputs, so the 4% / 30-year cell matches the worked example.
+const survival = await constantRealSurvival(ex);
+const cell = (rate: number, years: number) => {
+  const found = survival.find((c) => c.rate === rate && c.years === years);
+  if (!found) throw new Error(`no survival cell for ${rate}% over ${years} years`);
+  return found;
+};
+const fourThirty = cell(ex.rate, ex.years);
+if (Math.abs(fourThirty.lasted - (1 - constant.shortAny)) > 1e-12)
+  throw new Error('safe-withdrawal table disagrees with the constant-real row of the worked example');
+const y30 = cell(4, 30);
+const y40 = cell(4, 40);
+const y50 = cell(4, 50);
+const low50 = cell(3, 50);
+const high50 = cell(5, 50);
 
 const ext = { rel: 'noopener noreferrer' };
+const bengen =
+  'https://www.financialplanningassociation.org/sites/default/files/2021-04/MAR04%20Determining%20Withdrawal%20Rates%20Using%20Historical%20Data.pdf';
+const trinity =
+  'https://www.aaii.com/files/pdf/6794_retirement-savings-choosing-a-withdrawal-rate-that-is-sustainable.pdf';
+const portfolioCharts = 'https://portfoliocharts.com/charts/withdrawal-rates/';
+const guyton2004 =
+  'https://www.financialplanningassociation.org/sites/default/files/2020-05/6%20Decision%20Rules%20and%20Portfolio%20management%20for%20Retirees%20Is%20Safe%20Initial%20Withdrawal%20Rate%20Too%20Safe.pdf';
+const guyton2006 =
+  'https://www.financialplanningassociation.org/sites/default/files/2021-11/2006%20-%20Guyton%20and%20Klinger%20-%20Decision%20Rules%20and%20SWR%20(1).PDF';
+
 const faq = [
+  {
+    q: 'Is 4% still a safe withdrawal rate?',
+    a: `<p>On this page’s model, a constant-real 4% paid every year in ${pct(y30.lasted, 1)} of the 30-year simulations, ${pct(y40.lasted, 1)} of the 40-year simulations and ${pct(y50.lasted, 1)} of the 50-year simulations. Bengen’s 4% was a reading of US history over a retirement of at least 30 years, not a guarantee. Cooley, Hubbard and Walz called 3% and 4% exceedingly conservative for stock-dominated portfolios, and their longest payout was 30 years. Whether 4% is safe is the chance you accept on the horizon you have. The assumptions are stated with the table on this page.</p>`,
+  },
+  {
+    q: 'What withdrawal rate is safe for a 40- or 50-year retirement?',
+    a: `<p>No rate in the table lasted every simulation. Over 40 years, a constant-real 3% paid every year in ${pct(cell(3, 40).lasted, 1)} of simulations, 4% in ${pct(cell(4, 40).lasted, 1)} and 5% in ${pct(cell(5, 40).lasted, 1)}. Over 50 years those figures are ${pct(cell(3, 50).lasted, 1)}, ${pct(cell(4, 50).lasted, 1)} and ${pct(cell(5, 50).lasted, 1)}. Each rate lasts less often as the horizon grows. The studies behind 4% stopped at about 30 years; the table has 3.5% and 4.5% as well.</p>`,
+  },
+  {
+    q: 'What is a perpetual withdrawal rate?',
+    a: `<p>A rate meant to last indefinitely, rather than for a fixed 30 years. <a href="${portfolioCharts}">Portfolio Charts</a> defines its perpetual withdrawal rate as the rate that, in the worst historical period of a chosen length, still left at least the original inflation-adjusted principal. “Lasted” in the table means every year was paid, which can still leave the portfolio near zero. At 50 years, the longest horizon here, a constant-real 4% still held at least the starting amount in ${pct(y50.preserved, 1)} of simulations. The table reports those chances. It does not solve for one rate that would have kept the principal in every case, and 50 years is still a finite horizon.</p>`,
+  },
   {
     q: 'What is the best retirement withdrawal strategy?',
     a: '<p>There is no best rule, only a trade-off. Constant real withdrawals keep income steady and risk running out; a fixed percentage never runs out and lets income move with the market; guardrails and VPW sit between. Which suits you depends on how much of your spending is fixed, what other income you have and whether you want to leave money behind.</p>',
@@ -40,6 +86,10 @@ const faq = [
   {
     q: 'Is Guyton-Klinger the same as guardrails?',
     a: '<p>Guyton and Klinger described two of their rules as guardrails, and the name is now used for any rule that changes spending when a trigger is crossed. The full planner also has risk-based guardrails that react to the plan’s chance of success instead of its withdrawal rate.</p>',
+  },
+  {
+    q: 'How do Guyton-Klinger guardrails change the withdrawal?',
+    a: `<p>They start like the constant-real rule. Spending then skips its inflation raise after a losing year when the withdrawal rate is already above the rate you started with. If the rate rises more than 20% above that initial rate, spending is cut by 10% (not in the last 15 years); if it falls more than 20% below, spending is raised by 10%. In this page’s worked example the median largest one-year cut is ${pct(guardrails.medianLargestCut, 1)}, and a year went unpaid in ${pct(guardrails.shortAny, 1)} of simulations, against ${pct(constant.shortAny, 1)} for constant real withdrawals of the same 4%. This calculator is the guardrails calculator: the band and the adjustment are fixed at those 2006 figures.</p>`,
   },
   {
     q: 'Can a percentage-of-portfolio rule fail?',
@@ -54,8 +104,8 @@ const faq = [
 
 <ToolPage
   id="withdrawal"
-  heading="Retirement withdrawal calculator: four rules compared"
-  lede="Constant real withdrawals, a fixed percentage, Guyton-Klinger guardrails and VPW, run on the same simulated markets so you can see where each rule puts its risk: in your income, or in running out. It runs the Glideworth planning engine in your browser; nothing you type is sent anywhere."
+  heading="Retirement withdrawal calculator: safe withdrawal rate, the 4% rule and four strategies"
+  lede="A safe withdrawal rate and the 4% rule, set beside constant real withdrawals, a fixed percentage, Guyton-Klinger guardrails and VPW. The same simulated markets show where each rule puts its risk: in your income, or in running out. It runs the Glideworth planning engine in your browser; nothing you type is sent anywhere."
   faq={faq}
   adds="The planner runs these rules, and more, on your whole plan with other income and tax."
   related={[
@@ -69,25 +119,18 @@ const faq = [
     <li>
       <strong>Constant real (“the 4% rule”).</strong> Year 1 takes your initial rate of the starting portfolio; every
       later year takes the same amount raised by inflation. The portfolio’s value is never consulted. This is the rule
-      inside William Bengen’s <a {...ext}
-        href="https://www.financialplanningassociation.org/sites/default/files/2021-04/MAR04%20Determining%20Withdrawal%20Rates%20Using%20Historical%20Data.pdf"
-        >1994 study</a
-      >.
+      inside William Bengen’s <a {...ext} href={bengen}>1994 study</a>.
     </li>
     <li>
       <strong>Fixed percentage.</strong> Every year takes the same percentage of the current portfolio. It cannot run
       out, and income moves with the portfolio: a 25% fall in value is a 25% fall in next year’s income.
     </li>
     <li>
-      <strong>Guyton-Klinger guardrails</strong>, from Guyton’s <a {...ext}
-        href="https://www.financialplanningassociation.org/sites/default/files/2020-05/6%20Decision%20Rules%20and%20Portfolio%20management%20for%20Retirees%20Is%20Safe%20Initial%20Withdrawal%20Rate%20Too%20Safe.pdf"
-        >2004</a
-      > and Guyton and Klinger’s <a {...ext}
-        href="https://www.financialplanningassociation.org/sites/default/files/2021-11/2006%20-%20Guyton%20and%20Klinger%20-%20Decision%20Rules%20and%20SWR%20(1).PDF"
-        >2006</a
-      > papers. Withdrawals rise with inflation, except after a year with a negative return when the current rate is above
-      the initial rate. If the current rate is more than 20% above the initial rate, spending is cut by 10% (not in the
-      last 15 years); if it is more than 20% below, spending is raised by 10%.
+      <strong>Guyton-Klinger guardrails</strong>, from Guyton’s <a {...ext} href={guyton2004}>2004</a> and Guyton and
+      Klinger’s <a {...ext} href={guyton2006}>2006</a> papers. Withdrawals rise with inflation, except after a year with
+      a negative return when the current rate is above the initial rate. If the current rate is more than 20% above the
+      initial rate, spending is cut by 10% (not in the last 15 years); if it is more than 20% below, spending is raised
+      by 10%.
     </li>
     <li>
       <strong>VPW (variable percentage withdrawal).</strong> Each year takes the payment that would spend the portfolio
@@ -99,6 +142,133 @@ const faq = [
     </li>
   </ul>
 
+  <h2 id="safe-withdrawal-rate">What a safe withdrawal rate is</h2>
+  <p>
+    A safe withdrawal rate is the share of the portfolio taken in the first year, then raised with inflation, that still
+    has a chance you accept of lasting the retirement. The chance is part of the answer: a rate is safe only relative to
+    a horizon and a chance you choose. The studies behind the label tested the constant-real rule, the first of the four
+    above.
+  </p>
+  <p>
+    William Bengen’s <a {...ext} href={bengen}>“Determining Withdrawal Rates Using Historical Data”</a> (<em
+      >Journal of Financial Planning</em
+    >, October 1994) tested that rule on US history. For a mix of stocks and intermediate-term Treasuries, and a
+    retirement of at least 30 years, he read a first-year withdrawal of 4% as one that should be safe. The
+    <a href="/blog/what-is-your-fire-number/">FIRE number article</a> sets out the limits of that reading: one country’s
+    history, a horizon of about 30 years, a stock-heavy mix, spending that never changes, and in the main case no costs
+    or tax.
+  </p>
+  <p>
+    Philip Cooley, Carl Hubbard and Daniel Walz, <a {...ext} href={trinity}
+      >“Retirement Savings: Choosing a Withdrawal Rate That Is Sustainable”</a
+    > (<em>AAII Journal</em>, February 1998), measured a portfolio success rate: the share of overlapping historical
+    payout periods in which the ending value was still above zero. They used US stock and bond returns from 1926 to
+    1995, withdrawal rates from 3% to 12%, and payout periods of 15, 20, 25 and 30 years, and they did not adjust for
+    taxes or costs. For stock-dominated portfolios they described 3% and 4% as exceedingly conservative. One of their
+    conclusions is that early retirees who expect a long payout should plan on a lower rate. Their longest payout was
+    30 years.
+  </p>
+
+  <h2>How often a constant-real withdrawal lasted</h2>
+  <p>
+    Computed by this page’s own code when the page was built, for the constant-real rule only. Starting portfolio
+    {m(ex.balance)}. Each year’s real return is drawn independently from a log-normal distribution with an arithmetic
+    average of {pctInput(ex.mean)} and a standard deviation of {pctInput(ex.vol)}. Inflation is held at 0, so the return
+    is already after inflation and a constant-real withdrawal is a constant amount in today’s money. {whole(
+      Number(ex.trials),
+    )}{' '}
+    simulations, seed {ex.seed}, withdrawals at the start of each year, no tax, no fees and no other income. The same
+    assumptions and seed as the worked example below, so the 4% row at 30 years matches that example’s constant-real
+    result: every year was paid in {pct(fourThirty.lasted, 1)} of simulations, and a year went unpaid in {pct(
+      constant.shortAny,
+      1,
+    )}.
+  </p>
+  <div class="table-scroll" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
+    <table>
+      <caption>
+        Share of simulations in which the constant-real rule paid every year in full
+      </caption>
+      <thead>
+        <tr>
+          <th>Initial rate</th>
+          {SWR_YEARS.map((years) => <th>{years} years</th>)}
+        </tr>
+      </thead>
+      <tbody>
+        {
+          SWR_RATES.map((rate) => (
+            <tr>
+              <td>{pctInput(rate)}</td>
+              {SWR_YEARS.map((years) => (
+                <td>{pct(cell(rate, years).lasted, 1)}</td>
+              ))}
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+  <p>
+    The 30-year column is the horizon of the studies above. The 40- and 50-year columns are there because a retirement
+    that starts in someone’s 40s or 50s can be longer than 30 years. The 4% rate over 30 years paid every year in {pct(
+      y30.lasted,
+      1,
+    )} of these simulations. Each cell is one sample of {whole(Number(ex.trials))} seeded draws, so another seed would move it by
+    about a percentage point or two. The calculator above follows the inputs you type, and it can switch the
+    market model to US history from 1928 to 2025. The table is fixed when the page is built.
+  </p>
+
+  <h2 id="perpetual-withdrawal-rate">What a perpetual withdrawal rate means here</h2>
+  <p>
+    A perpetual withdrawal rate is a rate meant to last indefinitely, rather than for a fixed number of years.
+    <a {...ext} href={portfolioCharts}>Portfolio Charts</a> defines its perpetual withdrawal rate as the rate that, over
+    the worst historical retirement of a chosen length, still left at least the original inflation-adjusted principal,
+    and its safe withdrawal rate as the rate that ended that worst case at zero. The table on this page is computed by
+    this site’s engine under the assumptions stated above.
+  </p>
+  <p>
+    “Lasted” in the table means every withdrawal was paid. A simulation can finish near zero and still count. That
+    would leave nothing for the years after the horizon. The figure is a share of random simulations, while the
+    Portfolio Charts reading is the single worst historical case. The 50-year column is the longest horizon here.
+  </p>
+  <p>
+    On this model, with the 5% average return above, a constant-real 3% over 50 years paid every year in {pct(
+      low50.lasted,
+      1,
+    )} of simulations and still
+    held at least the starting {m(ex.balance)}, in today’s money, in {pct(low50.preserved, 1)} of them. The median
+    amount left was {m(low50.medianEnd)}. At 4% over 50 years, every year was paid in {pct(y50.lasted, 1)} and the
+    starting amount was still there in {pct(y50.preserved, 1)}, with a median of {m(y50.medianEnd)} left. At 5% over 50
+    years, every year was paid in {pct(high50.lasted, 1)} and the starting amount was still there in {pct(
+      high50.preserved,
+      1,
+    )}. Holding the starting amount is the stricter reading, and a 50-year horizon is still finite. A fixed percentage
+    of the portfolio cannot reach zero. That is a different promise: the income moves with the balance, and the table
+    above is the constant-real rule only.
+  </p>
+
+  <h2 id="guardrails">Guyton-Klinger guardrails</h2>
+  <p>
+    This calculator is the Guyton guardrail calculator. The rule uses the 20% band and the 10% adjustment from the <a
+      {...ext}
+      href={guyton2006}>2006 paper</a
+    >. The form on this page leaves both fixed. The full planner can change them.
+  </p>
+  <p>
+    The guardrails react to the withdrawal rate. After a year whose return was negative, there is no inflation raise
+    when the rate is already above the rate you started with, and there is no make-up later. When the current rate is
+    more than 20% above the initial rate, spending is cut by 10%, except in the last 15 years of the plan. When it is
+    more than 20% below, spending is raised by 10%. In the worked example (4% to start, 30 years, the market model
+    above) the median largest one-year cut is {pct(guardrails.medianLargestCut, 1)} under the guardrails, {pct(
+      constant.medianLargestCut,
+      1,
+    )} under constant real withdrawals and {pct(percentRule.medianLargestCut, 1)} under a fixed percentage. A year went
+    unpaid in {pct(guardrails.shortAny, 1)} of the guardrail simulations, against {pct(constant.shortAny, 1)} for
+    constant real withdrawals of the same initial amount. The rule caps the size of a cut. The chance of a year going
+    unpaid remains.
+  </p>
+
   <h2>How the calculator works</h2>
   <p>
     Each rule is set as the plan’s withdrawal strategy in the engine and run through the same Monte Carlo simulations:
@@ -109,8 +279,8 @@ const faq = [
   </p>
   <p>
     Two market models are offered: random real returns drawn independently each year from a log-normal distribution
-    (average 5%, volatility 12% by default, the model in the blog article), or US history from 1928 to 2025 with random
-    start years and a stock and bond mix.
+    (average 5%, volatility 12% by default, the model in the blog article and in the table above), or US history from
+    1928 to 2025 with random start years and a stock and bond mix.
   </p>
 
   <h2>Worked example</h2>
@@ -135,7 +305,8 @@ const faq = [
   <p>
     The pattern is the one the <a href="/blog/withdrawal-strategies-compared/">withdrawal strategies article</a> found
     with its own script: constant real income never moves until it fails (in {pct(constant.shortAny, 1)} of these
-    simulations a year went unpaid); a fixed percentage never runs out but often cuts income; guardrails cap the typical
+    simulations a year went unpaid, which is {pct(1 - constant.shortAny, 1)} in which every year was paid, the 4% /
+    30-year cell above); a fixed percentage never runs out but often cuts income; guardrails cap the typical
     cut at 10%; VPW starts higher and spends the portfolio down. For VPW, “a year not paid in full” is mostly its final
     year: the engine asks for the whole remaining balance grown at the assumed return, and a final year below that
     return leaves a small part unpaid.
@@ -146,13 +317,13 @@ const faq = [
     <li>
       The results depend on the market model: a different return, volatility or horizon changes every row.
       Independent yearly returns understate runs of bad years; the history model keeps them but has few independent
-      sequences.
+      sequences. The safe-withdrawal table uses only the random-returns model stated beside it.
     </li>
     <li>One portfolio, rebalanced yearly; no fees; no tax unless you set the flat rate.</li>
     <li>No pension or other income. A floor of guaranteed income changes which rule suits you most.</li>
     <li>
       The Guyton-Klinger rules are applied as the engine implements them (one asset mix, so the portfolio management
-      rule does not apply).
+      rule does not apply). The 20% guardrail and the 10% adjustment are fixed on this page.
     </li>
     <li>
       History data: Aswath Damodaran, <em>Historical Returns on Stocks, Bonds and Bills</em> (NYU Stern), and US Bureau

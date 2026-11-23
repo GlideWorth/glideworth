@@ -136,9 +136,9 @@ export const pages = {
     ogEyebrow: "Free calculator",
   },
   "/tools/retirement-withdrawal-calculator/": {
-    title: "Retirement withdrawal calculator: compare rules",
+    title: "Retirement withdrawal calculator: SWR, 4% rule",
     description:
-      "Free retirement withdrawal calculator: constant real, fixed percentage, Guyton-Klinger guardrails and VPW on the same simulated markets, side by side.",
+      "Free retirement withdrawal calculator: a safe withdrawal rate and the 4% rule, with Guyton-Klinger guardrails, a fixed percentage and VPW.",
     ogTitle: "Retirement withdrawal calculator",
     ogEyebrow: "Free calculator",
   },

@@ -20,6 +20,17 @@ describe("page descriptions", () => {
     expect(pages["/"].description.length).toBeLessThanOrEqual(155);
   });
 
+  it("keeps the withdrawal calculator title and description inside the search limits", () => {
+    const meta = pages["/tools/retirement-withdrawal-calculator/"];
+    expect(meta.title.length).toBeLessThanOrEqual(60);
+    expect(`${meta.title} · ${site.name}`.length).toBeLessThanOrEqual(60);
+    expect(meta.description.length).toBeGreaterThanOrEqual(120);
+    expect(meta.description.length).toBeLessThanOrEqual(155);
+    expect(meta.title.toLowerCase()).toContain("withdrawal");
+    expect(meta.description.toLowerCase()).toContain("safe withdrawal rate");
+    expect(meta.description).toContain("4%");
+  });
+
   it("are unique", () => {
     const descriptions = entries.map(([, meta]) => meta.description);
     expect(new Set(descriptions).size).toBe(descriptions.length);

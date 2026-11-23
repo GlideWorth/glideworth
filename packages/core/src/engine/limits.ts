@@ -115,7 +115,25 @@ export function earnedIncome(ps: PeriodState, owner: string): number {
   return s;
 }
 
-/** Annual limit (nominal) for contributions to `a`, or null when uncapped. */
+/**
+ * Compensation (annualised) that caps contributions to `a`. For a US IRA on a joint return this is
+ * the IRC 219(c) spousal rule: the spouse with less compensation adds the other spouse's
+ * compensation, less that spouse's own IRA contributions (deductible, nondeductible and Roth) this
+ * period. 26 U.S.C. 219(c)(1)(B) and (c)(2), https://www.law.cornell.edu/uscode/text/26/219
+ * (read 2026-11-22). Contributions are made in flow order, so the other spouse's IRA is only
+ * deducted once it has been funded this period.
+ */
+function compensation(ctx: EngineContext, ps: PeriodState, a: AccountState): number {
+  let comp = earnedIncome(ps, a.owner);
+  if (limitGroupOf(a.def.type) === "us-ira" && ps.tax.filingStatus === "married-joint") {
+    const spouse = ctx.people.find((p) => p.id !== a.owner);
+    const other = spouse && a.owner !== "joint" ? earnedIncome(ps, spouse.id) : 0;
+    if (spouse && comp < other)
+      comp += Math.max(0, other - (ps.limitUsed.get(`${spouse.id}|us-ira`) ?? 0));
+  }
+  return comp * (12 / ps.bounds.months);
+}
+
 /** Account type whose limit is the shared allowance of a group (a LISA shares the ISA allowance). */
 const GROUP_TYPE: Partial<Record<AccountType, AccountType>> = { "uk-lisa": "uk-isa" };
 
@@ -126,7 +144,7 @@ function jurisdictionLimit(
   accountType: AccountType,
 ): number | null {
   const age = ownerAge(ctx, a.owner, ps.bounds.start);
-  const earned = earnedIncome(ps, a.owner) * (12 / ps.bounds.months);
+  const earned = compensation(ctx, ps, a);
   for (const j of rulesFor(ctx, a, ps)) {
     if (!j.contributionLimit) continue;
     const v = j.contributionLimit({
@@ -143,6 +161,7 @@ function jurisdictionLimit(
   return null;
 }
 
+/** Annual limit (nominal) for contributions to `a`, or null when uncapped. */
 export function annualLimit(
   ctx: EngineContext,
   ps: PeriodState,
@@ -153,7 +172,7 @@ export function annualLimit(
   if (v !== null)
     return { group, annual: ps.crossBorder ? nonResidentContributionCap(ctx, ps, a, v) : v };
   const age = ownerAge(ctx, a.owner, ps.bounds.start);
-  const earned = earnedIncome(ps, a.owner) * (12 / ps.bounds.months);
+  const earned = compensation(ctx, ps, a);
   const fb = fallbackLimit(ctx, a, age, ps.piStart, earned);
   if (fb === null) return null;
   return { group, annual: ps.crossBorder ? nonResidentContributionCap(ctx, ps, a, fb) : fb };

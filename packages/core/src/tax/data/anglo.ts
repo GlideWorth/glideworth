@@ -41,7 +41,7 @@ export const US_FEDERAL_SIMPLIFICATIONS: readonly string[] = [
   "ACA premium tax credit: you enter the benchmark (second-lowest-cost silver) premium; there is no credit below 100% or above 400% of the poverty line, and Medicaid eligibility is not modelled.",
   "Early-withdrawal penalties apply to accounts whose early-withdrawal setting is on (plus the HSA and 529 statutory penalties); 72(t) payments are penalty-free, other exceptions must be reflected in the account settings.",
   "Required minimum distributions use the Uniform Lifetime Table; the Joint Life table for a spouse more than 10 years younger, the still-working exception for workplace plans and the April 1 deferral of the first distribution are not modelled.",
-  "Contribution limits are the IRS 2026 and 2027 figures, indexed from the plan start after 2027; the income limits on Roth IRA contributions and on deducting traditional IRA contributions are not applied.",
+  "Contribution limits are the IRS 2026 and 2027 figures, indexed from the plan start after 2027. On a joint return an IRA is capped by the couple's combined compensation less the other spouse's IRA contributions (spousal IRA); IRA contributions are made in flow order. The income limits on Roth IRA contributions and on deducting traditional IRA contributions (including the separate range for a spouse not covered by a workplace plan) are not applied.",
   "The OBBBA deductions for qualified tips, overtime pay and car-loan interest are not modelled.",
   "No state and local taxes here (see the state and local entries), no kiddie tax and no estimated-tax underpayment penalties.",
   ENGINE_GAINS,

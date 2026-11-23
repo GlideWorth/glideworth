@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { simulate } from "../src/index.js";
 import type { FlowInput } from "../src/schema/flows.js";
-import { account, acct, always, expectInvariants, flatTax, period, sim } from "./engine-helpers.js";
+import {
+  account,
+  acct,
+  always,
+  expectInvariants,
+  flatTax,
+  period,
+  sim,
+  ZERO_TAX,
+} from "./engine-helpers.js";
 
 const salary = (value: number, id = "sal", owner = "me") => ({
   id,
@@ -150,6 +159,76 @@ describe("flows: workplace plans", () => {
     // Only the traditional 401(k) deferral is deductible (the employer match is not the employee's).
     expect(period(r, 2027).taxes.total).toBeCloseTo((300_000 - 25_500) * 0.2, 6);
     expect(r.trace.some((t) => t.code === "MEGA_BACKDOOR_ROTH")).toBe(true);
+  });
+
+  describe("US spousal IRA on a joint return (IRC 219(c))", () => {
+    // 26 U.S.C. 219(c), https://www.law.cornell.edu/uscode/text/26/219 (read 2026-11-22): on a
+    // joint return the spouse with less compensation may count the other spouse's compensation,
+    // less that spouse's own IRA contributions (deductible, nondeductible and Roth), up to their
+    // own limit. 2026 limits (IR-2025-111, Notice 2025-67): $7,500 plus a $1,100 catch-up at 50.
+    // Synthetic couple: A (born 1974) earns $150,000 until `retire`; B (born 1975) earns nothing.
+    const run = (
+      filingStatus: "married-joint" | "married-separate",
+      pay = 150_000,
+      retire = "2028-01",
+    ) =>
+      simulate(
+        sim({
+          start: "2026-01",
+          years: 3,
+          births: ["1974-01", "1975-01"],
+          location: { country: "US" },
+          accounts: [
+            acct("c", "cash", 0, { owner: "a" }),
+            acct("ra", "roth-ira", 0, { owner: "a" }),
+            acct("ib", "traditional-ira", 0, { owner: "b" }),
+          ],
+          plan: {
+            tax: { ...ZERO_TAX, filingStatus },
+            income: [
+              {
+                ...salary(pay, "sal", "a"),
+                range: { start: { kind: "planStart" }, end: { kind: "date", date: retire } },
+              },
+            ],
+            flows: [
+              {
+                ...contribution("ra", { kind: "max" }, { limit: { kind: "jurisdiction" } }),
+                owner: "a",
+              },
+              {
+                ...contribution("ib", { kind: "max" }, { limit: { kind: "jurisdiction" } }),
+                owner: "b",
+              },
+            ] as FlowInput[],
+          },
+        }),
+      );
+
+    it("funds the non-working spouse's IRA from joint compensation, then stops with it", () => {
+      const r = run("married-joint");
+      expect(account(r, 2026, "ra").contributions).toBeCloseTo(8_600, 6);
+      expect(account(r, 2026, "ib").contributions).toBeCloseTo(8_600, 6);
+      // 2027 limits (IR-2026-136, Notice 2026-66): unchanged at $7,500 + $1,100.
+      expect(account(r, 2027, "ib").contributions).toBeCloseTo(8_600, 6);
+      // No compensation once A stops working: neither IRA can be funded.
+      expect(account(r, 2028, "ra").contributions).toBe(0);
+      expect(account(r, 2028, "ib").contributions).toBe(0);
+      expectInvariants(r);
+    });
+
+    it("joint compensation is reduced by the other spouse's IRA contributions", () => {
+      // A earns $10,000: A's Roth takes $8,600, leaving B $1,400 of joint compensation.
+      const r = run("married-joint", 10_000);
+      expect(account(r, 2026, "ra").contributions).toBeCloseTo(8_600, 6);
+      expect(account(r, 2026, "ib").contributions).toBeCloseTo(1_400, 6);
+    });
+
+    it("does not pool compensation on separate returns", () => {
+      const r = run("married-separate");
+      expect(account(r, 2026, "ra").contributions).toBeCloseTo(8_600, 6);
+      expect(account(r, 2026, "ib").contributions).toBe(0);
+    });
   });
 
   it("ISA allowance is shared with a LISA (capped at 4,000 plus a 25% bonus)", () => {

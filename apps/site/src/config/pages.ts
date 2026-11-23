@@ -29,8 +29,7 @@ export interface PageMeta {
 
 export const pages = {
   "/": {
-    title: "Glideworth: retirement and FIRE planner",
-    fullTitle: true,
+    title: "Retirement and FIRE planner",
     description:
       "Find out how much you can spend and when you can retire, see why a plan falls short year by year, and compare scenarios. No bank login needed.",
     ogTitle: "Know when you can retire, and how much you can spend",

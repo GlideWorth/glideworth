@@ -67,10 +67,11 @@ const BEFORE: Record<string, string> = {
   "CA-ON-couple": "efbb9e31797fa564",
   // Re-recorded 2026-11-19: Medicare levy thresholds of Act No. 58 of 2026, legislated amounts kept
   // nominal through 2027-28, and the cited sources.
-  // Re-recorded 2026-11-22 (foreign-resident rates, GlideWorth/glideworth#3): only the three added
-  // cited sources in `meta.taxSources` change; the output with that field removed is identical.
-  "AU-single": "82e52b0208ff0453",
-  "AU-couple": "3c35b7bac0072f61",
+  // Re-recorded 2026-11-23 after merging the super caps' cited sources (ATO, ITAA 1997) with the
+  // foreign-resident rates' (GlideWorth/glideworth#3): only `meta.taxSources` changes; the output with
+  // that field removed is identical.
+  "AU-single": "91460b4e6171ab07",
+  "AU-couple": "52e77432bb6f48ad",
   // Re-recorded 2026-11-19 (DE/NL/FR official-source check): Aktivrente, care surcharge for parents
   // and pre-1940 births, NL pre-1946 first bracket and Zvw on pensions, FR CSG by income, retirement
   // age table and single-parent cap, and the cited sources.

@@ -2,8 +2,8 @@
  * Australia, resident and foreign-resident individuals. Income year 1 July `startYear` to 30 June `startYear + 1`;
  * engine period year Y uses income year Y/Y+1. Nominal AUD. Calculation: ../jurisdictions/au.ts.
  * Sources (re-checked 2026-11-19; listed in `SOURCES`): the rate tables and Medicare thresholds
- * from the amending Acts on the Federal Register of Legislation. The ATO site refused automated
- * access on 2026-11-16 and 2026-11-19, so the super caps are not confirmed from the ATO.
+ * from the amending Acts on the Federal Register of Legislation; the super contribution caps from the
+ * ATO "Contributions caps" page and ITAA 1997 s 291-20 and s 292-85 (read 2026-11-22).
  */
 
 /** Rates and thresholds below are legislated nominal amounts, not indexed, through this year. */
@@ -66,7 +66,11 @@ const SOURCES = [
   },
   {
     url: "https://www.ato.gov.au/tax-rates-and-codes/key-superannuation-rates-and-thresholds/contributions-caps",
-    note: "Concessional cap 32,500 and non-concessional cap 130,000 for 2026-27: NOT CONFIRMED (the ATO site refused automated access on 2026-11-16 and 2026-11-19); 30,000 / 120,000 for 2025-26",
+    note: "ATO 'Contributions caps' (last updated 11 September 2026), Table 1.1 'Concessional contributions caps': 2026-27 $32,500, 2025-26 $30,000; Table 4 'Non-concessional contributions cap': 2026-27 $130,000, 2025-26 $120,000 (read 2026-11-22)",
+  },
+  {
+    url: "https://www.legislation.gov.au/C2004A05138/2026-10-01/2026-10-01/text/original/epub/OEBPS/document_6/document_6.html",
+    note: "Income Tax Assessment Act 1997, compilation No. 268 (1 October 2026), volume 6: s 291-20(2) concessional cap $25,000 for 2017-18, indexed annually (Subdivision 960-M, s 960-285); s 292-85(2)(a) non-concessional cap is 4 times the s 291-20(2) concessional cap (4 x 32,500 = 130,000 for 2026-27); s 292-85(3)-(5) bring-forward of up to 3 times that cap, not modelled (read 2026-11-22)",
   },
   {
     url: "https://www.legislation.gov.au/C2026A00008/asmade/text",
@@ -120,6 +124,7 @@ const Y2026: AuYear = {
   franking: { corporateRate: 0.3 },
   super: {
     contributionsTax: 0.15,
+    // ATO "Contributions caps" Tables 1.1 and 4 for 2026-27; ITAA 1997 s 291-20, s 292-85(2)(a) (read 2026-11-22)
     concessionalCap: 32_500,
     nonConcessionalCap: 130_000,
     div293Threshold: 250_000,

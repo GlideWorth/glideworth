@@ -126,9 +126,6 @@ Figures that could not be confirmed or are provisional:
   indexed for 2027 (not confirmed). Provincial dividend tax credits are CRA's 2025 rates (2026 worksheets not
   published). QPP's 2027 rate is not confirmed (the 2026 rate is kept). Federal, other provincial, CPP, EI, OAS,
   RRSP/TFSA and RRIF figures were confirmed from CRA.
-- Australia (checked 2026-11-19): the 2026-27 super caps (concessional 32,500, non-concessional 130,000) are **not
-  confirmed** (the ATO site refused automated access); rates and the Medicare levy thresholds were confirmed from the
-  amending Acts on the Federal Register of Legislation.
 - Netherlands (checked 2026-11-19 against the Belastingdienst): the 2026 Box 3 deemed returns for savings (1.28%) and
   debts (2.70%) are provisional; the counter-evidence route (Wet tegenbewijsregeling box 3) is not applied, so Box 3
   is always the deemed return. The Wet werkelijk rendement box 3 (actual return from 2028) passed the Tweede Kamer on
@@ -208,7 +205,7 @@ Tax sources, checked 2026-11-16 and 2026-11-19 (the status of each country's sou
 | Canada                            | ok (CRA, provinces; 2026-11-19); Quebec lower rates and Manitoba bracket conflict not confirmed (above)           |
 | Israel                            | ok on brackets, credit point, surtax and NI (Knesset, NII; 2026-11-19); capital-income rates not confirmed        |
 | United Arab Emirates              | ok (u.ae, FTA, DIFC, GPSSA; 2026-11-19)                                                                           |
-| Australia                         | ok on facts (legislation, 2026-11-19); 2026-27 super caps not confirmed (ATO site unreachable)                    |
+| Australia                         | ok on facts (legislation, 2026-11-19; super caps from the ATO, 2026-11-22)                                        |
 | Ireland                           | ok on facts for 2026 (Revenue); 2027 from Budget 2027 documents (2026-11-19); gaps above                          |
 | New Zealand                       | ok (IRD, 2026-11-19: rates from 1 April 2025, ACC levy 2026-27 and 2027-28)                                       |
 | UK                                | ok (gov.uk, legislation.gov.uk, Budget 2026; checked 2026-11-19); gaps above                                      |

@@ -11,6 +11,13 @@
  *   35,013), seniors and pensioners 44,268 (phase-in limit 55,335); shade-in 10% of the excess
  *   (Medicare Levy Act 1986 s 7). https://www.legislation.gov.au/C2026A00058/asmade/text
  * - LITO: 700, less 5% of taxable income over 37,500 and 1.5% over 45,000 (ITAA 1997 s 61-115).
+ * - Super contribution caps: ATO "Contributions caps" (last updated 11 September 2026), Table 1.1
+ *   concessional 2026-27 $32,500, 2025-26 $30,000; Table 4 non-concessional 2026-27 $130,000,
+ *   2025-26 $120,000 (read 2026-11-22).
+ *   https://www.ato.gov.au/tax-rates-and-codes/key-superannuation-rates-and-thresholds/contributions-caps
+ *   ITAA 1997 (compilation No. 268) s 291-20(2) indexes the concessional cap; s 292-85(2)(a) sets the
+ *   non-concessional cap at 4 times it. Excess concessional contributions count as assessable income
+ *   (s 291-15). https://www.legislation.gov.au/C2004A05138/latest/text
  * - Foreign residents: Income Tax Rates Act 1986 Schedule 7 Part II, "Tax rates for non-resident
  *   taxpayers for the 2024-25 year of income or a later year of income": the second resident
  *   personal tax rate (30%) to 135,000, the third (37%) to 190,000, 45% above; no tax-free
@@ -95,6 +102,51 @@ describe("Medicare levy low-income thresholds (Act No. 58 of 2026, from 2025-26)
     expect(medicare(wage(50_000, 2026, 1, 70))).toBeCloseTo(573.2, 6);
     expect(medicare(wage(55_335, 2026, 1, 70))).toBeCloseTo(1_106.7, 6);
     expect(medicare(wage(60_000, 2026, 1, 70))).toBeCloseTo(1_200, 6);
+  });
+});
+
+describe("Super contribution caps (ATO Contributions caps; ITAA 1997 s 291-20, s 292-85)", () => {
+  const year = (label: string) => AU_YEARS.find((y) => y.label === label)!;
+  const employerSuper = (contribution: number, y = 2026) =>
+    au({
+      year: y,
+      income: [{ character: "wage", amount: 100_000 }],
+      deductions: [{ amount: contribution, employer: true, accountType: "au-super-accumulation" }],
+    }).facts["au.taxableIncome"];
+
+  it("data: 2026-27 concessional 32,500 and non-concessional 130,000; 2025-26 30,000 / 120,000", () => {
+    expect(year("2026-27").super.concessionalCap).toBe(32_500);
+    expect(year("2026-27").super.nonConcessionalCap).toBe(130_000);
+    expect(year("2025-26").super.concessionalCap).toBe(30_000);
+    expect(year("2025-26").super.nonConcessionalCap).toBe(120_000);
+  });
+
+  it("non-concessional cap is 4 times the concessional cap (s 292-85(2)(a))", () => {
+    for (const y of AU_YEARS) {
+      expect(y.super.nonConcessionalCap, y.label).toBe(4 * y.super.concessionalCap);
+    }
+  });
+
+  it("contribution limit for super accumulation is the concessional cap", () => {
+    const limit = (y: number) =>
+      auJurisdiction.contributionLimit!({
+        accountType: "au-super-accumulation",
+        year: y,
+        ownerAge: 40,
+        priceIndex: 1,
+        earnedIncome: 100_000,
+      });
+    expect(limit(2026)).toBe(32_500);
+    expect(limit(2025)).toBe(30_000);
+  });
+
+  it("2026-27: employer contributions over 32,500 are excess and assessable (just below, at, above)", () => {
+    expect(employerSuper(32_499)).toBe(100_000);
+    expect(employerSuper(32_500)).toBe(100_000);
+    expect(employerSuper(32_501)).toBe(100_001);
+    // 2025-26 cap is 30,000
+    expect(employerSuper(30_000, 2025)).toBe(100_000);
+    expect(employerSuper(30_001, 2025)).toBe(100_001);
   });
 });
 

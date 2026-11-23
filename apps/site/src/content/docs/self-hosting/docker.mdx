@@ -45,7 +45,7 @@ port, with the data in a single SQLite file on a volume.
    <CodeBlock lang="bash" title="Terminal" code={`sed -i.bak -e "s/^GLIDEWORTH_SETUP_TOKEN=.*/GLIDEWORTH_SETUP_TOKEN=$(openssl rand -hex 24)/" \\
   -e 's/^GLIDEWORTH_BOOTSTRAP_KEY=.*/GLIDEWORTH_BOOTSTRAP_KEY=/' .env   # set a setup token, clear the dev key`} />
 
-   To pin a release (recommended), add `GLIDEWORTH_VERSION=1.0.0`; without it you get `latest`.
+   To pin a release (recommended), add `GLIDEWORTH_VERSION=1.1.0`; without it you get `latest`.
 3. Start it.
 
    ```bash

@@ -8,18 +8,18 @@ social images, structured data, a sitemap and RSS. The app lives at `app.glidewo
 
 Run from `apps/site` (or `pnpm --filter @glideworth/site <script>` from the repo root):
 
-| Command                 | What it does                                                                                                                                                                                                                                  |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm dev`              | Dev server on http://127.0.0.1:4321 (drafts visible)                                                                                                                                                                                          |
-| `pnpm build`            | Static build into `dist/` (pages, social images, sitemap, RSS)                                                                                                                                                                                |
-| `pnpm preview`          | Serves `dist/` on port 4321. Astro 7 runs it in the background: stop it with `pnpm astro preview stop`                                                                                                                                        |
-| `pnpm typecheck`        | `astro check` (TypeScript strict, Astro files and content schemas)                                                                                                                                                                            |
-| `pnpm check:dist`       | After a build: titles, descriptions (length, uniqueness), one h1, alt text, canonicals, OG images, JSON-LD, internal links (with trailing slash), `rel="noopener noreferrer"` on external links, third-party loads, sitemap, robots, RSS, XML |
-| `pnpm check:contrast`   | WCAG contrast of the colour tokens in both themes                                                                                                                                                                                             |
-| `pnpm icons`            | Regenerates the favicon set in `public/` from the mark                                                                                                                                                                                        |
-| `pnpm snapshot:openapi` | Rewrites `src/data/openapi.json` from the API's generated OpenAPI document (see "API reference" below)                                                                                                                                        |
-| `pnpm snapshot:dates`   | Rewrites `src/data/source-dates.json`: last commit date of each page source, the sitemap's fallback on a shallow checkout                                                                                                                     |
-| `pnpm indexnow:submit`  | Submits the live sitemap to IndexNow. Pass `-- --dry-run` to print the URLs and send nothing. Not part of CI or deploy; see [docs/INDEXNOW.md](docs/INDEXNOW.md)                                                                              |
+| Command                 | What it does                                                                                                                                                                                                                                                  |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev`              | Dev server on http://127.0.0.1:4321 (drafts visible)                                                                                                                                                                                                          |
+| `pnpm build`            | Static build into `dist/` (pages, social images, sitemap, RSS)                                                                                                                                                                                                |
+| `pnpm preview`          | Serves `dist/` on port 4321. Astro 7 runs it in the background: stop it with `pnpm astro preview stop`                                                                                                                                                        |
+| `pnpm typecheck`        | `astro check` (TypeScript strict, Astro files and content schemas)                                                                                                                                                                                            |
+| `pnpm check:dist`       | After a build: titles, descriptions (length, uniqueness), one h1, alt text, canonicals, OG images, JSON-LD, internal links (with trailing slash), `rel="noopener noreferrer"` on external links, third-party loads, sitemap, robots, RSS, XML, Markdown twins |
+| `pnpm check:contrast`   | WCAG contrast of the colour tokens in both themes                                                                                                                                                                                                             |
+| `pnpm icons`            | Regenerates the favicon set in `public/` from the mark                                                                                                                                                                                                        |
+| `pnpm snapshot:openapi` | Rewrites `src/data/openapi.json` from the API's generated OpenAPI document (see "API reference" below)                                                                                                                                                        |
+| `pnpm snapshot:dates`   | Rewrites `src/data/source-dates.json`: last commit date of each page source, the sitemap's fallback on a shallow checkout                                                                                                                                     |
+| `pnpm indexnow:submit`  | Submits the live sitemap to IndexNow. Pass `-- --dry-run` to print the URLs and send nothing. Not part of CI or deploy; see [docs/INDEXNOW.md](docs/INDEXNOW.md)                                                                                              |
 
 The scripts set `ASTRO_TELEMETRY_DISABLED=1`, and the dev toolbar is off, so nothing phones home.
 Lint with oxlint and check formatting with oxfmt from the repo root (`pnpm lint`, `pnpm format:check`).
@@ -50,6 +50,9 @@ src/config/related.ts    clusters of related pages (every page in a cluster link
 public/                  favicons, app icons (generated from /brand) and the IndexNow key file
 /llms.txt                short catalog of the site for language models, generated at build time
 /llms-full.txt           the same catalog plus country tax limits and the legal pages
+/docs/<slug>.md          Markdown twin of every docs page, written from the built HTML after the build
+                         (src/lib/markdown-twin.ts, astro.config.ts); `astro dev` does not serve them
+/.well-known/skills/default/skill.md   the agent skill, served unchanged from skills/glideworth/SKILL.md
 ```
 
 ## Analytics (optional, off by default)

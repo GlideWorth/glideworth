@@ -9,6 +9,8 @@ import { absoluteUrl, site } from "../config/site";
 import { TOOLS } from "../tools/registry";
 import { publishedPosts } from "./content";
 import { docHref, docsSidebar } from "./docs";
+import { agentLinks, AGENTS_BODY } from "./llms-agents";
+import { twinPath } from "./markdown-twin";
 import { type LlmsDoc, type LlmsLink, mcpParagraph, pricingParagraph, renderLlms } from "./llms";
 
 type PagePath = keyof typeof pages;
@@ -71,7 +73,7 @@ async function document(full: boolean): Promise<LlmsDoc> {
       .filter((entry) => !entry.data.noindex)
       .map((entry) => ({
         name: entry.data.title,
-        url: absoluteUrl(docHref(entry.id)),
+        url: absoluteUrl(twinPath(docHref(entry.id))),
         note: entry.data.description,
       })),
   );
@@ -130,7 +132,22 @@ async function document(full: boolean): Promise<LlmsDoc> {
       },
       {
         heading: "Documentation",
-        links: [...links(["/docs/"]), ...docLinks],
+        body: [
+          "Each link below is the Markdown version of a docs page. The HTML page is the same address with a trailing slash in place of .md.",
+        ],
+        links: [
+          {
+            name: "Documentation",
+            url: absoluteUrl(twinPath("/docs/")),
+            note: pages["/docs/"].description,
+          },
+          ...docLinks,
+        ],
+      },
+      {
+        heading: "For AI agents",
+        body: [AGENTS_BODY],
+        links: agentLinks(),
       },
       {
         heading: "Blog",

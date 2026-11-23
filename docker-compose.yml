@@ -8,7 +8,7 @@
 # GLIDEWORTH_<NAME> and falls back to the pre-rename CAIRN_<NAME>, so an existing `.env` keeps working.
 # The data directory is fixed to the volume; do not point GLIDEWORTH_DATA_DIR or GLIDEWORTH_DB_PATH elsewhere.
 # The hosted (cloud) mode of the same image has its own deployment; this file is for self-hosting.
-# Pin a release with GLIDEWORTH_VERSION=1.0.0 in `.env` (default: latest). Upgrading: docs/SELF-HOSTING.md.
+# Pin a release with GLIDEWORTH_VERSION=1.1.0 in `.env` (default: latest). Upgrading: docs/SELF-HOSTING.md.
 services:
   glideworth:
     image: ghcr.io/glideworth/glideworth:${GLIDEWORTH_VERSION:-latest}
@@ -41,6 +41,9 @@ services:
       # Behind a TLS-terminating reverse proxy: let the server see the real client address and scheme.
       GLIDEWORTH_TRUST_PROXY: "${GLIDEWORTH_TRUST_PROXY:-${CAIRN_TRUST_PROXY:-false}}"
       GLIDEWORTH_COOKIE_SECURE: "${GLIDEWORTH_COOKIE_SECURE:-${CAIRN_COOKIE_SECURE:-auto}}"
+      # Public https address behind a reverse proxy: the OAuth issuer for AI assistants that sign in. Empty = the
+      # request's own origin.
+      GLIDEWORTH_PUBLIC_URL: "${GLIDEWORTH_PUBLIC_URL:-${CAIRN_PUBLIC_URL:-}}"
     volumes:
       - glideworth-data:/data
     healthcheck:

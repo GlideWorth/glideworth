@@ -3,6 +3,9 @@
 This guide covers running Glideworth on your own machine or server with Docker: installing, putting it
 behind HTTPS, configuring it, upgrading, backing up and restoring, and moving it.
 
+To have an AI agent (Claude Code, Codex, Cursor or similar) do the install and connect itself, point it at
+[docs/agents/SETUP.md](agents/SETUP.md): it follows the same steps and hands the passphrase to you.
+
 **The self-hosted build is the whole product.** It has every feature, there is no licence key, no paywall
 and no feature that only the hosted service has. It has **no telemetry**: it does not report usage,
 errors, version checks or analytics to anyone. The only outbound connections the server makes are the

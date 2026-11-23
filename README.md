@@ -40,6 +40,28 @@ owe, what you earn and spend, and when you want to stop working. Glideworth play
 futures, tax included in every year, and tells you how often your plan works, what goes wrong when it
 doesn't, and what to change.
 
+## Set up with an AI agent
+
+**For people:** you can have your AI agent (Claude Code, Codex, Cursor or another) do the set-up. Paste this
+into it:
+
+> Read https://raw.githubusercontent.com/GlideWorth/glideworth/main/docs/agents/SETUP.md and follow it to set up
+> Glideworth for me and connect it to you.
+
+It asks a few questions first (hosted or self-hosted, where it runs, which assistant), runs the install, and
+hands the one step that is yours back to you: choosing your passphrase. Already have Glideworth, hosted or
+self-hosted? Paste this instead:
+
+> Read https://raw.githubusercontent.com/GlideWorth/glideworth/main/docs/agents/SETUP.md and connect my
+> existing Glideworth (hosted at app.glideworth.com, or self-hosted at ADDRESS) to you, read-only.
+
+**For agents:** follow [docs/agents/SETUP.md](docs/agents/SETUP.md) step by step. Client set-up for each
+assistant is in [docs/MCP.md](docs/MCP.md#client-setup), and the [Glideworth skill](skills/glideworth/SKILL.md)
+explains how to use the tools once connected. The documentation site has a Markdown version of every page,
+listed in <https://glideworth.com/llms.txt>.
+
+Prefer to do it yourself? The [Docker steps](#self-hosting-with-docker) below take a few minutes.
+
 ## What you can find out
 
 - **When can I retire?** The earliest date your plan works at the level of confidence you choose.
@@ -64,7 +86,8 @@ Connect your Glideworth account to your AI assistant, then talk to it about your
 do, your assistant can do: "What's my chance of success, and why does it fail when it fails?", "What if I
 retire at 52?", "What's the most I can spend at 90% confidence?" When it suggests a change, it shows you
 what would change and waits for you to approve it. It never sees your bank passwords, because Glideworth
-never asks for them. Set-up: [docs/MCP.md](docs/MCP.md).
+never asks for them. Set-up: [docs/MCP.md](docs/MCP.md), or let your agent do it
+([Set up with an AI agent](#set-up-with-an-ai-agent)).
 
 ## Hosted or on your own server
 
@@ -97,7 +120,7 @@ Open <http://localhost:8787> and choose a passphrase. The image is built for `li
 docker compose exec glideworth node dist/cli/admin.js backup --out /data/backups/manual.db
 ```
 
-This runs the latest release. To pin one, add `GLIDEWORTH_VERSION=1.0.0` to `.env`; to upgrade, change it to the
+This runs the latest release. To pin one, add `GLIDEWORTH_VERSION=1.1.0` to `.env`; to upgrade, change it to the
 new [release](https://github.com/GlideWorth/glideworth/releases), then run `docker compose pull && docker compose up -d`. Reverse proxy, TLS, backups and upgrades are covered in
 [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md).
 
@@ -244,8 +267,10 @@ claude mcp add glideworth -e GLIDEWORTH_DB_PATH=/abs/path/apps/api/data/glidewor
 
 Then ask: "Summarise my finances and plan", "What is my chance of success, and why does it fail when it
 fails?", "What if I retire three years earlier? Save it as a branch.", "What is the most I can spend at 90%
-success?", "Review my assumptions and show what changing the top finding would do." Claude Desktop, Cursor and other clients,
-the write tools, prompts and resources are covered in [docs/MCP.md](docs/MCP.md).
+success?", "Review my assumptions and show what changing the top finding would do." Claude Desktop, claude.ai,
+ChatGPT, Codex, Cursor, VS Code and other clients, the write tools, prompts and resources are covered in
+[docs/MCP.md](docs/MCP.md). The [Glideworth skill](skills/glideworth/SKILL.md) teaches an assistant to use the
+tools well: copy it to `~/.claude/skills/glideworth/SKILL.md` for Claude Code.
 
 ### Project layout
 
@@ -292,15 +317,17 @@ your own files) is never read by the app.
 
 ## More documentation
 
-|                                              |                                                                               |
-| -------------------------------------------- | ----------------------------------------------------------------------------- |
-| [docs/USER-GUIDE.md](docs/USER-GUIDE.md)     | concepts, a UK walkthrough, how results are calculated, limitations           |
-| [docs/API.md](docs/API.md)                   | REST API: conventions, auth, every route group, security model, configuration |
-| [docs/MCP.md](docs/MCP.md)                   | MCP tools, resources, prompts, client setup, worked examples                  |
-| [docs/PARITY.md](docs/PARITY.md)             | a feature-by-feature matrix of what is implemented, partial or missing        |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | packages, data model, engine pipeline, tax plug-ins, persistence              |
-| [docs/STATUS.md](docs/STATUS.md)             | what is built, test totals, known limitations, what remains                   |
-| [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md) | install, configure, back up and upgrade your own instance                     |
+|                                                 |                                                                               |
+| ----------------------------------------------- | ----------------------------------------------------------------------------- |
+| [docs/USER-GUIDE.md](docs/USER-GUIDE.md)        | concepts, a UK walkthrough, how results are calculated, limitations           |
+| [docs/API.md](docs/API.md)                      | REST API: conventions, auth, every route group, security model, configuration |
+| [docs/MCP.md](docs/MCP.md)                      | MCP tools, resources, prompts, client setup, worked examples                  |
+| [docs/PARITY.md](docs/PARITY.md)                | a feature-by-feature matrix of what is implemented, partial or missing        |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)    | packages, data model, engine pipeline, tax plug-ins, persistence              |
+| [docs/STATUS.md](docs/STATUS.md)                | what is built, test totals, known limitations, what remains                   |
+| [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md)    | install, configure, back up and upgrade your own instance                     |
+| [docs/agents/SETUP.md](docs/agents/SETUP.md)    | a step-by-step guide for an AI agent that sets Glideworth up for you          |
+| [skills/glideworth](skills/glideworth/SKILL.md) | an agent skill: how an assistant should use Glideworth's tools                |
 
 ## Licence
 

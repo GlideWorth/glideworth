@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, readFileSync } from "node:fs";
+import { copyFileSync, existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import mdx from "@astrojs/mdx";
@@ -7,6 +7,7 @@ import type { AstroIntegration } from "astro";
 import { defineConfig, envField } from "astro/config";
 import { defaultClientConditions, defaultServerConditions, type Plugin } from "vite";
 import { site } from "./src/config/site";
+import { docsPageToTwin, renderTwin, twinPath } from "./src/lib/markdown-twin";
 import { shikiDark, shikiLight } from "./src/lib/shiki-theme";
 import { lastmodForUrl } from "./src/lib/sitemap-dates";
 
@@ -38,6 +39,42 @@ function sitemapAlias(): AstroIntegration {
       "astro:build:done": ({ dir }) => {
         const out = fileURLToPath(dir);
         copyFileSync(join(out, "sitemap-index.xml"), join(out, "sitemap.xml"));
+      },
+    },
+  };
+}
+
+/**
+ * Writes the Markdown twin of every docs page (/docs/<slug>/ -> /docs/<slug>.md) from the built HTML, so the
+ * twin shows exactly what the page shows: components expanded, facts and tokens replaced. DocsLayout links each
+ * page to its twin; `pnpm check:dist` checks that every twin exists and holds no HTML or unreplaced tokens.
+ * Twins are not pages, so they stay out of the sitemap. See src/lib/markdown-twin.ts.
+ */
+function docsMarkdownTwins(): AstroIntegration {
+  return {
+    name: "glideworth:docs-markdown-twins",
+    hooks: {
+      "astro:build:done": ({ dir, logger }) => {
+        const out = fileURLToPath(dir);
+        const docs = join(out, "docs");
+        const pages: string[] = [];
+        const walk = (rel: string) => {
+          for (const entry of readdirSync(join(docs, rel), { withFileTypes: true })) {
+            const child = rel ? `${rel}/${entry.name}` : entry.name;
+            if (entry.isDirectory()) walk(child);
+            else if (entry.name === "index.html") pages.push(rel);
+          }
+        };
+        walk("");
+        let written = 0;
+        for (const rel of pages) {
+          const twin = docsPageToTwin(readFileSync(join(docs, rel, "index.html"), "utf8"));
+          if (!twin) continue; // a redirect page
+          const path = twinPath(rel ? `/docs/${rel}/` : "/docs/");
+          writeFileSync(join(out, path), renderTwin(twin));
+          written++;
+        }
+        logger.info(`${written} Markdown twins of docs pages written`);
       },
     },
   };
@@ -123,6 +160,7 @@ export default defineConfig({
       },
     }),
     sitemapAlias(),
+    docsMarkdownTwins(),
   ],
   markdown: {
     shikiConfig: {

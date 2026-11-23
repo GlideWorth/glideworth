@@ -2,6 +2,8 @@
 /**
  * Documentation page: sidebar of every doc grouped by section (src/lib/docs.ts), the body, and an
  * "On this page" column on wide screens. On small screens the sidebar folds into a disclosure.
+ * Every docs page has a Markdown twin at /docs/<slug>.md (src/lib/markdown-twin.ts, written after the build
+ * by astro.config.ts), announced with <link rel="alternate" type="text/markdown"> and linked in the footer.
  */
 import type { MarkdownHeading } from 'astro';
 import Breadcrumbs from '../components/Breadcrumbs.astro';
@@ -9,6 +11,7 @@ import Prose from '../components/Prose.astro';
 import RelatedLinks from '../components/RelatedLinks.astro';
 import TableOfContents from '../components/TableOfContents.astro';
 import { docHref, docsSidebar } from '../lib/docs';
+import { twinPath } from '../lib/markdown-twin';
 import BaseLayout from './BaseLayout.astro';
 
 interface Props {
@@ -22,6 +25,7 @@ interface Props {
 }
 const { title, description, path, noindex = false, section, headings = [], lastChecked } = Astro.props;
 const sidebar = await docsSidebar();
+const markdownPath = twinPath(path);
 const crumbs = [
   { label: 'Docs', href: '/docs/' },
   ...(path === '/docs/' ? [] : [{ label: title, href: path }]),
@@ -29,6 +33,7 @@ const crumbs = [
 ---
 
 <BaseLayout title={title} description={description} path={path} noindex={noindex}>
+  <link slot="head" rel="alternate" type="text/markdown" href={markdownPath} />
   <div class="container docs">
     <nav class="docs-nav" aria-label="Documentation">
       <details class="docs-nav-toggle" open>
@@ -90,6 +95,7 @@ const crumbs = [
           </p>
         )
       }
+      <p class="markdown-link"><a href={markdownPath}>This page as Markdown</a>, for AI assistants and tools.</p>
     </article>
 
     <aside class="docs-toc" aria-label="On this page"><TableOfContents headings={headings} /></aside>
@@ -226,10 +232,15 @@ const crumbs = [
       align-self: start;
     }
   }
-  .checked {
+  .checked,
+  .markdown-link {
     color: var(--ink-3);
     font-size: var(--text-xs);
     padding-top: var(--space-m);
     border-top: 1px solid var(--line);
+  }
+  .checked + .markdown-link {
+    padding-top: 0;
+    border-top: 0;
   }
 </style>

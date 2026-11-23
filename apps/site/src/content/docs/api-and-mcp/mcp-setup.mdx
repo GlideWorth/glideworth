@@ -1,12 +1,13 @@
 ---
 title: Connect an AI assistant over MCP
-description: Connect Claude Code, Claude Desktop, Cursor and other MCP clients to Glideworth over HTTP or stdio with a least-privilege key, and keep plan edits as proposals you approve.
+description: Connect Claude, ChatGPT, Codex, Cursor, VS Code and other MCP clients to Glideworth with OAuth or a least-privilege key, and keep plan edits as proposals you approve.
 section: API and MCP
 order: 1
-lastChecked: 2026-11-16
+lastChecked: 2026-11-23
 ---
 
 import Callout from '../../../components/Callout.astro';
+import Steps from '../../../components/Steps.astro';
 import { facts } from '../../../lib/facts';
 
 Glideworth's MCP server has {facts.mcpTools} tools: {facts.mcpReadTools} that read and compute, and {facts.mcpWriteTools} that write, which are off unless you
@@ -23,24 +24,52 @@ Two transports expose the same tools.
 The HTTP endpoint is stateless, so it works behind plain proxies. Which tools a key sees depends on its scopes: `read`
 gets the read and compute tools, `simulate` only compute tools, and `write` with the server flag adds the write tools.
 
-**Before you start:** a running instance (for HTTP) or a built checkout (for stdio, `pnpm build`), and a key:
+## Addresses and keys
+
+| | Hosted | Self-hosted |
+| --- | --- | --- |
+| URL | `https://app.glideworth.com/mcp` | `http://localhost:8787/mcp` on the same machine, `https://<your domain>/mcp` behind a TLS proxy |
+| API key | **Settings**, then **API keys** (starts `gwk_`) | **Settings**, then **API keys**, or the command below (starts `glideworth_`) |
+| OAuth sign-in | Add the URL with no key and sign in when asked | The same, over HTTPS with `GLIDEWORTH_PUBLIC_URL` set, or on `localhost` |
+| Write tools | The workspace owner turns on "Allow AI assistants to make changes" under **Settings**, **Workspace** | `GLIDEWORTH_MCP_ALLOW_WRITES=true` and a key with `write` scope |
+
+Create a key on a Docker install, or from a checkout:
 
 ```bash
-pnpm keys:create -- --name claude-readonly --scopes read        # analysis only
-pnpm keys:create -- --name claude-editor --scopes read,write    # can propose and apply change sets
+docker compose exec -T glideworth node dist/cli/create-key.js --name claude --scopes read   # Docker
+pnpm keys:create -- --name claude-readonly --scopes read                                    # checkout: analysis only
+pnpm keys:create -- --name claude-editor --scopes read,write                                # can propose and apply change sets
 ```
+
+The examples read the key from an environment variable, `GLIDEWORTH_MCP_KEY`, so it stays out of files you share.
+Use your own address in place of the hosted one when you self-host. Assistants that run in the cloud (claude.ai,
+ChatGPT, Claude Desktop's custom connectors) connect from their provider's servers, so they need a public `https://`
+address; `localhost` works only for clients on your machine.
 
 Use absolute paths in every stdio configuration. Do not launch a stdio server through `pnpm run`: pnpm prints a banner to
 stdout, which is the protocol channel. Logs go to stderr.
 
+**Check any client** by asking: "Use Glideworth: call `list_households`, then `get_plan_summary`, and tell me my main
+plan's name and whether it runs out of money." `list_households` returns `[]` before you have entered anything, and
+`get_plan_summary` returns the plan, your finances and the outcome once a plan exists. A read-only key sees
+{facts.mcpReadTools} tools; with writes on and a `write` key, {facts.mcpTools}.
+
+To have an agent install and connect Glideworth for you, point it at the
+[agent setup guide](https://github.com/GlideWorth/glideworth/blob/main/docs/agents/SETUP.md). To teach an assistant
+to use the tools well, add the [Glideworth skill](https://github.com/GlideWorth/glideworth/blob/main/skills/glideworth/SKILL.md),
+also served at [/.well-known/skills/default/skill.md](/.well-known/skills/default/skill.md).
+
 ## Claude Code
 
-Over HTTP, with the server running:
+Over HTTP with a key. `--scope user` keeps it out of project files:
 
 ```bash
-claude mcp add --transport http glideworth http://localhost:8787/mcp \
-  --header "Authorization: Bearer glideworth_xxxxxxxx_..."
+claude mcp add --scope user --transport http glideworth https://app.glideworth.com/mcp \
+  --header "Authorization: Bearer $GLIDEWORTH_MCP_KEY"
+claude mcp get glideworth      # Status: ✔ Connected
 ```
+
+With OAuth, leave out `--header`, then run `/mcp` in a session and choose to authenticate.
 
 Over stdio, with nothing else running (after `pnpm build`):
 
@@ -54,24 +83,35 @@ claude mcp add glideworth \
 Without a build, run the source through tsx instead:
 `-- /abs/path/to/glideworth/apps/api/node_modules/.bin/tsx --conditions=@glideworth/source /abs/path/to/glideworth/apps/api/src/mcp/stdio.ts`.
 
-A project-scoped `.mcp.json`:
+A project-scoped `.mcp.json` (Claude Code reads the key from your environment and asks you to approve the server once):
 
 ```json
 {
   "mcpServers": {
     "glideworth": {
       "type": "http",
-      "url": "http://localhost:8787/mcp",
+      "url": "https://app.glideworth.com/mcp",
       "headers": { "Authorization": "Bearer ${GLIDEWORTH_MCP_KEY}" }
     }
   }
 }
 ```
 
+Add the skill by copying `SKILL.md` to `~/.claude/skills/glideworth/SKILL.md` (every project) or
+`.claude/skills/glideworth/SKILL.md` (one project):
+
+```bash
+mkdir -p ~/.claude/skills/glideworth
+curl -fsSL https://glideworth.com/.well-known/skills/default/skill.md -o ~/.claude/skills/glideworth/SKILL.md
+```
+
 ## Claude Desktop
 
-Edit `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/`, Windows: `%APPDATA%\Claude\`) and
-restart the app.
+A **custom connector** (hosted, or a self-hosted server with a public HTTPS address) is added the same way as on
+claude.ai, below.
+
+For a **local server**, edit `claude_desktop_config.json` (macOS: `~/Library/Application Support/Claude/`, Windows:
+`%APPDATA%\Claude\`) and restart the app.
 
 stdio, reading the SQLite file directly:
 
@@ -117,18 +157,123 @@ HTTP, through the `mcp-remote` bridge for clients that only speak stdio:
 }
 ```
 
-Newer Claude Desktop builds can add the same URL and header as a custom connector (Settings, Connectors) instead of the
-bridge.
+## claude.ai
 
-## Cursor and other clients
+These steps follow Anthropic's [custom connector guide](https://support.claude.com/en/articles/11175166-getting-started-with-custom-connectors-using-remote-mcp),
+read on 23 November 2026. Menu names change; we have not tested every plan.
 
-Use the generic settings of your client:
+<Steps>
+1. Open **Customize**, then **Connectors**, then **+ Add**, then **Add custom connector**. On Team and Enterprise plans an
+   owner adds it under **Organization settings**, **Connectors**, and members then connect it.
+2. Name it Glideworth and enter `https://app.glideworth.com/mcp`, or your own `https://` address.
+3. Choose to sign in (OAuth) and let Claude register itself. Glideworth's consent screen opens: sign in, choose what to
+   grant, approve. A request header `Authorization: Bearer` with a key also works; on a shared Team connector everyone
+   then uses that key's access.
+4. Enable the connector in a chat and ask the check question above.
+</Steps>
 
-- **HTTP:** the URL `http://localhost:8787/mcp` and the header `Authorization: Bearer <key>`.
-- **stdio:** run `node apps/api/dist/mcp/stdio.js` with `GLIDEWORTH_DB_PATH` set.
+The server must be reachable from the public internet on port 443. Free plans allow one custom connector.
+
+## ChatGPT
+
+OpenAI's pages on [developer mode and MCP apps](https://help.openai.com/en/articles/12584461-developer-mode-apps-and-full-mcp-connectors-in-chatgpt-beta)
+and [adding a custom MCP server](https://developers.openai.com/api/docs/guides/developer-mode), read on 23 November 2026,
+describe these steps. We have not verified them in ChatGPT, and they change often.
+
+<Steps>
+1. Open **Plugins**, select **+**, then **Add custom MCP server**. Older accounts reach the same form through
+   **Settings**, **Apps & Connectors**, with developer mode on.
+2. Enter a name and, under **Connection**, the URL `https://app.glideworth.com/mcp` or your own public `https://` address.
+3. Choose **OAuth**. ChatGPT registers itself and sends you to Glideworth's consent screen. The form offers OAuth or no
+   authentication, not a fixed key.
+4. Accept the warning, create it, enable it in a chat, and ask the check question above.
+</Steps>
+
+According to those pages, full MCP support, including write tools, is for Business and Enterprise or Edu workspaces;
+Pro accounts can connect custom servers for reading only. ChatGPT asks before calling any tool not marked read-only,
+which includes every Glideworth write tool.
+
+## Codex CLI
+
+With a key, read from the environment variable you name:
+
+```bash
+codex mcp add glideworth --url https://app.glideworth.com/mcp --bearer-token-env-var GLIDEWORTH_MCP_KEY
+codex mcp list
+```
+
+That writes this to `~/.codex/config.toml`, which you can also edit by hand:
+
+```toml
+[mcp_servers.glideworth]
+url = "https://app.glideworth.com/mcp"
+bearer_token_env_var = "GLIDEWORTH_MCP_KEY"
+```
+
+With OAuth, leave out `--bearer-token-env-var`, then run `codex mcp login glideworth`.
+
+## Cursor
+
+Add Glideworth to `.cursor/mcp.json` in a project, or `~/.cursor/mcp.json` for every project. Cursor expands
+`${env:NAME}` in the URL and headers:
+
+```json
+{
+  "mcpServers": {
+    "glideworth": {
+      "url": "https://app.glideworth.com/mcp",
+      "headers": { "Authorization": "Bearer ${env:GLIDEWORTH_MCP_KEY}" }
+    }
+  }
+}
+```
+
+For OAuth, leave out `headers`: Cursor discovers the sign-in and asks you to approve it.
+
+The **Add to Cursor** link for the hosted service uses OAuth and carries no key. Open it in a browser on a machine with
+Cursor:
+
+```text
+cursor://anysphere.cursor-deeplink/mcp/install?name=glideworth&config=eyJ1cmwiOiJodHRwczovL2FwcC5nbGlkZXdvcnRoLmNvbS9tY3AifQ%3D%3D
+```
+
+The `config` value is the base64 of `{"url":"https://app.glideworth.com/mcp"}`, as [Cursor's install
+links](https://cursor.com/docs/mcp/install-links) describe. Cursor documents these links with a local server; we have
+not tested this remote one, so if it does nothing, use the JSON above. Never put a key in a link: base64 is not
+encryption.
+
+## VS Code
+
+The editor-managed format, `.vscode/mcp.json` in the workspace, uses `servers` and asks for the key once:
+
+```json
+{
+  "inputs": [
+    { "type": "promptString", "id": "glideworth-key", "description": "Glideworth API key", "password": true }
+  ],
+  "servers": {
+    "glideworth": {
+      "type": "http",
+      "url": "https://app.glideworth.com/mcp",
+      "headers": { "Authorization": "Bearer ${input:glideworth-key}" }
+    }
+  }
+}
+```
+
+For OAuth, leave out `headers` and `inputs`. VS Code's [MCP configuration
+reference](https://code.visualstudio.com/docs/agents/reference/mcp-configuration), read on 23 November 2026, calls this
+file deprecated for new Copilot set-ups, which use `.mcp.json` at the workspace root with `mcpServers` (the shape shown
+for Claude Code), and says that set-up cannot pass a prompted secret into a header. We have not tested either file in
+VS Code: if the key form does not connect, use OAuth or an environment variable.
+
+## Any other client
+
+- **HTTP:** the URL `https://app.glideworth.com/mcp` or your own, and the header `Authorization: Bearer <key>`, or OAuth
+  discovery from the `401` response.
+- **stdio:** run `node apps/api/dist/mcp/stdio.js` with `GLIDEWORTH_DB_PATH` set (a checkout after `pnpm build`), or
+  `docker exec -i glideworth node dist/mcp/stdio.js` for a Docker install.
 - To try it without a client: `npx @modelcontextprotocol/inspector`, and point it at either transport.
-
-Where Cursor keeps its MCP settings is Cursor's own documentation, not Glideworth's.
 
 ## Remote clients with OAuth
 
@@ -157,14 +302,20 @@ See the [worked examples](/docs/api-and-mcp/mcp-examples/) for the tool calls be
 
 ## Troubleshooting
 
-- **No write tools:** the flag is off or the key lacks `write`. Reconnect after changing either.
-- **`401` from `/mcp`:** MCP needs an API key or an OAuth token; the browser sign-in is not accepted.
-- **A stdio server fails to start in Claude Desktop:** use absolute paths, make sure the build exists, and do not launch via
-  `pnpm run`.
-- **A tool returns a `jobId` and `running`:** it did not finish within `wait` seconds; call `get_job` with `wait: 60`.
-- **`planId is required here`:** more than one household or main plan exists; call `list_households` or `list_plans`.
-- **`CHANGESET_CONFLICT`:** the plan changed after the proposal. Re-read and propose again.
-- **`PATCH_CONFLICT`:** an operation's target does not exist; check ids with `get_plan`.
+| What you see | Cause | Fix |
+| --- | --- | --- |
+| `401` from `/mcp` | No credential, a wrong or revoked key, or an expired token; the browser sign-in is not accepted | Send `Authorization: Bearer` with a key, or let the client sign in with OAuth |
+| `403`, "lacks the 'read' scope" | The key's scopes do not cover the request (a `simulate` key has no data tools) | Create a key with `read`, or `read,write` for edits |
+| No write tools | Writes are off on the server or workspace, the key lacks `write`, or your role is viewer | Turn on both, then reconnect: tools are decided per connection |
+| `405` on `GET /mcp` | Normal: the server is stateless and answers only `POST` | Nothing to fix |
+| Works on `localhost`, fails through the domain | The proxy buffers responses, times out long calls, or does not forward the scheme | See [reverse proxy](/docs/self-hosting/reverse-proxy/): `proxy_buffering off`, a long read timeout, `GLIDEWORTH_TRUST_PROXY=true` |
+| OAuth sign-in fails or redirects to the wrong address | `GLIDEWORTH_PUBLIC_URL` is missing or wrong | Set it to the exact `https://` address and restart |
+| claude.ai or ChatGPT cannot reach a self-hosted server | They connect from their own servers | Give Glideworth a public `https://` address, or use a local client |
+| A stdio server fails to start in Claude Desktop | Relative paths, no build, or output on stdout | Use absolute paths, build first, and do not launch via `pnpm run` |
+| A tool returns a `jobId` and `running` | It did not finish within `wait` seconds | Call `get_job` with `wait: 60` |
+| `planId is required here` | No plan yet, or more than one household or main plan | Create a plan in the app, or call `list_households` or `list_plans` and pass the id |
+| `CHANGESET_CONFLICT` | The plan changed after the proposal | Re-read and propose again |
+| `PATCH_CONFLICT` | An operation's target does not exist | Check ids with `get_plan` |
 
 <Callout type="note" title="Working paths">
   The stdio paths assume a checkout of the repository. Replace `/abs/path/to/glideworth` with yours.

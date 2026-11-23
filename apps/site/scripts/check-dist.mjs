@@ -20,6 +20,9 @@
  *    sitemap-index.xml; robots.txt points at both; .well-known/security.txt has a Contact, this site's
  *    Canonical and an Expires at least 30 days away; rss.xml lists
  *    every published post; XML is well-formed (when xmllint is available)
+ *  - every docs page links (<link rel="alternate" type="text/markdown">) to its Markdown twin /docs/<slug>.md,
+ *    the twin exists, names its HTML page, and holds no HTML tags, MDX imports, expressions or {{tokens}}
+ *    outside code; twins stay out of the sitemap; /.well-known/skills/default/skill.md is the agent skill
  *
  * Warnings (listed, exit 0): titles over 60 characters, descriptions over 160 or under 50.
  */
@@ -392,7 +395,7 @@ const expectLastmod = (p, date) => {
 };
 expectLastmod("/blog/coast-fire-explained/", "2026-11-16");
 expectLastmod("/legal/privacy/", "2026-11-19");
-expectLastmod("/changelog/", "2026-11-18");
+expectLastmod("/changelog/", "2026-11-23");
 expectLastmod("/docs/api-and-mcp/api-reference/", "2026-11-17");
 
 for (const file of html) {
@@ -450,17 +453,87 @@ for (const [name, text] of llmsFiles) {
     "/compare/spreadsheets/",
     "/planning/",
     "/planning/uk/",
-    "/docs/api-and-mcp/mcp-setup/",
+    "/docs/api-and-mcp/mcp-setup.md",
+    "/docs/self-hosting/docker.md",
+    "/.well-known/skills/default/skill.md",
     "/api/",
   ]) {
     if (!text.includes(`${SITE}${path}`)) fail(name, `missing ${path}`);
   }
+  if (
+    !text.includes(
+      "https://raw.githubusercontent.com/GlideWorth/glideworth/main/docs/agents/SETUP.md",
+    )
+  )
+    fail(name, "does not link the agent setup guide");
+  // Every Markdown link to this site's docs is a twin that exists.
+  for (const m of text.matchAll(/\((https:\/\/glideworth\.com(\/docs[^)\s]*\.md))\)/g))
+    if (!exists(m[2])) fail(name, `links a missing Markdown twin: ${m[2]}`);
 }
 const full = llmsFiles[1][1];
 if (!full.includes("Not modelled:"))
   fail("llms-full.txt", "does not list what a country tax estimate leaves out");
 if (sitemap.includes("/llms.txt") || sitemap.includes("/llms-full.txt"))
   fail("sitemap", "lists an llms text file");
+
+// Markdown twins of the docs pages (astro.config.ts docsMarkdownTwins, src/lib/markdown-twin.ts).
+let twins = 0;
+for (const file of html) {
+  const raw = readFileSync(file, "utf8");
+  if (!raw.includes('<article class="docs-main"')) continue;
+  const rel = relative(dist, file);
+  const pagePath = `/${rel
+    .split(sep)
+    .join("/")
+    .replace(/index\.html$/, "")}`;
+  const want = `${pagePath.replace(/\/$/, "")}.md`;
+  const link = raw.match(/<link rel="alternate" type="text\/markdown" href="([^"]+)"/);
+  if (!link) {
+    fail(rel, 'no <link rel="alternate" type="text/markdown">');
+    continue;
+  }
+  if (link[1] !== want) fail(rel, `Markdown twin link is ${link[1]}, expected ${want}`);
+  const twinFile = join(dist, want);
+  if (!existsSync(twinFile)) {
+    fail(want.slice(1), "missing Markdown twin");
+    continue;
+  }
+  twins++;
+  const md = readFileSync(twinFile, "utf8");
+  const name = want.slice(1);
+  if (!md.startsWith("# ")) fail(name, "does not start with the page title");
+  if (!md.includes(`HTML version: ${SITE}${pagePath}`)) fail(name, "does not name its HTML page");
+  if (md.trim().split("\n").length < 5) fail(name, "is nearly empty");
+  // Outside fenced code and code spans: no HTML, MDX or unreplaced tokens.
+  const prose = md
+    .replace(/^(`{3,})[^\n]*\n[\s\S]*?\n\1[ \t]*$/gm, "")
+    .replace(/(`+)[^`]*?\1/g, "");
+  const leaks = [
+    [/(^|[^\\])<\/?[a-zA-Z][\w-]*(\s[^<>]*)?\/?>/m, "an HTML tag"],
+    [/\{\{\s*\w+\s*\}\}/, "a {{token}}"],
+    [/^(import|export) /m, "an MDX import or export"],
+    [/\{(facts|site|pricing|formatPrice)\b/, "an MDX expression"],
+    [/\[object Object\]|\bundefined\b|\bNaN\b/, "a rendering artefact"],
+  ];
+  for (const [re, what] of leaks) {
+    const hit = prose.match(re);
+    if (hit) fail(name, `contains ${what}: ${hit[0].trim().slice(0, 60)}`);
+  }
+}
+if (twins < 40) fail("docs", `only ${twins} Markdown twins; expected one per docs page`);
+if (/\.md<\/loc>/.test(sitemap)) fail("sitemap", "lists a Markdown twin");
+
+// The agent skill, served from skills/glideworth/SKILL.md.
+const skillFile = join(dist, ".well-known", "skills", "default", "skill.md");
+if (!existsSync(skillFile)) fail(".well-known/skills/default/skill.md", "missing");
+else {
+  const skill = readFileSync(skillFile, "utf8");
+  const source = readFileSync(join(root, "..", "..", "skills", "glideworth", "SKILL.md"), "utf8");
+  if (skill !== source)
+    fail(".well-known/skills/default/skill.md", "differs from skills/glideworth/SKILL.md");
+  if (!/^---\nname: glideworth\ndescription: .{50,}\n/.test(skill))
+    fail(".well-known/skills/default/skill.md", "lacks the name and description frontmatter");
+}
 
 const indexNowKey = "90abf381325f8bcc1f145c06aeb4946e";
 const keyFile = join(dist, `${indexNowKey}.txt`);
@@ -511,7 +584,7 @@ for (const f of files.filter((x) => x.endsWith(".xml"))) {
 }
 
 console.log(
-  `Checked ${html.length - redirects.length} pages (${indexable.size} indexable, ${noindex.size} noindex, ${redirects.length} redirects), ${css.length} stylesheets, ${listed.size} sitemap URLs, ${posts.size} posts.`,
+  `Checked ${html.length - redirects.length} pages (${indexable.size} indexable, ${noindex.size} noindex, ${redirects.length} redirects), ${css.length} stylesheets, ${listed.size} sitemap URLs, ${posts.size} posts, ${twins} Markdown twins.`,
 );
 for (const n of notes) console.log(`note: ${n}`);
 for (const w of warnings) console.log(`warning: ${w}`);

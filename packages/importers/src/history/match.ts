@@ -70,6 +70,12 @@ const TOTALS: Record<string, HistoryTotal> = {
   "total debt": "liabilities",
 };
 const NOTES = new Set(["note", "notes", "comment", "comments", "memo", "description"]);
+/** A currency column names the file's currency. It is not an account, so it is never mapped. */
+const CURRENCY_COLUMN = new Set(["currency", "ccy"]);
+
+export function isHistoryCurrencyHeader(header: string): boolean {
+  return CURRENCY_COLUMN.has(normaliseLabel(header));
+}
 
 function bigrams(s: string): Map<string, number> {
   const m = new Map<string, number>();
@@ -167,6 +173,7 @@ export function matchHistoryColumns(
   const cands: Cand[] = [];
   const perCol: Cand[][] = headers.map(() => []);
   headers.forEach((header, col) => {
+    if (isHistoryCurrencyHeader(header)) return;
     for (const t of targets) {
       const { score, reason } = scoreHeader(header, t);
       if (score <= 0) continue;

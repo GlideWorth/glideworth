@@ -1,13 +1,16 @@
 /** Export balance history: pick accounts and a layout, then copy or download (CSV or TSV). */
 import type { GlideworthDocument } from "@glideworth/core";
 import { exportBalanceHistory, historyTargets, snapshotValues } from "@glideworth/importers";
-import { Copy, Download } from "lucide-react";
+import { Copy, Download, Info } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { Dialog, DialogContent } from "../../components/ui/dialog";
 import { Segmented } from "../../components/ui/segmented";
 import { SwitchField } from "../../components/ui/switch";
 import { toast } from "../../components/ui/toaster";
+import { formatDay } from "../../lib/format";
+import { useFormat } from "../../lib/workspace";
+import { driftSentence, storedTotalDrift } from "../dashboard/dashboard-view";
 import { downloadText } from "../results/model";
 import { todayIso } from "./progress-model";
 
@@ -20,9 +23,18 @@ export function HistoryExportDialog({
   onOpenChange: (o: boolean) => void;
   doc: GlideworthDocument;
 }) {
+  const f = useFormat();
   const targets = useMemo(
     () => historyTargets(doc.finances, doc.household.currency),
     [doc.finances, doc.household.currency],
+  );
+  const drifted = useMemo(
+    () =>
+      doc.progress.flatMap((s) => {
+        const drift = storedTotalDrift(doc, s);
+        return drift ? [{ date: s.date, drift }] : [];
+      }),
+    [doc],
   );
   const recorded = useMemo(() => {
     const s = new Set<string>();
@@ -44,9 +56,10 @@ export function HistoryExportDialog({
         layout,
         delimiter: format === "tsv" ? "\t" : ",",
         totals,
+        currency: doc.household.currency,
       }),
     // oxlint-disable-next-line react-hooks/exhaustive-deps -- keys is derived from picked
-    [doc.progress, targets, picked, layout, format, totals],
+    [doc.progress, doc.household.currency, targets, picked, layout, format, totals],
   );
   const toggle = (key: string) =>
     setPicked((p) => {
@@ -127,9 +140,26 @@ export function HistoryExportDialog({
           />
           <p className="text-[12px] text-ink-3" role="status">
             {doc.progress.length
-              ? `${new Set(doc.progress.map((s) => s.date)).size} dates, ${keys.length} account${keys.length === 1 ? "" : "s"}.`
+              ? `${new Set(doc.progress.map((s) => s.date)).size} dates, ${keys.length} account${keys.length === 1 ? "" : "s"}. A Currency column records ${doc.household.currency}.`
               : "No history yet: the file will hold the headers only."}
           </p>
+          {drifted.length ? (
+            <div className="flex items-start gap-2 text-[12.5px] text-ink-2" role="note">
+              <Info className="mt-0.5 size-4 shrink-0 text-ink-3" aria-hidden />
+              <div className="flex flex-col gap-1">
+                <p>
+                  The file keeps each snapshot’s recorded net worth. Re-valuing those totals is a
+                  separate decision and is not done here.
+                </p>
+                {drifted.slice(0, 3).map((d) => (
+                  <p key={d.date}>{driftSentence(formatDay(d.date, f.locale), d.drift, f.money)}</p>
+                ))}
+                {drifted.length > 3 ? (
+                  <p>And {drifted.length - 3} other dates with the same kind of gap.</p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
           <div className="flex flex-wrap justify-end gap-2">
             <Button
               variant="secondary"

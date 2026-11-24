@@ -13,6 +13,7 @@ import {
   type HistoryTarget,
   historyKeyLabel,
   historyTargets,
+  isHistoryCurrencyHeader,
   matchHistoryColumns,
   planHistoryImport,
   previewHistory,
@@ -29,7 +30,7 @@ import { SwitchField } from "../../components/ui/switch";
 import { ScrollRegion } from "../../components/ui/table";
 import { Textarea } from "../../components/ui/textarea";
 import { cn } from "../../lib/cn";
-import { formatDay } from "../../lib/format";
+import { formatDay, plural } from "../../lib/format";
 import { useFormat } from "../../lib/workspace";
 import { FileDrop } from "../import/file-drop";
 import { downloadText } from "../results/model";
@@ -201,6 +202,11 @@ export function HistoryImportDialog({
     if (id === "map") return true;
     return mapping.some((k) => k !== null);
   };
+  const nextStep = STEPS[index + 1]?.id;
+  const blockedReason =
+    step === "done" || step === "preview" || !nextStep || canEnter(nextStep)
+      ? null
+      : continueBlockedReason(text, sheet.records.length, datesUndecided, mapping);
 
   return (
     <Dialog
@@ -268,7 +274,10 @@ export function HistoryImportDialog({
             onTemplate={(layoutChoice) =>
               downloadText(
                 `glideworth-balance-history-template.csv`,
-                balanceHistoryTemplate(targets, { layout: layoutChoice }),
+                balanceHistoryTemplate(targets, {
+                  layout: layoutChoice,
+                  currency: doc.household.currency,
+                }),
               )
             }
           />
@@ -325,6 +334,11 @@ export function HistoryImportDialog({
             setUpdateCurrent={setUpdateCurrent}
             money={(v) => f.money(v)}
             locale={f.locale}
+            currencyNote={fileCurrencyNote(
+              sheet.headers,
+              (i) => sheet.records.map((r) => r.cells[i] ?? ""),
+              doc.household.currency,
+            )}
           />
         ) : null}
 
@@ -412,9 +426,9 @@ export function HistoryImportDialog({
                 </Button>
               )}
             </div>
-            {step === "format" && datesUndecided ? (
-              <p className="text-right text-[11.5px] text-ink-3">
-                Choose the date format to continue.
+            {blockedReason ? (
+              <p className="text-[12.5px] text-ink-2" role="status">
+                {blockedReason}
               </p>
             ) : null}
           </div>
@@ -427,6 +441,45 @@ export function HistoryImportDialog({
 function sentence(s: string): string {
   const t = s.charAt(0).toUpperCase() + s.slice(1);
   return /[.!?]$/.test(t) ? t : `${t}.`;
+}
+
+/** Why Continue is disabled, in words. A one-line file has a header and no balances. */
+export function continueBlockedReason(
+  text: string,
+  recordCount: number,
+  datesUndecided: boolean,
+  mapping: readonly (string | null)[],
+): string {
+  if (!text.trim()) return "Paste or drop a file to continue.";
+  if (recordCount === 0) {
+    const lines = text.split(/\r\n|\n|\r/).filter((l) => l.trim()).length;
+    return lines <= 1
+      ? "This file has a header only, so there are no balances to import. Add a row for each date."
+      : "No dated rows could be read. Use a date in the first column and one column per account.";
+  }
+  if (datesUndecided) return "Choose the date format to continue.";
+  if (!mapping.some((k) => k !== null))
+    return "Map at least one column to an account, asset or debt to continue.";
+  return "This file cannot be imported as it is.";
+}
+
+/** A Currency column that is not the household currency. Values are not converted. */
+export function fileCurrencyNote(
+  headers: readonly string[],
+  cellsAt: (index: number) => readonly string[],
+  householdCurrency: string,
+): string | null {
+  const i = headers.findIndex((h) => isHistoryCurrencyHeader(h));
+  if (i < 0) return null;
+  const values = [
+    ...new Set(
+      cellsAt(i)
+        .map((c) => c.trim().toUpperCase())
+        .filter(Boolean),
+    ),
+  ];
+  if (values.length === 0 || (values.length === 1 && values[0] === householdCurrency)) return null;
+  return `The file’s currency column says ${values.join(", ")} and this household uses ${householdCurrency}. Values are imported as written and are not converted.`;
 }
 
 // ------------------------------------------------------------------------------------------------ step 1
@@ -484,7 +537,7 @@ function SourceStep({
       </div>
       {text.trim() ? (
         <p className="text-[12px] text-ink-3" role="status">
-          {text.split(/\r\n|\n|\r/).filter((l) => l.trim()).length} lines ready.
+          {plural(text.split(/\r\n|\n|\r/).filter((l) => l.trim()).length, "line")} ready.
         </p>
       ) : null}
     </div>
@@ -549,8 +602,11 @@ function FormatStep({
   return (
     <div className="flex flex-col gap-4">
       <p className="text-ink-2" role="status">
-        Read {sheet.records.length} {sheet.layout === "long" ? "rows" : "dates"} and{" "}
-        {sheet.headers.length} {sheet.layout === "columns" ? "rows of accounts" : "columns"}.
+        Read {plural(sheet.records.length, sheet.layout === "long" ? "row" : "date")} and{" "}
+        {sheet.layout === "columns"
+          ? plural(sheet.headers.length, "row of accounts", "rows of accounts")
+          : plural(sheet.headers.length, "column")}
+        .
       </p>
 
       <fieldset className="flex flex-col gap-1.5">
@@ -762,8 +818,8 @@ function MapStep({
   return (
     <div className="flex flex-col gap-3">
       <p className="text-ink-2" role="status">
-        {mapped} of {headers.length} columns mapped. Columns are matched to your accounts by name;
-        check the ones marked “Check”, and skip anything that is not a balance.
+        {mapped} of {plural(headers.length, "column")} mapped. Columns are matched to your accounts
+        by name; check the ones marked “Check”, and skip anything that is not a balance.
       </p>
       <ul className="flex flex-col divide-y divide-border rounded-md border border-border">
         {headers.map((h, i) => {
@@ -836,6 +892,7 @@ function PreviewStep({
   setUpdateCurrent,
   money,
   locale,
+  currencyNote,
 }: {
   preview: HistoryPreview;
   plan: HistoryPlan;
@@ -850,6 +907,7 @@ function PreviewStep({
   setUpdateCurrent: (b: boolean) => void;
   money: (v: number) => string;
   locale: string;
+  currencyNote: string | null;
 }) {
   const [view, setView] = useState<View>("all");
   const cols = preview.mapping
@@ -950,6 +1008,12 @@ function PreviewStep({
           {partial} new date{partial === 1 ? "" : "s"} record{partial === 1 ? "s" : ""} only some of
           your accounts; {partial === 1 ? "its" : "their"} net worth counts only the accounts in the
           file. Nothing is estimated for the others.
+        </p>
+      ) : null}
+      {currencyNote ? (
+        <p className="flex items-start gap-2 text-[12.5px] text-ink-2">
+          <Info className="mt-0.5 size-4 shrink-0 text-ink-3" aria-hidden />
+          {currencyNote}
         </p>
       ) : null}
       {warnings.length ? (

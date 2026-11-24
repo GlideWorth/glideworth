@@ -3,7 +3,7 @@
  * spending and saving as bars. Every item is a button that opens its editor. Bars are packed into
  * lanes so nothing overlaps; the retired period is shaded; "now" is marked.
  */
-import type { Frequency, Plan } from "@glideworth/core";
+import type { Plan } from "@glideworth/core";
 import { ChevronDown, ChevronRight, Flag, UserRound } from "lucide-react";
 import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
 import { AppearanceDot, appearanceColor } from "../../../components/ui/appearance-picker";
@@ -12,6 +12,7 @@ import { useFormat } from "../../../lib/workspace";
 import { timelineYearAge } from "../state/finance-math";
 import { amountUnit } from "../state/labels";
 import { formatMonthIndex, resolveRef, type TimeContext } from "../state/resolve";
+import { annual, eventFigureRejected } from "../sections/events";
 
 export type TimelineTarget = { kind: "income" | "expense" | "milestone" | "flow"; id: string };
 
@@ -71,16 +72,21 @@ export function Timeline({
   const width = Math.ceil(years * px);
   const x = (m: number) => ((Math.min(Math.max(m, start), end) - start) / 12) * px;
 
-  const amountLabel = (e: {
-    amount: { value: number };
-    type: string;
-    frequency: Frequency;
-    currency?: string;
-  }) => `${f.moneyIn(e.amount.value, e.currency ?? f.currency, true)}${amountUnit(e)}`;
+  const amountLabel = (
+    e: Plan["income"][number] | Plan["expenses"][number],
+    kind: "income" | "expense",
+  ) => {
+    if (eventFigureRejected(kind, e)) return "Invalid";
+    const yr = annual(e, plan.income);
+    if (e.type === "bonus" && "percentOfSalary" in e && e.percentOfSalary && yr !== null)
+      return `≈ ${f.money(yr, true)}/yr`;
+    return `${f.moneyIn(e.amount.value, e.currency ?? f.currency, true)}${amountUnit(e)}`;
+  };
 
   const toBars = (
     items: (Plan["income"][number] | Plan["expenses"][number])[],
     base: number,
+    kind: "income" | "expense",
   ): Bar[] =>
     items.flatMap((e, i) => {
       const s = resolveRef(e.range.start, tctx);
@@ -97,13 +103,13 @@ export function Timeline({
           once,
           enabled: e.enabled,
           color: appearanceColor(e.appearance?.color, base + i),
-          label: amountLabel(e),
+          label: amountLabel(e, kind),
         },
       ];
     });
 
-  const income = pack(toBars(plan.income, 0));
-  const expenses = pack(toBars(plan.expenses, 3));
+  const income = pack(toBars(plan.income, 0, "income"));
+  const expenses = pack(toBars(plan.expenses, 3, "expense"));
   const flows = pack(
     plan.flows.flatMap((fl, i) => {
       const s = resolveRef(fl.range.start, tctx);

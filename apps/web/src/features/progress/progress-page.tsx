@@ -32,6 +32,7 @@ import { formatDay, formatMoney, formatSigned } from "../../lib/format";
 import { conv as toToday } from "../../lib/money";
 import type { Workspace } from "../../lib/workspace";
 import { useFormat, useProjection } from "../../lib/workspace";
+import { driftSentence, storedTotalDrift } from "../dashboard/dashboard-view";
 import { useAnalysis } from "../results/use-analysis";
 import { AccountHistory } from "./account-history";
 import { HistoryExportDialog } from "./history-export-dialog";
@@ -325,6 +326,12 @@ export function ProgressView() {
   const first = shown[0];
   const change =
     first && latest ? conv(latest.date, latest.netWorth) - conv(first.date, first.netWorth) : 0;
+  const drifted = doc
+    ? shown.flatMap((s) => {
+        const drift = storedTotalDrift(doc, s);
+        return drift ? [{ snap: s, drift }] : [];
+      })
+    : [];
 
   const run = async (p: Promise<void>) => {
     setActionError(null);
@@ -411,7 +418,7 @@ export function ProgressView() {
           color: meta ? categoryColor(t.theme, meta.category) : t.accent,
           symbol: "circle",
           symbolSize: 6,
-          connectNulls: true,
+          connectNulls: false,
           lineStyle: { width: 2 },
           areaStyle: { opacity: 0.12 },
         });
@@ -574,6 +581,19 @@ export function ProgressView() {
               sub={basis === "real" ? "Deflated with plan inflation" : "As recorded"}
             />
           </div>
+          {drifted.length ? (
+            <div className="flex flex-col gap-1 text-[12.5px] text-ink-2" role="note">
+              {drifted.slice(0, 2).map((d) => (
+                <p key={d.snap.id}>
+                  {driftSentence(formatDay(d.snap.date, f.locale), d.drift, (n) => f.money(n))}
+                </p>
+              ))}
+              {drifted.length > 2 ? (
+                <p>And {drifted.length - 2} other dates with the same kind of gap.</p>
+              ) : null}
+              <p>Re-valuing a stored snapshot is not done automatically.</p>
+            </div>
+          ) : null}
           <Card>
             <CardHeader
               eyebrow="History"
@@ -707,11 +727,20 @@ export function ProgressView() {
               {[...snaps].reverse().map((s, i, arr) => {
                 const prev = arr[i + 1];
                 const d = prev ? s.netWorth - prev.netWorth : null;
+                const drift = doc ? storedTotalDrift(doc, s) : null;
                 return (
                   <TR key={s.id}>
                     <TD className="num whitespace-nowrap">{formatDay(s.date, f.locale)}</TD>
                     <TD numeric className="font-medium">
-                      {f.money(s.netWorth)}
+                      <div>{f.money(s.netWorth)}</div>
+                      {drift ? (
+                        <div className="text-[11px] font-normal text-ochre">
+                          <span className="sr-only">
+                            {driftSentence(formatDay(s.date, f.locale), drift, (n) => f.money(n))}
+                          </span>
+                          <span aria-hidden>Not at today’s rates</span>
+                        </div>
+                      ) : null}
                     </TD>
                     <TD numeric>{f.money(s.assets)}</TD>
                     <TD numeric>{f.money(s.liabilities)}</TD>

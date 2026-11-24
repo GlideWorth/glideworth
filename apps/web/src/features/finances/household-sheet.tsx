@@ -8,23 +8,20 @@ import {
   type Plan,
 } from "@glideworth/core";
 import { Plus, Trash2, UserRound, Users } from "lucide-react";
+import { useState } from "react";
 import { z } from "zod";
 import { AppearanceDot, AppearancePicker } from "../../components/ui/appearance-picker";
 import { Button } from "../../components/ui/button";
 import { confirmAction } from "../../components/ui/confirm-dialog";
+import { Dialog, DialogContent } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { NumberInput } from "../../components/ui/number-input";
 import { Segmented } from "../../components/ui/segmented";
 import { Select } from "../../components/ui/select";
 import { FieldGrid, FormSection, Sheet, SheetClose, SheetContent } from "../../components/ui/sheet";
+import { SwitchField } from "../../components/ui/switch";
 import { toast } from "../../components/ui/toaster";
-import {
-  COUNTRY_LIST,
-  COUNTRY_OPTIONS,
-  CURRENCY_CODES,
-  countryDefaultsFor,
-  countryInfo,
-} from "../../lib/countries";
+import { COUNTRY_LIST, COUNTRY_OPTIONS, CURRENCY_CODES, countryInfo } from "../../lib/countries";
 import { PersonCrossBorderFields } from "../crossborder/person-fields";
 import { EnumField, FormField } from "../plan-editor/components/form";
 import { countryDefaults, newId } from "../plan-editor/state/defaults";
@@ -35,6 +32,7 @@ import {
   planKey,
 } from "../plan-editor/state/doc-store";
 import { useIssues } from "../plan-editor/state/validation";
+import { type CountryChange, describeCountryChange } from "./country-change";
 import { linkedCosts, planMentions, planWithoutDependent } from "./dependent-costs";
 import { DependentCosts } from "./dependent-costs-panel";
 import { updateHouseholdOnly, useDraftDoc } from "./use-finances";
@@ -124,6 +122,10 @@ function HouseholdSheetBody() {
     Bundle,
     doc ? { household: doc.household, finances: doc.finances } : undefined,
   );
+  const [pending, setPending] = useState<CountryChange | null>(null);
+  const [regionChoice, setRegionChoice] = useState("");
+  const [takeCurrency, setTakeCurrency] = useState(true);
+  const [takeLocale, setTakeLocale] = useState(true);
   if (!doc) return null;
   const h = doc.household;
   const plans = doc.plans;
@@ -215,29 +217,54 @@ function HouseholdSheetBody() {
     );
   };
 
-  const setCountry = (country: string) => {
-    const before = countryDefaults(h.location.country);
-    const after = countryDefaults(country);
-    const followCurrency = h.currency === before.currency;
-    const followLocale = h.locale === before.locale;
+  const applyCountry = (
+    change: CountryChange,
+    choices: { currency: boolean; locale: boolean; region: string | undefined },
+  ) => {
+    const after = countryDefaults(change.country);
     update(
       (x) => ({
         ...x,
         location: {
-          country,
-          region: countryDefaultsFor(country).defaultRegion ?? undefined,
+          country: change.country,
+          region: choices.region,
           locality: undefined,
         },
-        currency: followCurrency ? after.currency : x.currency,
-        locale: followLocale ? after.locale : x.locale,
+        currency: choices.currency ? after.currency : x.currency,
+        locale: choices.locale ? after.locale : x.locale,
       }),
       "Change tax residence",
     );
-    if (followCurrency || followLocale)
-      toast({
-        title: "Currency and number format updated",
-        description: `${after.currency} · ${after.locale}. Change them below if you prefer.`,
-      });
+    const regionName = change.regions.find((r) => r.value === choices.region)?.label;
+    const bits = [`Tax residence is now ${change.countryName}.`];
+    if (choices.currency && change.currencyTo) bits.push(`Currency is ${change.currencyTo}.`);
+    else if (change.currencyFrom) bits.push(`Currency stays ${h.currency}.`);
+    if (regionName && change.regionLabel) bits.push(`${change.regionLabel} is ${regionName}.`);
+    toast({ title: "Country updated", description: bits.join(" ") });
+  };
+
+  const setCountry = (country: string) => {
+    if (country === h.location.country) return;
+    const change = describeCountryChange(h, country);
+    if (!change.needsConfirm) {
+      applyCountry(change, { currency: false, locale: false, region: change.region });
+      return;
+    }
+    setPending(change);
+    setRegionChoice("");
+    setTakeCurrency(change.currencyTo !== null);
+    setTakeLocale(change.localeTo !== null);
+  };
+
+  const confirmCountry = () => {
+    if (!pending) return;
+    if (pending.regions.length > 0 && !regionChoice) return;
+    applyCountry(pending, {
+      currency: takeCurrency && pending.currencyTo !== null,
+      locale: takeLocale && pending.localeTo !== null,
+      region: pending.regions.length > 0 ? regionChoice : pending.region,
+    });
+    setPending(null);
   };
 
   const removeDependent = async (d: Dependent) => {
@@ -640,6 +667,65 @@ function HouseholdSheetBody() {
       <p className="flex items-center gap-1.5 pt-1 text-[11.5px] text-ink-3">
         <Users className="size-3.5" /> Changes save automatically.
       </p>
+      <Dialog open={pending !== null} onOpenChange={(o) => !o && setPending(null)}>
+        {pending ? (
+          <DialogContent
+            title={`Change country to ${pending.countryName}?`}
+            description="Tax rules follow the country. Amounts are not converted."
+            className="w-[min(92vw,440px)]"
+          >
+            <div className="flex flex-col gap-4">
+              {pending.currencyFrom && pending.currencyTo ? (
+                <SwitchField
+                  label={`Change currency from ${pending.currencyFrom} to ${pending.currencyTo}`}
+                  hint="The numbers stay as entered. A salary of 45,000 is still 45,000 in the new currency."
+                  checked={takeCurrency}
+                  onCheckedChange={setTakeCurrency}
+                />
+              ) : null}
+              {pending.localeFrom && pending.localeTo ? (
+                <SwitchField
+                  label={`Change number format from ${pending.localeFrom} to ${pending.localeTo}`}
+                  checked={takeLocale}
+                  onCheckedChange={setTakeLocale}
+                />
+              ) : null}
+              {pending.regions.length > 0 && pending.regionLabel ? (
+                <FormField
+                  label={pending.regionLabel}
+                  hint={
+                    pending.regionAffectsTax
+                      ? `${pending.regionLabel} was left blank. The tax estimate uses it, so choose one before changing country.`
+                      : `Choose a ${pending.regionLabel.toLowerCase()} to continue.`
+                  }
+                >
+                  {(id) => (
+                    <Select
+                      id={id}
+                      value={regionChoice}
+                      placeholder={`Choose a ${pending.regionLabel?.toLowerCase()}`}
+                      onValueChange={setRegionChoice}
+                      options={pending.regions}
+                    />
+                  )}
+                </FormField>
+              ) : null}
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button variant="ghost" onClick={() => setPending(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  disabled={pending.regions.length > 0 && !regionChoice}
+                  onClick={confirmCountry}
+                >
+                  Change country
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        ) : null}
+      </Dialog>
     </SheetContent>
   );
 }

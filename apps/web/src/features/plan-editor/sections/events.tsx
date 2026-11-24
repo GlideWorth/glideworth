@@ -72,11 +72,17 @@ import {
   useScope,
 } from "../components/form";
 import { replaceById, usePlan, useUpdatePlan } from "../components/plan-context";
-import { newExpense, newId, newIncome } from "../state/defaults";
+import { type Ctx, newExpense, newId, newIncome } from "../state/defaults";
 import { useEditorStore } from "../state/doc-store";
+import {
+  defaultsToReplace,
+  nextBonusRate,
+  sourceOptionLabel,
+  uniqueEventName,
+} from "../state/event-edit";
 import { amountUnit, EXPENSE_TYPES, HELP, INCOME_TYPES, type TypeMeta } from "../state/labels";
 import { describeMonth, formatMonthIndex, resolveRef } from "../state/resolve";
-import { type Issues, useIssues } from "../state/validation";
+import { type Issues, useIssues, validate } from "../state/validation";
 import { InflationCategorySelect } from "./assumption-extras";
 
 type Kind = "income" | "expense";
@@ -127,11 +133,25 @@ export function useAddEvent() {
   return (kind: Kind, type: string): string | null => {
     if (!ctx || !plan) return null;
     if (kind === "income") {
-      const e = newIncome(type as IncomeType, ctx, plan);
+      const made = newIncome(type as IncomeType, ctx, plan);
+      const e = {
+        ...made,
+        name: uniqueEventName(
+          made.name,
+          plan.income.map((i) => i.name),
+        ),
+      };
       update((p) => ({ ...p, income: [...p.income, e] }), `Add ${e.name}`);
       return e.id;
     }
-    const e = newExpense(type as ExpenseType, ctx, plan.assumptions.healthcareInflationPremium);
+    const made = newExpense(type as ExpenseType, ctx, plan.assumptions.healthcareInflationPremium);
+    const e = {
+      ...made,
+      name: uniqueEventName(
+        made.name,
+        plan.expenses.map((i) => i.name),
+      ),
+    };
     update((p) => ({ ...p, expenses: [...p.expenses, e] }), `Add ${e.name}`);
     return e.id;
   };
@@ -241,6 +261,98 @@ export function annual(e: AnyEvent, income: readonly IncomeEvent[] = []): number
   return e.amount.value * FREQUENCY_PER_YEAR[e.frequency];
 }
 
+/**
+ * The figure in an item header (the yearly amount, or a bonus share) is one the field will not
+ * keep. Headers show "Invalid" instead of that figure. 150% of salary is inside the limit and is
+ * not rejected.
+ */
+export function eventFigureRejected(kind: Kind, event: AnyEvent): boolean {
+  const issues = validate(kind === "income" ? IncomeSchema : ExpenseSchema, event);
+  if (percentBonus(event)) return issues.under("percentOfSalary") !== undefined;
+  return issues.under("amount") !== undefined;
+}
+
+const INCOME_COMMON = [
+  "id",
+  "name",
+  "owner",
+  "amount",
+  "frequency",
+  "range",
+  "change",
+  "changeLimit",
+  "growFromToday",
+  "recurrence",
+  "enabled",
+  "notes",
+  "appearance",
+  "tax",
+  "sendTo",
+  "partTime",
+  "currency",
+  "inflationCategory",
+] as const;
+const EXPENSE_COMMON = [
+  "id",
+  "name",
+  "owner",
+  "amount",
+  "frequency",
+  "range",
+  "change",
+  "changeLimit",
+  "growFromToday",
+  "recurrence",
+  "enabled",
+  "notes",
+  "appearance",
+  "spendingType",
+  "discretionaryShare",
+  "payFrom",
+  "tax",
+  "dependentId",
+  "currency",
+  "inflationCategory",
+] as const;
+
+/**
+ * Switch an event's type. Name and amount move to the new type's defaults when the user has not
+ * edited them, and the resulting name is not one a sibling already has.
+ */
+export function replaceEventType(
+  kind: Kind,
+  event: AnyEvent,
+  type: string,
+  ctx: Ctx,
+  plan: Plan,
+  siblingNames: readonly string[],
+): AnyEvent {
+  const fresh =
+    kind === "income"
+      ? newIncome(type as IncomeType, ctx, plan)
+      : newExpense(type as ExpenseType, ctx, plan.assumptions.healthcareInflationPremium);
+  const prior =
+    kind === "income"
+      ? newIncome(event.type as IncomeType, ctx, plan)
+      : newExpense(event.type as ExpenseType, ctx, plan.assumptions.healthcareInflationPremium);
+  const reset = defaultsToReplace(event, prior);
+  const keep = Object.fromEntries(
+    (kind === "income" ? INCOME_COMMON : EXPENSE_COMMON)
+      .filter(
+        (k) => k in event && !(k === "name" && reset.name) && !(k === "amount" && reset.amount),
+      )
+      .map((k) => [k, (event as Record<string, unknown>)[k]]),
+  );
+  const schema = kind === "income" ? IncomeSchema : ExpenseSchema;
+  const parsed = schema.safeParse({ ...fresh, ...keep, type });
+  const next = (
+    parsed.success
+      ? parsed.data
+      : { ...fresh, id: event.id, name: reset.name ? fresh.name : event.name }
+  ) as AnyEvent;
+  return { ...next, name: uniqueEventName(next.name, siblingNames) };
+}
+
 // ------------------------------------------------------------------------------- list
 
 export function EventsSection({ kind, onOpen }: { kind: Kind; onOpen: (id: string) => void }) {
@@ -271,7 +383,8 @@ export function EventsSection({ kind, onOpen }: { kind: Kind; onOpen: (id: strin
       const st = resolveRef(e.range.start, tctx);
       const en = resolveRef(e.range.end, tctx);
       const active = st !== null && st <= tctx.start && (en === null || en > tctx.start);
-      return s + (active ? (annual(e, plan.income) ?? 0) : 0);
+      if (!active || eventFigureRejected(kind, e)) return s;
+      return s + (annual(e, plan.income) ?? 0);
     }, 0);
   return (
     <Card>
@@ -314,6 +427,7 @@ export function EventsSection({ kind, onOpen }: { kind: Kind; onOpen: (id: strin
           {items.map((e, i) => {
             const yr = annual(e, plan.income);
             const pb = percentBonus(e);
+            const rejected = eventFigureRejected(kind, e);
             return (
               <li
                 key={e.id}
@@ -357,7 +471,9 @@ export function EventsSection({ kind, onOpen }: { kind: Kind; onOpen: (id: strin
                 </button>
                 <div className="text-right">
                   <div className="num text-[13px]">
-                    {pb ? (
+                    {rejected ? (
+                      <span className="text-negative">Invalid</span>
+                    ) : pb ? (
                       <>
                         {fmtRate(pb.percentOfSalary.rate)}
                         <span className="text-ink-3">
@@ -375,11 +491,13 @@ export function EventsSection({ kind, onOpen }: { kind: Kind; onOpen: (id: strin
                     )}
                   </div>
                   <div className="num text-[11px] text-ink-3">
-                    {yr !== null && (pb || e.frequency !== "yearly" || e.type === "hourly")
-                      ? `${pb ? "≈ " : ""}${f.money(yr, true)}/yr`
-                      : e.amount.basis === "nominal"
-                        ? "future money"
-                        : "today's money"}
+                    {rejected
+                      ? "Not counted"
+                      : yr !== null && (pb || e.frequency !== "yearly" || e.type === "hourly")
+                        ? `${pb ? "≈ " : ""}${f.money(yr, true)}/yr`
+                        : e.amount.basis === "nominal"
+                          ? "future money"
+                          : "today's money"}
                   </div>
                 </div>
                 <span className="hidden sm:inline-flex">
@@ -474,49 +592,6 @@ export function EventSheet({
   );
 }
 
-const INCOME_COMMON = [
-  "id",
-  "name",
-  "owner",
-  "amount",
-  "frequency",
-  "range",
-  "change",
-  "changeLimit",
-  "growFromToday",
-  "recurrence",
-  "enabled",
-  "notes",
-  "appearance",
-  "tax",
-  "sendTo",
-  "partTime",
-  "currency",
-  "inflationCategory",
-] as const;
-const EXPENSE_COMMON = [
-  "id",
-  "name",
-  "owner",
-  "amount",
-  "frequency",
-  "range",
-  "change",
-  "changeLimit",
-  "growFromToday",
-  "recurrence",
-  "enabled",
-  "notes",
-  "appearance",
-  "spendingType",
-  "discretionaryShare",
-  "payFrom",
-  "tax",
-  "dependentId",
-  "currency",
-  "inflationCategory",
-] as const;
-
 function EventSheetBody({ kind, id, onClose }: { kind: Kind; id: string; onClose: () => void }) {
   const plan = usePlan();
   const update = useUpdatePlan();
@@ -540,21 +615,11 @@ function EventSheetBody({ kind, id, onClose }: { kind: Kind; id: string; onClose
     set((e) => ({ ...e, ...v }) as AnyEvent, label, key);
 
   const changeType = (type: string) => {
-    const fresh =
-      kind === "income"
-        ? newIncome(type as IncomeType, ctx, plan)
-        : newExpense(type as ExpenseType, ctx, plan.assumptions.healthcareInflationPremium);
-    const keep = Object.fromEntries(
-      (kind === "income" ? INCOME_COMMON : EXPENSE_COMMON)
-        .filter((k) => k in event)
-        .map((k) => [k, (event as Record<string, unknown>)[k]]),
-    );
-    const schema = kind === "income" ? IncomeSchema : ExpenseSchema;
-    const next = schema.safeParse({ ...fresh, ...keep, type });
-    set(
-      () => (next.success ? next.data : { ...fresh, id, name: event.name }) as AnyEvent,
-      "Change type",
-    );
+    if (type === event.type) return;
+    const siblings = (kind === "income" ? plan.income : plan.expenses)
+      .filter((e) => e.id !== event.id)
+      .map((e) => e.name);
+    set(() => replaceEventType(kind, event, type, ctx, plan, siblings), "Change type");
   };
 
   const remove = async () => {
@@ -573,10 +638,19 @@ function EventSheetBody({ kind, id, onClose }: { kind: Kind; id: string; onClose
 
   const yr = annual(event, plan.income);
   const pb = percentBonus(event);
+  const rejected = eventFigureRejected(kind, event);
   const once = event.frequency === "once";
   const start = tctx ? resolveRef(event.range.start, tctx) : null;
   const end = tctx ? resolveRef(event.range.end, tctx) : null;
   const types = kind === "income" ? INCOME_TYPES : EXPENSE_TYPES;
+  const rangeEnd = end === null ? "never ends" : formatMonthIndex(end, f.locale);
+  const figure = rejected ? " · Invalid" : yr ? ` · ${f.money(yr)} a year` : "";
+  const timing =
+    start !== null && tctx
+      ? once
+        ? `Once, ${describeMonth(start, tctx, f.locale)}`
+        : `${formatMonthIndex(start, f.locale)} → ${rangeEnd}${figure}`
+      : "Timing resolves when simulated";
   const careRise = isCareExpense(kind, event.type);
   const riseCategory = plan.assumptions.inflationCategories?.find(
     (c) => c.id === event.inflationCategory,
@@ -586,13 +660,7 @@ function EventSheetBody({ kind, id, onClose }: { kind: Kind; id: string; onClose
     <SheetContent
       eyebrow={`${kind === "income" ? "Income" : "Expense"} · ${typeLabel(kind, event.type)}`}
       title={event.name || "Untitled"}
-      description={
-        start !== null && tctx
-          ? once
-            ? `Once, ${describeMonth(start, tctx, f.locale)}`
-            : `${formatMonthIndex(start, f.locale)} → ${end === null ? "never ends" : formatMonthIndex(end, f.locale)}${yr ? ` · ${f.money(yr)} a year` : ""}`
-          : "Timing resolves when simulated"
-      }
+      description={timing}
       width={640}
       footer={
         <>
@@ -706,9 +774,9 @@ function EventSheetBody({ kind, id, onClose }: { kind: Kind; id: string; onClose
           <BonusBasis
             event={event as Extract<IncomeEvent, { type: "bonus" }>}
             salaries={plan.income.filter((x) => x.type === "salary")}
-            annualAmount={yr}
+            annualAmount={rejected ? null : yr}
             set={set}
-            error={issues.under("percentOfSalary")}
+            issues={issues}
           />
         ) : null}
         <FieldGrid>
@@ -725,7 +793,9 @@ function EventSheetBody({ kind, id, onClose }: { kind: Kind; id: string; onClose
                   : undefined)
               }
               hint={
-                yr !== null && (event.frequency !== "yearly" || event.type === "hourly")
+                !rejected &&
+                yr !== null &&
+                (event.frequency !== "yearly" || event.type === "hourly")
                   ? `≈ ${f.money(yr)} a year`
                   : undefined
               }
@@ -1156,17 +1226,27 @@ function BonusBasis({
   salaries,
   annualAmount,
   set,
-  error,
+  issues,
 }: {
   event: Extract<IncomeEvent, { type: "bonus" }>;
   salaries: IncomeEvent[];
   annualAmount: number | null;
   set: (fn: (e: AnyEvent) => AnyEvent, l: string, k?: string) => void;
-  error?: string;
+  issues: Issues;
 }) {
   const f = useFormat();
   const link = event.percentOfSalary;
   const mode = link ? "percent" : "fixed";
+  const linkIssues = issues.all.filter(
+    (i) => i.path === "percentOfSalary" || i.path.startsWith("percentOfSalary."),
+  );
+  const rateError = linkIssues.find((i) => i.path === "percentOfSalary.rate")?.message;
+  const salaryError = linkIssues.find((i) => i.path !== "percentOfSalary.rate")?.message;
+  const peers = salaries.map((x) => ({
+    id: x.id,
+    name: x.name,
+    detail: f.money(annual(x) ?? x.amount.value),
+  }));
   const setLink = (next: typeof link, label: string, key?: string) =>
     set((e) => ({ ...e, percentOfSalary: next }) as AnyEvent, label, key);
   return (
@@ -1196,7 +1276,7 @@ function BonusBasis({
         <FieldGrid>
           <FormField
             label="Salary"
-            error={error}
+            error={salaryError}
             hint="Each year the bonus is this share of the salary paid that year, after its growth. No salary that year, no bonus."
           >
             {(fid) => (
@@ -1207,22 +1287,38 @@ function BonusBasis({
                 onValueChange={(salaryIncomeId) =>
                   setLink({ ...link, salaryIncomeId }, "Link bonus to salary")
                 }
-                options={salaries.map((x) => ({ value: x.id, label: x.name || "Untitled" }))}
+                options={salaries.map((x) => ({
+                  value: x.id,
+                  label: sourceOptionLabel(
+                    x.id,
+                    x.name,
+                    f.money(annual(x) ?? x.amount.value),
+                    peers,
+                  ),
+                }))}
               />
             )}
           </FormField>
           <FormField
             label="Share of salary"
-            hint={annualAmount !== null ? `≈ ${f.money(annualAmount)} a year today` : undefined}
+            error={rateError}
+            hint={
+              rateError || annualAmount === null
+                ? undefined
+                : `≈ ${f.money(annualAmount)} a year today`
+            }
           >
             {(fid) => (
               <PercentInput
                 id={fid}
                 className="w-[120px]"
                 value={link.rate}
-                onValueChange={(v) =>
-                  setLink({ ...link, rate: Math.max(0, v ?? 0) }, "Edit bonus share", "bonus-rate")
-                }
+                onValueChange={(v) => {
+                  const rate = nextBonusRate(link.rate, v);
+                  // Clearing the field parses as null. That must not be stored as 0%.
+                  if (v === null) return;
+                  setLink({ ...link, rate }, "Edit bonus share", "bonus-rate");
+                }}
               />
             )}
           </FormField>

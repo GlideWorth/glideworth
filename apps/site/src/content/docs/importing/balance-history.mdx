@@ -3,7 +3,7 @@ title: Import balance history from a spreadsheet
 description: Bring years of per-account balances from a spreadsheet or another app's export into Progress, with a preview of every cell and a choice of merge or replace.
 section: Importing
 order: 3
-lastChecked: 2026-11-23
+lastChecked: 2026-11-24
 ---
 
 If you have tracked your balances in a spreadsheet, or exported them from another app, you can bring the whole history
@@ -63,8 +63,10 @@ A row dated today updates your **current balances** only if you tick "Also updat
 ## Export it
 
 **Export**, next to Import history, writes the same layout: choose the accounts, dates in rows or columns, CSV or TSV,
-then copy it or download it. Importing an export back changes nothing, so you can edit the history in a spreadsheet and
-import it again.
+then copy it or download it. The file has a Currency column for the household currency. Totals are in that currency.
+An account in another currency is still in its own currency. Importing an export back changes nothing, so you can edit
+the history in a spreadsheet and import it again. A Currency column that names a different currency is skipped: the
+values are imported as written and are not converted.
 
 ## Over the API and MCP
 

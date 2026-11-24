@@ -73,6 +73,7 @@ describe("HistoryImportDialog", () => {
     setup();
     paste("Date,High-yield savings\n01/02/2024,1\n01/03/2024,2\n01/04/2024,3\n");
     next();
+    expect(screen.getByText(/Read 3 dates and 1 column\./)).toBeTruthy();
     expect(screen.getByRole("alert").textContent).toContain("will not guess");
     expect((screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement).disabled).toBe(
       true,
@@ -91,9 +92,18 @@ describe("HistoryImportDialog", () => {
     paste("Date,Pot\n2024-01-31,10\n");
     next();
     next();
-    expect(screen.getByText(/0 of 1 columns mapped/)).toBeTruthy();
+    expect(screen.getByText(/0 of 1 column mapped/)).toBeTruthy();
     expect((screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement).disabled).toBe(
       true,
     );
+    expect(screen.getByText(/Map at least one column/)).toBeTruthy();
+  });
+
+  it("explains why a one-line file cannot continue", () => {
+    setup();
+    paste("foo,bar");
+    const cont = screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement;
+    expect(cont.disabled).toBe(true);
+    expect(screen.getByText(/header only/)).toBeTruthy();
   });
 });

@@ -30,6 +30,16 @@ describe("format", () => {
     expect(parseLocaleNumber("1.234,56", "de-DE")).toBe(1234.56);
     expect(parseLocaleNumber("£2,000", "en-GB")).toBe(2000);
     expect(parseLocaleNumber("", "en-US")).toBeNull();
+    // Scientific notation is the number it says. Stripping the "e" used to leave 19.
+    expect(parseLocaleNumber("1e9", "en-GB")).toBe(1_000_000_000);
+    expect(parseLocaleNumber("1E+9", "en-US")).toBe(1_000_000_000);
+    expect(parseLocaleNumber("£1e9", "en-GB")).toBe(1_000_000_000);
+    expect(parseLocaleNumber("1,5e3", "de-DE")).toBe(1500);
+    expect(parseLocaleNumber("-1e3", "en-GB")).toBe(-1000);
+    expect(parseLocaleNumber("1e", "en-GB")).toBeNull();
+    expect(parseLocaleNumber("1x9", "en-GB")).toBeNull();
+    expect(parseLocaleNumber("12abc", "en-GB")).toBeNull();
+    expect(parseLocaleNumber("1e309", "en-GB")).toBeNull();
   });
   it("uses a true minus sign for negative money and percentages", () => {
     const o = { locale: "en-GB", currency: "GBP" };

@@ -73,6 +73,12 @@ export function NumberInput({
         onBlur={() => {
           setFocused(false);
           const n = parseLocaleNumber(text, loc);
+          // Non-empty text that is not a number ("1e", "12abc") is rejected. It must not be
+          // stripped down to a different number, and it must not clear the field.
+          if (n === null && text.trim() !== "") {
+            setText(display(value));
+            return;
+          }
           onValueChange(n);
           setText(display(n));
         }}

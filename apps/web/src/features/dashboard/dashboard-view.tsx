@@ -114,6 +114,49 @@ export function snapshotNetWorthLikeToday(
   return net;
 }
 
+/** True when the snapshot records a balance held in a currency other than the household's. */
+function recordsForeignBalance(doc: GlideworthDocument, snapshot: SnapshotBalances): boolean {
+  const base = doc.household.currency;
+  const foreign = (currency: string | undefined) => currency !== undefined && currency !== base;
+  const accounts = new Map(doc.finances.accounts.map((a) => [a.id, a.currency]));
+  const assets = new Map(doc.finances.realAssets.map((r) => [r.id, r.currency]));
+  const debts = new Map(doc.finances.debts.map((d) => [d.id, d.currency]));
+  return (
+    snapshot.accounts.some((a) => foreign(accounts.get(a.accountId))) ||
+    snapshot.realAssets.some((r) => foreign(assets.get(r.assetId))) ||
+    snapshot.debts.some((d) => foreign(debts.get(d.debtId)))
+  );
+}
+
+/**
+ * Stored net worth minus the same balances valued the way net worth is today.
+ * Null when the snapshot only stored a total, holds no foreign-currency balance, or the two agree
+ * (within a penny). Without a foreign balance a gap is not about exchange rates: an imported file
+ * can give its own net worth total alongside only some of the accounts.
+ * A positive drift is the usual stale case: a foreign balance was added at face value, or a rate
+ * has moved since. Callers flag this. They do not rewrite the snapshot.
+ */
+export function storedTotalDrift(
+  doc: GlideworthDocument,
+  snapshot: SnapshotBalances,
+): { stored: number; revalued: number } | null {
+  if (snapshot.accounts.length + snapshot.realAssets.length + snapshot.debts.length === 0)
+    return null;
+  if (!recordsForeignBalance(doc, snapshot)) return null;
+  const revalued = snapshotNetWorthLikeToday(doc, snapshot);
+  if (Math.abs(snapshot.netWorth - revalued) < 0.5) return null;
+  return { stored: snapshot.netWorth, revalued };
+}
+
+/** One sentence for a flagged snapshot. The recorded number is the one still stored. */
+export function driftSentence(
+  dateLabel: string,
+  drift: { stored: number; revalued: number },
+  money: (n: number) => string,
+): string {
+  return `${dateLabel}: stored net worth is ${money(drift.stored)}. The same balances, valued the way net worth is today, come to ${money(drift.revalued)}. Recorded figures are left as entered.`;
+}
+
 /**
  * What the plan's FI milestone asks for, in words ("25× spending"), when it is a multiple of spending.
  * Lets "not reached" say what was missed, so it doesn't read as a contradiction of "Fully funded": a plan

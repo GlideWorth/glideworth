@@ -15,6 +15,11 @@ export interface HistoryExportOptions {
   totals?: boolean;
   /** Add the snapshot notes (rows layout only; default true). */
   notes?: boolean;
+  /**
+   * Household currency code. When set, a Currency column is written (the totals' currency).
+   * Account values stay in each account's own currency. Omitted, the file is unchanged.
+   */
+  currency?: string;
 }
 
 /** One row per date: the user's own snapshot wins over the automatic one; values fall back to the others. */
@@ -52,14 +57,17 @@ export function exportBalanceHistory(
     : targets.filter((t) => present.has(t.key)).map((t) => t.key);
   const totals = options.totals ?? true;
   const notes = (options.notes ?? true) && (options.layout ?? "rows") === "rows";
+  const currency = options.currency ? [options.currency] : [];
   const header = [
     "Date",
+    ...(options.currency ? ["Currency"] : []),
     ...keys.map((k) => historyKeyLabel(k, targets)),
     ...(totals ? ["Net worth", "Assets", "Liabilities"] : []),
     ...(notes ? ["Note"] : []),
   ];
   const body = rows.map((r) => [
     r.date,
+    ...currency,
     ...keys.map((k) => r.values.get(k) ?? null),
     ...(totals ? [r.primary.netWorth, r.primary.assets, r.primary.liabilities] : []),
     ...(notes ? [r.primary.note ?? ""] : []),
@@ -71,10 +79,12 @@ export function exportBalanceHistory(
 /** Headers only: `Date` and one column per (non-archived) target. */
 export function balanceHistoryTemplate(
   targets: readonly HistoryTarget[],
-  options: Pick<HistoryExportOptions, "layout" | "delimiter"> & { includeArchived?: boolean } = {},
+  options: Pick<HistoryExportOptions, "layout" | "delimiter" | "currency"> & {
+    includeArchived?: boolean;
+  } = {},
 ): string {
   const list = targets.filter((t) => options.includeArchived || !t.archived);
-  const grid = [["Date", ...list.map((t) => t.label)]];
+  const grid = [["Date", ...(options.currency ? ["Currency"] : []), ...list.map((t) => t.label)]];
   return toCsv(options.layout === "columns" ? transpose(grid) : grid, options.delimiter ?? ",");
 }
 

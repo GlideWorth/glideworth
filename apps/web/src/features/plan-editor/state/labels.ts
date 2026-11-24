@@ -57,12 +57,12 @@ export const INCOME_TYPES: TypeMeta<IncomeType>[] = [
     label: "Salary",
     hint: "Employment income; optional defined-benefit pension accrual.",
   },
-  { value: "self-employment", label: "Self-employment", hint: "Sole trader or contractor profit." },
   {
     value: "bonus",
     label: "Bonus",
     hint: "Irregular employment income: a fixed amount or a % of a salary.",
   },
+  { value: "self-employment", label: "Self-employment", hint: "Sole trader or contractor profit." },
   {
     value: "state-pension",
     label: "State Pension",

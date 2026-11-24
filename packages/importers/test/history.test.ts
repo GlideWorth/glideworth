@@ -758,6 +758,29 @@ describe("export and template", () => {
     expect(m.every((x) => x.confidence === 1)).toBe(true);
     expect(balanceHistoryTemplate(targets, { layout: "columns" }).split("\n")[0]).toBe("Date");
   });
+
+  it("adds a currency column and still round-trips without changing balances", () => {
+    const text = exportBalanceHistory(history, targets, { currency: "GBP" });
+    expect(text.split("\n")[0]).toBe(
+      "Date,Currency,High-yield savings,Joint brokerage,Car loan,Net worth,Assets,Liabilities,Note",
+    );
+    expect(text).toContain("2024-01-31,GBP,1000,");
+    const p = parse(text);
+    const currency = p.matches.find((m) => m.header === "Currency");
+    expect(currency?.key).toBeNull();
+    expect(p.preview.blocked).toBe(false);
+    expect(p.preview.counts.errors).toBe(0);
+    const planned = planHistoryImport({
+      existing: history,
+      rows: p.preview.rows,
+      mode: "replace",
+      targets,
+      today: TODAY,
+    });
+    expect(planned.create).toEqual([]);
+    expect(planned.update).toEqual([]);
+    expect(planned.remove).toEqual([]);
+  });
 });
 
 describe("targets in a household with no loans or debts", () => {

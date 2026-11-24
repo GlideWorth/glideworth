@@ -171,21 +171,51 @@ export function speakAmounts(text: string): string {
 }
 const SPOKEN = /(?:\S+[\u00a0\u202f])?\S*•••••(?:[\u00a0\u202f][^\s)\]]+)?[)\]]*/gu;
 
-/** Parse a user-typed number in the given locale ("1.234,5" in de-DE, "1,234.5" in en-US). */
+/**
+ * Parse a user-typed number in the given locale ("1.234,5" in de-DE, "1,234.5" in en-US).
+ * Scientific notation is a real number (`1e9` is 1,000,000,000). Letters that are not a currency
+ * symbol, code or exponent are rejected: stripping them used to turn `1e9` into 19.
+ */
 export function parseLocaleNumber(text: string, locale: string): number | null {
   const parts = nf(locale, { useGrouping: true }).formatToParts(12345.6);
   const group = parts.find((p) => p.type === "group")?.value ?? ",";
   const decimal = parts.find((p) => p.type === "decimal")?.value ?? ".";
-  const cleaned = text
-    .trim()
-    .replace(/[^\d\-.,\s  ']/g, "")
-    .split(group)
+  let s = text.trim().replace(/[\u2212\u2013\u2014]/g, "-");
+  if (s === "") return null;
+  // A prefix such as "CA" sits on the symbol ("CA$"). Drop it with the symbol, not as a number.
+  s = s.replace(/[A-Za-z]{1,3}(?=\p{Sc})/gu, "");
+  s = s.replace(/\p{Sc}/gu, " ");
+  s = s.replace(/\b(?:kr|zł|Kč|Ft)\b/gi, " ");
+  let strayWord = false;
+  s = s.replace(/\b[A-Za-z]{3}\b/g, (word) => {
+    if (isCurrency(word.toUpperCase())) return " ";
+    strayWord = true;
+    return word;
+  });
+  if (strayWord) return null;
+  // An exponent marker is the only letter a number may still contain.
+  if (/[A-Za-z]/.test(s.replace(/[eE](?=[+-]?\d)/g, ""))) return null;
+  s = s.replace(/[\s\u00a0\u202f]+/g, " ").trim();
+  if (s === "" || s === "-" || s === "+") return null;
+  const groups = [...new Set([group, " ", "\u00a0", "\u202f", "'", "’"])].filter(
+    (c) => c !== decimal && c !== "",
+  );
+  const groupClass = escapeRxClass(groups);
+  const decimalRx = escapeRxClass([decimal]);
+  const pattern = new RegExp(
+    `^[+-]?(?:\\d{1,3}(?:[${groupClass}]\\d{3})+|\\d+)(?:${decimalRx}\\d*)?(?:[eE][+-]?\\d+)?$|^[+-]?${decimalRx}\\d+(?:[eE][+-]?\\d+)?$`,
+  );
+  if (!pattern.test(s)) return null;
+  const normalized = [...s]
+    .filter((c) => !groups.includes(c))
     .join("")
-    .replace(/[\s  ']/g, "")
     .replace(decimal, ".");
-  if (cleaned === "" || cleaned === "-" || cleaned === ".") return null;
-  const n = Number(cleaned);
+  const n = Number(normalized);
   return Number.isFinite(n) ? n : null;
+}
+
+function escapeRxClass(chars: readonly string[]): string {
+  return chars.map((c) => c.replace(/[\\\]^-]/g, "\\$&")).join("");
 }
 
 export function formatMonth(month: string, locale: string): string {

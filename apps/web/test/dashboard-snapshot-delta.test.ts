@@ -3,7 +3,9 @@ import { createSampleDocument, createUkSampleDocument } from "@glideworth/core/s
 import { describe, expect, it } from "vitest";
 import {
   currentNetWorth,
+  driftSentence,
   snapshotNetWorthLikeToday,
+  storedTotalDrift,
 } from "../src/features/dashboard/dashboard-view";
 
 /** A snapshot recorded the old way: every balance added in at face value, including foreign currency. */
@@ -44,6 +46,11 @@ describe("dashboard snapshot delta", () => {
     expect(snapshot.netWorth - today).toBe(12_000);
     expect(snapshotNetWorthLikeToday(doc, snapshot)).toBe(today);
     expect(today - snapshotNetWorthLikeToday(doc, snapshot)).toBe(0);
+    const drift = storedTotalDrift(doc, snapshot);
+    expect(drift).toEqual({ stored: snapshot.netWorth, revalued: today });
+    expect(driftSentence("19 Nov 2026", drift!, (n) => `£${n}`)).toContain("left as entered");
+    expect(driftSentence("19 Nov 2026", drift!, (n) => `£${n}`)).toContain(`£${snapshot.netWorth}`);
+    expect(driftSentence("19 Nov 2026", drift!, (n) => `£${n}`)).toContain(`£${today}`);
   });
 
   it("still reports a real change in accounts that count on both sides", () => {
@@ -85,10 +92,21 @@ describe("dashboard snapshot delta", () => {
     expect(snapshotNetWorthLikeToday(doc, snapshot)).toBeCloseTo(currentNetWorth(doc).netWorth);
   });
 
+  it("does not flag a total that differs for a reason other than exchange rates", () => {
+    // A single-currency household imports a file with a Net worth column and only some accounts.
+    const doc = createUkSampleDocument();
+    const full = faceValueSnapshot(doc);
+    const partial = { ...full, accounts: full.accounts.slice(0, 1) };
+
+    expect(snapshotNetWorthLikeToday(doc, partial)).not.toBeCloseTo(partial.netWorth);
+    expect(storedTotalDrift(doc, partial)).toBeNull();
+  });
+
   it("keeps a snapshot that only recorded a total", () => {
     const doc = withUsdCash(createUkSampleDocument());
     const totalOnly = { netWorth: 111_900, accounts: [], realAssets: [], debts: [] };
     expect(snapshotNetWorthLikeToday(doc, totalOnly)).toBe(111_900);
+    expect(storedTotalDrift(doc, totalOnly)).toBeNull();
 
     const sample = createSampleDocument();
     const latest = sample.progress.at(-1)!;

@@ -103,8 +103,10 @@ export function AccountHistory({
           stack: "accounts",
           symbol: "circle",
           symbolSize: 5,
-          showSymbol: snaps.length < 40,
-          connectNulls: true,
+          // A date with no balance for this account is a gap, not a straight line across it.
+          // Sparse series keep their dots so a single imported point stays visible.
+          showSymbol: r.points.length < snaps.length || snaps.length < 40,
+          connectNulls: false,
           lineStyle: { width: 1.25, color: colorOf(r.id, i) },
           itemStyle: { color: colorOf(r.id, i) },
           areaStyle: { color: colorOf(r.id, i), opacity: 0.8 },
@@ -126,8 +128,14 @@ export function AccountHistory({
         <Chart
           build={build}
           height={300}
-          ariaLabel="Stacked balance of each account over time from recorded snapshots. The table below lists the same values."
+          ariaLabel="Stacked balance of each account over time from recorded snapshots. A missing date is a gap, not a line. The table below lists the same values."
         />
+        {rows.some((r) => r.points.length < snaps.length) ? (
+          <p className="text-[12px] text-ink-3">
+            A dot is a date that account was recorded. Gaps stay open: a missing date is not filled
+            in with a straight line.
+          </p>
+        ) : null}
         <Table>
           <THead>
             <TR>

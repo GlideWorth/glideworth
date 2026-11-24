@@ -6,6 +6,16 @@ import { chartSvg, legendSwatch } from "./chart";
 import { esc } from "./format";
 import type { ChartSpec, Table, ViewModel } from "./types";
 
+/**
+ * Value cells are right-aligned and kept on one line, so numbers line up and never break. A long text cell
+ * ("Withdrawal rate above 6.00% or below 4.00%") may wrap instead: on one line it widened its column so far
+ * on a phone that the figures in that column were pushed out of view.
+ */
+const LONG_CELL = 20;
+function cellClass(c: string): string {
+  return c.length > LONG_CELL ? "num long" : "num";
+}
+
 function tableHtml(t: Table, extraClass = ""): string {
   const head = t.columns
     // An empty corner cell is a plain <td>: a header cell with no text is announced as an unnamed header.
@@ -16,7 +26,7 @@ function tableHtml(t: Table, extraClass = ""): string {
   const body = t.rows
     .map(
       (r) =>
-        `<tr>${r.map((c, i) => (i === 0 ? `<th scope="row">${esc(c)}</th>` : `<td class="num">${esc(c)}</td>`)).join("")}</tr>`,
+        `<tr>${r.map((c, i) => (i === 0 ? `<th scope="row">${esc(c)}</th>` : `<td class="${cellClass(c)}">${esc(c)}</td>`)).join("")}</tr>`,
     )
     .join("");
   return `<div class="tool-table-scroll"${extraClass ? ` data-kind="${esc(extraClass)}"` : ""} tabindex="0" role="region" aria-label="${esc(t.caption)}"><table class="tool-table"><caption>${esc(t.caption)}</caption><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;

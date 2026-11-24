@@ -529,6 +529,16 @@ const simulation = spec.mode === 'simulation';
     text-align: right;
     white-space: nowrap;
   }
+  /* Column headings and long text cells wrap, so one wordy cell does not push the figures off a phone screen. */
+  .tool-table thead th.num {
+    white-space: normal;
+    min-width: 6rem;
+  }
+  .tool-table td.long {
+    white-space: normal;
+    text-align: left;
+    min-width: 10rem;
+  }
   .tool-table tbody th {
     font-weight: 600;
   }

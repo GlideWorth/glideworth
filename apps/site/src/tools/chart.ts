@@ -13,6 +13,13 @@ import type { ChartSpec } from "./types";
 const W = 560;
 const H = 300;
 const PAD = { l: 62, r: 16, t: 16, b: 40 };
+/**
+ * Estimated width of one character of a marker label, and the height of a label row, in chart units. Sized
+ * for the largest text the stylesheet sets (19px on phones, where the chart is drawn small), so labels that
+ * are clear of each other there are clear everywhere.
+ */
+const MARKER_CHAR_WIDTH = 10.5;
+const MARKER_ROW = 22;
 
 function niceCeil(v: number): number {
   if (!(v > 0)) return 1;
@@ -168,13 +175,25 @@ export function chartSvg(spec: ChartSpec): string {
       `<text class="tc-ref-label" x="${W - PAD.r - 4}" y="${f1(sy(h.y) - 6)}" text-anchor="end">${esc(h.label)}</text>`,
     );
   }
-  for (const m of spec.markers ?? []) {
-    if (m.x < x0 || m.x > x1) continue;
+  // Marker labels share the top of the plot. Two markers a few years apart ("State Pension from 67",
+  // "Runs out at 80") would print over each other, so a label that would overlap one already placed drops
+  // to the next row. Widths are estimated from the character count (labels are short plain text).
+  const rows: [number, number][][] = [];
+  const markers = (spec.markers ?? [])
+    .filter((m) => m.x >= x0 && m.x <= x1)
+    .sort((a, b) => a.x - b.x);
+  for (const m of markers) {
     const x = f1(sx(m.x));
     const anchor = sx(m.x) > PAD.l + iw * 0.7 ? "end" : "start";
+    const tx = sx(m.x) + (anchor === "end" ? -5 : 5);
+    const width = m.label.length * MARKER_CHAR_WIDTH;
+    const span: [number, number] = anchor === "end" ? [tx - width, tx] : [tx, tx + width];
+    let row = rows.findIndex((r) => r.every(([a, b]) => span[1] < a - 4 || span[0] > b + 4));
+    if (row < 0) row = rows.push([]) - 1;
+    rows[row]!.push(span);
     parts.push(
       `<line class="tc-marker" x1="${x}" x2="${x}" y1="${PAD.t}" y2="${PAD.t + ih}"/>`,
-      `<text class="tc-ref-label" x="${f1(sx(m.x) + (anchor === "end" ? -5 : 5))}" y="${PAD.t + 12}" text-anchor="${anchor}">${esc(m.label)}</text>`,
+      `<text class="tc-ref-label" x="${f1(tx)}" y="${PAD.t + 12 + row * MARKER_ROW}" text-anchor="${anchor}">${esc(m.label)}</text>`,
     );
   }
   parts.push("</svg>");

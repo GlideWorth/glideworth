@@ -20,7 +20,9 @@ FROM node:26-bookworm-slim@sha256:5df79989ed685e09f0a98019db4cebfb22fb9df1a53c01
 ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH \
     CI=true
-RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
+# Node 25+ no longer ships corepack, so pnpm comes from npm. Keep the version in step with
+# packageManager in package.json.
+RUN npm install -g pnpm@10.28.2
 WORKDIR /repo
 
 # ---------------------------------------------------------------------------------------- deps

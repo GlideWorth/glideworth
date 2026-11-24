@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "glideworth": {
+      "type": "http",
+      "url": "https://app.glideworth.com/mcp"
+    }
+  }
+}

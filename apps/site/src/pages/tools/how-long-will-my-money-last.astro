@@ -17,6 +17,18 @@ const byReturn = [2, 3, 4, 5, 6].map((r) => {
   const f = depletionYears(500_000, 30_000, r / 100, 'end');
   return [`${r}%`, Number.isFinite(f) ? f.toFixed(1) : 'never', Number.isFinite(e.years) ? e.years.toFixed(1) : 'never'];
 });
+// "How long will $1 million last?": a grid of balances and withdrawals, same engine, end-of-year timing.
+const gridBalances = [500_000, 1_000_000, 2_000_000];
+const gridSpend = [40_000, 60_000, 80_000, 100_000];
+const grid = gridBalances.map((b) => [
+  m(b),
+  ...gridSpend.map((w) => {
+    const e = engineYears({ ...ex, balance: b, spend: w });
+    return Number.isFinite(e.years) ? `${e.years.toFixed(1)} years` : 'Does not run out';
+  }),
+]);
+const million = historyYears({ ...ex, balance: 1_000_000, spend: 40_000 });
+const millionLasted = million.filter((h) => h.full).length;
 const hist = historyYears(ex);
 const lasted = hist.filter((h) => h.full).length;
 const worst = hist.reduce((a, b) => (b.years < a.years ? b : a));
@@ -33,6 +45,14 @@ const faq = [
   {
     q: 'Why does history give such different answers from the formula?',
     a: '<p>The formula assumes the same return every year. Real returns vary, and when you are withdrawing, the order matters: bad years early do more damage than the same years late. That is sequence-of-returns risk, and the history chart shows its range.</p>',
+  },
+  {
+    q: 'How long will my retirement savings last?',
+    a: '<p>It depends on three numbers: how much you have, how much you take out each year, and the return after inflation. Enter them above for an answer in years, then look at the history chart: the same plan can last far longer or shorter depending on the markets you retire into. The table further down this page shows common balances and withdrawals.</p>',
+  },
+  {
+    q: 'How long will $1 million last in retirement?',
+    a: `<p>At a steady 4% after inflation, with withdrawals at the end of each year, ${m(1_000_000)} paying ${m(40_000)} a year ${grid[1]?.[1] === 'Does not run out' ? 'never runs out, because 4% growth equals the withdrawal' : `lasts ${grid[1]?.[1]}`}. At ${m(60_000)} a year it lasts ${grid[1]?.[2]}, and at ${m(80_000)} a year ${grid[1]?.[3]}. Through US history with 60% stocks, ${m(40_000)} a year lasted the whole ${HISTORY_WINDOW}-year window in ${millionLasted} of ${million.length} start years.</p>`,
   },
   {
     q: 'Can I include a pension?',
@@ -99,6 +119,26 @@ const faq = [
     {' '}{HISTORY_WINDOW}-year window in {lasted} of {hist.length} start years from {hist[0]?.startYear} to
     {' '}{hist[hist.length - 1]?.startYear}. The shortest, starting in {worst.startYear}, paid {wholeYears(worst.years)}
     {' '}in full: a steady-return answer of 28 years hides that range.
+  </p>
+
+  <h2>How long will $1 million last? Common balances and withdrawals</h2>
+  <p>
+    Years each balance pays each yearly withdrawal at a steady 4% after inflation, with withdrawals at the end of each
+    year and no tax, computed by the calculator’s engine code when this page was built. Withdrawals are in today’s
+    money and rise with inflation. Change any number in the calculator above for your own answer.
+  </p>
+  <div class="table-scroll" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
+  <table>
+    <caption>How long savings last at 4% after inflation</caption>
+    <thead><tr><th>Savings</th>{gridSpend.map((w) => <th>{m(w)} a year</th>)}</tr></thead>
+    <tbody>{grid.map((r) => <tr>{r.map((c) => <td>{c}</td>)}</tr>)}</tbody>
+  </table>
+  </div>
+  <p>
+    A steady return hides the risk that matters most. Replayed through US history with 60% in stocks, {m(1_000_000)}
+    {' '}paying {m(40_000)} a year lasted the whole {HISTORY_WINDOW}-year window in {millionLasted} of {million.length}
+    {' '}start years. To see the chance of success across thousands of simulated markets, use the
+    {' '}<a href="/tools/monte-carlo-retirement-calculator/">Monte Carlo retirement calculator</a>.
   </p>
 
   <h2>Why the engine and the formula can differ</h2>

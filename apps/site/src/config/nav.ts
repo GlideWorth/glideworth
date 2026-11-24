@@ -47,6 +47,8 @@ export const footerNav: { heading: string; links: NavLink[] }[] = [
         label: "Monte Carlo retirement calculator",
         href: "/tools/monte-carlo-retirement-calculator/",
       },
+      { label: "UK pension drawdown calculator", href: "/tools/uk-pension-drawdown-calculator/" },
+      { label: "ISA vs pension calculator", href: "/tools/isa-vs-pension-calculator/" },
     ],
   },
   {

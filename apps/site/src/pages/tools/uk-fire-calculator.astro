@@ -1,0 +1,208 @@
+---
+import { TAX_SIMPLIFICATIONS, UK_PENSION_ACCESS } from '@glideworth/core';
+import ToolPage from '../../components/tools/ToolPage.astro';
+import { externalLinkProps } from '../../lib/links';
+import { presentValue } from '../../tools/closed-form';
+import { FULL_STATE_PENSION, UK_YEAR, WEEKS_PER_YEAR, ukFire } from '../../tools/engine/uk-fire';
+import { ageText, MONTHS } from '../../tools/engine/uk-pension-age';
+import { money } from '../../tools/format';
+import { SPECS } from '../../tools/specs';
+import { defaults } from '../../tools/state';
+
+const m = (x: number) => money(x, 'GBP');
+const a = UK_PENSION_ACCESS;
+const rise = `${MONTHS[a.laterFromMonth - 1]} ${a.laterFromYear}`;
+const weekly = UK_YEAR.statePension.fullNewWeekly;
+const src = (part: string) => UK_YEAR.sources.find((s) => s.url.includes(part));
+const spSource = src('new-state-pension/what-youll-get');
+const spaSource = src('state-pension-age-timetable');
+const lsaSource = src('lump-sum-allowance');
+const ratesSource = src('annex-a-rates-and-allowances');
+const READ = '19 November 2026'; // the date core's UK sources were read (packages/core/src/tax/data/uk.ts)
+
+// Worked example: the calculator's defaults, computed by its own engine code at build time.
+const ex = defaults(SPECS['uk-fire']);
+const f = ukFire(ex);
+const spend = Number(ex.spend);
+const r = Number(ex.ret) / 100;
+const byFireAge = [20_000, 25_000, 30_000, 35_000, 40_000].map((s) => {
+  const x = ukFire({ ...ex, spend: s });
+  return [m(s), x.fireAge === null ? `not before ${x.planTo}` : String(x.fireAge), m(x.isaNeeded), m(x.pensionNeededAtStart)];
+});
+const pvEnd = presentValue(Array<number>(f.bridgeYears).fill(spend), r, 'end');
+const firstPensionYear = f.plan.ages.findIndex((x) => x >= f.accessAge);
+const taxFirst = f.plan.tax[firstPensionYear] ?? 0;
+const drawFirst = f.plan.pensionDrawn[firstPensionYear] ?? 0;
+const spaIdx = f.plan.ages.findIndex((x) => x >= Math.ceil(f.statePensionAge));
+const taxSp = f.plan.tax[spaIdx] ?? 0;
+const drawSp = f.plan.pensionDrawn[spaIdx] ?? 0;
+
+const faq = [
+  {
+    q: 'Can I retire early in the UK on my pension?',
+    a: `<p>Not from a private or workplace pension before the normal minimum pension age: ${a.age} today, rising to ${a.laterAge} from ${rise}. Anyone retiring earlier needs money they can reach before then, usually ISAs, cash or a general investment account. That is the bridge this calculator sizes.</p>`,
+  },
+  {
+    q: 'How big does my ISA need to be to retire early?',
+    a: `<p>Enough to pay your spending on its own from the day you stop work until your pension can be taken. ISA withdrawals are tax-free, so it is the present value of that spending: in the worked example below, ${m(spend)} a year for ${f.bridgeYears} years needs ${m(f.isaNeeded)} at a ${ex.ret}% return after inflation. Anything left in the ISA after that is a reserve.</p>`,
+  },
+  {
+    q: 'What is Coast FIRE in the UK?',
+    a: '<p>The point where your pension pot is big enough to grow, with no more contributions, to what it needs to be when you can take it. The calculator shows that pension figure for today. Your ISA still has to cover the bridge, so Coast FIRE for the pension is only half of the plan.</p>',
+  },
+  {
+    q: 'Does the calculator include the State Pension and tax?',
+    a: `<p>Yes. It adds the share of the full new State Pension you choose from your State Pension age, and the Glideworth engine estimates income tax on pension withdrawals and the State Pension each year with its UK rules. ISA withdrawals are tax-free. It is an estimate, not a tax calculation; see what it leaves out below.</p>`,
+  },
+  {
+    q: 'Is there a separate UK Coast FIRE or early retirement calculator?',
+    a: '<p>This page covers both: the earliest age you could stop work (your FIRE age), the pension you would need today to coast, and whether your ISA covers the gap if you stop at the age you choose.</p>',
+  },
+];
+---
+
+<ToolPage
+  id="uk-fire"
+  heading="UK FIRE calculator: can your ISA bridge the gap to your pension?"
+  lede="Your FIRE age, the ISA you need to reach pension age, the pension you need after that, and how the State Pension and income tax change the picture. It runs the Glideworth planning engine with its UK rules in your browser; nothing you type is sent anywhere."
+  faq={faq}
+  adds="This calculator has one person, one ISA, one pension pot and a steady return."
+  related={[
+    { href: '/tools/uk-pension-age-calculator/', label: 'UK pension age calculator: your State Pension and private pension ages' },
+    { href: '/planning/uk/', label: 'Retirement planning in the United Kingdom: what the UK model covers' },
+    { href: '/tools/fire-calculator/', label: 'FIRE calculator: your FIRE number and US market history' },
+    { href: '/features/tax-estimates/', label: 'Tax estimates in the full planner' },
+  ]}
+>
+  <h2>The UK bridge in three phases</h2>
+  <ol>
+    <li>
+      <strong>The bridge.</strong> From the day you stop work until you can take a private or workplace pension, only your
+      ISA and other savings can pay. The normal minimum pension age is {a.age}, rising to {a.laterAge} from {rise}. Someone
+      born in the worked example’s year ({f.birthYear}) can take a pension from {f.accessAge}.
+    </li>
+    <li>
+      <strong>The pension.</strong> From that age the pension pays your spending. Part of each withdrawal is tax-free (an
+      uncrystallised funds pension lump sum, the engine’s default for UK pensions, within the lump sum allowance of
+      {' '}{m(UK_YEAR.pensions.lumpSumAllowance)}); the rest is taxed as income.
+    </li>
+    <li>
+      <strong>The State Pension.</strong> From State Pension age ({ageText(f.statePensionAge, true)} in the example) the
+      State Pension joins in, so the pension pays less. The full new State Pension is £{weekly.toFixed(2)} a week in
+      {' '}{UK_YEAR.label}; the calculator uses {WEEKS_PER_YEAR} weeks, {m(FULL_STATE_PENSION)} a year, times the share you
+      enter.
+    </li>
+  </ol>
+
+  <h2>How the calculator works</h2>
+  <ol>
+    <li>
+      <strong>Saving.</strong> Each pot grows at your return after inflation with your yearly saving added, until you stop
+      work. Enter pension contributions as everything going in: your own, tax relief and your employer’s.
+    </li>
+    <li>
+      <strong>Retirement.</strong> The engine then runs a UK plan from the age you stop: a stocks and shares ISA, a SIPP,
+      your spending, the State Pension and its income tax estimate. It cannot draw the pension before the pension age, and
+      once both can be drawn it takes the pension first and keeps the ISA as a reserve.
+    </li>
+    <li>
+      <strong>FIRE age.</strong> The engine repeats that plan for every stopping age from now, and your FIRE age is the
+      first one in which every year’s spending is paid to the age you plan to.
+    </li>
+    <li>
+      <strong>The pots you need.</strong> For the age you choose, it finds the smallest ISA that pays the bridge on its own,
+      and the smallest pension that pays from the pension age to the end with the State Pension and after tax. The
+      pension figure is then discounted back to your stopping age and to today (the Coast FIRE figure).
+    </li>
+  </ol>
+
+  <h2>The bridge formula</h2>
+  <p class="formula">ISA needed = W′ × (1 − (1 + r)<sup>−n</sup>) ÷ r</p>
+  <p>
+    <code>W′</code> is your yearly spending moved to the end of the year under the timing you chose, <code>r</code> the
+    return after inflation and <code>n</code> the years from stopping work to the pension age. ISA withdrawals are not
+    taxed, so the engine and the formula agree. The pension after the bridge has no formula of this kind: the tax on each
+    withdrawal depends on the State Pension and the tax bands in that year, so only the engine gives it.
+  </p>
+
+  <h2>Worked example</h2>
+  <p>
+    Computed by the calculator’s own code when this page was built, with its default inputs. You are {ex.age}, have
+    {' '}{m(Number(ex.isa))} in ISAs and {m(Number(ex.pension))} in pensions, save {m(Number(ex.isaSave))} a year into ISAs
+    and {m(Number(ex.penSave))} into pensions, earn {ex.ret}% a year after inflation and want to stop work at {ex.retire},
+    spending {m(spend)} a year to {ex.planTo}.
+  </p>
+  <ul>
+    <li>
+      The bridge runs {f.bridgeYears} years, from {f.retire} to {f.accessAge}. With money moving in the middle of each year
+      it needs {m(f.isaNeeded)} in the ISA (with end-of-year timing, {m(pvEnd)}). The ISA would hold
+      {' '}{m(f.isaAtRetire)} at {f.retire}, so {f.isaAtRetire >= f.isaNeeded ? 'it bridges the gap' : 'it falls short'}.
+    </li>
+    <li>
+      From {f.pensionFrom} the pension needs {m(f.pensionNeededAtStart)}, which is {m(f.pensionNeededAtRetire)} at {f.retire}
+      {' '}and {m(f.pensionCoastToday)} today with no further contributions. The pension would hold
+      {' '}{m(f.pensionAtRetire)} at {f.retire}.
+    </li>
+    <li>
+      In the plan, the first year the pension pays it withdraws {m(drawFirst)} and the engine estimates {m(taxFirst)} of
+      income tax. Once the State Pension starts, the pension withdraws {m(drawSp)} and the tax is {m(taxSp)}.
+    </li>
+    <li>
+      {f.fireAge === null ? `No stopping age before ${f.planTo} pays every year.` : `The earliest age at which the whole plan pays every year is ${f.fireAge}: the FIRE age.`}
+    </li>
+  </ul>
+  <div class="table-scroll" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
+    <table>
+      <caption>FIRE age and pots needed at other spending levels (other inputs as above)</caption>
+      <thead><tr><th>Yearly spending</th><th>FIRE age</th><th>ISA for the bridge</th><th>Pension at {f.pensionFrom}</th></tr></thead>
+      <tbody>{byFireAge.map((row) => <tr>{row.map((c) => <td>{c}</td>)}</tr>)}</tbody>
+    </table>
+  </div>
+
+  <h2>Allowances the calculator does not apply</h2>
+  <p>
+    The ISA allowance is {m(UK_YEAR.isa.overall)} a year and the pension annual allowance {m(UK_YEAR.pensions.annualAllowance)}
+    {' '}({UK_YEAR.label}). The calculator warns when your saving is above them but does not cap it or charge tax on the
+    excess. Money that does not fit in an ISA would sit in a taxable account in practice.
+  </p>
+
+  <h2>What this assumes and leaves out</h2>
+  <ul>
+    <li>One person, one ISA and one pension pot. Defined benefit pensions, a general investment account, a partner and a mortgage are not in this calculator; the full planner has them.</li>
+    <li>One steady return, the same in every year and for both pots; real returns vary, and their order matters most early in the bridge.</li>
+    <li>
+      Everything is in today’s money with no inflation. The State Pension stays at today’s value (no triple lock) and tax
+      thresholds stay at today’s values, so the freeze of thresholds in cash terms does not drag more of your income into
+      tax in these figures.
+    </li>
+    <li>
+      Your birthday is taken as January, and the engine checks pension access once a year, at the start of each year. The
+      <a href="/tools/uk-pension-age-calculator/">UK pension age calculator</a> gives your ages to the month.
+    </li>
+    <li>Protected pension ages, the early retirement of some occupational schemes and pension access on ill health are not modelled.</li>
+    <li>
+      Spending is level for life. The pension is drawn as needed each year, not planned to use the personal allowance or the
+      tax bands in the best way.
+    </li>
+    <li>
+      The UK income tax estimate is Glideworth’s model, not a tax calculation. What it leaves out:
+      <details>
+        <summary>The UK model’s simplifications ({TAX_SIMPLIFICATIONS.uk?.length ?? 0})</summary>
+        <ul>{(TAX_SIMPLIFICATIONS.uk ?? []).map((s) => <li>{s}</li>)}</ul>
+      </details>
+    </li>
+  </ul>
+
+  <h2>Sources</h2>
+  <p>The UK figures come from the engine’s UK tax data, which cites these government pages (read {READ}):</p>
+  <ul>
+    <li>
+      Normal minimum pension age ({a.age}, rising to {a.laterAge} from {rise}): Finance Act 2022, as recorded in the
+      engine’s UK rules.
+    </li>
+    {spaSource && <li><a href={spaSource.url} {...externalLinkProps(spaSource.url)}>State Pension age timetable</a> (gov.uk)</li>}
+    {spSource && <li><a href={spSource.url} {...externalLinkProps(spSource.url)}>New State Pension: what you’ll get</a> (gov.uk): £{weekly.toFixed(2)} a week in {UK_YEAR.label}</li>}
+    {lsaSource && <li><a href={lsaSource.url} {...externalLinkProps(lsaSource.url)}>Lump sum allowance</a> (gov.uk)</li>}
+    {ratesSource && <li><a href={ratesSource.url} {...externalLinkProps(ratesSource.url)}>Budget 2025: rates and allowances, Annex A</a> (gov.uk): income tax, ISA and pension allowances</li>}
+  </ul>
+</ToolPage>

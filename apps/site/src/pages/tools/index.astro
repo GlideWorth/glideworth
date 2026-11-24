@@ -8,6 +8,8 @@ import { TOOLS } from '../../tools/registry';
 const groups = [
   { id: 'fire', title: 'Financial independence', intro: 'How much is enough, and when you get there.' },
   { id: 'retirement', title: 'Drawing down in retirement', intro: 'How long a portfolio lasts and how to take money out of it.' },
+  { id: 'tax', title: 'US retirement tax and accounts', intro: 'Required distributions, conversions, health premiums and tax on retirement income, from the engine’s US tax data.' },
+  { id: 'country', title: 'UK and UAE', intro: 'Pensions, ISAs, pension ages and end-of-service pay, from the engine’s UK and UAE rules.' },
 ] as const;
 ---
 
@@ -20,7 +22,7 @@ const groups = [
 >
   <div class="container tools-index">
     {
-      groups.map((g) => (
+      groups.filter((g) => TOOLS.some((t) => t.group === g.id)).map((g) => (
         <section class="tools-group" aria-labelledby={`g-${g.id}`}>
           <div class="tools-group-head">
             <h2 id={`g-${g.id}`}>{g.title}</h2>
@@ -34,9 +36,11 @@ const groups = [
                   <a href={t.path}>{t.name}</a>
                 </h3>
                 <p>{t.summary}</p>
-                <p class="tools-article">
-                  Background: <a href={t.article.href}>{t.article.title}</a>
-                </p>
+                {t.article && (
+                  <p class="tools-article">
+                    Background: <a href={t.article.href}>{t.article.title}</a>
+                  </p>
+                )}
               </li>
             ))}
           </ul>
@@ -68,8 +72,8 @@ const groups = [
         </li>
         <li>
           <strong>No tax by default.</strong> Some calculators offer a single flat rate. Tax estimates for {TAX_COUNTRIES}{' '}
-          countries are in the full planner, on the <a href="/planning/">planning-by-country</a> pages. Country-specific
-          calculators are planned.
+          countries are in the full planner, on the <a href="/planning/">planning-by-country</a> pages. The UK and UAE
+          calculators use the engine’s rules for those countries.
         </li>
         <li>
           <strong>When a calculator is not the whole plan.</strong> Read how Glideworth compares with{' '}

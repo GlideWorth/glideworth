@@ -1,6 +1,6 @@
 /**
  * The calculators, for the /tools/ index and the "related" links on each page. Country-specific tools
- * (UK pension drawdown, UK take-home pay, UAE gratuity) are not built yet: add them here
+ * still to build (UK take-home pay, UAE gratuity): add them here
  * with `group: 'country'`, a spec in specs/, a compute module in engine/ and a page in pages/tools/.
  */
 import type { ToolId } from "./types";
@@ -13,8 +13,9 @@ export interface ToolMeta {
   summary: string;
   /** The question it answers, for the index. */
   question: string;
-  group: "fire" | "retirement" | "country";
-  article: { href: string; title: string };
+  group: "fire" | "retirement" | "tax" | "country";
+  /** The article behind the calculator; optional for tools with no article yet. */
+  article?: { href: string; title: string };
 }
 
 export const TOOLS: readonly ToolMeta[] = [
@@ -108,6 +109,163 @@ export const TOOLS: readonly ToolMeta[] = [
       href: "/blog/monte-carlo-retirement-simulations/",
       title: "Monte Carlo retirement simulations",
     },
+  },
+  {
+    id: "rmd",
+    path: "/tools/rmd-calculator/",
+    name: "RMD calculator",
+    summary:
+      "Your required minimum distribution for a year, the age RMDs start for your birth year, and the RMDs that follow.",
+    question: "How much must I take out this year?",
+    group: "tax",
+    article: { href: "/planning/us/", title: "Retirement planning in the United States" },
+  },
+  {
+    id: "sepp-72t",
+    path: "/tools/72t-calculator/",
+    name: "72(t) calculator",
+    summary:
+      "The yearly payment under the fixed annuitisation method, from the IRS mortality rates, and what it does to the balance.",
+    question: "How much can 72(t) payments give me?",
+    group: "tax",
+  },
+  {
+    id: "irmaa",
+    path: "/tools/irmaa-calculator/",
+    name: "IRMAA calculator",
+    summary:
+      "Your Medicare IRMAA tier and the Part B and Part D surcharges from your income two years earlier, and how far the next tier is.",
+    question: "Will my income raise my Medicare premiums?",
+    group: "tax",
+    article: { href: "/planning/us/", title: "Retirement planning in the United States" },
+  },
+  {
+    id: "uk-fire",
+    path: "/tools/uk-fire-calculator/",
+    name: "UK FIRE calculator",
+    summary:
+      "Your FIRE age, and whether your ISA can bridge the years until your pension can be taken, with a UK income tax estimate.",
+    question: "Can my ISA bridge the gap to my pension?",
+    group: "country",
+    article: { href: "/planning/uk/", title: "Retirement planning in the United Kingdom" },
+  },
+  {
+    id: "uk-pension-age",
+    path: "/tools/uk-pension-age-calculator/",
+    name: "UK pension age calculator",
+    summary:
+      "Your State Pension age and the earliest age you can take a private or workplace pension, with the dates.",
+    question: "When can I take my pensions?",
+    group: "country",
+    article: { href: "/planning/uk/", title: "Retirement planning in the United Kingdom" },
+  },
+  {
+    id: "uae-gratuity",
+    path: "/tools/uae-gratuity-calculator/",
+    name: "UAE gratuity calculator",
+    summary:
+      "End-of-service gratuity from your years of service and basic wage, tier by tier with the cap, against the savings scheme.",
+    question: "What is my end-of-service gratuity?",
+    group: "country",
+    article: { href: "/planning/ae/", title: "Retirement planning in the United Arab Emirates" },
+  },
+  {
+    id: "retirement-tax",
+    path: "/tools/retirement-tax-calculator/",
+    name: "Retirement tax calculator",
+    summary:
+      "US federal tax on a year of Social Security, IRA withdrawals, pensions and investment income, with your effective and marginal rate.",
+    question: "How much federal tax will I pay in retirement?",
+    group: "tax",
+    article: {
+      href: "/blog/what-a-tax-estimate-leaves-out/",
+      title: "What a tax estimate leaves out",
+    },
+  },
+  {
+    id: "roth-conversion",
+    path: "/tools/roth-conversion-calculator/",
+    name: "Roth conversion calculator",
+    summary:
+      "How much to convert to fill a federal bracket this year, the tax on it, and a multi-year ladder against no conversions.",
+    question: "How much should I convert to Roth this year?",
+    group: "tax",
+    article: {
+      href: "/blog/what-a-tax-estimate-leaves-out/",
+      title: "What a tax estimate leaves out",
+    },
+  },
+  {
+    id: "aca-subsidy",
+    path: "/tools/aca-subsidy-calculator/",
+    name: "ACA subsidy calculator",
+    summary:
+      "The ACA premium tax credit for your income and household, and how much more income you can have before it ends.",
+    question: "What will health insurance cost before Medicare?",
+    group: "tax",
+    article: {
+      href: "/blog/what-a-tax-estimate-leaves-out/",
+      title: "What a tax estimate leaves out",
+    },
+  },
+  {
+    id: "guardrails",
+    path: "/tools/guardrails-retirement-calculator/",
+    name: "Guardrails retirement calculator",
+    summary:
+      "Guyton-Klinger and risk-based guardrails in money: what to spend now, the portfolio values that trigger a cut or a raise, and both rules through a bad and a typical stretch of history.",
+    question: "When should I cut or raise my spending?",
+    group: "retirement",
+    article: {
+      href: "/blog/withdrawal-strategies-compared/",
+      title: "Withdrawal strategies: four rules compared",
+    },
+  },
+  {
+    id: "retirement-spending",
+    path: "/tools/retirement-spending-calculator/",
+    name: "Retirement spending calculator",
+    summary:
+      "The most you can spend every year at the chance of success you choose, with other income from an age, and how the portfolio spends down.",
+    question: "How much can I spend in retirement?",
+    group: "retirement",
+    article: {
+      href: "/blog/monte-carlo-retirement-simulations/",
+      title: "Monte Carlo retirement simulations",
+    },
+  },
+  {
+    id: "historical-backtest",
+    path: "/tools/historical-retirement-calculator/",
+    name: "Historical retirement calculator",
+    summary:
+      "Your plan replayed through every start year of US history since 1928, each year’s path drawn, with the worst start years and the balances left.",
+    question: "Would my plan have survived history?",
+    group: "retirement",
+    article: {
+      href: "/blog/how-long-will-my-money-last/",
+      title: "How long will my money last?",
+    },
+  },
+  {
+    id: "uk-drawdown",
+    path: "/tools/uk-pension-drawdown-calculator/",
+    name: "UK pension drawdown calculator",
+    summary:
+      "How long your pension pot pays the income you want after tax, with tax-free cash and the State Pension.",
+    question: "How long will my pension last, and what tax do I pay?",
+    group: "country",
+    article: { href: "/planning/uk/", title: "Retirement planning in the United Kingdom" },
+  },
+  {
+    id: "isa-vs-pension",
+    path: "/tools/isa-vs-pension-calculator/",
+    name: "ISA vs pension calculator",
+    summary:
+      "The same take-home pay saved into a pension or an ISA, and the income after tax each pays in retirement.",
+    question: "Should I save into an ISA or a pension?",
+    group: "country",
+    article: { href: "/planning/uk/", title: "Retirement planning in the United Kingdom" },
   },
 ];
 

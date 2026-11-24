@@ -89,7 +89,7 @@ const faq = [
   },
   {
     q: 'How do Guyton-Klinger guardrails change the withdrawal?',
-    a: `<p>They start like the constant-real rule. Spending then skips its inflation raise after a losing year when the withdrawal rate is already above the rate you started with. If the rate rises more than 20% above that initial rate, spending is cut by 10% (not in the last 15 years); if it falls more than 20% below, spending is raised by 10%. In this page’s worked example the median largest one-year cut is ${pct(guardrails.medianLargestCut, 1)}, and a year went unpaid in ${pct(guardrails.shortAny, 1)} of simulations, against ${pct(constant.shortAny, 1)} for constant real withdrawals of the same 4%. This calculator is the guardrails calculator: the band and the adjustment are fixed at those 2006 figures.</p>`,
+    a: `<p>They start like the constant-real rule. Spending then skips its inflation raise after a losing year when the withdrawal rate is already above the rate you started with. If the rate rises more than 20% above that initial rate, spending is cut by 10% (not in the last 15 years); if it falls more than 20% below, spending is raised by 10%. In this page’s worked example the median largest one-year cut is ${pct(guardrails.medianLargestCut, 1)}, and a year went unpaid in ${pct(guardrails.shortAny, 1)} of simulations, against ${pct(constant.shortAny, 1)} for constant real withdrawals of the same 4%. Here the band and the adjustment are fixed at those 2006 figures; the <a href="/tools/guardrails-retirement-calculator/">guardrails calculator</a> lets you change them and shows the portfolio values at which spending would be cut or raised.</p>`,
   },
   {
     q: 'Can a percentage-of-portfolio rule fail?',
@@ -110,6 +110,7 @@ const faq = [
   adds="The planner runs these rules, and more, on your whole plan with other income and tax."
   related={[
     { href: '/features/withdrawal-strategies/', label: 'Withdrawal strategies in the planner' },
+    { href: '/tools/guardrails-retirement-calculator/', label: 'Guardrails retirement calculator' },
     { href: '/docs/planning/solvers-and-guardrails/', label: 'Guide: solvers and guardrails' },
     { href: '/blog/what-is-your-fire-number/', label: 'Where the 4% rule came from' },
   ]}

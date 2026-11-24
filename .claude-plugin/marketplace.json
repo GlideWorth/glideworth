@@ -1,0 +1,15 @@
+{
+  "name": "glideworth",
+  "owner": { "name": "Glideworth", "url": "https://glideworth.com" },
+  "metadata": {
+    "description": "The Glideworth plugin for Claude Code: your retirement plan, through Glideworth's MCP server."
+  },
+  "plugins": [
+    {
+      "name": "glideworth",
+      "source": "./plugins/glideworth",
+      "description": "Talk to your Glideworth retirement plan: chance of success, how much you can spend, when you can retire, taxes and what-ifs.",
+      "category": "productivity"
+    }
+  ]
+}

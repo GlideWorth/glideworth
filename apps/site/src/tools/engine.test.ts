@@ -200,6 +200,9 @@ describe("determinism", () => {
   }, 60_000);
   it("the full view model is identical on a second run (what the static page shows is what the browser computes)", async () => {
     for (const spec of Object.values(SPECS)) {
+      // Each run of these two is a solve over many simulations; their own reproducibility tests
+      // (drawdown-tools.test.ts) already compare two runs.
+      if (spec.id === "guardrails" || spec.id === "retirement-spending") continue;
       const v = { ...defaults(spec), ...(spec.mode === "simulation" ? { trials: "500" } : {}) };
       expect(await runTool(spec.id, v)).toEqual(await runTool(spec.id, v));
     }

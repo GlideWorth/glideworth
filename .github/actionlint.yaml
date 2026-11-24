@@ -1,0 +1,5 @@
+# Ubicloud runner labels (https://www.ubicloud.com/docs/github-actions-integration/runner-types), so actionlint
+# accepts the internal repository's runs-on values.
+self-hosted-runner:
+  labels:
+    - ubicloud-standard-2

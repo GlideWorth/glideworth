@@ -19,7 +19,6 @@
 - [ ] I added test vectors with the expected result and where it comes from
 - [ ] I updated the "not modelled" list for the country if the change leaves something out
 
-### Machine-generated code
+### AI tools
 
-- [ ] None of this change was machine-generated, **or** I reviewed every line, ran the tests myself, and
-      say here which tool was used and for what: <!-- tool and scope -->
+- [ ] No AI tool was used, **or** I name it and say what it did: <!-- e.g. "Claude Code wrote the code and tests; I reviewed the tax figures" -->

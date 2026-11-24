@@ -164,23 +164,31 @@ Before the first pull request is merged you sign the [CLA](CLA.md) once, by comm
 cannot use the comment process, [CLA.md](CLA.md) describes a manual route. The check must be green before
 merge. If your employer may own what you write, get their permission first.
 
-## Machine-generated contributions
+## Contributions written with AI
 
-You may use AI coding assistants and other generators, but you are the author and you are responsible:
+AI coding agents and assistants are welcome. They can write the code, the tests and the docs, run the gates, push
+a branch and open the pull request. What matters is the change, not who typed it, so the same bar applies to all
+of it:
 
-- **A human must review** every line before submitting, and must be able to explain and defend it in
-  review. Unreviewed bulk output will be closed.
-- **Run the tests yourself**, and include new tests that you have read and checked: tests written by the
-  same tool that wrote the code prove little, so check them against official sources.
-- **Disclose** it in the pull request: the tool and what it did (the template has a field). Disclosure is
-  not penalised. Undisclosed machine-generated work found later may be reverted.
-- **Evidence still rules for tax and finance.** A generator cannot be the source of a rate or a rule. Every
-  figure needs an official source that a human has opened and read.
-- **Do not paste private data into a tool** to produce a contribution, and do not paste secrets.
-- You must be entitled to submit the result under the CLA. If you are not sure that you are, do not submit
-  it.
-- Fully automated pull requests (opened by a bot or agent with no human in the loop) are not accepted,
-  except dependency updates from Dependabot.
+- **Someone is accountable.** The person who submits the change, or who directed the agent that did, owns it:
+  they answer questions in review and fix what review finds. Maintainers review every pull request before it is
+  merged.
+- **Disclose the tool.** Say in the pull request which tool was used and what it did (the template has a field).
+  Disclosure is not penalised; it tells reviewers where to look harder.
+- **The gates pass and the change is focused.** Run `pnpm typecheck`, `pnpm lint`, `pnpm format:check`,
+  `pnpm test` and `pnpm build` before opening. One logical change per pull request, small enough to review. A
+  large or unfocused pull request is asked to split, whoever wrote it.
+- **Tests check something real.** Tests written by the same tool that wrote the code can share its mistakes, so
+  tie expected tax and financial results to an official worked example or calculator, not only to the code's own
+  output.
+- **Evidence still rules for tax and finance.** No person or tool can be the source of a rate or a rule. Every
+  figure needs an official source (the tax authority, the legislation or government guidance), cited next to the
+  figure with its URL, section and the date read. An agent may find and read the source; the reviewer checks
+  the citation before merge. If the source cannot be confirmed, mark the figure unconfirmed instead of guessing.
+- **Keep private data out.** Do not paste real financial data or secrets into a tool to produce a contribution.
+- **The CLA still applies.** You must be entitled to submit the result under the [CLA](CLA.md).
+- **No unsolicited bulk changes.** Mass pull requests that no one asked for (sweeping rewrites, drive-by
+  renames across the codebase) are closed. Open an issue first for anything large.
 
 ## Reporting problems
 

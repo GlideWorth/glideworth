@@ -1,0 +1,145 @@
+---
+title: "Boldin vs ProjectionLab: price and features"
+description: "Boldin and ProjectionLab side by side from their public pages: price, free tiers, Monte Carlo, countries, bank linking, AI and self-hosting, all sourced."
+ogTitle: Boldin vs ProjectionLab
+competitor: Boldin and ProjectionLab
+checkedOn: 2026-11-19
+sources:
+  - label: Boldin pricing page
+    url: https://boldin.com/pricing/
+    accessed: 2026-11-16
+  - label: "Boldin help: is PlannerPlus suitable for Canadians or other non-US citizens"
+    url: https://help.boldin.com/en/articles/6509299-is-plannerplus-suitable-for-canadians-or-other-non-us-citizens-planning-for-retirement
+    accessed: 2026-11-16
+  - label: Boldin security page
+    url: https://www.boldin.com/security
+    accessed: 2026-11-16
+  - label: "Boldin article: understanding Boldin's Monte Carlo simulation (4 July 2025)"
+    url: https://www.boldin.com/retirement/understanding-boldins-monte-carlo-simulation-what-it-is-why-it-matters-and-whats-new/
+    accessed: 2026-11-16
+  - label: Boldin about page
+    url: https://www.boldin.com/about
+    accessed: 2026-11-16
+  - label: Boldin release notes
+    url: https://www.boldin.com/retirement/release-notes/
+    accessed: 2026-11-16
+  - label: ProjectionLab pricing page
+    url: https://projectionlab.com/pricing
+    accessed: 2026-11-19
+  - label: ProjectionLab home page
+    url: https://projectionlab.com/
+    accessed: 2026-11-16
+  - label: ProjectionLab Monte Carlo page
+    url: https://projectionlab.com/monte-carlo
+    accessed: 2026-11-16
+  - label: ProjectionLab security page
+    url: https://projectionlab.com/security
+    accessed: 2026-11-16
+  - label: ProjectionLab changelog
+    url: https://projectionlab.com/changelog
+    accessed: 2026-11-16
+  - label: ProjectionLab about page
+    url: https://projectionlab.com/about
+    accessed: 2026-11-16
+  - label: "ProjectionLab: Important Update on Self-Hosting ProjectionLab (6 March 2025)"
+    url: https://projectionlab.com/help/offline-version
+    accessed: 2026-11-19
+  - label: "ProjectionLab help: subscription charge"
+    url: https://cdn.projectionlab.com/help/subscription-charge
+    accessed: 2026-11-17
+---
+
+import { formatPrice, pricing } from '../../config/pricing';
+import { facts } from '../../lib/facts';
+import { site } from '../../config/site';
+
+Boldin and ProjectionLab are the two hosted retirement planners people most often weigh against each other. This
+page puts them side by side using only what each says about itself on its public pages, with the page and the date
+we read it next to every statement. We make Glideworth, a third planner, so we say where it fits at the end and
+keep it out of the comparison itself.
+
+<Callout type="note" title="How to read this page">
+  We did not create accounts or use either product, so this is not a hands-on review: it describes what each
+  company says its product does. Facts were read on 16 to 19 November 2026. Products change. If you find something
+  out of date or wrong, write to <a href={`mailto:${site.contact.hello}`}>{site.contact.hello}</a> and we will
+  correct it.
+</Callout>
+
+## The short version
+
+- **Boldin** is a US-focused planner with connected bank accounts on its paid plan, a built-in AI assistant and an
+  optional paid session with a CERTIFIED FINANCIAL PLANNER professional
+  ([pricing](https://boldin.com/pricing/), read 16 Nov 2026). Its help pages say it is built on US rules and cannot
+  apply other countries' tax rules
+  ([help](https://help.boldin.com/en/articles/6509299-is-plannerplus-suitable-for-canadians-or-other-non-us-citizens-planning-for-retirement),
+  16 Nov 2026).
+- **ProjectionLab** is a planner with a free tier that includes Monte Carlo and historical backtesting, tax
+  presets for several countries, and no linked accounts required
+  ([pricing](https://projectionlab.com/pricing), [home page](https://projectionlab.com/),
+  [security](https://projectionlab.com/security), 16 Nov 2026).
+
+## Side by side
+
+| | Boldin | ProjectionLab |
+|---|---|---|
+| Price | Basic: free. PlannerPlus: $14 a month or $168 a year, after a 14-day free trial ([pricing](https://boldin.com/pricing/), 16 Nov 2026) | Basic $0 a year; Premium $129 a year; Pro $549 a year ([pricing](https://projectionlab.com/pricing), 19 Nov 2026). Its help pages say the trial lasts 7 days ([help](https://cdn.projectionlab.com/help/subscription-charge), 17 Nov 2026) |
+| Free tier | Basic lists 100+ inputs, two interactive explorers, 10+ charts and limited AI Q&A, and states no Monte Carlo, tax insights, withdrawal strategy or Roth conversion explorer ([pricing](https://boldin.com/pricing/), 16 Nov 2026) | Basic: forecasting, planning, Monte Carlo and historical backtesting ([pricing](https://projectionlab.com/pricing), 16 Nov 2026) |
+| Monte Carlo | PlannerPlus: thousands of trials with randomised monthly returns, one blended return and standard deviation per account ([article](https://www.boldin.com/retirement/understanding-boldins-monte-carlo-simulation-what-it-is-why-it-matters-and-whats-new/), 16 Nov 2026) | Monte Carlo and historical backtesting, each trial tied to a historical return sequence, with custom distributions ([Monte Carlo page](https://projectionlab.com/monte-carlo), 16 Nov 2026) |
+| Countries | US tax law only ([help](https://help.boldin.com/en/articles/6509299-is-plannerplus-suitable-for-canadians-or-other-non-us-citizens-planning-for-retirement), 16 Nov 2026) | Presets named on its home page include Canada, the UK, Australia, Germany and the Netherlands, "and more" ([home page](https://projectionlab.com/), 16 Nov 2026) |
+| Bank connections | Connected accounts on PlannerPlus ([pricing](https://boldin.com/pricing/), 16 Nov 2026) | No linked accounts required ([security](https://projectionlab.com/security), 16 Nov 2026) |
+| Tax planning | PlannerPlus lists federal and state taxes, Medicare and IRMAA, net investment income tax and the 10% early-withdrawal penalty ([pricing](https://boldin.com/pricing/) and [release notes](https://www.boldin.com/retirement/release-notes/), 16 Nov 2026) | Premium lists Roth conversions, tax optimisation, withdrawal strategies, estate planning and compare mode; v4.6.0 added an Optimize tool ([pricing](https://projectionlab.com/pricing), [changelog](https://projectionlab.com/changelog), 16 Nov 2026) |
+| AI | Built-in Boldin AI: limited on Basic, unlimited Q&A on PlannerPlus ([pricing](https://boldin.com/pricing/), 16 Nov 2026) | No official MCP server or AI assistant in its ten most recent changelog entries ([changelog](https://projectionlab.com/changelog), 16 Nov 2026) |
+| Self-hosting | The pages we read do not mention self-hosting or source availability ([security](https://www.boldin.com/security), 16 Nov 2026) | Future updates ship to the web app only; bug-fix support for self-hosted copies ran until 31 December 2025 ([self-hosting update](https://projectionlab.com/help/offline-version), 19 Nov 2026) |
+| Security assurances | Says SOC 2 Type 1 and Type 2 and optional two-factor sign-in ([security](https://www.boldin.com/security), 16 Nov 2026) | Describes a programme "designed to align with" SOC 2 control areas ([security](https://projectionlab.com/security), 16 Nov 2026) |
+| Human advice | Boldin Advisors, $3,200 flat fee ([pricing](https://boldin.com/pricing/), 16 Nov 2026) | A Pro plan for advisers and coaches managing clients ([pricing](https://projectionlab.com/pricing), 16 Nov 2026) |
+| Track record | Renamed from NewRetirement in September 2024; says more than 450,000 people have complete plans ([about](https://www.boldin.com/about), 16 Nov 2026) | Development began in 2021 ([about](https://projectionlab.com/about), 16 Nov 2026) |
+
+## Which one suits whom
+
+**Boldin may suit you if** you live in the United States, want balances to update from your institutions, and
+like the option of paying for a session with a planner.
+
+**ProjectionLab may suit you if** you want Monte Carlo and historical backtesting without paying, plan with one of
+its country presets, or prefer not to link your bank.
+
+**On price**, a year of Boldin PlannerPlus is $168 and a year of ProjectionLab Premium is $129, from the pricing
+pages above. Both have a free tier, and they include different things.
+
+## Where Glideworth fits
+
+Glideworth is a third option, and we make it, so weigh this section accordingly. It answers in money and dates
+(the most you can spend, the earliest you can retire, at a chance of success you choose), estimates tax for
+{facts.taxCountryCount} countries, never asks for a bank login, connects to your own ChatGPT or Claude, and is
+open source, so you can self-host every feature for free. The hosted service costs {formatPrice(pricing.monthly)}
+a month or {formatPrice(pricing.yearly)} a year. It is new, has no human advice, and is less mature than either
+product above. It can import a ProjectionLab JSON export; it has no Boldin importer.
+
+The detailed comparisons are on [Glideworth vs Boldin](/compare/boldin/) and
+[Glideworth vs ProjectionLab](/compare/projectionlab/). To try the maths before choosing any planner, the
+[free calculators](/tools/) run Glideworth's engine in your browser with no sign-up.
+
+## Questions
+
+<FAQ items={[
+  {
+    q: 'Is Boldin or ProjectionLab cheaper?',
+    a: '<p>From their pricing pages read in November 2026: Boldin PlannerPlus is $14 a month or $168 a year, and ProjectionLab Premium is $129 a year. Both have a free tier with different contents: ProjectionLab Basic includes Monte Carlo and historical backtesting; Boldin Basic does not include Monte Carlo.</p>'
+  },
+  {
+    q: 'Which works outside the United States?',
+    a: '<p>Boldin says it is built on US rules and cannot apply other countries’ tax rules. ProjectionLab names presets for Canada, the UK, Australia, Germany and the Netherlands, “and more”, on its home page.</p>'
+  },
+  {
+    q: 'Which one links to my bank?',
+    a: '<p>Boldin lists connected accounts on PlannerPlus. ProjectionLab says no linked accounts are required.</p>'
+  },
+  {
+    q: 'Did you test both products?',
+    a: `<p>No. This page reports what each company says on its public pages, with the date read. If something is out of date, email <a href="mailto:${site.contact.hello}">${site.contact.hello}</a>.</p>`
+  }
+]} />
+
+<Callout type="note" title="Not a recommendation">
+  This page describes products as they were on the dates shown. It is not financial advice or a recommendation
+  of any product.
+</Callout>

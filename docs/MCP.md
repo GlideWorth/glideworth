@@ -94,6 +94,14 @@ For an agent that should install and connect Glideworth end to end, see
 
 ### Claude Code
 
+The plugin (hosted service): it adds the server and the skill in one step, and you sign in with OAuth the first
+time a tool runs.
+
+```text
+/plugin marketplace add GlideWorth/glideworth
+/plugin install glideworth@glideworth
+```
+
 HTTP with a key (the server must be running). `--scope user` keeps it out of project files:
 
 ```bash
@@ -353,7 +361,7 @@ Details, endpoints and the security rules are in [API.md](./API.md#oauth-for-rem
 
 ## Tools
 
-69 tools: 50 read/compute tools (all `readOnlyHint`) and 19 write tools (only with writes enabled and a `write` key; never for a `viewer`). The hosted service (cloud mode) has the same tools; there, writes are enabled per workspace by its owner (workspace settings, `mcpWrites`) instead of `GLIDEWORTH_MCP_ALLOW_WRITES`, credentials are `gwk_…` API keys or `gwa_…` OAuth tokens of one workspace, the OAuth consent page signs you in with your Glideworth account and asks which workspace to connect, and a read-only workspace (trial ended, payment lapsed) offers no write tools while job tools answer `ACCOUNT_READ_ONLY` with the billing link. The server instructions the client receives (about 2 KB) point agents at the right tool for the common questions.
+69 tools: 50 read/compute tools and 19 write-scope tools (only with writes enabled and a `write` key; never for a `viewer`). Every tool carries a `title` and accurate annotations: the 50 read/compute tools and `list_share_links` (write scope, because share links are sensitive, but it only reads) are `readOnlyHint`; `destructiveHint` is true for every tool that overwrites or removes existing state (applying a change set or an import, setting balances, FX rates or the check-in schedule, discarding or cancelling, revoking a link, marking notifications read), even where the plan history can undo it; `openWorldHint` is true only for `create_share_link`, which publishes plan results at a public URL. The hosted service (cloud mode) has the same tools; there, writes are enabled per workspace by its owner (workspace settings, `mcpWrites`) instead of `GLIDEWORTH_MCP_ALLOW_WRITES`, credentials are `gwk_…` API keys or `gwa_…` OAuth tokens of one workspace, the OAuth consent page signs you in with your Glideworth account and asks which workspace to connect, and a read-only workspace (trial ended, payment lapsed) offers no write tools while job tools answer `ACCOUNT_READ_ONLY` with the billing link. The server instructions the client receives (about 2 KB) point agents at the right tool for the common questions.
 
 Money in outputs is in today's money unless a `basis` argument says otherwise. Ids are always the
 ones returned by the list tools; pass them back verbatim.

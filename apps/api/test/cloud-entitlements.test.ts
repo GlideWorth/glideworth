@@ -186,6 +186,8 @@ describe("a read-only workspace (trial ended, never paid)", () => {
       arguments: { planId: "plan-main", trials: 333, wait: 0 },
     });
     expect(mc.text).toContain("ACCOUNT_READ_ONLY");
+    // No upgrade prompt inside the assistant (ChatGPT and Claude directory rules): no billing link, no "subscribe".
+    expect(mc.text).not.toMatch(/billing|subscribe|https?:\/\//i);
   });
 
   it("the scheduler skips the workspace and webhooks stay silent", async () => {

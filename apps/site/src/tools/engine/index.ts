@@ -9,9 +9,23 @@ import { runCoast } from "./coast";
 import type { RunOptions } from "./common";
 import { runFatFire } from "./fat-fire";
 import { runFire } from "./fire";
+import { runGuardrails } from "./guardrails";
+import { runHistoricalBacktest } from "./historical-backtest";
 import { runHowLong } from "./how-long";
+import { runIrmaa } from "./irmaa";
+import { runIsaVsPension } from "./isa-vs-pension";
 import { runMonteCarloTool } from "./monte-carlo";
+import { runRmd } from "./rmd";
+import { runSepp } from "./sepp";
+import { runUaeGratuity } from "./uae-gratuity";
+import { runUkFire } from "./uk-fire";
+import { runUkPensionAge } from "./uk-pension-age";
+import { runRetirementSpending } from "./retirement-spending";
+import { runUkDrawdown } from "./uk-drawdown";
 import { runWithdrawal } from "./withdrawal";
+import { runRetirementTax } from "./retirement-tax";
+import { runRothConversion } from "./roth-conversion";
+import { runAcaSubsidy } from "./aca-subsidy";
 
 const RUNNERS: Record<ToolId, (v: Values, opts: RunOptions) => Promise<ViewModel>> = {
   "coast-fire": runCoast,
@@ -21,6 +35,20 @@ const RUNNERS: Record<ToolId, (v: Values, opts: RunOptions) => Promise<ViewModel
   "how-long": runHowLong,
   withdrawal: runWithdrawal,
   "monte-carlo": runMonteCarloTool,
+  rmd: runRmd,
+  "sepp-72t": runSepp,
+  irmaa: runIrmaa,
+  "uk-fire": runUkFire,
+  "uk-pension-age": runUkPensionAge,
+  "uae-gratuity": runUaeGratuity,
+  "retirement-tax": runRetirementTax,
+  "roth-conversion": runRothConversion,
+  "aca-subsidy": runAcaSubsidy,
+  guardrails: runGuardrails,
+  "retirement-spending": runRetirementSpending,
+  "historical-backtest": runHistoricalBacktest,
+  "uk-drawdown": runUkDrawdown,
+  "isa-vs-pension": runIsaVsPension,
 };
 
 export type { RunOptions };

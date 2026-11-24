@@ -73,6 +73,11 @@ export interface CloudHostOptions {
   /** Public share-link reads per minute per address (design 6.1: 60). */
   shareRateLimitPerMinute?: number;
   maxBodyMb?: number;
+  /**
+   * The ChatGPT plugin directory's domain-verification token, served at `/.well-known/openai-apps-challenge`
+   * (default: GLIDEWORTH_OPENAI_APPS_CHALLENGE; unset answers 404). docs/launch/ai-directory-submission.md.
+   */
+  openaiAppsChallenge?: string;
 }
 
 const billingUrlOf = (publicUrl: string) => `${publicUrl.replace(/\/+$/, "")}/settings/billing`;
@@ -393,6 +398,8 @@ function createCloudApp(
       return c.html(docsHtml);
     },
     securityTxt: securityTxt(`${publicUrl.replace(/\/+$/, "")}/.well-known/security.txt`),
+    openaiAppsChallenge:
+      o.openaiAppsChallenge ?? (process.env.GLIDEWORTH_OPENAI_APPS_CHALLENGE?.trim() || undefined),
   };
 
   const here = dirname(fileURLToPath(import.meta.url));

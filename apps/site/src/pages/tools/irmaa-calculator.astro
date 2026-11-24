@@ -1,0 +1,126 @@
+---
+import { irmaaMonthly, TAX_SIMPLIFICATIONS, US_IRMAA_YEARS } from '@glideworth/core';
+import ToolPage from '../../components/tools/ToolPage.astro';
+import { dollars, LOOKBACK_YEARS, rangeText, tierOf, tiers } from '../../tools/engine/irmaa';
+import { money } from '../../tools/format';
+import { externalLinkProps } from '../../lib/links';
+import { irmaaSpec } from '../../tools/specs';
+import { defaults, num, str } from '../../tools/state';
+
+const m = (x: number) => money(x, 'USD');
+// Worked example: the calculator's own defaults, computed by its own code at build time.
+const ex = defaults(irmaaSpec);
+const magi = num(ex, 'magi');
+const year = Number(str(ex, 'year'));
+const t = US_IRMAA_YEARS.find((y) => y.year === year)!;
+const exTier = tierOf(magi, 'single', t);
+const exMonthly = irmaaMonthly(magi, 'single', 1, t);
+const exTiers = tiers('single', t);
+const nextUp = exTiers[exTier + 1];
+const jointMagi = magi * 2;
+const jointMonthly = irmaaMonthly(jointMagi, 'married-joint', 1, t);
+
+const years = [...US_IRMAA_YEARS].sort((a, b) => b.year - a.year);
+const statuses = [
+  { id: 'single', label: 'Single, head of household or qualifying surviving spouse' },
+  { id: 'married-joint', label: 'Married filing jointly' },
+  { id: 'married-separate', label: 'Married filing separately' },
+] as const;
+const latest = years[0]!;
+const yearList = years.map((y) => y.year).sort().join(' and ');
+const irmaaNote = (TAX_SIMPLIFICATIONS['us-federal'] ?? []).find((s) => s.startsWith('IRMAA'));
+
+const faq = [
+  {
+    q: `What are the IRMAA brackets for ${latest.year}?`,
+    a: `<p>For ${latest.year} premiums, based on ${latest.year - LOOKBACK_YEARS} MAGI, a single filer pays a surcharge above ${m(tiers('single', latest)[1]!.above!)} and a married couple filing jointly above ${m(tiers('married-joint', latest)[1]!.above!)}. The full tables are below, with the standard Part B premium of ${dollars(latest.standardPartB)} a month.</p>`,
+  },
+  {
+    q: `What are the IRMAA brackets for ${latest.year + 1}?`,
+    a: `<p>Glideworth’s data has the tiers for ${yearList}; later years are added when Medicare publishes them. ${latest.year + 1} premiums will be based on your ${latest.year + 1 - LOOKBACK_YEARS} MAGI, so the income you have this year is the income that counts.</p>`,
+  },
+  {
+    q: 'Why does IRMAA use income from two years ago?',
+    a: `<p>Premiums for a year are set from the tax return of ${LOOKBACK_YEARS} years earlier; that is how Glideworth’s US tax data applies them. A big one-off income, such as a large Roth conversion or a property sale, shows up in your premiums ${LOOKBACK_YEARS} years later.</p>`,
+  },
+  {
+    q: 'What happens if I go one dollar over a threshold?',
+    a: '<p>You pay the whole next tier for the year. The tiers are cliffs, not brackets that apply only to the income above them, which is why the calculator shows how far you are from the next one.</p>',
+  },
+  {
+    q: 'Do both spouses pay IRMAA?',
+    a: `<p>Each person on Medicare pays the surcharge. With MAGI of ${m(jointMagi)} on a joint return in ${year}, that is ${dollars(jointMonthly)} a month each, or ${m(jointMonthly * 24)} a year if both of you are on Medicare.</p>`,
+  },
+];
+---
+
+<ToolPage
+  id="irmaa"
+  heading="IRMAA calculator"
+  lede="Your Medicare income-related monthly adjustment (IRMAA): the tier, the extra Part B and Part D premiums from your income two years earlier, and how far you are from the next tier. It uses the tiers in Glideworth’s US tax data and runs in your browser; nothing you type is sent anywhere."
+  faq={faq}
+  adds="The planner estimates IRMAA each year from the income it projects two years earlier, and can plan Roth conversions that stay below an IRMAA tier."
+  related={[
+    { href: '/planning/us/', label: 'Retirement planning in the United States' },
+    { href: '/features/withdrawal-strategies/', label: 'Tax strategies in the planner' },
+  ]}
+>
+  <h2>How the calculator works</h2>
+  <ol>
+    <li>
+      <strong>The income year.</strong> Premiums for a year use your modified adjusted gross income (MAGI) from the tax
+      return {LOOKBACK_YEARS} years earlier.
+    </li>
+    <li>
+      <strong>The tier.</strong> Your MAGI is compared with the thresholds for your filing status. Each tier above the
+      standard one adds a fixed monthly amount to Part B and to Part D.
+    </li>
+    <li>
+      <strong>The distance.</strong> The calculator shows how much more MAGI would move you up a tier, and what that tier
+      adds.
+    </li>
+  </ol>
+
+  <h2>Worked example</h2>
+  <p>
+    Computed by the calculator’s own code when this page was built. A single filer with {m(magi)} of MAGI in
+    {' '}{year - LOOKBACK_YEARS} is in {exTier === 0 ? 'the standard tier' : `tier ${exTier}`} for {year}:
+    {' '}{exTier === 0 ? 'no surcharge' : `${dollars(exMonthly)} a month more, ${m(exMonthly * 12)} a year`}.
+    {nextUp && ` The next tier starts above ${m(nextUp.above!)}, ${m(nextUp.above! - magi)} away, and would add ${dollars(nextUp.monthly - exTiers[exTier]!.monthly)} a month.`}
+  </p>
+
+  {
+    years.map((y) => (
+      <>
+        <h2>IRMAA brackets for {y.year} (from {y.year - LOOKBACK_YEARS} income)</h2>
+        <p>Standard Part B premium: {dollars(y.standardPartB)} a month.</p>
+        {statuses.map((s) => (
+          <div class="table-scroll" tabindex="0" role="region" aria-label={`IRMAA ${y.year}, ${s.label}`}>
+            <table>
+              <caption>{y.year}: {s.label} (per person, per month)</caption>
+              <thead>
+                <tr><th>MAGI in {y.year - LOOKBACK_YEARS}</th><th>Part B premium</th><th>Part D surcharge</th></tr>
+              </thead>
+              <tbody>
+                {tiers(s.id, y).map((x) => (
+                  <tr><td>{rangeText(x)}</td><td>{dollars(x.partB)}</td><td>{dollars(x.partD)}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
+        <p>Source: <a href={y.source} {...externalLinkProps(y.source)}>{new URL(y.source).hostname}</a>, as held in Glideworth’s US data.</p>
+      </>
+    ))
+  }
+
+  <h2>What this assumes and leaves out</h2>
+  <ul>
+    <li>Only the premium years in Glideworth’s data ({yearList}). Later years are not projected here.</li>
+    <li>You enter MAGI as one number; the calculator does not work it out from your income.</li>
+    <li>The Part D figures are the income-related adjustment only, not your drug plan’s own premium.</li>
+    <li>Glideworth applies the single tiers to head of household and qualifying surviving spouse.</li>
+    <li>The calculator uses only the MAGI you enter for the income year.</li>
+    {irmaaNote && <li>In the full planner: {irmaaNote}</li>}
+  </ul>
+</ToolPage>

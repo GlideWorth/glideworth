@@ -1,0 +1,154 @@
+---
+import { MARKET_DATASETS } from '@glideworth/core';
+import ToolPage from '../../components/tools/ToolPage.astro';
+import { backtest, type BacktestRule, RULE_NAMES } from '../../tools/engine/historical-backtest';
+import { HISTORY_DATASET } from '../../tools/engine/model';
+import { money, pct } from '../../tools/format';
+import { SPECS } from '../../tools/specs';
+import { defaults } from '../../tools/state';
+import type { Values } from '../../tools/types';
+
+const ds = MARKET_DATASETS[HISTORY_DATASET];
+const m = (x: number) => money(x, 'USD');
+// Worked examples, computed by the calculator's own engine code at build time (no random numbers:
+// every start year is replayed once).
+const ex: Values = { ...defaults(SPECS['historical-backtest']), timing: 'start' };
+const base = await backtest(ex);
+const n = base.runs.length;
+const first = base.runs[0]!.startYear;
+const last = base.runs[n - 1]!.startYear;
+const worst = base.worst[0]!;
+
+const RATES = [3, 3.5, 4, 4.5, 5];
+const MIXES = [40, 60, 80, 100];
+const grid = await Promise.all(
+  RATES.map(async (r) => [
+    `${r}%`,
+    ...(await Promise.all(
+      MIXES.map(async (stocks) => {
+        const b = await backtest({ ...ex, spend: r * 10_000, stocks });
+        return `${b.lasted} of ${b.runs.length}`;
+      }),
+    )),
+  ]),
+);
+const rules = await Promise.all(
+  (['constant', 'guardrails', 'percent', 'vpw'] as BacktestRule[]).map(async (rule) => {
+    const b = await backtest({ ...ex, rule });
+    return [RULE_NAMES[rule], `${b.lasted} of ${b.runs.length}`, m(b.firstYear), m(b.lowestSpending), m(b.medianEnd)];
+  }),
+);
+const fortyYears = await backtest({ ...ex, years: 40 });
+const midYear = await backtest({ ...ex, timing: 'mid' });
+
+const faq = [
+  {
+    q: 'What is a historical retirement calculator?',
+    a: '<p>One that tests a plan on what actually happened, not on simulated returns. It takes each past year as a possible first year of retirement, runs your withdrawals through the real returns and inflation that followed, in their real order, and counts how many start years paid every year. It does not use random numbers, so the same inputs always give the same answer.</p>',
+  },
+  {
+    q: 'How is this different from FIRECalc, FI Calc or cFIREsim?',
+    a: `<p>They are other calculators built on the idea of replaying history. This calculator runs the Glideworth planning engine on ${ds.label}, in your browser. Different data sets, start dates, fees and timing conventions give different counts, so compare the method notes before comparing numbers.</p>`,
+  },
+  {
+    q: 'Which start year was worst?',
+    a: `<p>In the worked example on this page it was ${worst.startYear}.${worst.startYear >= 1960 && worst.startYear <= 1972 ? ' Retirements that began in the mid-to-late 1960s met the high inflation of the 1970s in their early years, so withdrawals rising with inflation came out of a portfolio that was falling in real terms.' : ''} Which start year is worst for your plan depends on its length, mix and rule; the calculator lists the five worst.</p>`,
+  },
+  {
+    q: 'Is a plan that survived every start year safe?',
+    a: `<p>No. There are only ${n} overlapping 30-year periods in the data, and they share most of their years, so they are far from ${n} independent tests. The future can be worse than the worst start year. Treat a narrow pass as a warning.</p>`,
+  },
+  {
+    q: 'Why do the most recent start years not appear?',
+    a: `<p>A start year counts only if all its years are in the data. With a 30-year retirement the last start year is ${last}; a longer retirement has fewer start years.</p>`,
+  },
+];
+---
+
+<ToolPage
+  id="historical-backtest"
+  heading="Historical retirement calculator: your plan in every start year since 1928"
+  lede="Replay your withdrawals through every start year of US market history from 1928, with each year’s path drawn, the share that lasted, the worst start years and what was left. Choose constant spending or one of the engine’s withdrawal rules. It runs the Glideworth planning engine in your browser; nothing you type is sent anywhere."
+  faq={faq}
+  adds="The planner replays your whole plan through history, with several accounts, tax and dated income and expenses, and shows results by start year."
+  related={[
+    { href: '/features/monte-carlo/', label: 'Monte Carlo and backtests in the planner' },
+    { href: '/docs/methodology/historical-data/', label: 'Historical data and its limits' },
+    { href: '/docs/methodology/monte-carlo/', label: 'Methodology: Monte Carlo and historical replay' },
+    { href: '/tools/monte-carlo-retirement-calculator/', label: 'Monte Carlo retirement calculator' },
+  ]}
+>
+  <h2>How a historical backtest works</h2>
+  <ol>
+    <li>Take a start year, say 1966, as the first year of retirement.</li>
+    <li>
+      Run the plan through the returns and inflation that followed, year by year in their real order: take out the
+      spending, grow the stocks and bonds, rebalance.
+    </li>
+    <li>Record whether every year was paid in full, the lowest spending and what was left.</li>
+    <li>Repeat for every start year with enough years of data after it.</li>
+  </ol>
+  <p>
+    This is the engine’s historical-sequential method on {ds.label}. It uses no random numbers: each start year is
+    replayed once. Results are converted to today’s money with the inflation in the data, so every line on the chart is
+    comparable.
+  </p>
+
+  <h2>Worked example</h2>
+  <p>
+    Computed by the calculator’s own code when this page was built: {m(1_000_000)}, {m(40_000)} a year rising with
+    inflation (4% of the starting portfolio), 30 years, 60% stocks and 40% bonds rebalanced yearly, withdrawals at the
+    start of each year, no tax, no fees. Of the {n} start years from {first} to {last}, {base.lasted} paid every year in
+    full ({pct(base.lasted / n, 1)}).{' '}
+    {
+      worst.firstShortYear === null
+        ? `The worst start year, ${worst.startYear}, ended with ${m(worst.end)}.`
+        : `The worst was ${worst.startYear}, which ran short in year ${worst.firstShortYear}.`
+    }{' '}
+    With money moving in the middle of the year, the calculator’s default, {midYear.lasted} of {midYear.runs.length} lasted;
+    over 40 years, {fortyYears.lasted} of {fortyYears.runs.length}.
+  </p>
+  <div class="table-scroll" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
+    <table>
+      <caption>Start years that paid every year, 30 years, by initial rate and stock share</caption>
+      <thead>
+        <tr><th>Initial rate</th>{MIXES.map((s) => <th>{s}% stocks</th>)}</tr>
+      </thead>
+      <tbody>{grid.map((r) => <tr>{r.map((c) => <td>{c}</td>)}</tr>)}</tbody>
+    </table>
+  </div>
+  <p>The same {m(1_000_000)} and 4% start under each spending rule:</p>
+  <div class="table-scroll" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
+    <table>
+      <caption>Spending rules on {n} historical start years (today’s money)</caption>
+      <thead>
+        <tr><th>Rule</th><th>Paid in full</th><th>Year 1</th><th>Lowest year, any start</th><th>Median left after 30 years</th></tr>
+      </thead>
+      <tbody>{rules.map((r) => <tr>{r.map((c) => <td>{c}</td>)}</tr>)}</tbody>
+    </table>
+  </div>
+  <p>
+    Constant spending keeps income steady and puts the risk in running out. The percentage rules cannot run out in the
+    same way, and put the risk in income instead: look at the lowest year. VPW ignores your spending figure and starts
+    from its own; a start year counted as short under VPW is nearly always short only in its final year.
+  </p>
+
+  <h2>What this assumes and leaves out</h2>
+  <ul>
+    <li>
+      <strong>One country’s history, and not much of it.</strong> {ds.label}. Data: Aswath Damodaran, <em
+        >Historical Returns on Stocks, Bonds and Bills</em
+      > (NYU Stern), and US Bureau of Labor Statistics CPI-U. Overlapping start years share most of their years.
+    </li>
+    <li>
+      <strong>A simple portfolio.</strong> The S&amp;P 500 and 10-year Treasuries in a fixed mix, rebalanced yearly, with
+      no fees.
+    </li>
+    <li><strong>Calendar years.</strong> The engine steps one year at a time; returns within a year are not modelled.</li>
+    <li>No tax unless you set the flat rate, and other income only as one amount from a chosen year.</li>
+    <li>
+      <strong>Timing matters.</strong> Withdrawals at the start of the year are the strictest test; the calculator’s
+      default is the middle of the year, as in the planner.
+    </li>
+  </ul>
+</ToolPage>

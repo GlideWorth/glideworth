@@ -45,6 +45,27 @@ function yTick(v: number, spec: ChartSpec): string {
   return moneyCompact(v, spec.currency);
 }
 
+/** SVG path data for a line; gaps (null or non-finite) lift the pen. Empty when nothing is drawn. */
+function linePath(
+  values: readonly (number | null)[],
+  xs: readonly number[],
+  sx: (v: number) => number,
+  sy: (v: number) => number,
+): string {
+  let d = "";
+  let pen = false;
+  values.forEach((v, i) => {
+    const x = xs[i];
+    if (v === null || !Number.isFinite(v) || x === undefined) {
+      pen = false;
+      return;
+    }
+    d += `${pen ? "L" : "M"}${f1(sx(x))} ${f1(sy(v))} `;
+    pen = true;
+  });
+  return d.trim();
+}
+
 export function chartSvg(spec: ChartSpec): string {
   const xs = spec.x;
   const x0 = xs[0] ?? 0;
@@ -54,6 +75,8 @@ export function chartSvg(spec: ChartSpec): string {
     for (const v of s.values) if (v !== null && Number.isFinite(v)) all.push(v);
   for (const b of spec.bands ?? [])
     for (const v of [...b.lower, ...b.upper]) if (Number.isFinite(v)) all.push(v);
+  for (const g of spec.paths ?? [])
+    for (const l of g.lines) for (const v of l) if (v !== null && Number.isFinite(v)) all.push(v);
   for (const h of spec.hLines ?? []) if (Number.isFinite(h.y)) all.push(h.y);
   const dataMax = all.length ? Math.max(...all) : 1;
   const dataMin = all.length ? Math.min(...all) : 0;
@@ -115,6 +138,12 @@ export function chartSvg(spec: ChartSpec): string {
       .join(" ");
     parts.push(`<path class="tc-band tc-band-${b.level} tone-${b.tone}" d="${top} ${bottom} Z"/>`);
   }
+  // Path groups (thin lines, one per historical start year) sit under the series.
+  for (const g of spec.paths ?? [])
+    for (const l of g.lines) {
+      const d = linePath(l, xs, sx, sy);
+      if (d) parts.push(`<path class="tc-line tc-path tc-${g.style} tone-${g.tone}" d="${d}"/>`);
+    }
   for (const s of spec.series) {
     if (bar) {
       s.values.forEach((v, i) => {
@@ -127,18 +156,8 @@ export function chartSvg(spec: ChartSpec): string {
       });
       continue;
     }
-    let d = "";
-    let pen = false;
-    s.values.forEach((v, i) => {
-      const x = xs[i];
-      if (v === null || !Number.isFinite(v) || x === undefined) {
-        pen = false;
-        return;
-      }
-      d += `${pen ? "L" : "M"}${f1(sx(x))} ${f1(sy(v))} `;
-      pen = true;
-    });
-    if (d) parts.push(`<path class="tc-line tc-${s.style} tone-${s.tone}" d="${d.trim()}"/>`);
+    const d = linePath(s.values, xs, sx, sy);
+    if (d) parts.push(`<path class="tc-line tc-${s.style} tone-${s.tone}" d="${d}"/>`);
   }
 
   // Reference lines with short labels.

@@ -71,7 +71,7 @@ export function mountCalculator(spec: ToolSpec): void {
   }
 
   function updateCurrency() {
-    const cur = String(values.cur ?? "USD");
+    const cur = String(values.cur ?? spec.currency ?? "USD");
     const sym = currencySymbol(cur);
     for (const el of form.querySelectorAll<HTMLElement>("[data-currency]")) el.textContent = sym;
   }

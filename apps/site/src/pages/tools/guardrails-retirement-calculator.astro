@@ -1,0 +1,203 @@
+---
+import { MARKET_DATASETS } from '@glideworth/core';
+import ToolPage from '../../components/tools/ToolPage.astro';
+import { HISTORY_DATASET } from '../../tools/engine/model';
+import { guardrails, RISK_DEFAULTS, RISK_TRIALS } from '../../tools/engine/guardrails';
+import { money, pct, whole } from '../../tools/format';
+import { SPECS } from '../../tools/specs';
+import { defaults } from '../../tools/state';
+import type { Values } from '../../tools/types';
+
+const ds = MARKET_DATASETS[HISTORY_DATASET];
+const m = (x: number) => money(x, 'USD');
+// Worked example, computed by the calculator's own engine code at build time: the defaults with
+// spending of 4% instead of 5%, so the risk-based rules have something to do.
+const ex: Values = { ...defaults(SPECS.guardrails), spend: 40_000 };
+const a = await guardrails(ex);
+const gk = a.gk;
+const t = a.risk.thresholds!;
+const s0 = a.risk.currentSuccessRate ?? a.risk.current.successRate;
+const action = a.risk.current.action;
+const n = a.history.constant.length;
+const row = (runs: typeof a.history.gk) => ({
+  low: Math.min(...runs.map((r) => r.minSpending)),
+  short: runs.filter((r) => r.firstShortYear !== null).length,
+});
+const gkH = row(a.history.gk);
+const riskH = row(a.history.risk);
+const conH = row(a.history.constant);
+const badGk = a.history.gk.find((r) => r.startYear === a.bad)!;
+const badRisk = a.history.risk.find((r) => r.startYear === a.bad)!;
+const badCon = a.history.constant.find((r) => r.startYear === a.bad)!;
+
+const ext = { rel: 'noopener noreferrer' };
+const guyton2004 =
+  'https://www.financialplanningassociation.org/sites/default/files/2020-05/6%20Decision%20Rules%20and%20Portfolio%20management%20for%20Retirees%20Is%20Safe%20Initial%20Withdrawal%20Rate%20Too%20Safe.pdf';
+const guyton2006 =
+  'https://www.financialplanningassociation.org/sites/default/files/2021-11/2006%20-%20Guyton%20and%20Klinger%20-%20Decision%20Rules%20and%20SWR%20(1).PDF';
+
+const faq = [
+  {
+    q: 'What is the Guyton-Klinger rule?',
+    a: `<p>A set of decision rules for retirement withdrawals from Jonathan Guyton (2004) and Guyton and William Klinger (2006). You start at an initial withdrawal rate and raise spending with inflation, except after a losing year when your rate is above the initial one. If the current rate rises more than 20% above the initial rate, spending is cut by 10%, except in the last 15 years; if it falls more than 20% below, spending is raised by 10%. The two limits are the guardrails. This calculator uses the engine’s defaults of 20% and 10%, and lets you change both.</p>`,
+  },
+  {
+    q: 'What are risk-based guardrails?',
+    a: `<p>Guardrails that watch the plan’s chance of success instead of its withdrawal rate. You choose a target (the engine’s default is ${pct(RISK_DEFAULTS.targetSuccess, 0)}) and a band around it (${pct(RISK_DEFAULTS.lowerGuardrail, 0)} to ${pct(RISK_DEFAULTS.upperGuardrail, 0)}). While the chance stays inside the band, spending holds. When it leaves the band, spending is reset to the level that brings the chance back to the target. The calculator turns that into portfolio values, so you know in advance where a cut or a raise would come.</p>`,
+  },
+  {
+    q: 'Guyton-Klinger or risk-based guardrails: which is better?',
+    a: `<p>Neither is better in general. Guyton-Klinger reacts only to the withdrawal rate, so it is simple to apply and does not depend on a model. Risk-based guardrails react to a chance of success, which accounts for the years left and for the market model, but the thresholds move with those assumptions. In the worked example on this page, across ${n} historical start years, the lowest year under Guyton-Klinger was ${m(gkH.low)} and under risk-based guardrails ${m(riskH.low)}.</p>`,
+  },
+  {
+    q: 'Do guardrails stop the money running out?',
+    a: `<p>They make it less likely, at the price of cuts. In the worked example a year went unpaid in ${gkH.short} of ${n} start years under Guyton-Klinger and in ${riskH.short} under risk-based guardrails, against ${conH.short} for constant spending. A rule that cuts by a fixed share can still run short in a long enough fall, and Guyton-Klinger makes no cuts in the last 15 years.</p>`,
+  },
+  {
+    q: 'Why no Guyton-Klinger cuts in the last 15 years?',
+    a: '<p>Guyton and Klinger dropped the cut (their capital preservation rule) for the final 15 years, because a portfolio near the end of the horizon may be spent down. The engine follows the paper. If your plan is 15 years or less, the calculator shows no Guyton-Klinger cut.</p>',
+  },
+  {
+    q: 'I am already retired. What do I enter?',
+    a: '<p>Today’s portfolio and today’s spending. The risk-based answer then tells you what to do now. The Guyton-Klinger bands are centred on today’s withdrawal rate, as if you started the rule again today; the original rule keeps them on the rate you started with, and the full planner’s Guyton-Klinger tool accepts that initial rate.</p>',
+  },
+];
+---
+
+<ToolPage
+  id="guardrails"
+  heading="Guardrails retirement calculator: Guyton-Klinger and risk-based guardrails"
+  lede="What to spend now, the portfolio values at which you would cut or raise, and by how much, under the Guyton-Klinger rule and under risk-based guardrails. Then both rules through a bad and a typical stretch of US history. It runs the Glideworth planning engine in your browser; nothing you type is sent anywhere."
+  faq={faq}
+  adds="The planner sets guardrails on your whole plan, with other income, several accounts and tax, and tells you what they give this year."
+  related={[
+    { href: '/features/withdrawal-strategies/', label: 'Withdrawal strategies and guardrails in the planner' },
+    { href: '/docs/planning/solvers-and-guardrails/', label: 'Guide: solvers and guardrails' },
+    { href: '/tools/retirement-withdrawal-calculator/', label: 'Retirement withdrawal calculator (four rules compared)' },
+  ]}
+>
+  <h2>Two kinds of guardrail</h2>
+  <ul>
+    <li>
+      <strong>Guyton-Klinger guardrails</strong>, from Guyton’s <a {...ext} href={guyton2004}>2004</a> and Guyton and
+      Klinger’s <a {...ext} href={guyton2006}>2006</a> papers, react to the withdrawal rate: spending ÷ portfolio. The
+      guardrails sit a set distance either side of the rate you start with. Cross the upper one and spending is cut;
+      cross the lower one and it is raised.
+    </li>
+    <li>
+      <strong>Risk-based guardrails</strong> react to the chance of success: the share of simulated futures in which
+      every year is paid. Leave the band and spending is reset to the level that meets the target.
+    </li>
+  </ul>
+  <p>
+    Both are rules for when to change spending. The calculator states each in money: the portfolio value that would set
+    off a cut or a raise, and the spending you would move to.
+  </p>
+
+  <h2>Guyton-Klinger guardrails in money</h2>
+  <p class="formula">cut below = spending ÷ (initial rate × (1 + guardrail)); raise above = spending ÷ (initial rate × (1 − guardrail))</p>
+  <p>
+    With {m(ex.spend as number)} a year from {m(ex.balance as number)}, the initial rate is {pct(gk.initialRate, 1)}. With
+    a 20% guardrail, the upper limit is {pct(gk.upperRateLimit, 1)} and the lower {pct(gk.lowerRateLimit, 1)}. Spending
+    of {m(ex.spend as number)} reaches the upper limit when the portfolio falls to {m(gk.cutBelowPortfolio)}, so below
+    that the rule cuts 10% to {m(gk.spendingAfterCut)}. It reaches the lower limit when the portfolio rises to
+    {' '}{m(gk.raiseAbovePortfolio)}, so above that the rule raises 10% to {m(gk.spendingAfterRaise)}. These are the
+    engine’s own figures (core <code>guytonKlingerGuardrails</code>).
+  </p>
+
+  <h2>Risk-based guardrails in money</h2>
+  <p>
+    The engine runs the plan on {whole(RISK_TRIALS)} seeded simulations of US history ({ds.label}, random start years)
+    and reads the chance that every year is paid. It then searches, on the same simulations, for the spending that meets
+    the target and for the portfolio values at which the chance would cross the lower and upper guardrails. Because
+    every search uses the same market paths, the thresholds do not move with sampling noise from one step to the next.
+  </p>
+  <p>
+    In the worked example ({m(ex.spend as number)} from {m(ex.balance as number)}, 30 years, 60% stocks) the chance of
+    success is {pct(s0, 0)}.{' '}
+    {
+      action === 'raise'
+        ? `That is above the ${pct(RISK_DEFAULTS.upperGuardrail, 0)} upper guardrail, so the rules raise spending to ${m(t.recommendedSpending)}, which brings the chance back to about ${pct(a.risk.current.successRate, 0)}.`
+        : action === 'cut'
+          ? `That is below the ${pct(RISK_DEFAULTS.lowerGuardrail, 0)} lower guardrail, so the rules cut spending to ${m(t.recommendedSpending)}.`
+          : `That is inside the band, so spending holds at ${m(t.recommendedSpending)}.`
+    }{' '}
+    {t.cutTo !== null && t.lowerPortfolio !== null
+      ? `At that spending, a fall in the portfolio below ${m(t.lowerPortfolio)} would cut it to ${m(t.cutTo)}.`
+      : ''}{' '}
+    {t.raiseTo !== null && t.upperPortfolio !== null
+      ? `A rise above ${m(t.upperPortfolio)} would raise it to ${m(t.raiseTo)}.`
+      : ''}
+  </p>
+
+  <h2>Worked example: through history</h2>
+  <p>
+    Computed by the calculator’s own code when this page was built, on every start year from {ds.label} with 30 years
+    after it ({n} start years), with the same {m(ex.balance as number)} and {m(ex.spend as number)}. Risk-based
+    guardrails start from their spending now ({m(t.recommendedSpending)}).
+  </p>
+  <div class="table-scroll" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
+    <table>
+      <caption>Three spending rules on {n} historical start years (today’s money)</caption>
+      <thead>
+        <tr><th>Rule</th><th>Lowest year in any start year</th><th>Start years with a year not paid in full</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Guyton-Klinger</td><td>{m(gkH.low)}</td><td>{gkH.short} of {n}</td></tr>
+        <tr><td>Risk-based guardrails</td><td>{m(riskH.low)}</td><td>{riskH.short} of {n}</td></tr>
+        <tr><td>Constant spending</td><td>{m(conH.low)}</td><td>{conH.short} of {n}</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    The worst start year for constant spending was {a.bad}.{' '}
+    {badCon.firstShortYear ? `Constant spending ran short from year ${badCon.firstShortYear}.` : `Constant spending was paid every year and left ${m(badCon.end)}.`}{' '}
+    Guyton-Klinger’s lowest year in that sequence was {m(badGk.minSpending)} and it left {m(badGk.end)}; risk-based
+    guardrails’ lowest year was {m(badRisk.minSpending)} and they left {m(badRisk.end)}. The guardrails trade running
+    out for deep cuts in the worst years. The calculator draws both rules year by year for a bad and a typical start
+    year.
+  </p>
+
+  <h2>How the calculator works</h2>
+  <ol>
+    <li>
+      Guyton-Klinger thresholds come from the engine’s <code>guytonKlingerGuardrails</code> with your guardrail and
+      adjustment.
+    </li>
+    <li>
+      Risk-based guardrails come from the engine’s <code>evaluateGuardrails</code>: the chance of success now, the
+      spending the rules give, and the portfolio thresholds, all from one seeded set of simulations (the seed is under
+      “More options”).
+    </li>
+    <li>
+      The history charts replay three plans through every start year: constant spending, the engine’s Guyton-Klinger
+      withdrawal rule, and risk-based guardrails applied year by year as a withdrawal-rate band. That band is the one the
+      thresholds imply (cut when spending ÷ portfolio passes spending ÷ the lower threshold, raise below spending ÷ the
+      upper threshold), changing spending by the engine’s default step of {pct(RISK_DEFAULTS.adjustmentStep, 0)} each time.
+    </li>
+  </ol>
+
+  <h2>What this assumes and leaves out</h2>
+  <ul>
+    <li>
+      <strong>One portfolio and one spending figure.</strong> No pension or other income, one stock and bond mix
+      rebalanced yearly, no fees, and no tax unless you set the flat rate.
+    </li>
+    <li>
+      <strong>Guyton-Klinger as the engine implements it.</strong> With one asset mix, the paper’s portfolio
+      management rule (which assets to sell first) does not apply. If you are already retired, the bands are centred on
+      today’s rate.
+    </li>
+    <li>
+      <strong>Risk-based guardrails depend on the model.</strong> The chance of success, and so every threshold, comes
+      from US history with random start years and {whole(RISK_TRIALS)} simulations. Another market model or seed moves
+      them. In the history replays the band is fixed from today’s thresholds; the planner recomputes it as the plan
+      changes.
+    </li>
+    <li>
+      <strong>One country’s history.</strong> Data: Aswath Damodaran, <em>Historical Returns on Stocks, Bonds and
+      Bills</em> (NYU Stern), and US Bureau of Labor Statistics CPI-U. Past returns do not predict the future.
+    </li>
+    <li>Rules model intentions, not behaviour: a cut on paper is harder to make in life.</li>
+  </ul>
+</ToolPage>

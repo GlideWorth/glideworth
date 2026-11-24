@@ -64,6 +64,8 @@ export interface CloudSurface {
    * the Glideworth team, which is the wrong contact for a self-hosted instance, so self-host answers 404.
    */
   securityTxt?: string;
+  /** The ChatGPT plugin directory's domain-verification token (`/.well-known/openai-apps-challenge`). Cloud only. */
+  openaiAppsChallenge?: string;
 }
 
 export interface AppOptions {
@@ -271,6 +273,9 @@ export function createApp(opts: AppOptions) {
   app.get("/robots.txt", (c) => c.text("User-agent: *\nDisallow: /\n"));
   const securityTxt = cloud?.securityTxt;
   if (securityTxt) app.get("/.well-known/security.txt", (c) => c.text(securityTxt));
+  const openaiChallenge = cloud?.openaiAppsChallenge;
+  if (openaiChallenge)
+    app.get("/.well-known/openai-apps-challenge", (c) => c.text(openaiChallenge));
   app.get("/health", (c) =>
     c.json({ status: "ok", engineVersion: ENGINE_VERSION, schemaVersion: SCHEMA_VERSION }),
   );

@@ -31,8 +31,10 @@ interface Props {
   adds: string;
   /** Feature and docs pages worth reading next. */
   related: { href: string; label: string }[];
+  /** Show the box into the full planner (default true). Off where the planner does not model the topic. */
+  planner?: boolean;
 }
-const { id, heading, lede, faq, adds, related } = Astro.props;
+const { id, heading, lede, faq, adds, related, planner = true } = Astro.props;
 const meta = toolMeta(id);
 const spec = SPECS[id];
 const pm = page(meta.path as PagePath);
@@ -54,7 +56,7 @@ const others = TOOLS.filter((t) => t.id !== id);
   <div class="container tool-page">
     <Calculator spec={spec} vm={vm} name={meta.name} />
 
-    <PlannerCta spec={spec} adds={adds} />
+    {planner && <PlannerCta spec={spec} adds={adds} />}
 
     <div class="tool-explain">
       <Prose>
@@ -70,9 +72,13 @@ const others = TOOLS.filter((t) => t.id !== id);
     <section class="tool-related" aria-labelledby="related-title">
       <h2 id="related-title">Read next</h2>
       <ul>
-        <li>
-          <a href={meta.article.href}>{meta.article.title}</a> <span>(the article behind this calculator)</span>
-        </li>
+        {
+          meta.article && (
+            <li>
+              <a href={meta.article.href}>{meta.article.title}</a> <span>(the article behind this calculator)</span>
+            </li>
+          )
+        }
         {
           related.map((r) => (
             <li>

@@ -108,6 +108,36 @@ export const clusters: { subject: string; paths: string[] }[] = [
     ],
   },
   {
+    subject: "Guardrails",
+    paths: [
+      "/tools/guardrails-retirement-calculator/",
+      "/blog/withdrawal-strategies-compared/",
+      "/tools/retirement-withdrawal-calculator/",
+      "/features/withdrawal-strategies/",
+      "/docs/planning/solvers-and-guardrails/",
+    ],
+  },
+  {
+    subject: "How much you can spend",
+    paths: [
+      "/tools/retirement-spending-calculator/",
+      "/features/solvers/",
+      "/tools/monte-carlo-retirement-calculator/",
+      "/blog/monte-carlo-retirement-simulations/",
+      "/tools/guardrails-retirement-calculator/",
+    ],
+  },
+  {
+    subject: "Historical backtests",
+    paths: [
+      "/tools/historical-retirement-calculator/",
+      "/blog/how-long-will-my-money-last/",
+      "/docs/methodology/historical-data/",
+      "/tools/how-long-will-my-money-last/",
+      "/features/monte-carlo/",
+    ],
+  },
+  {
     subject: "Withdrawals",
     paths: [
       "/blog/withdrawal-strategies-compared/",
@@ -120,10 +150,43 @@ export const clusters: { subject: string; paths: string[] }[] = [
     ],
   },
   {
+    subject: "US required distributions and Medicare premiums",
+    paths: ["/tools/rmd-calculator/", "/tools/irmaa-calculator/", "/planning/us/"],
+  },
+  {
+    subject: "72(t) payments",
+    paths: ["/tools/72t-calculator/", "/tools/rmd-calculator/"],
+  },
+  {
+    subject: "UK pensions and early retirement",
+    paths: [
+      "/tools/uk-fire-calculator/",
+      "/tools/uk-pension-age-calculator/",
+      "/planning/uk/",
+      "/tools/fire-calculator/",
+      "/tools/coast-fire-calculator/",
+    ],
+  },
+  {
+    subject: "UAE end-of-service gratuity",
+    paths: ["/tools/uae-gratuity-calculator/", "/planning/ae/", "/features/tax-estimates/"],
+  },
+  {
+    subject: "UK pensions and ISAs",
+    paths: [
+      "/tools/uk-pension-drawdown-calculator/",
+      "/tools/isa-vs-pension-calculator/",
+      "/planning/uk/",
+      "/tools/how-long-will-my-money-last/",
+      "/features/tax-estimates/",
+    ],
+  },
+  {
     subject: "Comparisons",
     paths: [
       "/compare/boldin/",
       "/compare/projectionlab/",
+      "/compare/boldin-vs-projectionlab/",
       "/compare/spreadsheets/",
       "/pricing/",
       "/open-source/",
@@ -150,6 +213,17 @@ export const clusters: { subject: string; paths: string[] }[] = [
       "/features/monte-carlo/",
       "/docs/methodology/monte-carlo/",
       "/docs/methodology/historical-data/",
+    ],
+  },
+  {
+    subject: "US retirement tax calculators",
+    paths: [
+      "/tools/retirement-tax-calculator/",
+      "/tools/roth-conversion-calculator/",
+      "/tools/aca-subsidy-calculator/",
+      "/planning/us/",
+      "/features/tax-estimates/",
+      "/blog/what-a-tax-estimate-leaves-out/",
     ],
   },
   {

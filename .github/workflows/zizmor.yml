@@ -28,7 +28,7 @@ concurrency:
 jobs:
   zizmor:
     name: Audit workflows
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && 'ubicloud-standard-2' || 'ubuntu-latest' }}
     timeout-minutes: 5
     permissions:
       contents: read

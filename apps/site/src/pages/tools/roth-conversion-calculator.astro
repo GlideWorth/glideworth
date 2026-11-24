@@ -1,0 +1,168 @@
+---
+import { EstateSettings, TAX_SIMPLIFICATIONS, US_FIXED, usRmdStartAge } from '@glideworth/core';
+import ToolPage from '../../components/tools/ToolPage.astro';
+import { fillTo, ladder, readRoth } from '../../tools/engine/roth-conversion';
+import { bracketRates, federalYear, ratePct } from '../../tools/engine/us-tax';
+import { money, pct } from '../../tools/format';
+import { SPECS } from '../../tools/specs';
+import { defaults } from '../../tools/state';
+import { externalLinkProps } from '../../lib/links';
+
+const m = (x: number) => money(x, 'USD');
+// The worked example is the calculator's defaults, computed by its own code at build time.
+const ex = defaults(SPECS['roth-conversion']);
+const i = readRoth(ex);
+const d = federalYear(i.year);
+const fill = fillTo(i);
+const lad = ladder(i);
+const gain = lad.convert.endAfterTax - lad.none.endAfterTax;
+const rows = d.brackets[i.status];
+const targetIdx = rows.findIndex(([, r]) => Math.abs(r - i.target) < 1e-12);
+const targetTop = rows[targetIdx + 1]?.[0] ?? 0;
+const deduction = d.standardDeduction[i.status];
+const heirDefault = EstateSettings.parse({}).heirTaxDeferredRate;
+
+// The same couple at 67, with Social Security already paid: the bracket arithmetic stops working.
+const older = readRoth({ ...ex, age: 67, age2: 67 });
+const olderFill = fillTo(older);
+const naive = targetTop + deduction + 2 * d.additionalAged.married;
+
+const byBracket = bracketRates(i.year, i.status)
+  .slice(0, -1)
+  .map((rate) => {
+    const f = fillTo(i, rate);
+    const o = fillTo(older, rate);
+    return [ratePct(rate), m(f.room), m(f.tax), m(o.room), m(o.tax)];
+  });
+
+const sources = d.sources.filter((s) => !/HTML of/.test(s.note ?? ''));
+const simplifications = TAX_SIMPLIFICATIONS['us-federal'] ?? [];
+
+const faq = [
+  {
+    q: 'How much should I convert to Roth each year?',
+    a: '<p>A common approach is to convert up to the top of a bracket you expect to be at or above later, when required distributions, Social Security and a surviving spouse’s single brackets can push income up. This calculator shows the amount for the bracket you choose and the tax on it, and the multi-year comparison shows how a ladder of such conversions plays out against not converting, under the assumptions you enter.</p>',
+  },
+  {
+    q: 'What is a Roth conversion ladder?',
+    a: '<p>Converting part of a traditional IRA or 401(k) to a Roth IRA every year, usually in low-income years between retiring and claiming Social Security or starting required distributions. Each conversion is taxed as ordinary income in the year it is made.</p>',
+  },
+  {
+    q: 'Why is the conversion smaller once Social Security has started?',
+    a: '<p>Because converting also makes more of your Social Security taxable, so each dollar converted adds more than a dollar of taxable income. The calculator finds the amount by running the tax engine again for each step, so this is included.</p>',
+  },
+  {
+    q: 'Who pays the tax on the conversion?',
+    a: '<p>In the multi-year comparison the engine pays it from taxable savings first, like your spending. Paying it from outside the IRA is what usually makes a conversion worthwhile; once taxable savings run out, the engine draws on the other accounts.</p>',
+  },
+  {
+    q: 'Does this include state tax or Medicare premiums?',
+    a: '<p>No. It is a federal income tax estimate. A large conversion can also raise Medicare premiums two years later (IRMAA) and reduce an ACA premium tax credit; the full planner models both, year by year.</p>',
+  },
+];
+---
+
+<ToolPage
+  id="roth-conversion"
+  heading="Roth conversion calculator"
+  lede="How much to convert from a traditional IRA or 401(k) to fill a federal bracket this year, the tax on it, and a multi-year conversion ladder compared with not converting. It runs the Glideworth planning engine in your browser; nothing you type is sent anywhere."
+  faq={faq}
+  adds="This calculator converts up to one bracket for a fixed number of years, with one steady return and federal tax only."
+  related={[
+    { href: '/features/tax-estimates/', label: 'Tax estimates in the planner' },
+    { href: '/features/solvers/', label: 'Solvers, including the tax strategy search' },
+    { href: '/planning/us/', label: 'Retirement planning in the United States' },
+  ]}
+>
+  <h2>How the calculator works</h2>
+  <ol>
+    <li>
+      <strong>This year.</strong> The engine’s US federal tax model computes your tax on this year’s income, then adds
+      conversion income until the next dollar would fall in a higher ordinary bracket. That is the same search the
+      planner’s tax strategy uses. The tax on the conversion is the federal tax with it minus the tax without it.
+    </li>
+    <li>
+      <strong>The ladder.</strong> The engine projects your plan twice, year by year, with federal tax estimated every
+      year: once converting up to the same bracket for the number of years you choose, once without. Spending and the
+      tax on conversions come from taxable savings first; required minimum distributions are taken from the age the
+      engine’s rules give for your birth year.
+    </li>
+    <li>
+      <strong>The comparison</strong> counts what is left at the end: Roth and taxable savings in full, traditional
+      balances after the tax rate you set for whoever withdraws them ({pct(heirDefault, 0)} by default, the planner’s
+      default heir rate).
+    </li>
+  </ol>
+
+  <h2>Worked example</h2>
+  <p>
+    Computed by the calculator’s own code when this page was built. A married couple filing jointly in {i.year}, both
+    aged {i.age}, with {m(i.trad)} in traditional accounts, {m(i.taxable)} in taxable savings, spending of
+    {' '}{m(i.spend)} a year and Social Security of {m(i.ss)} a year from {i.ssAge}. They have no other taxable income
+    this year.
+  </p>
+  <ul>
+    <li>
+      The {ratePct(i.target)} bracket ends at {m(targetTop)} of taxable income, and their standard deduction is
+      {' '}{m(deduction)}, so they can convert {m(fill.amount)}. The federal tax on it is {m(fill.tax)},
+      {' '}{pct(fill.average)} of the amount.
+    </li>
+    <li>
+      Converting like this for {i.years} years moves {m(lad.convert.totalConverted)} into the Roth IRA. Federal tax over
+      the plan is {m(lad.convert.lifetimeTax)} with the ladder and {m(lad.none.lifetimeTax)} without. Without conversions,
+      required distributions from age {usRmdStartAge(i.year - i.age)} total {m(lad.none.totalRmd)}; with them,
+      {' '}{m(lad.convert.totalRmd)}.
+    </li>
+    <li>
+      At {i.planTo}, with traditional balances counted after {pct(i.heir, 0)} tax, their savings are
+      {' '}{m(lad.convert.endAfterTax)} with the ladder and {m(lad.none.endAfterTax)} without:
+      {' '}{gain >= 0 ? `${m(gain)} more` : `${m(-gain)} less`} with the conversions, in today’s money.
+    </li>
+  </ul>
+  <p>
+    Now the same couple at 67, with Social Security already paid. Bracket arithmetic says they could convert up to
+    {' '}{m(naive)} (the top of the bracket plus their standard deduction and the additions for age) less their taxable
+    income. But each dollar converted also makes more of their benefits taxable, so the engine finds room for
+    {' '}{m(olderFill.amount)}, taxed at {pct(olderFill.average)} on average.
+  </p>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="Conversion by bracket">
+    <table>
+      <caption>Converting up to the top of each bracket in {i.year} (married filing jointly)</caption>
+      <thead>
+        <tr><th>Up to the top of</th><th>At {i.age}: conversion</th><th>Tax on it</th><th>At 67 with Social Security: conversion</th><th>Tax on it</th></tr>
+      </thead>
+      <tbody>{byBracket.map((row) => <tr>{row.map((c) => <td>{c}</td>)}</tr>)}</tbody>
+    </table>
+  </div>
+
+  <h2>Where the figures come from</h2>
+  <p>Brackets, deductions and capital gains bands come from the engine’s US tax data, which records its sources:</p>
+  <ul>
+    {sources.map((s) => <li><a href={s.url} {...externalLinkProps(s.url)}>{s.note ?? s.url}</a></li>)}
+    <li>
+      <a href={US_FIXED.socialSecurity.source} {...externalLinkProps(US_FIXED.socialSecurity.source)}>IRS Publication 915: Social Security benefits</a>
+    </li>
+  </ul>
+
+  <h2>What this assumes and leaves out</h2>
+  <ul>
+    <li>Federal income tax only: no state tax, no Medicare premium surcharges (IRMAA), no ACA premium tax credit.</li>
+    <li>
+      The ladder uses one steady return after inflation and no inflation, so every figure is in today’s money and the
+      year’s published thresholds keep their real value in later years.
+    </li>
+    <li>
+      Both people live to the end of the plan: the move to single brackets after a death, which often makes
+      conversions worth more, is not shown here. The planner’s survivor scenarios model it.
+    </li>
+    <li>
+      The {US_FIXED.rothFiveYearRule}-year rules on Roth withdrawals and the early-withdrawal additional tax are not
+      checked. Conversions are taxed as ordinary income in the year made.
+    </li>
+    <li>An estimate, not tax advice. The engine’s own list of what its US federal model leaves out:</li>
+  </ul>
+  <details>
+    <summary>US federal simplifications ({simplifications.length})</summary>
+    <ul>{simplifications.map((s) => <li>{s}</li>)}</ul>
+  </details>
+</ToolPage>

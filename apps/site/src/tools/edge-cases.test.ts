@@ -148,14 +148,29 @@ describe("seeded sweep over random valid inputs", () => {
     }
     return defaults(spec);
   }
-  for (const spec of Object.values(SPECS))
-    it(`${spec.id}: 12 random inputs give finite results`, async () => {
-      for (let i = 0; i < 12; i++) {
-        const v = randomValues(spec);
-        const vm = await runTool(spec.id, v);
-        expectClean(vm, `${spec.id} ${JSON.stringify(v)}`);
-      }
-    }, 120_000);
+  // Each input to these two is a solve over many simulations, so they sample fewer, one test per input
+  // (a single solve can take most of a minute on a CI runner); their own edge cases are in
+  // drawdown-tools.test.ts.
+  const SOLVES: readonly ToolId[] = ["guardrails", "retirement-spending"];
+  async function expectFinite(id: ToolId, v: Values) {
+    expectClean(await runTool(id, v), `${id} ${JSON.stringify(v)}`);
+  }
+  for (const spec of Object.values(SPECS)) {
+    const solve = SOLVES.includes(spec.id);
+    const inputs = Array.from({ length: solve ? 3 : 12 }, () => randomValues(spec));
+    if (solve)
+      inputs.forEach((v, i) =>
+        it(
+          `${spec.id}: random input ${i + 1} of ${inputs.length} gives finite results`,
+          () => expectFinite(spec.id, v),
+          120_000,
+        ),
+      );
+    else
+      it(`${spec.id}: ${inputs.length} random inputs give finite results`, async () => {
+        for (const v of inputs) await expectFinite(spec.id, v);
+      }, 120_000);
+  }
 });
 
 describe("charts and rendering", () => {

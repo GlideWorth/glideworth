@@ -83,3 +83,48 @@ describe("agent skill and setup guide", () => {
     expect(guide).toMatch(/only the human chooses the passphrase/i);
   });
 });
+
+/**
+ * The Claude Code plugin (plugins/glideworth, listed by .claude-plugin/marketplace.json). These are the blocking
+ * checks of Anthropic's plugin directory (claude.com/docs/plugins/pre-submission-checklist, read 2026-11-24),
+ * plus the rule that the plugin ships the same skill as the repository.
+ */
+describe("Claude Code plugin", () => {
+  const plugin = JSON.parse(read("plugins/glideworth/.claude-plugin/plugin.json")) as Record<
+    string,
+    unknown
+  >;
+  const marketplace = JSON.parse(read(".claude-plugin/marketplace.json")) as {
+    plugins: { name: string; source: string }[];
+  };
+  const mcp = JSON.parse(read("plugins/glideworth/.mcp.json")) as {
+    mcpServers: Record<string, { type: string; url: string }>;
+  };
+  const server = JSON.parse(read("server.json")) as { version: string; remotes: { url: string }[] };
+
+  it("has a valid name, a licence and a README of at least 40 words", () => {
+    const name = plugin.name as string;
+    expect(name).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+    expect(name.length).toBeLessThanOrEqual(64);
+    expect(name).not.toMatch(/claude|anthropic|official|mcp/);
+    expect(plugin.license).toBeTruthy();
+    expect(read("plugins/glideworth/README.md").split(/\s+/).length).toBeGreaterThanOrEqual(40);
+  });
+
+  it("is listed in the marketplace and points at the hosted server over https", () => {
+    expect(marketplace.plugins).toContainEqual(
+      expect.objectContaining({ name: plugin.name, source: "./plugins/glideworth" }),
+    );
+    const servers = Object.values(mcp.mcpServers);
+    expect(servers).toHaveLength(1);
+    expect(servers[0]).toEqual({ type: "http", url: server.remotes[0]!.url });
+    expect(servers[0]!.url).toMatch(/^https:\/\//);
+    expect(plugin.version).toBe(server.version);
+  });
+
+  it("ships the repository's skill unchanged", () => {
+    expect(read("plugins/glideworth/skills/glideworth/SKILL.md")).toBe(
+      read("skills/glideworth/SKILL.md"),
+    );
+  });
+});

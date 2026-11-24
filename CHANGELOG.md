@@ -8,6 +8,14 @@ listing every commit. Product news for people using the hosted service is on
 
 ## Unreleased
 
+- **MCP tool annotations corrected** for the ChatGPT and Claude directories: tools that overwrite or remove
+  existing state (`apply_change_set`, `discard_change_set`, `cancel_job`, `update_account_balances`,
+  `apply_csv_import`, `apply_balance_history_import`, `set_fx_rate`, `set_checkin_schedule`,
+  `mark_notifications_read`) are now `destructiveHint: true`, so clients ask before running them;
+  `list_share_links` is `readOnlyHint: true`; `create_share_link` is `openWorldHint: true` (it publishes a public
+  URL). The server instructions now say results are estimates, not advice.
+- **Claude Code plugin**: `/plugin marketplace add GlideWorth/glideworth`, then `/plugin install
+  glideworth@glideworth`, adds the hosted MCP server and the Glideworth skill.
 - **Tiered employer match** ([#9](https://github.com/GlideWorth/glideworth/issues/9)): a contribution's employer
   match is an ordered list of tiers (`employer.tiers: [{ matchRate, bandShareOfPay }]`), matched band by band from
   the first percent of pay up, so formulas such as 100% of the first 3% of pay and 50% of the next 2% are exact at

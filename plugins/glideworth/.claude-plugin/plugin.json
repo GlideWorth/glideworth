@@ -1,0 +1,10 @@
+{
+  "name": "glideworth",
+  "version": "1.1.0",
+  "description": "Talk to your Glideworth retirement plan: chance of success, how much you can spend, when you can retire, taxes and what-ifs. Plan edits are always proposed first and applied only after you agree.",
+  "author": { "name": "Glideworth", "url": "https://glideworth.com" },
+  "homepage": "https://glideworth.com/docs/api-and-mcp/mcp-setup/",
+  "repository": "https://github.com/GlideWorth/glideworth",
+  "license": "AGPL-3.0-only",
+  "keywords": ["retirement", "financial-planning", "fire", "monte-carlo", "tax"]
+}

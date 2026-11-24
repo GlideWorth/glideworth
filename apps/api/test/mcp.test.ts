@@ -168,7 +168,44 @@ describe("tool registration follows scope and the writes flag", () => {
       expect(t.inputSchema.type).toBe("object");
     }
     const w = tools.find((t) => t.name === "apply_change_set")!;
-    expect(w.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: false });
+    expect(w.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: true });
+  });
+
+  // ChatGPT and Claude directory reviews check these hints, and clients use them to decide when to ask
+  // the user. destructiveHint: false means "only additive updates" (MCP spec), so anything that overwrites
+  // or removes existing state is destructive even when it can be undone through the plan history.
+  it("annotates every tool accurately (read-only, destructive, open-world)", async () => {
+    h = setup({ mcpAllowWrites: true });
+    const tools = (await (await httpClient(WRITE_KEY)).listTools()).tools;
+    const hints = Object.fromEntries(
+      tools
+        .filter((t) => !t.annotations!.readOnlyHint)
+        .map((t) => [t.name, [t.annotations!.destructiveHint, t.annotations!.openWorldHint]]),
+    );
+    expect(hints).toEqual({
+      cancel_job: [true, false],
+      propose_change_set: [false, false],
+      apply_change_set: [true, false],
+      discard_change_set: [true, false],
+      propose_revert: [false, false],
+      record_progress_snapshot: [false, false],
+      update_account_balances: [true, false],
+      create_branch: [false, false],
+      create_branch_from_template: [false, false],
+      apply_csv_import: [true, false],
+      apply_balance_history_import: [true, false],
+      set_fx_rate: [true, false],
+      unset_fx_rate: [true, false],
+      run_checkin: [false, false],
+      mark_notifications_read: [true, false],
+      set_checkin_schedule: [true, false],
+      create_share_link: [false, true],
+      revoke_share_link: [true, false],
+    });
+    for (const t of tools) {
+      expect(t.title, t.name).toBeTruthy();
+      if (t.annotations!.readOnlyHint) expect(t.annotations!.openWorldHint, t.name).toBe(false);
+    }
   });
 });
 

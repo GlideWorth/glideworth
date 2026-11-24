@@ -11,7 +11,21 @@ export type ToolId =
   | "barista-fire"
   | "withdrawal"
   | "how-long"
-  | "monte-carlo";
+  | "monte-carlo"
+  | "rmd"
+  | "sepp-72t"
+  | "irmaa"
+  | "uk-fire"
+  | "uk-pension-age"
+  | "uae-gratuity"
+  | "retirement-tax"
+  | "roth-conversion"
+  | "aca-subsidy"
+  | "guardrails"
+  | "retirement-spending"
+  | "historical-backtest"
+  | "uk-drawdown"
+  | "isa-vs-pension";
 
 /** Input values by field key. Numbers are in the field's display unit (percent fields hold 5 for 5%). */
 export type Values = Record<string, number | string>;
@@ -58,6 +72,8 @@ export interface ToolSpec {
   fields: Field[];
   /** 'instant': recalculates as you type. 'simulation': Monte Carlo with progress and a cancel button. */
   mode: "instant" | "simulation";
+  /** Display currency when the calculator has no `cur` field (country tools: GBP). */
+  currency?: string;
   /** Checks between fields (retirement age after current age...). Keyed by the field to flag. */
   validate?: (values: Values) => Record<string, string>;
 }
@@ -86,6 +102,13 @@ export interface Band {
   level: "outer" | "inner";
 }
 
+export interface PathGroup {
+  label: string;
+  lines: (number | null)[][];
+  tone: 1 | 2 | 3 | 4;
+  style: "solid" | "dashed" | "dotted";
+}
+
 export interface Table {
   caption: string;
   columns: string[];
@@ -103,6 +126,11 @@ export interface ChartSpec {
   x: number[];
   series: Series[];
   bands?: Band[];
+  /**
+   * Many thin lines drawn under the series as one group with one legend entry (every historical start
+   * year in a backtest). The numbers table carries a summary of them, not every line.
+   */
+  paths?: PathGroup[];
   /** Vertical marker lines (retirement age, the year the money runs out). */
   markers?: { x: number; label: string }[];
   /** Horizontal reference lines (the target). */

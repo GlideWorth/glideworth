@@ -21,6 +21,8 @@ function nonDefault(spec: ToolSpec): Values {
   // Keep cross-field rules satisfied.
   if (spec.id === "coast-fire") Object.assign(v, { age: 40, retire: 65 });
   if (spec.id === "barista-fire") Object.assign(v, { age: 45, ptUntil: 55, planTo: 92 });
+  if (spec.id === "roth-conversion") Object.assign(v, { age: 55, planTo: 92, years: 10 });
+  if (spec.id === "guardrails") Object.assign(v, { target: 75, lower: 60, upper: 90 });
   return v;
 }
 

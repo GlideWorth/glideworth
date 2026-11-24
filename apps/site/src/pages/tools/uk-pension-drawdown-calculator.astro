@@ -1,0 +1,143 @@
+---
+import { UK_PENSION_ACCESS } from '@glideworth/core';
+import ToolPage from '../../components/tools/ToolPage.astro';
+import { firstYearTaxByHand, PLAN_TO_AGE, readDrawdown, runDrawdown } from '../../tools/engine/uk-drawdown';
+import { fmtAge, statePensionAge, ukFirstTaxYear, ukSimplification, ukTaxFreeShare, weekly } from '../../tools/engine/uk-model';
+import { money, pct, years } from '../../tools/format';
+import { ukDrawdownSpec } from '../../tools/specs';
+import { defaults } from '../../tools/state';
+
+const m = (x: number) => money(x, 'GBP');
+const Y = ukFirstTaxYear();
+const I = Y.income;
+const A = UK_PENSION_ACCESS;
+const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const rises = `${months[A.laterFromMonth - 1]} ${A.laterFromYear}`;
+const share = pct(ukTaxFreeShare(), 0);
+
+// The worked example is the calculator's default plan, run by the same code at build time.
+const d = readDrawdown(defaults(ukDrawdownSpec));
+const res = runDrawdown(d);
+const first = res.rows[0]!;
+const taxable = first.fromPot - first.taxFree;
+const byHand = firstYearTaxByHand(taxable, d.region);
+const spRow = res.rows.find((r) => r.statePension > 0)!;
+const pcls = runDrawdown({ ...d, method: 'pcls' });
+const lasts = (x: number) => (Number.isFinite(x) ? years(x) : `beyond age ${PLAN_TO_AGE}`);
+const byIncome = [20_000, 25_000, 30_000, 35_000].map((inc) => {
+  const r = runDrawdown({ ...d, income: inc });
+  return [m(inc), m(r.rows[0]!.fromPot), m(r.rows[0]!.tax), lasts(r.years)];
+});
+
+const faq = [
+  {
+    q: 'How is pension drawdown taxed?',
+    a: `<p>Usually ${share} of what you take is tax-free and the rest is added to your other income for the year and taxed as income. In ${Y.label} the personal allowance is ${m(I.personalAllowance)}; income above it is taxed at ${pct(I.rates.basic, 0)} up to ${m(I.personalAllowance + I.basicRateBand)}, then ${pct(I.rates.higher, 0)} (rest-of-UK rates; Scotland has its own bands). The State Pension counts first, so once it starts it uses up most of the personal allowance and more of each withdrawal is taxed.</p>`,
+  },
+  {
+    q: 'Should I take the tax-free lump sum or tax-free cash with each withdrawal?',
+    a: '<p>Both give the same tax-free share of the pot. A lump sum at the start gives you the cash now, and every later withdrawal is fully taxable. Taking it with each withdrawal (an uncrystallised funds pension lump sum, UFPLS) spreads it out, so each year’s taxable income is lower and the tax-free part stays invested until you take it. The calculator shows both side by side; it counts the lump sum as spent, so if you would keep it invested, the income lasts longer than shown.</p>',
+  },
+  {
+    q: 'When can I start drawing my pension?',
+    a: `<p>From the normal minimum pension age: ${A.age}, rising to ${A.laterAge} from ${rises}. Someone who reaches ${A.age} before then but is under ${A.laterAge} on that date cannot draw again until ${A.laterAge}. The calculator applies this to your age. Protected pension ages, which some schemes have, are not modelled.</p>`,
+  },
+  {
+    q: 'How long will my pension last?',
+    a: `<p>It depends on the pot, the income you take, growth, and when the State Pension starts to carry part of the load. In the example below, ${m(d.pot)} paying ${m(d.income)} a year after tax from age ${d.age}, growing ${pct(d.realReturn, 0)} a year after inflation, lasts ${lasts(res.years)}. Use the calculator with your own figures; a lower or uneven return shortens it.</p>`,
+  },
+];
+---
+
+<ToolPage
+  id="uk-drawdown"
+  heading="UK pension drawdown calculator"
+  lede="How long your pension pot pays the income you want after tax, with the income tax on each withdrawal, the tax-free part of the pot and the State Pension from State Pension age. It runs the Glideworth planning engine and its UK tax estimate in your browser; nothing you type is sent anywhere."
+  faq={faq}
+  adds="This calculator has one pension pot, a steady return and one income level. The planner adds ISAs and other accounts, a drawdown order, changing spending, a partner and market history."
+  related={[
+    { href: '/planning/uk/', label: 'Retirement planning in the United Kingdom' },
+    { href: '/features/tax-estimates/', label: 'Tax estimates in the planner' },
+    { href: '/features/withdrawal-strategies/', label: 'Withdrawal strategies and drawdown order' },
+  ]}
+>
+  <h2>How the calculator works</h2>
+  <ol>
+    <li>
+      <strong>Income after tax.</strong> You say what you want to spend each year after tax, in today’s money. Each
+      year the engine takes from the pot what that income and the income tax on it need, after any State Pension
+      and other pension.
+    </li>
+    <li>
+      <strong>Tax-free cash.</strong> With tax-free cash taken with each withdrawal, {share} of each withdrawal is
+      tax-free and the rest is taxed as income. With a lump sum at the start, {share} of the pot (as it stands after
+      the first year’s growth) is paid out tax-free first and every later withdrawal is taxable. Either way the tax-free total is capped by the lump sum
+      allowance ({m(Y.pensions.lumpSumAllowance)} in {Y.label}).
+    </li>
+    <li>
+      <strong>Income tax.</strong> The engine’s UK estimate for each year: personal allowance (tapered away above
+      {' '}{m(I.paTaperThreshold)}), the rest-of-UK or Scottish bands, and thresholds that stay frozen in pounds
+      while the law freezes them.
+    </li>
+    <li>
+      <strong>State Pension.</strong> From your State Pension age, worked out from your age with the engine’s UK
+      data. The default is the full new State Pension ({weekly(Y.statePension.fullNewWeekly)} a week in {Y.label});
+      enter your own forecast.
+    </li>
+  </ol>
+  <p>
+    The answer is the number of years the income is paid in full, plus the share of the next year the pot could still
+    pay. Every figure is in today’s money.
+  </p>
+
+  <h2>Worked example</h2>
+  <p>
+    Computed by the calculator’s own code when this page was built. Age {d.age}, a pot of {m(d.pot)} growing
+    {' '}{pct(d.realReturn, 0)} a year after inflation, {m(d.income)} a year after tax, tax-free cash with each
+    withdrawal, rest-of-UK rates and the full new State Pension from {fmtAge(statePensionAge(d.age))}.
+  </p>
+  <ul>
+    <li>
+      First year: {m(first.fromPot)} is taken from the pot. {share}, {m(first.taxFree)}, is tax-free; the other
+      {' '}{m(taxable)} is taxable. After the {m(I.personalAllowance)} personal allowance, {m(taxable - I.personalAllowance)}
+      {' '}is taxed at {pct(I.rates.basic, 0)}: {m(byHand)} by hand, {m(first.tax)} by the engine. That leaves
+      {' '}{m(first.net)} to spend.
+    </li>
+    <li>
+      From age {spRow.age} the State Pension pays {m(spRow.statePension)} a year. It uses up most of the personal
+      allowance, so the pot now pays {m(spRow.fromPot)} and the tax is about {m(spRow.tax)}.
+    </li>
+    <li>
+      The pot pays the full income for {lasts(res.years)}. Taking {share} of the pot as a lump sum at the start
+      instead ({m(pcls.lump)}, counted as spent), the rest pays the income for {lasts(pcls.years)}.
+    </li>
+  </ul>
+  <div class="table-scroll" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
+    <table>
+      <caption>The same pot at other incomes (tax-free cash with each withdrawal)</caption>
+      <thead><tr><th>Income after tax</th><th>From the pot, first year</th><th>Income tax, first year</th><th>Lasts</th></tr></thead>
+      <tbody>{byIncome.map((r) => <tr>{r.map((c) => <td>{c}</td>)}</tr>)}</tbody>
+    </table>
+  </div>
+
+  <h2>Why later years differ from a by-hand sum</h2>
+  <p>
+    The engine runs in pounds of each year with the inflation you set and converts results back to today’s money.
+    Tax thresholds frozen by law stay fixed in pounds, so in today’s money they shrink each year until the freeze
+    ends, and a little more of the same real income is taxed. A by-hand sum with this year’s thresholds matches the
+    first year only.
+  </p>
+
+  <h2>What this assumes and leaves out</h2>
+  <ul>
+    <li>A steady return every year. Real returns vary, and a bad run early in drawdown shortens how long the pot lasts.</li>
+    <li>One person, one defined contribution pot, and an income that stays the same in today’s money. No fees beyond what you take off the return.</li>
+    <li>The State Pension starts at State Pension age and rises with prices; it is not deferred.</li>
+    <li>
+      Income tax is an estimate from the engine’s UK model. It leaves out, among other things: {ukSimplification('calendar').replace(/\.$/, '')};
+      {' '}{ukSimplification('taxFreeCash').charAt(0).toLowerCase()}{ukSimplification('taxFreeCash').slice(1)}
+    </li>
+    <li>Means-tested benefits, care costs, annuities and inheritance tax on what is left are not modelled.</li>
+    <li>This is not financial advice. A regulated financial adviser can help with your own choices.</li>
+  </ul>
+</ToolPage>

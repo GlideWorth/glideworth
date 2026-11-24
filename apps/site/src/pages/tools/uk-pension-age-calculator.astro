@@ -1,0 +1,134 @@
+---
+import { UK_PENSION_ACCESS, UK_TAX_YEARS } from '@glideworth/core';
+import ToolPage from '../../components/tools/ToolPage.astro';
+import { externalLinkProps } from '../../lib/links';
+import { ageText, MONTHS, monthName, STATE_PENSION_AGE_SOURCE, ukAges } from '../../tools/engine/uk-pension-age';
+
+const a = UK_PENSION_ACCESS;
+const rise = `${MONTHS[a.laterFromMonth - 1]} ${a.laterFromYear}`;
+const READ = '19 November 2026'; // the date core's UK sources were read (packages/core/src/tax/data/uk.ts)
+const spSource = UK_TAX_YEARS.flatMap((y) => y.sources).find((s) => s.url.includes('new-state-pension/what-youll-get'));
+
+// Table of examples, computed by the calculator's own code at build time.
+const examples: [number, number][] = [
+  [1960, 3], [1960, 9], [1961, 6], [1965, 6], [1971, 6], [1972, 6], [1973, 6], [1977, 3], [1977, 9], [1978, 6], [1985, 6], [1995, 6],
+];
+const rows = examples.map(([y, mo]) => {
+  const x = ukAges(y, mo);
+  return [
+    `${MONTHS[mo - 1]} ${y}`,
+    `${x.steadyAccessAge} (${monthName(x.steadyAccessMonth)})${x.gap ? `; ${x.firstAccessAge} until ${monthName(x.gap.from - 1)}` : ''}`,
+    `${ageText(x.statePensionAge, true)} (${monthName(x.statePensionMonth)})`,
+  ];
+});
+// The cohort that reaches the lower age before the rise and the higher age after it.
+const gapExample = ukAges(1972, 6);
+const sp1960 = ukAges(1960, 9);
+const sp1977 = ukAges(1977, 9);
+
+const faq = [
+  {
+    q: 'When can I retire in the UK?',
+    a: `<p>There is no fixed retirement age: you can stop work when you can afford to. What is fixed is when your pensions can be paid. A private or workplace pension can be taken from the normal minimum pension age (${a.age}, rising to ${a.laterAge} from ${rise}), and the State Pension from your State Pension age. Before those ages you live on other savings.</p>`,
+  },
+  {
+    q: 'What is my State Pension age?',
+    a: `<p>It depends on your date of birth. Enter your year and month of birth above. For example, someone born in September 1960 reaches it at ${ageText(sp1960.statePensionAge, true)}, and someone born in September 1977 at ${ageText(sp1977.statePensionAge, true)}. The government’s State Pension age checker gives the exact date from your full date of birth.</p>`,
+  },
+  {
+    q: 'Can I take my private pension at 55?',
+    a: `<p>Only if you reach ${a.age} before ${rise}. From then the normal minimum pension age is ${a.laterAge}. Someone who reaches ${a.age} before the rise but ${a.laterAge} after it can take a pension from ${a.age}, but without a protected pension age cannot take it again from ${rise} until ${a.laterAge}. Some schemes give a protected pension age; this calculator does not model it.</p>`,
+  },
+  {
+    q: 'Does the State Pension age change again?',
+    a: '<p>The calculator uses the ages in the law today. The government reviews State Pension age, and a future change would need new legislation; the engine’s rules are updated when the law changes.</p>',
+  },
+];
+---
+
+<ToolPage
+  id="uk-pension-age"
+  heading="UK pension age calculator: when can you take your pensions?"
+  lede="From your year and month of birth: your State Pension age and the earliest age you can take a private or workplace pension, with the month you reach each. It uses the Glideworth engine’s UK pension rules in your browser; nothing you type is sent anywhere."
+  faq={faq}
+  adds="Knowing the ages is the start; the full planner works out whether your savings carry you between them."
+  related={[
+    { href: '/tools/uk-fire-calculator/', label: 'UK FIRE calculator: can your ISA bridge the gap to your pension?' },
+    { href: '/planning/uk/', label: 'Retirement planning in the United Kingdom' },
+  ]}
+>
+  <h2>Two different ages</h2>
+  <ul>
+    <li>
+      <strong>Private and workplace pensions</strong> (SIPPs and defined contribution schemes) can be taken from the normal
+      minimum pension age: {a.age}, rising to {a.laterAge} from {rise}. The age that applies is the one in force when you
+      reach it.
+    </li>
+    <li>
+      <strong>The State Pension</strong> starts at State Pension age, which depends on your date of birth. For some birth
+      dates it rises month by month, so the calculator asks for your month of birth.
+    </li>
+  </ul>
+
+  <h2>How the calculator works</h2>
+  <ol>
+    <li>
+      <strong>State Pension age</strong> comes from the engine’s <code>ukStatePensionAge</code>, which follows the
+      government’s State Pension age timetable month by month for the cohorts whose age changes gradually.
+    </li>
+    <li>
+      <strong>Private pension age</strong> comes from <code>ukNormalMinimumPensionAge</code>: {a.age} if you reach it before
+      {' '}{rise}, otherwise {a.laterAge}. If you reach {a.age} before the rise and {a.laterAge} after it, the calculator
+      shows both: the earlier window and the age from which access stays open.
+    </li>
+    <li>The date is the month you reach each age. Your exact day depends on your date of birth.</li>
+  </ol>
+
+  <h2>Examples</h2>
+  <p>
+    Computed by the calculator’s own code when this page was built. Someone born in June 1972 reaches {gapExample.firstAccessAge}
+    {' '}in {monthName(gapExample.firstAccessMonth)}, before the rise, so could take a pension then; access stops in
+    {' '}{gapExample.gap ? monthName(gapExample.gap.from) : rise} and opens again at {gapExample.steadyAccessAge}, in
+    {' '}{monthName(gapExample.steadyAccessMonth)}.
+  </p>
+  <div class="table-scroll" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
+    <table>
+      <caption>Pension ages by month of birth</caption>
+      <thead><tr><th>Born</th><th>Private pension from</th><th>State Pension age</th></tr></thead>
+      <tbody>{rows.map((r) => <tr>{r.map((c) => <td>{c}</td>)}</tr>)}</tbody>
+    </table>
+  </div>
+
+  <h2>Between the two ages</h2>
+  <p>
+    The private pension can be taken years before the State Pension: for someone born in June 1985,
+    {' '}{ageText(ukAges(1985, 6).statePensionAge - ukAges(1985, 6).steadyAccessAge, true)} before. Anyone retiring before the private pension age needs savings they can reach, such as ISAs. The
+    <a href="/tools/uk-fire-calculator/">UK FIRE calculator</a> sizes that bridge and the pension after it.
+  </p>
+
+  <h2>What this assumes and leaves out</h2>
+  <ul>
+    <li>Ages are to the month, not the day.</li>
+    <li>Births from 1960 to 2010 only.</li>
+    <li>
+      Protected pension ages, earlier access in some occupational schemes and access on ill health are not modelled.
+      Defined benefit schemes have their own normal pension ages.
+    </li>
+    <li>The ages are the law as the engine records it today; a future change to State Pension age would need new legislation.</li>
+    <li>It says when pensions can be paid, not how much: your State Pension depends on your National Insurance record.</li>
+  </ul>
+
+  <h2>Sources</h2>
+  <ul>
+    {
+      STATE_PENSION_AGE_SOURCE && (
+        <li>
+          <a href={STATE_PENSION_AGE_SOURCE.url} {...externalLinkProps(STATE_PENSION_AGE_SOURCE.url)}>State Pension age timetable</a>
+          {' '}(gov.uk, read {READ}), as recorded in the engine’s UK rules.
+        </li>
+      )
+    }
+    <li>Normal minimum pension age ({a.age}, rising to {a.laterAge} from {rise}): Finance Act 2022, as recorded in the engine’s UK rules.</li>
+    {spSource && <li><a href={spSource.url} {...externalLinkProps(spSource.url)}>New State Pension: what you’ll get</a> (gov.uk)</li>}
+  </ul>
+</ToolPage>

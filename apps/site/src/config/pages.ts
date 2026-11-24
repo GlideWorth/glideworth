@@ -95,7 +95,7 @@ export const pages = {
   "/tools/": {
     title: "Free retirement and FIRE calculators",
     description:
-      "Free FIRE, fat FIRE, Coast FIRE, Barista FIRE, withdrawal, longevity and Monte Carlo calculators that run the planning engine in your browser, with no sign-up.",
+      "Free calculators for FIRE, withdrawals, Monte Carlo, guardrails, RMDs, Roth conversions, ACA credits and UK pension drawdown, in your browser with no sign-up.",
     ogEyebrow: "Free tools",
   },
   // Calculators (src/pages/tools/, src/tools/README.md).
@@ -145,6 +145,104 @@ export const pages = {
     title: "Monte Carlo retirement calculator",
     description:
       "Free Monte Carlo retirement calculator: your chance that every year of spending is paid, from seeded simulations on US market history or random returns.",
+    ogEyebrow: "Free calculator",
+  },
+  "/tools/rmd-calculator/": {
+    title: "RMD calculator: required minimum distributions",
+    description:
+      "Free RMD calculator: your required minimum distribution for a year, the age RMDs start for your birth year and later RMDs, from the IRS Uniform Lifetime table.",
+    ogTitle: "RMD calculator",
+    ogEyebrow: "Free calculator",
+  },
+  "/tools/72t-calculator/": {
+    title: "72(t) calculator for SEPP payments",
+    description:
+      "Free 72(t) calculator: the yearly SEPP payment under the fixed annuitisation method, from the IRS mortality rates, with the balance over the years you take it.",
+    ogTitle: "72(t) calculator",
+    ogEyebrow: "Free calculator",
+  },
+  "/tools/irmaa-calculator/": {
+    title: "IRMAA calculator: Medicare IRMAA brackets",
+    description:
+      "Free IRMAA calculator: your Medicare IRMAA bracket and the Part B and Part D surcharges from your MAGI two years earlier, and how near the next tier is.",
+    ogTitle: "IRMAA calculator",
+    ogEyebrow: "Free calculator",
+  },
+  "/tools/uk-fire-calculator/": {
+    title: "UK FIRE calculator: the ISA-to-pension bridge",
+    description:
+      "Free UK FIRE calculator: your early retirement age, whether your ISA can bridge the years to pension age, and the pots you need, with a UK income tax estimate.",
+    ogTitle: "UK FIRE calculator",
+    ogEyebrow: "Free calculator",
+  },
+  "/tools/uk-pension-age-calculator/": {
+    title: "UK pension age calculator: when can I retire?",
+    description:
+      "Free UK pension age calculator: your State Pension age and the earliest age you can take a private or workplace pension, by month of birth, with the dates.",
+    ogTitle: "UK pension age calculator",
+    ogEyebrow: "Free calculator",
+  },
+  "/tools/uae-gratuity-calculator/": {
+    title: "UAE gratuity calculator for end of service",
+    description:
+      "Free UAE gratuity calculator: your end-of-service gratuity from years of service and basic wage, tier by tier with the cap, compared with the savings scheme.",
+    ogTitle: "UAE gratuity calculator",
+    ogEyebrow: "Free calculator",
+  },
+  "/tools/retirement-tax-calculator/": {
+    title: "Retirement tax calculator: US federal estimate",
+    description:
+      "Free retirement tax calculator: US federal income tax on Social Security, IRA and 401(k) withdrawals, pensions and dividends, with effective and marginal rate.",
+    ogTitle: "Retirement tax calculator",
+    ogEyebrow: "Free calculator",
+  },
+  "/tools/roth-conversion-calculator/": {
+    title: "Roth conversion calculator: fill a tax bracket",
+    description:
+      "Free Roth conversion calculator: how much to convert to fill a federal bracket, the tax on it, and a multi-year conversion ladder against not converting.",
+    ogTitle: "Roth conversion calculator",
+    ogEyebrow: "Free calculator",
+  },
+  "/tools/aca-subsidy-calculator/": {
+    title: "ACA subsidy calculator for early retirees",
+    description:
+      "Free ACA subsidy calculator: your premium tax credit from household income and benchmark silver premium, and how much more income you can have before it stops.",
+    ogTitle: "ACA subsidy calculator",
+    ogEyebrow: "Free calculator",
+  },
+  "/tools/guardrails-retirement-calculator/": {
+    title: "Guyton-Klinger retirement guardrails calculator",
+    description:
+      "Free retirement guardrails calculator: Guyton-Klinger and risk-based guardrails in money, the portfolio values that trigger a cut or raise, tested on history.",
+    ogTitle: "Guardrails retirement calculator",
+    ogEyebrow: "Free calculator",
+  },
+  "/tools/retirement-spending-calculator/": {
+    title: "Retirement spending and spend-down calculator",
+    description:
+      "Free retirement spending calculator: the most you can spend each year at the chance of success you choose, with a pension from any age and the spend-down path.",
+    ogTitle: "Retirement spending calculator",
+    ogEyebrow: "Free calculator",
+  },
+  "/tools/historical-retirement-calculator/": {
+    title: "Historical retirement calculator since 1928",
+    description:
+      "Free historical retirement calculator: your withdrawal plan replayed through every start year of US market history since 1928, each path and the worst years.",
+    ogTitle: "Historical retirement calculator",
+    ogEyebrow: "Free calculator",
+  },
+  "/tools/uk-pension-drawdown-calculator/": {
+    title: "Pension drawdown calculator UK: tax and income",
+    description:
+      "Free UK pension drawdown calculator: how long your pot lasts, the income tax on each withdrawal, tax-free cash and the State Pension, from the planning engine.",
+    ogTitle: "UK pension drawdown calculator",
+    ogEyebrow: "Free calculator",
+  },
+  "/tools/isa-vs-pension-calculator/": {
+    title: "ISA vs pension calculator: which pays more?",
+    description:
+      "ISA or pension? Save the same take-home pay into each, with pension tax relief, and compare the income after tax each pays in retirement. Free UK calculator.",
+    ogTitle: "ISA vs pension calculator",
     ogEyebrow: "Free calculator",
   },
   "/tools/engine-check/": {

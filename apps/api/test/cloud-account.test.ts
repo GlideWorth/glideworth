@@ -35,7 +35,7 @@ vi.setConfig({ testTimeout: 60_000, hookTimeout: 120_000 });
 
 let cloud: Cloud;
 beforeAll(async () => {
-  cloud = await bootCloud();
+  cloud = await bootCloud({ openaiAppsChallenge: "openai-challenge-token-test" });
 }, 120_000);
 afterAll(() => cloud?.close(), 120_000);
 
@@ -589,6 +589,12 @@ describe("the cloud surface", () => {
       "/oauth/authorize",
     ])
       expect((await anon.get(p)).headers.get("x-robots-tag"), p).toBe("noindex, nofollow");
+  });
+
+  it("serves the ChatGPT directory's domain-verification token, signed out", async () => {
+    const r = await new Client(cloud).get("/.well-known/openai-apps-challenge");
+    expect(r.status).toBe(200);
+    expect(r.text).toBe("openai-challenge-token-test");
   });
 
   it("serves the RFC 9116 security.txt with this host's Canonical and the shared fields", async () => {

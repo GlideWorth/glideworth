@@ -72,6 +72,7 @@ export const SERVER_INSTRUCTIONS = [
   "Household data (balances, snapshots, CSV imports) is written directly by update_account_balances / record_progress_snapshot / apply_csv_import; plan edits always go through change sets or branches.",
   "Read-only unless the server enables writes; write tools are absent otherwise.",
   'Tools return compact JSON; pass detail="full" only when you need everything.',
+  "ESTIMATES, NOT ADVICE: results are projections from the plan's assumptions, not financial, tax or investment advice; say so when the user may act on a figure. Glideworth never moves money or places trades.",
 ].join("\n");
 
 const asText = (value: unknown) => ({
@@ -97,10 +98,25 @@ const HINTS: Record<string, string> = {
   NOT_IMPLEMENTED:
     "The plan uses an engine feature that is not available yet; details.feature names it. Remove that feature or skip this analysis.",
   RATE_LIMITED: "Slow down and retry after the delay in details.retryAfterSeconds.",
+  ACCOUNT_READ_ONLY:
+    "Read tools still work. Tell the user the workspace is read-only and that the workspace owner can change that in the Glideworth app; do not retry.",
   IMPORT_FAILED: "Run preview_csv_import first and fix the blocking issues it lists.",
 };
+/**
+ * A lapsed cloud workspace refuses jobs with ACCOUNT_READ_ONLY. The REST API adds the billing URL; an assistant
+ * gets a neutral explanation instead, because the ChatGPT and Claude directories do not allow upgrade prompts or
+ * subscription selling inside the chat (OpenAI plugin guidelines 5; Anthropic directory policy 4).
+ */
+const forAssistant = (e: ReturnType<typeof describeError>): ReturnType<typeof describeError> =>
+  e.code === "ACCOUNT_READ_ONLY"
+    ? {
+        code: e.code,
+        message:
+          "this workspace is read-only in Glideworth, so it cannot start new analyses or change data here",
+      }
+    : e;
 const asError = (err: unknown, validIds?: (message: string) => string[]) => {
-  const e = describeError(err);
+  const e = forAssistant(describeError(err));
   const hint = HINTS[e.code];
   let ids: string[] | undefined;
   if (e.code === "NOT_FOUND" && validIds)
@@ -203,7 +219,14 @@ export function createMcpServer(ctx: McpContext): McpServer {
       );
   }
 
-  type Hint = { readOnly: boolean; idempotent?: boolean; destructive?: boolean };
+  /** MCP tool annotations. `destructive` is true for anything that overwrites or removes existing state (the spec:
+   *  false means "only additive updates"); `openWorld` for a tool whose effect reaches outside the workspace. */
+  type Hint = {
+    readOnly: boolean;
+    idempotent?: boolean;
+    destructive?: boolean;
+    openWorld?: boolean;
+  };
   function tool<S extends z.ZodRawShape>(
     name: string,
     cfg: { title: string; description: string; input: S; hint: Hint },
@@ -219,7 +242,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
           readOnlyHint: cfg.hint.readOnly,
           destructiveHint: cfg.hint.destructive ?? false,
           idempotentHint: cfg.hint.idempotent ?? cfg.hint.readOnly,
-          openWorldHint: false,
+          openWorldHint: cfg.hint.openWorld ?? false,
         },
       },
       (async (args: z.infer<z.ZodObject<S>>, extra: Extra) => {
@@ -831,7 +854,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
             years: view.years,
           };
         } catch (err) {
-          outcome = { error: describeError(err) };
+          outcome = { error: forAssistant(describeError(err)) };
         }
         const f = hh.finances;
         const accounts = f.accounts.filter((a) => !a.archived).reduce((t, a) => t + a.balance, 0);
@@ -1606,7 +1629,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
         title: "Cancel job",
         description: "Cancel a queued or running job.",
         input: { jobId: z.string() },
-        hint: { readOnly: false, idempotent: true },
+        hint: { readOnly: false, idempotent: true, destructive: true },
       },
       async ({ jobId }) => {
         const j = await services.jobs.cancelAndWait(jobId);
@@ -1678,7 +1701,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
         description:
           "Apply a PROPOSED change set to its plan (atomic, recorded in the plan history with your identity). Fails with CHANGESET_CONFLICT if the plan changed since the proposal: propose again.",
         input: { changeSetId: z.string() },
-        hint: { readOnly: false },
+        hint: { readOnly: false, destructive: true },
       },
       ({ changeSetId }) => {
         const out = services.changeSets.apply(changeSetId, actor);
@@ -1697,7 +1720,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
         title: "Discard change set",
         description: "Discard a proposed change set without applying it.",
         input: { changeSetId: z.string() },
-        hint: { readOnly: false, idempotent: true },
+        hint: { readOnly: false, idempotent: true, destructive: true },
       },
       ({ changeSetId }) => {
         const c = services.changeSets.discard(changeSetId);
@@ -1818,7 +1841,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
             .describe("YYYY-MM the balances are valid for."),
           recordSnapshot: z.boolean().optional(),
         },
-        hint: { readOnly: false, idempotent: true },
+        hint: { readOnly: false, idempotent: true, destructive: true },
       },
       ({ householdId, ...u }) => {
         const out = services.households.updateBalances(
@@ -1917,7 +1940,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
           options: z.record(z.string(), z.unknown()).optional(),
           planId: z.string().optional(),
         },
-        hint: { readOnly: false },
+        hint: { readOnly: false, destructive: true },
       },
       async ({ householdId, kind, text, options, planId }) => {
         const out = (await services.imports.importCsv(
@@ -1942,7 +1965,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
         description:
           "Write a balance-history import atomically (same arguments as preview_balance_history_import, which you must run first and show the user). Repeating it changes nothing. Errors change nothing and list dates, keys and cell references.",
         input: historyInput,
-        hint: { readOnly: false, idempotent: true },
+        hint: { readOnly: false, idempotent: true, destructive: true },
       },
       async (args) => compactHistory(await runHistory(args, false)),
     );
@@ -2026,7 +2049,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
           rate: z.number().positive(),
           annualDrift: z.number().min(-0.5).max(0.5).default(0),
         },
-        hint: { readOnly: false, idempotent: true },
+        hint: { readOnly: false, idempotent: true, destructive: true },
       },
       ({ householdId, from, to, rate, annualDrift }) =>
         services.households.upsertFx(
@@ -2170,7 +2193,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
         title: "Mark notifications read",
         description: "Mark notifications as read: give ids, or all=true.",
         input: { ids: z.array(z.string()).max(200).optional(), all: z.boolean().default(false) },
-        hint: { readOnly: false, idempotent: true },
+        hint: { readOnly: false, idempotent: true, destructive: true },
       },
       ({ ids, all }) => ({ marked: services.checkins.markRead(all ? "all" : (ids ?? [])) }),
     );
@@ -2188,7 +2211,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
           milestoneSlipMonths: z.number().int().min(1).max(600).optional(),
           netWorthBehindPlan: z.number().min(0.01).max(1).optional(),
         },
-        hint: { readOnly: false, idempotent: true },
+        hint: { readOnly: false, idempotent: true, destructive: true },
       },
       ({ enabled, cadence, successRateDelta, milestoneSlipMonths, netWorthBehindPlan }) =>
         services.checkins.setConfig({
@@ -2214,7 +2237,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
           privacy: z.enum(["full", "percent", "hidden"]).default("percent"),
           expiresInDays: z.number().int().min(1).max(365).default(14),
         },
-        hint: { readOnly: false },
+        hint: { readOnly: false, openWorld: true },
       },
       async ({ planId, label, privacy, expiresInDays }) => {
         const out = await services.shares.create(
@@ -2237,7 +2260,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
         title: "List share links",
         description: "Share links (status, expiry, views); tokens are never shown again.",
         input: { planId: z.string().optional() },
-        hint: { readOnly: false, idempotent: true },
+        hint: { readOnly: true },
       },
       ({ planId }) => ({ items: services.shares.list(planId) }),
     );

@@ -1,0 +1,139 @@
+---
+import { TAX_SIMPLIFICATIONS, UNIFORM_LIFETIME, usRmdStartAge } from '@glideworth/core';
+import ToolPage from '../../components/tools/ToolPage.astro';
+import { ageText, engineRmds, firstRmdYear } from '../../tools/engine/rmd';
+import { money, pct } from '../../tools/format';
+import { externalLinkProps } from '../../lib/links';
+import { rmdSpec } from '../../tools/specs';
+import { defaults, num } from '../../tools/state';
+
+const m = (x: number) => money(x, 'USD');
+// Worked example: the calculator's own defaults, computed by its own code at build time.
+const ex = defaults(rmdSpec);
+const born = num(ex, 'born');
+const year = num(ex, 'year');
+const balance = num(ex, 'balance');
+const rows = engineRmds(ex);
+const now = rows[0]!;
+const later = rows.find((r) => r.age === now.age + 7) ?? rows[rows.length - 1]!;
+const startAge = usRmdStartAge(born);
+
+// Start ages by birth year, read from the engine's data and grouped into runs of the same age.
+const startGroups: { from: number; to: number; age: number }[] = [];
+for (let y = 1940; y <= 1975; y++) {
+  const a = usRmdStartAge(y);
+  const last = startGroups[startGroups.length - 1];
+  if (last && last.age === a) last.to = y;
+  else startGroups.push({ from: y, to: y, age: a });
+}
+const groupText = (g: { from: number; to: number }, i: number) =>
+  i === 0 ? `${g.to} or earlier` : i === startGroups.length - 1 ? `${g.from} or later` : g.from === g.to ? String(g.from) : `${g.from} to ${g.to}`;
+const latestStart = startGroups[startGroups.length - 1]!;
+
+// The Uniform Lifetime table as the engine holds it, from the first age anyone now starts RMDs.
+const firstTableAge = Math.ceil(startGroups[Math.min(1, startGroups.length - 1)]!.age);
+const tableAges = Object.keys(UNIFORM_LIFETIME)
+  .map(Number)
+  .filter((a) => a >= firstTableAge && a <= 100)
+  .sort((a, b) => a - b);
+
+const rmdNote = (TAX_SIMPLIFICATIONS['us-federal'] ?? []).find((s) => s.startsWith('Required minimum distributions'));
+const REG_URL = 'https://www.ecfr.gov/current/title-26/part-1/section-1.401(a)(9)-9';
+
+const faq = [
+  {
+    q: 'How is a required minimum distribution calculated?',
+    a: `<p>Divide the account balance at the end of the previous year by the Uniform Lifetime factor for the age you reach this year. For ${born} births in ${year}, that is age ${now.age} and a factor of ${now.factor}, so ${m(balance)} gives an RMD of ${m(now.rmd)}.</p>`,
+  },
+  {
+    q: 'At what age do RMDs start?',
+    a: `<p>It depends on your birth year. In Glideworth’s US data: ${startGroups.map((g, i) => `born ${groupText(g, i)}, ${ageText(g.age)}`).join('; ')}. Your first RMD year is the year you reach that age.</p>`,
+  },
+  {
+    q: 'Why does the RMD rise as a share of the balance each year?',
+    a: `<p>The factor falls as you age, so you divide by a smaller number: ${pct(1 / UNIFORM_LIFETIME[tableAges[0]!]!)} of the balance at ${tableAges[0]}, ${pct(1 / UNIFORM_LIFETIME[90]!)} at 90 and ${pct(1 / UNIFORM_LIFETIME[100]!)} at 100.</p>`,
+  },
+  {
+    q: 'Are the projected RMDs in today’s money?',
+    a: '<p>Yes. The projection uses a return after inflation, so later RMDs and balances are in today’s money. Because an RMD is a share of the balance, the share is the same whether you think in today’s money or future dollars; only the dollar amounts change.</p>',
+  },
+  {
+    q: 'Is this the exact amount I must take?',
+    a: '<p>It is an estimate from the rule and table in Glideworth’s data, for one account and one owner. Check the figure with your account provider or a tax adviser, especially if your spouse is your sole beneficiary or you have inherited accounts.</p>',
+  },
+];
+---
+
+<ToolPage
+  id="rmd"
+  heading="RMD calculator"
+  lede="Your required minimum distribution for a year from last year’s closing balance and your age, the age RMDs start for your birth year, and the RMDs that follow at a steady return. It runs the Glideworth planning engine in your browser; nothing you type is sent anywhere."
+  faq={faq}
+  adds="The planner takes required minimum distributions from your traditional accounts every year, alongside your other income, spending and US tax estimates."
+  related={[
+    { href: '/planning/us/', label: 'Retirement planning in the United States' },
+    { href: '/features/tax-estimates/', label: 'Tax estimates in the planner' },
+  ]}
+>
+  <h2>How the calculator works</h2>
+  <ol>
+    <li>
+      <strong>This year’s RMD.</strong> Your age for the year is the age you reach on your birthday that year. If it
+      is at or past the start age for your birth year, the RMD is the balance at the end of the year before divided
+      by the Uniform Lifetime factor for that age.
+    </li>
+    <li>
+      <strong>Later years.</strong> The engine projects one traditional IRA year by year at your return after inflation,
+      taking exactly the RMD each year. Each year’s RMD uses the balance the projection reached at the end of the year
+      before, so the figures follow from the rule rather than from a guess.
+    </li>
+  </ol>
+
+  <h2>The formula</h2>
+  <p class="formula">RMD = balance on 31 December of last year ÷ Uniform Lifetime factor at the age you reach this year</p>
+
+  <h2>Worked example</h2>
+  <p>
+    Computed by the calculator’s own code when this page was built. Someone born in {born} has a start age of
+    {' '}{ageText(startAge)}, so their first RMD year is {firstRmdYear(born)}. In {year} they reach {now.age}; the factor
+    at {now.age} is {now.factor}. With {m(balance)} at the end of {year - 1}, the RMD is {m(balance)} ÷ {now.factor} =
+    {' '}{m(now.rmd)}, or {pct(now.rmd / balance)} of the balance. At a steady {num(ex, 'ret')}% after inflation, by {later.year} (age
+    {' '}{later.age}) the RMD is {m(later.rmd)} in today’s money, from a balance of {m(later.prior)}.
+  </p>
+
+  <h2>Start ages by birth year</h2>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="RMD start age by birth year">
+    <table>
+      <caption>Age RMDs start, by birth year (Glideworth’s US data)</caption>
+      <thead><tr><th>Born</th><th>RMDs start at</th></tr></thead>
+      <tbody>{startGroups.map((g, i) => <tr><td>{groupText(g, i)}</td><td>{ageText(g.age)}</td></tr>)}</tbody>
+    </table>
+  </div>
+  <p>
+    Anyone born in {latestStart.from} or later starts at {ageText(latestStart.age)}.
+  </p>
+
+  <h2>The Uniform Lifetime table</h2>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="Uniform Lifetime table">
+    <table>
+      <caption>Uniform Lifetime factors and the share of the balance they require</caption>
+      <thead><tr><th>Age</th><th>Factor</th><th>RMD as a share of the balance</th></tr></thead>
+      <tbody>
+        {tableAges.map((a) => <tr><td>{a}</td><td>{UNIFORM_LIFETIME[a]!.toFixed(1)}</td><td>{pct(1 / UNIFORM_LIFETIME[a]!)}</td></tr>)}
+      </tbody>
+    </table>
+  </div>
+  <p>
+    Source: the IRS Uniform Lifetime table in Treasury Regulation §1.401(a)(9)-9(c), as held in Glideworth’s US data
+    (<a href={REG_URL} {...externalLinkProps(REG_URL)}>26 CFR 1.401(a)(9)-9 on eCFR</a>). The table continues to 120.
+  </p>
+
+  <h2>What this assumes and leaves out</h2>
+  <ul>
+    <li>One traditional IRA and one owner. RMDs from several accounts, inherited accounts and Roth accounts are not worked out here.</li>
+    <li>The Uniform Lifetime table only. {rmdNote ? `Glideworth’s own note on its model: “${rmdNote}”` : ''}</li>
+    <li>A steady return after inflation for the projection, with nothing added to or taken from the account other than the RMD.</li>
+    <li>No tax. An RMD is the amount you must take out; the tax on it depends on the rest of your income.</li>
+    <li>Ages are whole years, counted as the age you reach in the calendar year.</li>
+  </ul>
+</ToolPage>

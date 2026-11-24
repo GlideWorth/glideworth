@@ -59,10 +59,10 @@ pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build
 ## Tax and financial figures
 
 You cannot be the source of a rate, threshold or rule. Every figure needs an official source (the tax authority,
-the legislation or government guidance) that a human has opened, cited next to the figure with its URL, section
-and the date read. If you cannot confirm a figure, mark it unconfirmed in `TAX_SIMPLIFICATIONS` and
-`docs/STATUS.md` instead of guessing. Follow "Adding or updating a tax year" in CONTRIBUTING.md step by step, with
-test vectors at each threshold (just below, at and just above).
+the legislation or government guidance), cited next to the figure with its URL, section and the date read. You may
+find and read the source yourself; the reviewer checks the citation before merge. If you cannot confirm a figure,
+mark it unconfirmed in `TAX_SIMPLIFICATIONS` and `docs/STATUS.md` instead of guessing. Follow "Adding or updating a
+tax year" in CONTRIBUTING.md step by step, with test vectors at each threshold (just below, at and just above).
 
 ## Tests
 
@@ -72,6 +72,6 @@ official worked example or calculator.
 
 ## Pull requests
 
-A human must review every line and open the pull request. Fully automated pull requests are not accepted, except
-Dependabot's. Fill in the template, including the field that discloses which tool was used and what it did. Keep
-one logical change per pull request.
+You may push a branch and open the pull request yourself; see "Contributions written with AI" in CONTRIBUTING.md.
+Run the gates above first, fill in the template, including the field that names the tool and what it did, and
+keep one logical change per pull request. Maintainers review every pull request before it is merged.

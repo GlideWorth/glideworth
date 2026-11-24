@@ -1,0 +1,163 @@
+---
+import { TAX_SIMPLIFICATIONS, taxableSocialSecurity, US_FIXED } from '@glideworth/core';
+import ToolPage from '../../components/tools/ToolPage.astro';
+import { retirementTax } from '../../tools/engine/retirement-tax';
+import { federalYear, ratePct } from '../../tools/engine/us-tax';
+import { money, pct } from '../../tools/format';
+import { SPECS } from '../../tools/specs';
+import { defaults } from '../../tools/state';
+import { externalLinkProps } from '../../lib/links';
+
+const m = (x: number) => money(x, 'USD');
+// The worked example is the calculator's defaults, computed by its own code at build time.
+const ex = defaults(SPECS['retirement-tax']);
+const r = retirementTax(ex);
+const year = Number(ex.year);
+const d = federalYear(year);
+const ssBase = US_FIXED.socialSecurity;
+const ssOther = Number(ex.ira) + Number(ex.pen) + Number(ex.int) + Number(ex.qd);
+const provisional = ssOther + Number(ex.ss) / 2;
+// The largest share of benefits that can be taxable, read from the engine's own rule.
+const maxShare = taxableSocialSecurity(100_000, 10_000_000, 'married-joint') / 100_000;
+const halfShare = taxableSocialSecurity(100_000, ssBase.base2.joint - 50_000, 'married-joint') / 100_000;
+const senior = d.seniorDeduction;
+const zeroCg = d.capitalGains['married-joint'].zeroMax;
+
+// Same couple, more IRA withdrawals.
+const byWithdrawal = [20_000, 40_000, 60_000, 80_000, 100_000, 120_000].map((ira) => {
+  const x = retirementTax({ ...ex, ira });
+  return [m(ira), m(x.taxableSs), m(x.taxableIncome), m(x.total), pct(x.effective), pct(x.marginal)];
+});
+
+const sources = [
+  ...d.sources.filter((s) => !/HTML of/.test(s.note ?? '')),
+  { url: ssBase.source, note: 'IRS Publication 915: Social Security benefits' },
+];
+const simplifications = TAX_SIMPLIFICATIONS['us-federal'] ?? [];
+
+const faq = [
+  {
+    q: 'How much of my Social Security is taxable?',
+    a: `<p>It depends on your other income. The engine adds half of your benefits to your other income (the “provisional income”) and compares it with two base amounts set in law and not indexed: ${m(ssBase.base1.joint)} and ${m(ssBase.base2.joint)} on a joint return, ${m(ssBase.base1.other)} and ${m(ssBase.base2.other)} for most other filers. Below the first, none is taxable; between them up to ${pct(halfShare, 0)}; above the second up to ${pct(maxShare, 0)} of your benefits.</p>`,
+  },
+  {
+    q: 'Why is my marginal rate higher than my bracket?',
+    a: '<p>Because one more dollar of IRA withdrawals can also make more of your Social Security taxable, or push qualified dividends and gains out of the 0% band. The calculator measures the marginal rate by adding a dollar and running the whole calculation again, so those knock-on effects are included. The second chart shows how the rate moves as withdrawals grow.</p>',
+  },
+  {
+    q: 'Are Roth withdrawals taxed?',
+    a: `<p>Qualified Roth IRA withdrawals are not, and this calculator treats every Roth withdrawal as qualified. A withdrawal of earnings is qualified after age ${String(US_FIXED.retirementAccessAge).replace('.5', '½')} once ${US_FIXED.rothFiveYearRule} tax years have passed since the first contribution; the calculator does not check that.</p>`,
+  },
+  {
+    q: 'What is the senior deduction?',
+    a: senior
+      ? `<p>An extra deduction of ${m(senior.amount)} for each person aged 65 or over, for tax years up to ${senior.lastYear}, on top of the standard deduction and its additions for age. It is reduced by ${pct(senior.phaseoutRate, 0)} of income above ${m(senior.phaseoutStart.single)} (${m(senior.phaseoutStart['married-joint'])} on a joint return). The calculator applies it from the engine’s data.</p>`
+      : '<p>The engine’s table for this year has no senior deduction.</p>',
+  },
+  {
+    q: 'Does this include state tax?',
+    a: '<p>No. This calculator estimates federal income tax only. The full planner estimates state and local income tax for every state and DC, year by year, alongside the federal estimate.</p>',
+  },
+];
+---
+
+<ToolPage
+  id="retirement-tax"
+  heading="Retirement tax calculator"
+  lede="An estimate of US federal income tax on a year of retirement income: Social Security, IRA and 401(k) withdrawals, pensions, interest, dividends and Roth withdrawals. It runs the Glideworth tax engine in your browser; nothing you type is sent anywhere."
+  faq={faq}
+  adds="This calculator looks at one year of federal tax."
+  related={[
+    { href: '/features/tax-estimates/', label: 'Tax estimates in the planner' },
+    { href: '/planning/us/', label: 'Retirement planning in the United States' },
+    { href: '/docs/planning/tax-and-currency/', label: 'Tax and currency settings' },
+  ]}
+>
+  <h2>How the calculator works</h2>
+  <ol>
+    <li>
+      <strong>Your income for the year</strong> goes to the engine’s US federal tax model, the same code the planner
+      runs every year of a plan, for the tax year and filing status you choose.
+    </li>
+    <li>
+      <strong>Social Security.</strong> The model works out how much of your benefits is taxable from your other income.
+    </li>
+    <li>
+      <strong>Deductions.</strong> It takes the standard deduction for your filing status, adds the amounts for each
+      person aged 65 or over and the senior deduction where they apply.
+    </li>
+    <li>
+      <strong>Tax.</strong> Ordinary income fills the brackets first; qualified dividends and long-term gains sit on top
+      and are taxed at the capital gains rates. The alternative minimum tax and the net investment income tax are
+      checked too.
+    </li>
+  </ol>
+
+  <h2>Worked example</h2>
+  <p>
+    Computed by the calculator’s own code when this page was built, for {year}: a married couple filing jointly, aged
+    {' '}{ex.age} and {ex.age2}, with {m(Number(ex.ss))} of Social Security, {m(Number(ex.ira))} of IRA withdrawals,
+    {' '}{m(Number(ex.int))} of interest, {m(Number(ex.qd))} of qualified dividends and {m(Number(ex.roth))} from a Roth
+    IRA.
+  </p>
+  <ul>
+    <li>
+      Provisional income is the other taxable income, {m(ssOther)}, plus half the benefits: {m(provisional)}. That is
+      {provisional > ssBase.base2.joint ? 'above' : provisional > ssBase.base1.joint ? 'between the base amounts, not above' : 'not above'} {m(ssBase.base2.joint)}, so {m(r.taxableSs)} of the {m(Number(ex.ss))} is taxable.
+    </li>
+    <li>Adjusted gross income: {m(r.agi)}. The Roth withdrawal is not part of it.</li>
+    <li>
+      Deductions: {m(r.deduction)} (the {m(d.standardDeduction['married-joint'])} standard deduction plus
+      {' '}{m(d.additionalAged.married)} for each spouse aged 65 or over){r.seniorDeduction > 0 && <>, and a senior deduction of {m(r.seniorDeduction)}</>}.
+      Taxable income: {m(r.taxableIncome)}, of which {m(r.preferential)} is qualified dividends.
+    </li>
+    <li>
+      Tax: {m(r.ordinaryTax)} on ordinary income and {m(r.preferentialTax)} on the dividends (taxable income up to
+      {' '}{m(zeroCg)} on a joint return leaves them in the 0% band), so {m(r.total)} in all:
+      {' '}{pct(r.effective)} of the {m(r.totalIncome)} the couple received. The next dollar withdrawn is taxed at
+      {' '}{pct(r.marginal)}.
+    </li>
+  </ul>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="Same couple at other withdrawal levels">
+    <table>
+      <caption>The same couple with other IRA withdrawals ({year})</caption>
+      <thead>
+        <tr><th>IRA withdrawals</th><th>Taxable Social Security</th><th>Taxable income</th><th>Federal tax</th><th>Effective rate</th><th>Marginal rate</th></tr>
+      </thead>
+      <tbody>{byWithdrawal.map((row) => <tr>{row.map((c) => <td>{c}</td>)}</tr>)}</tbody>
+    </table>
+  </div>
+  <p>
+    Where the marginal rate is above the bracket rate, each extra dollar withdrawn also makes more Social Security
+    taxable, or pushes dividends out of the 0% band. On a joint return the brackets for {year} start at
+    {' '}{d.brackets['married-joint'].map(([from, rate]) => `${ratePct(rate)} from ${m(from)}`).join(', ')} of taxable
+    income.
+  </p>
+
+  <h2>Where the figures come from</h2>
+  <p>
+    Every rate, bracket and threshold comes from the engine’s US tax data, which records its official sources:
+  </p>
+  <ul>
+    {sources.map((s) => <li><a href={s.url} {...externalLinkProps(s.url)}>{s.note ?? s.url}</a></li>)}
+  </ul>
+
+  <h2>What this assumes and leaves out</h2>
+  <ul>
+    <li>Federal income tax only: no state or local income tax and no payroll tax.</li>
+    <li>
+      No Medicare premium surcharges (IRMAA). They depend on income from two years earlier, which the planner tracks
+      and a one-year calculator does not.
+    </li>
+    <li>
+      No additional tax on withdrawals before age {String(US_FIXED.retirementAccessAge).replace('.5', '½')}; Roth
+      withdrawals are treated as qualified.
+    </li>
+    <li>The standard deduction only: no itemised deductions and no credits.</li>
+    <li>An estimate, not a tax return. The engine’s own list of what its US federal model leaves out:</li>
+  </ul>
+  <details>
+    <summary>US federal simplifications ({simplifications.length})</summary>
+    <ul>{simplifications.map((s) => <li>{s}</li>)}</ul>
+  </details>
+</ToolPage>

@@ -26,6 +26,8 @@ function legendHtml(c: ChartSpec): string {
   const items: string[] = [];
   for (const b of c.bands ?? [])
     items.push(`<li>${legendSwatch("band", "", b.tone, b.level)}${esc(b.label)}</li>`);
+  for (const g of c.paths ?? [])
+    items.push(`<li>${legendSwatch("line", g.style, g.tone)}${esc(g.label)}</li>`);
   for (const s of c.series)
     items.push(
       `<li>${legendSwatch(c.kind === "bar" ? "bar" : "line", s.style, s.tone)}${esc(s.label)}</li>`,

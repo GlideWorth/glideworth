@@ -72,6 +72,8 @@ export interface BootOptions {
   errorReportFetch?: typeof fetch;
   /** Server-side product events: the HTTP client they use (only with GLIDEWORTH_POSTHOG_* set). */
   productEventFetch?: typeof fetch;
+  /** The ChatGPT directory's domain-verification token (`createCloudHost` option). */
+  openaiAppsChallenge?: string;
 }
 
 export async function bootCloud(o: BootOptions = {}) {
@@ -97,6 +99,7 @@ export async function bootCloud(o: BootOptions = {}) {
     webDist: null,
     webhookRetryDelaysMs: [0, 0],
     ...(o.fetch ? { fetch: o.fetch } : {}),
+    ...(o.openaiAppsChallenge ? { openaiAppsChallenge: o.openaiAppsChallenge } : {}),
   });
   // Capture the public app the host builds (route enumeration in T-ISO).
   let app: { routes?: Array<{ method: string; path: string }> } | null = null;

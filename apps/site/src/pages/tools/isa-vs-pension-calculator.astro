@@ -1,0 +1,145 @@
+---
+import ToolPage from '../../components/tools/ToolPage.astro';
+import { potsByFormula, readIsaPension, runComparison } from '../../tools/engine/isa-vs-pension';
+import { ukFirstTaxYear, ukSimplification, ukTaxFreeShare } from '../../tools/engine/uk-model';
+import { money, pct } from '../../tools/format';
+import { isaVsPensionSpec } from '../../tools/specs';
+import { defaults } from '../../tools/state';
+
+const m = (x: number) => money(x, 'GBP');
+const Y = ukFirstTaxYear();
+const I = Y.income;
+const ras = Y.pensions.reliefAtSourceRate;
+const gross = (x: number) => x / (1 - ras);
+const share = pct(ukTaxFreeShare(), 0);
+
+// The worked example is the calculator's default plan, run by the same code at build time.
+const d = readIsaPension(defaults(isaVsPensionSpec));
+const res = runComparison(d);
+const f = potsByFormula(d);
+const working = d.retire - d.age;
+const diff = res.pension.income - res.isa.income;
+const higher = runComparison({ ...d, salary: 60_000 });
+const higherRelief = higher.isa.taxWorking - higher.pension.taxWorking;
+const bySalary = [20_000, 40_000, 60_000, 100_000].map((s) => {
+  const r = s === d.salary ? res : s === 60_000 ? higher : runComparison({ ...d, salary: s });
+  return [m(s), m(r.pension.income), m(r.isa.income), m(r.isa.taxWorking - r.pension.taxWorking)];
+});
+
+const faq = [
+  {
+    q: 'Is an ISA or a pension better?',
+    a: `<p>For money you will not need before pension age, a pension usually ends up paying more, because tax relief goes in at your income tax rate while working and ${share} of each withdrawal comes out tax-free. An ISA wins on access (you can take the money at any time) and when your tax rate in retirement would be higher than while working. The calculator puts the same take-home money into each and compares the income after tax.</p>`,
+  },
+  {
+    q: 'How does pension tax relief work?',
+    a: `<p>With relief at source (most personal pensions and SIPPs), you pay in from take-home pay and the provider claims basic-rate relief: ${m(80)} from you becomes ${m(gross(80))} in the pension (${pct(ras, 0)} of the gross amount). A higher or additional rate taxpayer claims the rest through their tax return, which lowers the tax on their pay; the calculator shows that saving but does not invest it. Relief is limited to your earnings in the year (or ${m(Y.pensions.basicAmount)} gross without earnings) and to the annual allowance (${m(Y.pensions.annualAllowance)} in ${Y.label}).</p>`,
+  },
+  {
+    q: 'How are ISA and pension withdrawals taxed?',
+    a: `<p>ISA withdrawals are tax-free. From a pension, usually ${share} of each withdrawal is tax-free and the rest is taxed as income, together with the State Pension. In ${Y.label} the personal allowance is ${m(I.personalAllowance)} and the basic rate of ${pct(I.rates.basic, 0)} applies up to ${m(I.personalAllowance + I.basicRateBand)} (rest-of-UK rates).</p>`,
+  },
+  {
+    q: 'How much can I put into an ISA?',
+    a: `<p>The ISA allowance is ${m(Y.isa.overall)} a year in ${Y.label}, across all your ISAs. The calculator warns if the saving is above it, but still puts the whole amount in the ISA so the two stay comparable.</p>`,
+  },
+];
+---
+
+<ToolPage
+  id="isa-vs-pension"
+  heading="ISA vs pension calculator"
+  lede="Put the same take-home pay into a pension or into an ISA, and compare the income after tax each pays in retirement. Pension tax relief, tax-free cash and income tax in retirement come from the Glideworth planning engine’s UK tax estimate, run in your browser; nothing you type is sent anywhere."
+  faq={faq}
+  adds="This calculator saves one amount into one wrapper. The planner holds ISAs and pensions together, workplace pensions with employer contributions, a drawdown order between them, a partner and market history."
+  related={[
+    { href: '/planning/uk/', label: 'Retirement planning in the United Kingdom' },
+    { href: '/features/tax-estimates/', label: 'Tax estimates in the planner' },
+    { href: '/docs/planning/tax-and-currency/', label: 'Tax settings in the planner' },
+  ]}
+>
+  <h2>How the calculator works</h2>
+  <ol>
+    <li>
+      <strong>Saving.</strong> The engine runs your salary until retirement twice. In one run the yearly saving goes
+      into a pension with relief at source: the engine adds basic-rate relief to the pension and, for a higher or
+      additional rate taxpayer, widens the tax bands so the tax on pay falls. In the other run the same amount goes
+      into an ISA, with no relief.
+    </li>
+    <li>
+      <strong>Retirement.</strong> From the retirement age each pot, with the State Pension, pays a level income after
+      tax until the age you choose. The calculator finds the highest income each can pay in full every year. Pension
+      withdrawals are {share} tax-free and the rest taxed as income; ISA withdrawals are tax-free.
+    </li>
+    <li>
+      <strong>The same money.</strong> Both runs take the same amount from your take-home pay. A higher-rate
+      taxpayer’s extra relief is shown as a figure of its own and treated as spent, not saved, so it does not
+      flatter the pension.
+    </li>
+  </ol>
+
+  <h2>Worked example</h2>
+  <p>
+    Computed by the calculator’s own code when this page was built. Age {d.age}, a salary of {m(d.salary)}, saving
+    {' '}{m(d.save)} a year from take-home pay until {d.retire}, growing {pct(d.realReturn, 0)} a year after inflation,
+    with the full new State Pension and the income lasting to {d.planTo}.
+  </p>
+  <ul>
+    <li>
+      Pension: {m(d.save)} becomes {m(gross(d.save))} a year with relief at source, {m(res.pension.reliefAdded)} of
+      relief over {working} years. The pot reaches {m(res.pension.potAtRetirement)} at {d.retire} (the formula gives
+      {' '}{m(f.pension)}).
+    </li>
+    <li>
+      ISA: {m(d.save)} a year reaches {m(res.isa.potAtRetirement)} (formula: {m(f.isa)}).
+    </li>
+    <li>
+      In retirement the pension pays {m(res.pension.income)} a year after tax and the ISA {m(res.isa.income)}, State
+      Pension included: {diff >= 0 ? `${m(diff)} a year more from the pension` : `${m(-diff)} a year more from the ISA`}.
+      The pension’s income is taxed ({m(res.pension.taxRetired)} over the retirement, against
+      {' '}{m(res.isa.taxRetired)} on the State Pension alone with the ISA){diff >= 0
+        ? `, but the relief going in and the ${share} tax-free coming out outweigh it.`
+        : ', and here that outweighs the relief going in.'}
+    </li>
+    <li>
+      On a salary of {m(60_000)}, the same saving also cuts the tax on pay by {m(higherRelief)} over the working years
+      (higher-rate relief), money the pension’s income above does not include.
+    </li>
+  </ul>
+  <div class="table-scroll" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
+    <table>
+      <caption>The same saving at other salaries (income after tax a year in retirement, today’s money)</caption>
+      <thead><tr><th>Salary</th><th>Pension</th><th>ISA</th><th>Higher-rate relief while working</th></tr></thead>
+      <tbody>{bySalary.map((r) => <tr>{r.map((c) => <td>{c}</td>)}</tr>)}</tbody>
+    </table>
+  </div>
+
+  <h2>Why the engine and the formula can differ</h2>
+  <p>
+    The pot at retirement is the future value of a yearly payment, and with 0% inflation the engine and the formula
+    agree to the penny. With inflation the engine sets each year’s saving at that year’s starting prices, pays it when
+    the timing option says, and values the pot at the end of the year. Paid in the middle of the year, a saving has
+    lost half a year of inflation by then, so in today’s money the pot is the formula divided by (1 + inflation)<sup>½</sup>
+    (by 1 + inflation for end-of-year saving, unchanged for start-of-year). The comparison under the results applies
+    the same step. Relief is the gross-up at the relief-at-source rate in both.
+  </p>
+
+  <h2>What this assumes and leaves out</h2>
+  <ul>
+    <li>A steady return, the same for both. Fees are whatever you take off the return.</li>
+    <li>One person, saving the same amount in today’s money every year until retirement, then a level income.</li>
+    <li>
+      Relief at source only: no workplace pension, employer contributions or salary sacrifice, which would favour
+      the pension further.
+    </li>
+    <li>Your salary stays the same in today’s money. Tax while working and in retirement is an estimate from the engine’s UK model.</li>
+    <li>
+      {ukSimplification('annualAllowance')}
+    </li>
+    <li>
+      {ukSimplification('taxFreeCash')}
+    </li>
+    <li>Lifetime ISAs, access before pension age, and inheritance tax on what is left are not modelled.</li>
+    <li>This is not financial advice.</li>
+  </ul>
+</ToolPage>

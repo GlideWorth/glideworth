@@ -1,0 +1,135 @@
+---
+import { MARKET_DATASETS } from '@glideworth/core';
+import ToolPage from '../../components/tools/ToolPage.astro';
+import { HISTORY_DATASET } from '../../tools/engine/model';
+import { aPct, maxSpending } from '../../tools/engine/retirement-spending';
+import { money, pct, whole } from '../../tools/format';
+import { SPECS } from '../../tools/specs';
+import { defaults } from '../../tools/state';
+import type { Values } from '../../tools/types';
+
+const ds = MARKET_DATASETS[HISTORY_DATASET];
+const m = (x: number | null) => (x === null ? 'none' : money(x, 'USD'));
+// Worked examples, computed by the calculator's own engine code at build time.
+const ex: Values = { ...defaults(SPECS['retirement-spending']) };
+const base = await maxSpending(ex);
+const withPension = await maxSpending({ ...ex, inc: 20_000, incAge: 67 });
+const longer = await maxSpending({ ...ex, age: 55 });
+const rows = [
+  ...base.neighbours.filter((x) => x.target < 0.85),
+  { target: 0.85, spending: base.spending },
+  ...base.neighbours.filter((x) => x.target > 0.85),
+];
+const trials = Number(ex.trials);
+
+const faq = [
+  {
+    q: 'How much can I spend in retirement?',
+    a: `<p>It depends on the portfolio, the years it must last, other income and the chance of running short you accept. On this page’s worked example, ${m(1_000_000)} at 65 with 60% in stocks supports about ${m(base.spending)} a year to 95 with ${aPct(0.85)} chance that every year is paid on US history. Enter your own figures in the calculator.</p>`,
+  },
+  {
+    q: 'What is a retirement spend-down calculator?',
+    a: '<p>One that plans to use the portfolio up, not to live off its returns. This calculator finds the steady spending that the portfolio and any other income can pay to the age you choose, at a chance of success you choose, and draws how the portfolio falls along the way. In a typical simulation money is still left at the end, because the spending was set to survive the bad ones.</p>',
+  },
+  {
+    q: 'What chance of success should I choose?',
+    a: `<p>There is no standard. A higher chance means lower spending, and more often money left unspent. In the worked example, moving from 85% to 95% lowers spending from ${m(base.spending)} to ${m(base.neighbours.find((x) => Math.abs(x.target - 0.95) < 1e-9)?.spending ?? null)}. The full planner’s risk-based guardrails default to a target of 80%, with spending reset when the chance leaves a band.</p>`,
+  },
+  {
+    q: 'How does a pension or Social Security change it?',
+    a: `<p>Income that starts later lets you spend more from the start, because the portfolio only has to bridge the years before it. In the worked example, ${m(20_000)} a year from 67 raises the most you can spend from ${m(base.spending)} to ${m(withPension.spending)} a year. Enter income after tax; the calculator treats it as rising with inflation.</p>`,
+  },
+  {
+    q: 'Is this the same as a safe withdrawal rate?',
+    a: '<p>Close. A safe withdrawal rate is the first-year share of a portfolio that lasts a horizon, with no other income. This calculator answers in money, counts income that starts later, and lets you pick the chance. With no other income, the answer divided by the portfolio is a withdrawal rate for your horizon and chance.</p>',
+  },
+];
+---
+
+<ToolPage
+  id="retirement-spending"
+  heading="Retirement spending calculator: how much can I spend?"
+  lede="The most you can spend every year, steady in today’s money, at the chance of success you choose, with a pension or other income from any age, and how the portfolio spends down. It runs the Glideworth planning engine’s spending solver in your browser; nothing you type is sent anywhere."
+  faq={faq}
+  adds="The planner solves for spending on your whole plan: several accounts, real tax rules, dated expenses and a partner’s income."
+  related={[
+    { href: '/features/solvers/', label: 'Solvers in the planner' },
+    { href: '/docs/planning/solvers-and-guardrails/', label: 'Guide: solvers and guardrails' },
+    { href: '/tools/guardrails-retirement-calculator/', label: 'Guardrails retirement calculator' },
+    { href: '/docs/methodology/monte-carlo/', label: 'Methodology: Monte Carlo' },
+  ]}
+>
+  <h2>How the calculator works</h2>
+  <p>It turns a Monte Carlo question round. Instead of “how likely is this spending to last?”, it asks “what spending is this likely to last?”:</p>
+  <ol>
+    <li>Pick a spending level and run the plan through every simulation.</li>
+    <li>Count the share of simulations in which every year was paid.</li>
+    <li>
+      Move the spending up or down and repeat, narrowing in on the most spending whose share is at least your target.
+    </li>
+  </ol>
+  <p>
+    This is the engine’s own spending solver (<code>solveMaxSpending</code>). Every candidate uses the same seeded
+    market paths, so more spending can only lower the chance and the search does not chase sampling noise. The answer
+    is found to within a quarter of a percent of the portfolio spread evenly over the years plus income. The same
+    search then answers for nearby chances, so you see the trade-off.
+  </p>
+  <p>
+    The market models are those of the <a href="/tools/monte-carlo-retirement-calculator/">Monte Carlo calculator</a>:
+    US history with random start years (the default) or 5-year blocks, from {ds.label}, or random real returns.
+  </p>
+
+  <h2>Worked example</h2>
+  <p>
+    Computed by the calculator’s own code when this page was built, with its default inputs: {m(1_000_000)} at 65, spending
+    to 95, 60% stocks and 40% bonds, US history with random start years, {whole(trials)} simulations per candidate with
+    seed {ex.seed}, money moving in the middle of each year, no tax and no other income. The most steady spending with
+    {' '}{aPct(0.85)} chance that every year is paid is {m(base.spending)} a year, {pct((base.spending ?? 0) / 1_000_000, 2)}
+    {' '}of the portfolio.
+  </p>
+  <div class="table-scroll" tabindex="0" role="group" aria-label="Table, scrolls sideways if it does not fit">
+    <table>
+      <caption>Most yearly spending by chance of success (today’s money, same simulations)</caption>
+      <thead><tr><th>Chance every year is paid</th><th>Most yearly spending</th><th>Share of the portfolio</th></tr></thead>
+      <tbody>
+        {
+          rows.map((r) => (
+            <tr>
+              <td>{pct(r.target, 0)}</td>
+              <td>{m(r.spending)}</td>
+              <td>{r.spending === null ? '–' : pct(r.spending / 1_000_000, 2)}</td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+  <p>
+    Two changes to the same example. Adding {m(20_000)} a year of pension from 67 raises the answer to
+    {' '}{m(withPension.spending)}. Retiring at 55 instead, so the money must last 40 years, lowers it to
+    {' '}{m(longer.spending)}.
+  </p>
+
+  <h2>What this assumes and leaves out</h2>
+  <ul>
+    <li>
+      <strong>Steady spending.</strong> The answer is one amount in today’s money for every year. Real spending often
+      falls with age, and people cut back after bad years; the <a href="/tools/guardrails-retirement-calculator/"
+        >guardrails calculator</a
+      > shows rules that do.
+    </li>
+    <li>
+      <strong>Success means every year paid in full.</strong> A simulation short by a little in its last year fails.
+      Money left at the end is not a goal here.
+    </li>
+    <li>
+      <strong>Only the market varies.</strong> Lifespan is the age you enter; health costs, tax law and inflation in your
+      own spending are fixed.
+    </li>
+    <li>One portfolio rebalanced yearly, no fees, and no tax unless you set the flat rate. Income is entered after tax.</li>
+    <li>
+      <strong>One country’s history.</strong> Data: Aswath Damodaran, <em>Historical Returns on Stocks, Bonds and
+      Bills</em> (NYU Stern), and US Bureau of Labor Statistics CPI-U.
+    </li>
+  </ul>
+</ToolPage>

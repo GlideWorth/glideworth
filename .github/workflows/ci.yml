@@ -31,7 +31,7 @@ jobs:
     name: Detect changed paths
     # Drafts skip every job but the gate (see the header).
     if: github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && 'ubicloud-standard-2' || 'ubuntu-latest' }}
     timeout-minutes: 5
     permissions:
       contents: read
@@ -97,7 +97,7 @@ jobs:
   quick:
     name: Format, lint and secret scan
     needs: changes
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && 'ubicloud-standard-2' || 'ubuntu-latest' }}
     timeout-minutes: 10
     steps:
       # Full history for the secret scan.
@@ -149,7 +149,7 @@ jobs:
     name: Typecheck and build
     needs: changes
     if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && 'ubicloud-standard-2' || 'ubuntu-latest' }}
     timeout-minutes: 20
     steps:
       - name: Check out
@@ -184,7 +184,7 @@ jobs:
     name: Tests
     needs: changes
     if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && 'ubicloud-standard-2' || 'ubuntu-latest' }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -224,7 +224,7 @@ jobs:
     name: CI gate
     needs: [changes, quick, typecheck-build, test]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && 'ubicloud-standard-2' || 'ubuntu-latest' }}
     timeout-minutes: 2
     steps:
       # A skipped gate would count as passing for the required check, so on a draft it fails instead.

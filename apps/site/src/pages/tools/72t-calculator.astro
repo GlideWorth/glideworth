@@ -1,0 +1,120 @@
+---
+import { IRS_MORTALITY_RATES } from '@glideworth/core';
+import ToolPage from '../../components/tools/ToolPage.astro';
+import { annuityFactor, seppPath, seppPayment } from '../../tools/engine/sepp';
+import { money, pctInput } from '../../tools/format';
+import { externalLinkProps } from '../../lib/links';
+import { seppSpec } from '../../tools/specs';
+import { defaults, num, rate } from '../../tools/state';
+
+const m = (x: number) => money(x, 'USD');
+// Worked example: the calculator's own defaults, computed by its own code at build time.
+const ex = defaults(seppSpec);
+const balance = num(ex, 'balance');
+const age = num(ex, 'age');
+const interestPct = num(ex, 'interest');
+const i = rate(ex, 'interest');
+const years = num(ex, 'years');
+const growthPct = num(ex, 'growth');
+const factor = annuityFactor(age, i);
+const payment = seppPayment(balance, age, i);
+const path = seppPath(balance, payment, years, rate(ex, 'growth'), age);
+const lowerPct = interestPct - 1;
+const lower = seppPayment(balance, age, lowerPct / 100);
+const olderAge = age + 5;
+const older = seppPayment(balance, olderAge, i);
+const q = IRS_MORTALITY_RATES[age]!;
+const REG_URL = 'https://www.ecfr.gov/current/title-26/part-1/section-1.401(a)(9)-9';
+
+const faq = [
+  {
+    q: 'How is the 72(t) fixed annuitisation payment worked out?',
+    a: `<p>Divide the account balance by an annuity factor: the present value of 1 a year for life, first payment now, using the IRS mortality rates and your interest rate. At age ${age} and ${pctInput(interestPct)} the factor is ${factor.toFixed(4)}, so ${m(balance)} pays ${m(payment)} a year.</p>`,
+  },
+  {
+    q: 'What interest rate can I use?',
+    a: '<p>IRS Notice 2022-6 sets a maximum, based on the federal mid-term rate that the IRS publishes each month. Glideworth’s data does not hold those rates, so this calculator does not check the limit: look up the one for your start date. A lower rate gives a smaller payment.</p>',
+  },
+  {
+    q: 'Why does this calculator show only the fixed annuitisation method?',
+    a: '<p>The required minimum distribution and fixed amortisation methods divide by a life expectancy at your age. The official life expectancy table in Glideworth’s data starts at 70, well above the ages people use 72(t) payments, so rather than approximate it, this calculator leaves those methods out. Fixed annuitisation needs only the mortality rates, which Glideworth holds for every age.</p>',
+  },
+  {
+    q: 'How long must the payments continue?',
+    a: '<p>Section 72(t) sets a minimum period that depends on your age and start date, and changing the payments before it ends can be costly. This calculator lets you enter the length; check it against IRS guidance or with a tax adviser before you start.</p>',
+  },
+  {
+    q: 'Does the payment rise with inflation?',
+    a: '<p>No. Under this method the yearly payment is worked out once and stays the same number of dollars, so its buying power falls over time. That is why the growth input here is before inflation.</p>',
+  },
+];
+---
+
+<ToolPage
+  id="sepp-72t"
+  heading="72(t) calculator"
+  lede="The yearly payment from substantially equal periodic payments (SEPP) under the fixed annuitisation method, from the IRS mortality rates and the interest rate you choose, and what the fixed payment does to your balance. It runs in your browser; nothing you type is sent anywhere."
+  faq={faq}
+  adds=""
+  planner={false}
+  related={[
+    { href: '/tools/how-long-will-my-money-last/', label: 'How long will my money last?' },
+    { href: '/legal/disclaimer/', label: 'Not-advice notice' },
+  ]}
+>
+  <h2>How the calculator works</h2>
+  <ol>
+    <li>
+      <strong>Annuity factor.</strong> For each future year, the chance you are alive (from the mortality rates in 26 CFR
+      1.401(a)(9)-9(e), which IRS Notice 2022-6 names for this method) is multiplied by the discount at your interest
+      rate. The factor is the sum, starting with a payment now.
+    </li>
+    <li><strong>Payment.</strong> Your balance divided by the factor, fixed for every year.</li>
+    <li>
+      <strong>Balance.</strong> Each year’s payment comes out at the start of the year and the rest grows at the rate you
+      enter, so you can see whether the account keeps up with the payments.
+    </li>
+  </ol>
+
+  <h2>The formula</h2>
+  <p class="formula">payment = B ÷ Σ<sub>t≥0</sub> S(x, t) ÷ (1 + i)<sup>t</sup></p>
+  <p>
+    <code>B</code> is the balance, <code>i</code> the interest rate and <code>S(x, t)</code> the chance that someone aged
+    {' '}<code>x</code> in the first year is alive <code>t</code> years later, from the yearly mortality rates
+    q(x). For example, q({age}) in the table is {q}.
+  </p>
+
+  <h2>Worked example</h2>
+  <p>
+    Computed by the calculator’s own code when this page was built. {m(balance)} at age {age} and {pctInput(interestPct)}
+    {' '}interest: the annuity factor is {factor.toFixed(4)}, so the payment is {m(balance)} ÷ {factor.toFixed(4)} =
+    {' '}{m(payment)} a year, about {m(payment / 12)} a month. Taking it for {years} years with {pctInput(growthPct)}
+    {' '}growth a year leaves {m(path[path.length - 1]!.closing)}.
+  </p>
+  <p>
+    At {pctInput(lowerPct)} instead the payment is {m(lower)}; starting at {olderAge} at {pctInput(interestPct)} it is
+    {' '}{m(older)}, because the expected payment period is shorter.
+  </p>
+
+  <h2>What this assumes and leaves out</h2>
+  <ul>
+    <li>
+      The fixed annuitisation method only. The required minimum distribution and fixed amortisation methods are not
+      shown, because the life expectancy table they need at these ages is not in Glideworth’s data.
+    </li>
+    <li>
+      The interest-rate limit, the minimum period of the payments and what counts as changing them are not checked.
+      You enter the rate and the number of years.
+    </li>
+    <li>Whole-year ages: the age you reach in the calendar year the payments start, as one yearly payment.</li>
+    <li>A steady growth rate for the balance projection, before inflation.</li>
+    <li>No tax: the calculator does not estimate tax on the payments.</li>
+    <li>
+      Mortality rates: 26 CFR 1.401(a)(9)-9(e), as held in Glideworth’s US data
+      (<a href={REG_URL} {...externalLinkProps(REG_URL)}>eCFR</a>).
+    </li>
+  </ul>
+  <p>
+    A 72(t) plan is hard to undo. Read IRS Notice 2022-6 and talk to a tax adviser before you start one.
+  </p>
+</ToolPage>

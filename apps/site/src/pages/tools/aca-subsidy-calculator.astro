@@ -1,0 +1,148 @@
+---
+import { acaApplicablePercentage, federalPovertyLine, TAX_SIMPLIFICATIONS } from '@glideworth/core';
+import ToolPage from '../../components/tools/ToolPage.astro';
+import { acaNumbers, creditAt, readAca } from '../../tools/engine/aca-subsidy';
+import { acaYear } from '../../tools/engine/us-tax';
+import { money, pct } from '../../tools/format';
+import { SPECS } from '../../tools/specs';
+import { defaults } from '../../tools/state';
+import { externalLinkProps } from '../../lib/links';
+
+const m = (x: number) => money(x, 'USD');
+// The worked example is the calculator's defaults, computed by its own code at build time.
+const ex = defaults(SPECS['aca-subsidy']);
+const i = readAca(ex);
+const r = acaNumbers(i);
+const row = acaYear(i.year);
+const floorPct = Math.round(row.floor * 100);
+const cliffPct = Math.round(row.cliff * 100);
+const top = row.applicable[row.applicable.length - 1]!;
+
+// The same household at other incomes, as shares of its poverty line.
+const atMultiples = [1, 1.5, 2, 2.5, 3, 3.5, row.cliff, row.cliff + 0.01].map((mult) => {
+  const magi = Math.round(mult * r.fpl);
+  const p = acaApplicablePercentage(magi / r.fpl, false, row);
+  const c = creditAt(i, magi);
+  return [`${Math.round((magi / r.fpl) * 100)}%`, m(magi), p === null ? 'None' : pct(p, 2), m(c), m(Math.max(0, i.bench - c) / 12)];
+});
+const sizes = [1, 2, 3, 4].map((n) => [String(n), m(federalPovertyLine(n, 1, row)), m(federalPovertyLine(n, 1, row) * row.cliff)]);
+const simplifications = (TAX_SIMPLIFICATIONS['us-federal'] ?? []).filter((s) => /ACA|Medicaid/.test(s));
+
+const faq = [
+  {
+    q: 'How is the ACA premium tax credit worked out?',
+    a: `<p>Your household income is compared with the federal poverty line for your household size. That share sets an applicable percentage: the part of your income you are expected to pay for the benchmark plan, the second-lowest-cost silver plan where you live. The credit is the benchmark premium minus that expected contribution, never below zero. In ${i.year} the engine’s table runs from ${pct(row.applicable[0]![1], 2)} at the bottom to ${pct(top[2], 2)} from ${Math.round(top[0] * 100)}% of the poverty line.</p>`,
+  },
+  {
+    q: 'Is there still a subsidy cliff?',
+    a: `<p>Yes, in the engine’s tables for ${row.year}: the enhanced credits expired after 2025, so there is no credit above ${cliffPct}% of the poverty line. One more dollar of income past that point can cost the whole credit, which is why the calculator shows how much headroom you have.</p>`,
+  },
+  {
+    q: 'What counts as MAGI for the credit?',
+    a: '<p>The engine uses adjusted gross income plus the part of Social Security benefits that is not taxable. For early retirees it is mostly what you choose to realise: traditional IRA withdrawals, Roth conversions and realised capital gains are part of adjusted gross income, while spending cash you already have is not income at all.</p>',
+  },
+  {
+    q: 'Which year’s poverty line applies?',
+    a: `<p>The guideline published the year before coverage. For ${row.year} coverage the engine uses ${m(row.fpl.first)} for one person plus ${m(row.fpl.additional)} for each additional person, for the 48 contiguous states and DC.</p>`,
+  },
+  {
+    q: 'How do I lower my MAGI to keep the credit?',
+    a: '<p>Early retirees usually manage it through which accounts they draw from: spending from cash or from taxable accounts with little gain adds little, while traditional IRA withdrawals and Roth conversions add in full. The full planner can hold income under a chosen share of the poverty line each year with its tax strategy.</p>',
+  },
+];
+---
+
+<ToolPage
+  id="aca-subsidy"
+  heading="ACA subsidy calculator"
+  lede="An estimate of the ACA premium tax credit for early retirees buying Marketplace health insurance before Medicare: the credit for your income and household, what your plan costs after it, and how much more income you can have before it ends. It runs the Glideworth tax engine in your browser; nothing you type is sent anywhere."
+  faq={faq}
+  adds="This calculator looks at one coverage year and one income."
+  related={[
+    { href: '/features/tax-estimates/', label: 'Tax estimates in the planner' },
+    { href: '/planning/us/', label: 'Retirement planning in the United States' },
+    { href: '/docs/planning/tax-and-currency/', label: 'Tax and currency settings' },
+  ]}
+>
+  <h2>How the calculator works</h2>
+  <ol>
+    <li>
+      <strong>Poverty line.</strong> Your household size gives the federal poverty line for the coverage year, from the
+      engine’s data, and your MAGI as a share of it.
+    </li>
+    <li>
+      <strong>Expected contribution.</strong> That share gives the applicable percentage from the year’s table; times
+      your MAGI, it is what you are expected to pay for the benchmark plan.
+    </li>
+    <li>
+      <strong>Credit.</strong> The benchmark premium for the year minus the expected contribution, from the engine’s US
+      federal tax model, the same calculation the planner makes when a plan has ACA coverage. Below {floorPct}% or above
+      {' '}{cliffPct}% of the poverty line there is none.
+    </li>
+    <li>
+      <strong>Headroom.</strong> The calculator raises the income until the credit runs out, and reports how far away
+      that is and whether it ends gradually or all at once.
+    </li>
+  </ol>
+
+  <h2>Worked example</h2>
+  <p>
+    Computed by the calculator’s own code when this page was built. A household of {i.size} in {i.year} with MAGI of
+    {' '}{m(i.magi)} and a benchmark silver premium of {m(i.bench / 12)} a month ({m(i.bench)} a year).
+  </p>
+  <ul>
+    <li>
+      The poverty line for {i.size} is {m(row.fpl.first)} + {m(row.fpl.additional)} × {i.size - 1} = {m(r.fpl)}, so
+      their income is {pct(r.multiple, 1)} of it.
+    </li>
+    <li>
+      The applicable percentage there is {r.applicable === null ? 'none' : pct(r.applicable, 2)}, so they are expected
+      to pay {m(r.contribution ?? 0)} a year towards the benchmark plan.
+    </li>
+    <li>
+      The credit is {m(i.bench)} − {m(r.contribution ?? 0)} = {m(r.credit)} a year, {m(r.credit / 12)} a month. A plan
+      costing {m(i.plan / 12)} a month costs them {m(r.planNet / 12)} after it.
+    </li>
+    {r.headroom !== null && (
+      <li>
+        They can add {m(r.headroom)} of income before the credit ends.{r.cliff && <> At that point it falls from
+        {' '}{m(r.creditAtEnd)} a year to nothing: a Roth conversion or capital gain that crosses the line costs the
+        whole credit.</>}
+      </li>
+    )}
+  </ul>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="Credit at other incomes">
+    <table>
+      <caption>The same household at other incomes ({i.year})</caption>
+      <thead>
+        <tr><th>Share of poverty line</th><th>MAGI</th><th>Applicable percentage</th><th>Credit per year</th><th>Benchmark plan per month after it</th></tr>
+      </thead>
+      <tbody>{atMultiples.map((rw) => <tr>{rw.map((c) => <td>{c}</td>)}</tr>)}</tbody>
+    </table>
+  </div>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="Poverty line by household size">
+    <table>
+      <caption>Poverty line and the {cliffPct}% limit by household size, {row.year} coverage</caption>
+      <thead><tr><th>People</th><th>Poverty line</th><th>{cliffPct}% of it</th></tr></thead>
+      <tbody>{sizes.map((rw) => <tr>{rw.map((c) => <td>{c}</td>)}</tr>)}</tbody>
+    </table>
+  </div>
+
+  <h2>Where the figures come from</h2>
+  <ul>
+    {row.sources.map((s) => <li><a href={s.url} {...externalLinkProps(s.url)}>{s.note ?? s.url}</a></li>)}
+  </ul>
+
+  <h2>What this assumes and leaves out</h2>
+  <ul>
+    <li>You enter MAGI and the benchmark premium; the calculator does not look up premiums or work out MAGI for you.</li>
+    <li>
+      It does not check the other eligibility conditions for the credit, such as an offer of employer coverage or your
+      filing status; HealthCare.gov and the IRS instructions for Form 8962 list them.
+    </li>
+    <li>A full year of coverage at the same premium; advance payments and the reconciliation at tax time are not shown.</li>
+    <li>The poverty line for the 48 contiguous states and DC; the higher guidelines for Alaska and Hawaii are not used.</li>
+    <li>The enhanced credits that applied up to 2025 are not offered.</li>
+    {simplifications.map((s) => <li>From the engine’s list: {s}</li>)}
+  </ul>
+</ToolPage>

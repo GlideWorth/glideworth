@@ -28,7 +28,7 @@ env:
 jobs:
   build-and-smoke:
     name: Build and smoke test
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && 'ubicloud-standard-2' || 'ubuntu-latest' }}
     timeout-minutes: 30
     steps:
       - name: Check out
@@ -79,7 +79,7 @@ jobs:
     needs: build-and-smoke
     # Only a version tag or a manual run publishes (the only events that start this workflow).
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && 'ubicloud-standard-2' || 'ubuntu-latest' }}
     timeout-minutes: 90
     permissions:
       contents: read

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { notImplementedInfo } from "../../components/charts/states";
 import { Button } from "../../components/ui/button";
 import { Card, CardBody, CardHeader } from "../../components/ui/card";
+import { PrivateText } from "../../components/ui/private-text";
 import { cn } from "../../lib/cn";
 import { formatSigned } from "../../lib/format";
 import { useFormat } from "../../lib/workspace";
@@ -90,9 +91,13 @@ function TemplateGrid({
                         open === it.id ? "border-accent bg-accent-soft/40" : "border-border",
                       )}
                     >
-                      <div className="font-semibold">{it.template?.title ?? it.fallbackTitle}</div>
+                      <div className="font-semibold">
+                        <PrivateText>{it.template?.title ?? it.fallbackTitle}</PrivateText>
+                      </div>
                       <div className="text-[12px] text-ink-2">
-                        {it.template?.description ?? it.error ?? "Not available for this plan."}
+                        <PrivateText>
+                          {it.template?.description ?? it.error ?? "Not available for this plan."}
+                        </PrivateText>
                       </div>
                       {ok ? (
                         <div className="mt-auto flex flex-wrap gap-x-3 text-[12px]">

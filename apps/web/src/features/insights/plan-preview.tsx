@@ -7,13 +7,14 @@ import type { PlanChange, ProjectionResult, SimulationInput } from "@glideworth/
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Check, GitBranch, GitCompareArrows, Loader2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { SeriesChart } from "../../components/charts/series-chart";
 import { ErrorState } from "../../components/charts/states";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import { PrivateText } from "../../components/ui/private-text";
 import { cn } from "../../lib/cn";
-import { formatSigned } from "../../lib/format";
+import { AMOUNT_MASK, formatSigned, speakAmounts } from "../../lib/format";
 import { periodShortLabel } from "../../lib/period";
 import { useActivePlan, useFormat } from "../../lib/workspace";
 import { useScenarioStore } from "../compare/scenario-store";
@@ -21,7 +22,6 @@ import { attempt, bridge, diffFormat } from "../results/core-bridge";
 import { outcomeOf, runVariant } from "./insights-model";
 import type { Variant } from "./plan-edits";
 import { applyToPlan, saveAsBranch } from "./save-plan";
-import { PrivateText } from "../../components/ui/private-text";
 
 export function Delta({
   label,
@@ -88,6 +88,12 @@ export function PlanChangePreview({
   const addScenario = useScenarioStore((s) => s.add);
   const setCompare = useScenarioStore((s) => s.setCompare);
   const [name, setName] = useState(`${plan?.name ?? "Plan"} · ${title}`);
+  const [nameFocused, setNameFocused] = useState(false);
+  const nameNoteId = useId();
+  // The default name repeats a template title, which can carry a derived amount ("Inherit £10,000…").
+  // Mask it until the field is focused (as a money input does) and keep the real name for the branch.
+  const nameShown = nameFocused ? name : f.text(name);
+  const nameMasked = nameShown.includes(AMOUNT_MASK);
   const [busy, setBusy] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   const [err, setErr] = useState<unknown>(null);
@@ -235,10 +241,18 @@ export function PlanChangePreview({
       <div className="flex flex-wrap items-center gap-2">
         <Input
           aria-label="Name for the new branch"
-          value={name}
+          aria-describedby={nameMasked ? nameNoteId : undefined}
+          value={nameShown}
+          onFocus={() => setNameFocused(true)}
+          onBlur={() => setNameFocused(false)}
           onChange={(e) => setName(e.target.value)}
           className="h-7 max-w-[280px] text-[12.5px]"
         />
+        {nameMasked ? (
+          <span id={nameNoteId} className="sr-only">
+            {speakAmounts(nameShown)}
+          </span>
+        ) : null}
         <Button
           size="sm"
           variant="secondary"

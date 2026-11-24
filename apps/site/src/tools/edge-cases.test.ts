@@ -126,6 +126,11 @@ describe("edge cases", () => {
 
 describe("seeded sweep over random valid inputs", () => {
   const rng = createRng(20261116);
+  function fewestTrials(spec: ToolSpec): string {
+    const field = spec.fields.find((f) => f.key === "trials");
+    if (field?.kind !== "select") return "500";
+    return field.options.map((o) => o.value).sort((a, b) => Number(a) - Number(b))[0]!;
+  }
   function randomValues(spec: ToolSpec): Values {
     for (let attempt = 0; attempt < 50; attempt++) {
       const v = defaults(spec);
@@ -143,7 +148,9 @@ describe("seeded sweep over random valid inputs", () => {
           v[f.key] = f.step >= 1 ? Math.round(x) : Number(x.toFixed(2));
         }
       }
-      if (spec.mode === "simulation") v.trials = "500";
+      // Whether a result is finite does not depend on how many simulations it ran, so use the fewest
+      // the form offers (500, or 250 for retirement spending, whose every input is a solve).
+      if (spec.mode === "simulation") v.trials = fewestTrials(spec);
       if (Object.keys(validate(spec, v)).length === 0) return v;
     }
     return defaults(spec);

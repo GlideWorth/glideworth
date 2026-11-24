@@ -41,6 +41,13 @@ const rs = { ...defaults(SPECS["retirement-spending"]), trials: "250" };
 const bt = defaults(SPECS["historical-backtest"]);
 const firstYear = Number(MARKET_DATASETS[HISTORY_DATASET].label.match(/\d{4}/)![0]);
 
+// Each is a solve over many simulations, and several tests read the same deterministic answer (the
+// reproducibility tests below prove it is), so it is computed once per file.
+let grAnswer: ReturnType<typeof guardrails> | undefined;
+const grDefault = () => (grAnswer ??= guardrails(gr));
+let rsAnswer: ReturnType<typeof maxSpending> | undefined;
+const rsDefault = () => (rsAnswer ??= maxSpending(rs));
+
 describe("guardrails calculator", () => {
   it("Guyton-Klinger thresholds are spending over the rate limits, with the visitor's band and step", async () => {
     const a = await guardrails({ ...gr, spend: 50_000, band: 25, adj: 15 });
@@ -63,7 +70,7 @@ describe("guardrails calculator", () => {
   }, 60_000);
 
   it("risk-based guardrails: hold inside the band, raise above it, and thresholds bracket the portfolio", async () => {
-    const hold = await guardrails(gr);
+    const hold = await grDefault();
     const s0 = hold.risk.currentSuccessRate!;
     expect(s0).toBeGreaterThanOrEqual(RISK_DEFAULTS.lowerGuardrail);
     expect(s0).toBeLessThanOrEqual(RISK_DEFAULTS.upperGuardrail);
@@ -81,7 +88,7 @@ describe("guardrails calculator", () => {
   }, 60_000);
 
   it("history: every start year once, the bad sequence is constant spending's worst, guardrails cut instead of running out", async () => {
-    const a = await guardrails(gr);
+    const a = await grDefault();
     const n = a.history.constant.length;
     expect(n).toBe(98 - 30 + 1);
     expect(a.history.constant[0]!.startYear).toBe(firstYear);
@@ -109,7 +116,7 @@ describe("guardrails calculator", () => {
       guardrails({ ...gr, seed: 7 }),
     ]);
     expect(a).toEqual(b);
-    const base = await guardrails(gr);
+    const base = await grDefault();
     expect(c.gk).toEqual(base.gk);
     expect(c.history.constant).toEqual(base.history.constant);
     expect(c.risk.currentSuccessRate).not.toBe(base.risk.currentSuccessRate);
@@ -131,7 +138,7 @@ describe("guardrails calculator", () => {
 
 describe("retirement spending calculator", () => {
   it("the answer meets the target on the same simulations, and 1% more does not", async () => {
-    const a = await maxSpending(rs);
+    const a = await rsDefault();
     expect(a.spending).not.toBeNull();
     expect(a.atLimit).toBe(false);
     const at = await spendDown(rs, a.spending!);
@@ -143,7 +150,7 @@ describe("retirement spending calculator", () => {
 
   it("spending falls as the chance rises, rises with a pension and falls with a longer plan", async () => {
     const [a, pension, longer] = await Promise.all([
-      maxSpending(rs),
+      rsDefault(),
       maxSpending({ ...rs, inc: 20_000, incAge: 67 }),
       maxSpending({ ...rs, age: 55 }),
     ]);
@@ -188,14 +195,14 @@ describe("retirement spending calculator", () => {
   });
 
   it("edge cases give finite results", async () => {
-    expect((await clean("retirement-spending", { balance: 0, inc: 0 })).headline).toMatch(
-      /nothing to spend/,
-    );
-    await clean("retirement-spending", { balance: 0, inc: 20_000, incAge: 65 });
-    await clean("retirement-spending", { balance: 0, inc: 20_000, incAge: 70 });
-    await clean("retirement-spending", { inc: 30_000, incAge: 100 });
-    await clean("retirement-spending", { method: "parametric", mean: -5, vol: 30, target: 99 });
-    await clean("retirement-spending", { age: 30, planTo: 100 });
+    // Finiteness does not depend on the number of simulations: the fewest the form offers.
+    const edge = (over: Values) => clean("retirement-spending", { trials: rs.trials, ...over });
+    expect((await edge({ balance: 0, inc: 0 })).headline).toMatch(/nothing to spend/);
+    await edge({ balance: 0, inc: 20_000, incAge: 65 });
+    await edge({ balance: 0, inc: 20_000, incAge: 70 });
+    await edge({ inc: 30_000, incAge: 100 });
+    await edge({ method: "parametric", mean: -5, vol: 30, target: 99 });
+    await edge({ age: 30, planTo: 100 });
   }, 120_000);
 });
 

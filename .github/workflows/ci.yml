@@ -24,23 +24,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ─── Change detection ───────────────────────────────────────────────────────
-  # No install: runs in seconds. The heavy jobs depend on its output, so a documentation-only change
-  # (Markdown outside the site content, docs/, issue templates, licence texts) does not pay for them.
+  # ─── Change detection and quick checks (one runner) ─────────────────────────
+  # Every job pays for a VM and a setup, rounded up to a whole minute, so the checks that take seconds share
+  # the change-detection runner: the secret scan and format (always: format also covers the Markdown, YAML and
+  # JSON a docs-only change edits) and lint (code changes only). The heavy jobs read this job's "code" output
+  # as soon as it is set, so a format or lint failure does not stop them: one push reports everything.
   changes:
-    name: Detect changed paths
+    name: Changed paths, format, lint and secret scan
     # Drafts skip every job but the gate (see the header).
     if: github.event.pull_request.draft == false
     runs-on: ${{ github.event.repository.private && 'ubicloud-standard-2' || 'ubuntu-latest' }}
-    timeout-minutes: 5
+    timeout-minutes: 10
     permissions:
       contents: read
     outputs:
       code: ${{ steps.filter.outputs.code }}
     steps:
-      # Full history, so the diff below needs no further network access: the credentials the checkout
-      # used are not persisted (and are not needed afterwards). This is the pull request's merge commit,
-      # whose history holds both the base and the head.
+      # Full history, for the diff below and the secret scan; neither needs further network access, so the
+      # credentials the checkout used are not persisted. This is the pull request's merge commit, whose history
+      # holds both the base and the head.
       - name: Check out (full history)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -89,28 +91,11 @@ jobs:
           rm -f changed.list
           echo "code=$code" >> "$GITHUB_OUTPUT"
 
-  # ─── Quick checks (one runner) ──────────────────────────────────────────────
-  # GitHub bills every job rounded up to a whole minute, so the checks that take seconds share one job:
-  # format (always: it also covers the Markdown, YAML and JSON a docs-only change edits), the secret scan
-  # (always) and lint (code changes only). Every step runs even when an earlier one fails, so one push
-  # reports all three.
-  quick:
-    name: Format, lint and secret scan
-    needs: changes
-    runs-on: ${{ github.event.repository.private && 'ubicloud-standard-2' || 'ubuntu-latest' }}
-    timeout-minutes: 10
-    steps:
-      # Full history for the secret scan.
-      - name: Check out (full history)
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
       # Official gitleaks image, pinned by digest (v8.30.1). Scans every commit reachable from the
       # checkout, not just the tip. Findings are redacted in the log. To allow a known false positive,
       # add a .gitleaks.toml or .gitleaksignore file; do not disable the step.
       - name: Scan history with gitleaks
+        if: ${{ !cancelled() }}
         run: |
           docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
             -v "$GITHUB_WORKSPACE:/repo" -w /repo \
@@ -138,8 +123,9 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm format:check
 
+      # Runs unless change detection answered "documentation only" (so also when it could not answer).
       - name: Lint
-        if: ${{ !cancelled() && steps.install.outcome == 'success' && needs.changes.outputs.code == 'true' }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' && steps.filter.outputs.code != 'false' }}
         run: pnpm lint
 
   # ─── Typecheck and build (one runner, only when code changed) ───────────────
@@ -148,7 +134,8 @@ jobs:
   typecheck-build:
     name: Typecheck and build
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    # !cancelled(): the job's output is set before format and lint run, so their failure does not skip this.
+    if: ${{ !cancelled() && needs.changes.outputs.code == 'true' }}
     runs-on: ${{ github.event.repository.private && 'ubicloud-standard-2' || 'ubuntu-latest' }}
     timeout-minutes: 20
     steps:
@@ -176,20 +163,31 @@ jobs:
       - name: Build
         run: pnpm build
 
-  # ─── Unit and integration tests (sharded across runners) ────────────────────
-  # Sharded on purpose. Private-repository runners have 2 vCPUs, so Vitest runs one file at a time on each:
-  # one runner took 16.5 minutes (PR #7) against about 7.5 for three shards, for about the same billed minutes.
+  # ─── Unit and integration tests (two runners, split by Vitest project) ──────
+  # A 2-vCPU Ubicloud runner is one physical core (two hyperthreads), so Vitest runs one file at a time and
+  # more workers or bigger runners do not make the suite cheaper: on 4 and 8 vCPUs the same files took
+  # longer in total, and a jsdom test with a 1-second wait failed under the contention. What costs money
+  # is the per-job setup and the minute each job is rounded up to, so the suite runs on two runners of
+  # about equal length rather than three. The split is by project, not Vitest's hash-based --shard (which put
+  # the two slowest files in different shards and left one shard at a third of another): the calculators and
+  # the engine (site, core) in one, everything else in the other. The second is a negation, so a new project
+  # is never left out.
   test:
-    # No matrix expression in the name: a skipped job never expands it. GitHub appends the shard itself.
+    # No matrix expression in the name: a skipped job never expands it. GitHub appends the group itself.
     name: Tests
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    # !cancelled(): see typecheck-build.
+    if: ${{ !cancelled() && needs.changes.outputs.code == 'true' }}
     runs-on: ${{ github.event.repository.private && 'ubicloud-standard-2' || 'ubuntu-latest' }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        include:
+          - group: site and core
+            projects: --project site --project core
+          - group: the rest
+            projects: --project !site --project !core
     steps:
       # Full history so the sitemap date snapshot can be compared with git. A depth-1 checkout
       # cannot see older files; that test skips itself when the clone is shallow.
@@ -214,7 +212,12 @@ jobs:
 
       # Wall-clock benchmarks are not part of this run (`pnpm bench` is opt-in).
       - name: Test
-        run: pnpm test --shard=${{ matrix.shard }}/3
+        env:
+          PROJECTS: ${{ matrix.projects }}
+        # One word per flag. "!" is literal here: the shell is not interactive.
+        run: |
+          read -ra flags <<< "$PROJECTS"
+          pnpm test "${flags[@]}"
 
   # ─── Aggregator (the one required status check) ─────────────────────────────
   # The ruleset on main requires only "CI gate" (its name is the check name: rename both together). It
@@ -222,7 +225,7 @@ jobs:
   # jobs are fine when no code changed; when code did change, every job must have succeeded.
   gate:
     name: CI gate
-    needs: [changes, quick, typecheck-build, test]
+    needs: [changes, typecheck-build, test]
     if: always()
     runs-on: ${{ github.event.repository.private && 'ubicloud-standard-2' || 'ubuntu-latest' }}
     timeout-minutes: 2
@@ -238,17 +241,15 @@ jobs:
         env:
           CODE_CHANGED: ${{ needs.changes.outputs.code }}
           CHANGES: ${{ needs.changes.result }}
-          QUICK: ${{ needs.quick.result }}
           TYPECHECK_BUILD: ${{ needs.typecheck-build.result }}
           TEST: ${{ needs.test.result }}
         run: |
           fail=0
-          for pair in "changes=$CHANGES" "quick=$QUICK"; do
-            if [ "${pair#*=}" != "success" ]; then echo "::error::${pair%%=*} job: ${pair#*=}"; fail=1; fi
-          done
+          # The changes job also runs format, lint and the secret scan: its failure fails the gate.
+          if [ "$CHANGES" != "success" ]; then echo "::error::changes job (format, lint, secret scan): $CHANGES"; fail=1; fi
           # Without a trustworthy answer from change detection the other jobs' state is meaningless
-          # (they are all skipped when it fails), so report only that failure.
-          if [ "$CHANGES" != "success" ] || { [ "$CODE_CHANGED" != "true" ] && [ "$CODE_CHANGED" != "false" ]; }; then
+          # (they are all skipped without one), so report only that.
+          if [ "$CODE_CHANGED" != "true" ] && [ "$CODE_CHANGED" != "false" ]; then
             echo "::error::change detection gave no usable answer (result: $CHANGES, code: '$CODE_CHANGED')"
             exit 1
           fi

@@ -316,11 +316,17 @@ export function ChangeEditor({
   onChange,
   label = "Change over time",
   help,
+  inflationPlusElsewhere = false,
 }: {
   value: Change;
   onChange: (c: Change) => void;
   label?: string;
   help?: ReactNode;
+  /**
+   * The inflation "plus" rate is edited next to Rises with (healthcare and long-term care), so it
+   * is not shown again here.
+   */
+  inflationPlusElsewhere?: boolean;
 }) {
   const startRef: DateRef = { kind: "planStart", offsetMonths: 0 };
   const switchKind = (k: Change["kind"]) => {
@@ -358,17 +364,23 @@ export function ChangeEditor({
         ]}
       />
       {value.kind === "inflation" ? (
-        <div className="flex items-center gap-2 text-[12.5px] text-ink-2">
-          <span>Inflation</span>
-          <PercentInput
-            aria-label="Above inflation"
-            className="w-[110px]"
-            value={value.plus}
-            onValueChange={(v) => onChange({ kind: "inflation", plus: v ?? 0 })}
-            prefix={value.plus >= 0 ? "+" : undefined}
-          />
-          <span>a year</span>
-        </div>
+        inflationPlusElsewhere ? (
+          <p className="text-[12px] text-ink-3">
+            Extra growth above inflation is the rate next to Rises with.
+          </p>
+        ) : (
+          <div className="flex items-center gap-2 text-[12.5px] text-ink-2">
+            <span>Inflation</span>
+            <PercentInput
+              aria-label="Above inflation"
+              className="w-[110px]"
+              value={value.plus}
+              onValueChange={(v) => onChange({ kind: "inflation", plus: v ?? 0 })}
+              prefix={value.plus >= 0 ? "+" : undefined}
+            />
+            <span>a year</span>
+          </div>
+        )
       ) : value.kind === "rate" ? (
         <div className="flex items-center gap-2 text-[12.5px] text-ink-2">
           <PercentInput

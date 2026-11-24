@@ -164,7 +164,7 @@ export function AssumptionsSection() {
           <FieldGrid>
             <FormField
               label="Healthcare inflation premium"
-              help="Extra growth for healthcare costs above inflation, used by new healthcare expenses."
+              help="Extra growth above inflation for new healthcare and long-term care costs. Each cost keeps its own rate after that; change it next to Rises with."
             >
               {(id) => (
                 <PercentInput

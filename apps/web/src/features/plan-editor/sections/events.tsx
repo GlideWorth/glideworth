@@ -7,6 +7,7 @@
 
 import {
   type AcaHouseholdSize,
+  type Change,
   type ExpenseEvent,
   ExpenseEvent as ExpenseSchema,
   type ExpenseType,
@@ -14,6 +15,7 @@ import {
   type IncomeEvent,
   IncomeEvent as IncomeSchema,
   type IncomeType,
+  type InflationCategory,
   isDependentInPeriod,
   JOINT,
   type Plan,
@@ -79,6 +81,36 @@ import { InflationCategorySelect } from "./assumption-extras";
 
 type Kind = "income" | "expense";
 type AnyEvent = IncomeEvent | ExpenseEvent;
+
+/** Healthcare and long-term care compound an extra rate on top of the inflation index. */
+function isCareExpense(kind: Kind, type: string): boolean {
+  return kind === "expense" && (type === "healthcare" || type === "long-term-care");
+}
+
+/** A category whose index is not general inflation (its own rate, or a non-zero premium). */
+function categoryHasOwnPath(category: InflationCategory): boolean {
+  if (category.rate.kind !== "fixed") return true;
+  if (category.mode === "rate") return true;
+  return category.rate.rate !== 0;
+}
+
+/**
+ * Copy for healthcare and long-term care. "Rises with: General inflation" on its own hides the
+ * extra rate the engine compounds (`change.plus`, the plan healthcare premium on a new cost).
+ */
+function careRiseHint(change: Change, category: InflationCategory | undefined): string {
+  if (change.kind === "none")
+    return "This stays at the amount entered and does not rise with inflation. The projection uses that. Choose “With inflation” under Change over time to set a rate above inflation.";
+  if (change.kind === "rate")
+    return "This grows at a fixed rate whether or not prices rise (see Change over time). The projection uses that rate.";
+  if (change.kind === "schedule")
+    return "This follows the custom schedule under Change over time. The projection uses that schedule.";
+  if (category && categoryHasOwnPath(category))
+    return "The category has its own inflation path, and the rate above is applied on top. The projection uses both.";
+  if (change.plus === 0)
+    return "In today’s money this stays at the amount you enter. The projection uses that.";
+  return "In today’s money this rises by the rate above every year. The projection uses that rate.";
+}
 
 // ------------------------------------------------------------------------------- helpers
 
@@ -545,6 +577,10 @@ function EventSheetBody({ kind, id, onClose }: { kind: Kind; id: string; onClose
   const start = tctx ? resolveRef(event.range.start, tctx) : null;
   const end = tctx ? resolveRef(event.range.end, tctx) : null;
   const types = kind === "income" ? INCOME_TYPES : EXPENSE_TYPES;
+  const careRise = isCareExpense(kind, event.type);
+  const riseCategory = plan.assumptions.inflationCategories?.find(
+    (c) => c.id === event.inflationCategory,
+  );
 
   return (
     <SheetContent
@@ -769,19 +805,42 @@ function EventSheetBody({ kind, id, onClose }: { kind: Kind; id: string; onClose
               <FormField
                 label="Rises with"
                 hint={
-                  (plan?.assumptions.inflationCategories?.length ?? 0) === 0
-                    ? "Add healthcare, education or housing inflation in Assumptions to choose one here."
-                    : "Used when it changes with inflation, and for its today’s-money value."
+                  careRise
+                    ? careRiseHint(event.change, riseCategory)
+                    : (plan.assumptions.inflationCategories?.length ?? 0) === 0
+                      ? "Add healthcare, education or housing inflation in Assumptions to choose one here."
+                      : "Used when it changes with inflation, and for its today’s-money value."
                 }
               >
                 {(fid) => (
-                  <InflationCategorySelect
-                    id={fid}
-                    value={event.inflationCategory}
-                    onChange={(inflationCategory) =>
-                      patch({ inflationCategory }, "Change inflation category")
-                    }
-                  />
+                  <div className="flex flex-col gap-2">
+                    <InflationCategorySelect
+                      id={fid}
+                      value={event.inflationCategory}
+                      onChange={(inflationCategory) =>
+                        patch({ inflationCategory }, "Change inflation category")
+                      }
+                    />
+                    {careRise && event.change.kind === "inflation" ? (
+                      <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-ink-2">
+                        <span>Above that</span>
+                        <PercentInput
+                          aria-label="Rises above inflation"
+                          className="w-[110px]"
+                          value={event.change.plus}
+                          onValueChange={(v) =>
+                            patch(
+                              { change: { kind: "inflation", plus: v ?? 0 } },
+                              "Edit rise above inflation",
+                              "change",
+                            )
+                          }
+                          prefix={event.change.plus >= 0 ? "+" : undefined}
+                        />
+                        <span>a year</span>
+                      </div>
+                    ) : null}
+                  </div>
                 )}
               </FormField>
             ) : null}
@@ -844,6 +903,7 @@ function EventSheetBody({ kind, id, onClose }: { kind: Kind; id: string; onClose
           <ChangeEditor
             help={HELP.change}
             value={event.change}
+            inflationPlusElsewhere={careRise}
             onChange={(change) => patch({ change }, "Edit change over time", "change")}
           />
           <LimitEditor event={event} patch={patch} />
@@ -2004,8 +2064,8 @@ function ExpenseSpecific({
           </FieldGrid>
         ) : (
           <p className="text-[12px] text-ink-3">
-            Grows with inflation plus the plan’s healthcare premium by default (see Change over
-            time).
+            The rate next to Rises with is what the projection grows this cost by, above the
+            inflation selected there. A new cost starts at the plan’s healthcare premium.
           </p>
         )}
       </FormSection>

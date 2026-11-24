@@ -3,7 +3,7 @@
  * synthetic; flat 0% tax and zero returns unless stated (see engine-helpers).
  */
 import { describe, expect, it } from "vitest";
-import { ScenarioError, simulate } from "../src/index.js";
+import { ScenarioError, simulate, toBasis } from "../src/index.js";
 import { auditAssumptions } from "../src/insights/audit.js";
 import { explainYear } from "../src/insights/explain.js";
 import { careerBreakScenario, longTermCareScenario } from "../src/insights/scenarios.js";
@@ -157,6 +157,81 @@ describe("long-term-care expense type", () => {
     );
     const codes = auditAssumptions(input).map((f) => f.code);
     expect(codes).not.toContain("LATE_LIFE_CARE_MISSING");
+  });
+});
+
+describe("healthcare and long-term care rise at the rate on the cost", () => {
+  const realExpense = (r: ReturnType<typeof simulate>, year: number) => {
+    const p = period(r, year);
+    const line = p.expenses.find((l) => l.sourceId === "e");
+    return line ? toBasis(line.requested, p, "real", "flow") : 0;
+  };
+  const run = (type: "healthcare" | "long-term-care", plus: number, years = 55) =>
+    simulate(
+      sim({
+        // Non-zero inflation, so a real figure that still grows is the extra rate, not prices.
+        inflation: 0.03,
+        start: "2026-01",
+        accounts: [acct("c", "cash", 5_000_000)],
+        years,
+        plan: {
+          expenses: [
+            expense({
+              type,
+              name: "Care",
+              amount: { value: 25_000, basis: "real" },
+              frequency: "yearly",
+              growFromToday: true,
+              change: { kind: "inflation", plus },
+            }),
+          ],
+        },
+      }),
+    );
+
+  it.each(["healthcare", "long-term-care"] as const)(
+    "%s in today's money grows at change.plus and stays flat when that rate is 0",
+    (type) => {
+      const rising = run(type, 0.02);
+      // Jan 2026 to Jan 2080 is 54 years: 25,000 × 1.02^54, the figure from the plan editor.
+      expect(realExpense(rising, 2026)).toBeCloseTo(25_000, 4);
+      expect(realExpense(rising, 2080)).toBeCloseTo(25_000 * 1.02 ** 54, 2);
+      expect(realExpense(rising, 2080) / realExpense(rising, 2079)).toBeCloseTo(1.02, 8);
+      const flat = run(type, 0);
+      expect(realExpense(flat, 2080)).toBeCloseTo(25_000, 4);
+    },
+  );
+
+  it("a late long-term care cost still compounds the rate from today", () => {
+    const r = simulate(
+      sim({
+        inflation: 0.03,
+        start: "2026-01",
+        births: ["1980-01"],
+        accounts: [acct("c", "cash", 5_000_000)],
+        years: 45,
+        plan: {
+          expenses: [
+            expense({
+              type: "long-term-care",
+              name: "Care home",
+              amount: { value: 25_000, basis: "real" },
+              frequency: "yearly",
+              growFromToday: true,
+              change: { kind: "inflation", plus: 0.02 },
+              range: {
+                start: { kind: "age", personId: "me", age: 85 },
+                end: { kind: "planEnd" },
+              },
+            }),
+          ],
+        },
+      }),
+    );
+    // Age 85 is Jan 2065, 39 years after the plan starts.
+    expect(realExpense(r, 2064)).toBe(0);
+    expect(realExpense(r, 2065)).toBeCloseTo(25_000 * 1.02 ** 39, 2);
+    expect(realExpense(r, 2066) / realExpense(r, 2065)).toBeCloseTo(1.02, 8);
   });
 });
 

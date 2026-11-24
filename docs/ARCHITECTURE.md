@@ -77,7 +77,7 @@ The data model makes these deliberate choices:
   `Frequency` is required on every amount. This prevents the "$20k/month read as $20k/year" class of
   mistakes.
 - **`DateRef` is one union** used for every start, end and binding: `planStart | planEnd | never |
-date | age | milestone`, each with `offsetMonths`.
+  date | age | milestone`, each with `offsetMonths`.
 - **Dependents are first-class.**
 - **Behaviour lives on the entity with plan-level patches.** The entity holds default behaviour, and
   plans patch it. This keeps current finances and plans apart without duplicating data. The patch schemas (`AccountBehaviourPatch`, `RealAssetBehaviourPatch`,
@@ -125,7 +125,7 @@ household rows drop the removed person fields when parsed. No SQL migration was 
   (`measure` = `'flow' | 'stock'`, default `'stock'` for backwards compatibility), with
   `fromBasis` (inverse), `deflator(period, measure)`, `PERIOD_TOTALS_MEASURE` / `totalsMeasure(key)`
   (the measure of every `PeriodTotals` field and stochastic metric) and `series(result, pick,
-basis, measure)`. Core (insights, solvers, Monte Carlo percentiles, `summary.lifetimeTaxesReal`),
+  basis, measure)`. Core (insights, solvers, Monte Carlo percentiles, `summary.lifetimeTaxesReal`),
   the importers' exports, the API and the web must all convert through these, never by dividing by
   `priceIndex` themselves, so the layers cannot drift. Results cached before `priceIndexStart`
   existed still convert correctly: `deflator()` derives it from `priceIndex`, `market.inflation`
@@ -366,7 +366,7 @@ strategies and flex cuts are pure exports of `engine/strategy.ts`.
   whether saved directly or via the pool, plus inheritances and windfalls), clamped to
   [0, afterTaxIncome]. Saving a windfall or a sale is not saving out of income.
 - **Debt payoff strategies.** A debtPaydown flow with `allocation: { strategy: 'avalanche' |
-'snowball', targetIds?, rollover }` spreads its payment across debts and financed assets: the
+  'snowball', targetIds?, rollover }` spreads its payment across debts and financed assets: the
   avalanche pays the highest APR first, the snowball the smallest balance first; with `rollover`
   the scheduled payments of debts already paid off join the budget. Extra payments are reported
   per debt as `DebtPeriod.extraPayments`.
@@ -459,7 +459,7 @@ Each trial derives its own seed with `deriveSeed(seed, trial)`. So sharding tria
 randomness); callers wanting a fresh seed per run pass one in and it is recorded in the result.
 
 - **Samplers.** `normal` (Cholesky-correlated stocks/bonds/inflation; optional `distributionShape:
-'lognormal'` and `fatTails` multivariate Student-t; dividends clamped at 0; crypto and optional cash
+  'lognormal'` and `fatTails` multivariate Student-t; dividends clamped at 0; crypto and optional cash
   independent), `historical-random-restart`, `historical-sequential` (no looping) and
   `block-bootstrap`. Bundled datasets (`us-1928`, `uk-1983`) live in
   `packages/core/src/stochastic/data` with provenance, licences and attribution statements

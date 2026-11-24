@@ -80,7 +80,7 @@ personalisation and analytics storage are denied. Pages that load the tag also s
   risk (`--risk`), and a deep spruce band for the hero panel and closing call to action. Every colour is
   defined once with `light-dark()` in `src/styles/tokens.css`; the theme follows the system unless the
   visitor uses the toggle (stored in `localStorage.theme`, applied before first paint). `pnpm
-check:contrast` verifies AA for every text pair in both themes.
+  check:contrast` verifies AA for every text pair in both themes.
 - **Type.** Fraunces (variable, optical sizes) for display, Inter (variable) for text and figures, both
   self-hosted from Fontsource. Fluid scale `--text-xs` … `--text-4xl`.
 - **Logo.** An origami bird in deep green with one sand wing-tip facet, and the Glideworth wordmark as

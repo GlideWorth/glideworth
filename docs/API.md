@@ -809,7 +809,7 @@ client discovers all of the above. Rules enforced:
 - **Tokens**: access 1 hour, refresh 30 days with **rotation** (replaying a rotated refresh token revokes the
   grant). Codes, access and refresh tokens are stored as hashes only. OAuth writes are audited under the person.
 - **Consent screen**: shows the client name, the redirect host and the scopes; has no framing (`X-Frame-Options:
-DENY`), a CSRF token and a same-origin check on the decision, and escapes everything. Because the session cookie
+  DENY`), a CSRF token and a same-origin check on the decision, and escapes everything. Because the session cookie
   is `SameSite=Strict`, the first hop is a same-origin refresh page so the cookie can be sent.
 - Not supported (by design): confidential clients, client ID metadata documents (the spec now prefers them over
   dynamic registration; registration is what the SDK and most hosted clients use today), the implicit and password

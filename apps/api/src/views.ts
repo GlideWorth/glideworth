@@ -160,7 +160,7 @@ export function compactMonteCarlo(result: MonteCarloResult, o: McViewOptions = {
 }
 
 /** One sentence an agent can quote: the chance of success and, when it can fail, when. */
-function mcHeadline(r: MonteCarloResult): string {
+export function mcHeadline(r: MonteCarloResult): string {
   const pct = `${Math.round(r.successRate * 1000) / 10}%`;
   const failed = r.trials - Math.round(r.successRate * r.trials);
   const years = r.failureYearHistogram ?? [];

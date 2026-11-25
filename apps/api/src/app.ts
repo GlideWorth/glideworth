@@ -468,6 +468,8 @@ export function createApp(opts: AppOptions) {
       services: servicesOf(c),
       principal: c.get("principal"),
       allowWrites: cloud ? cloud.mcpAllowWrites(c) : !!opts.mcpAllowWrites,
+      // The web app is at the public URL, or at this origin when this process serves it.
+      webUrl: opts.publicUrl || opts.webDist ? publicOrigin(c) : null,
     }),
   );
 

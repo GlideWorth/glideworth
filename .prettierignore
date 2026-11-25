@@ -11,6 +11,7 @@ infra/terraform/.terraform.lock.hcl
 apps/web/src/routeTree.gen.ts
 packages/core/src/stochastic/data/*.generated.ts
 apps/site/src/data/openapi.json
+apps/api/src/mcp/widget-html.generated.ts
 **/drizzle/
 **/__snapshots__/
 **/*.snap

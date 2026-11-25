@@ -33,6 +33,10 @@
       "entry": ["scripts/*.mjs"],
       "project": ["src/**/*.{ts,tsx,css}", "test/**/*.{ts,tsx}", "scripts/**/*.mjs"]
     },
+    "apps/widgets": {
+      "entry": ["scripts/*.mjs"],
+      "project": ["src/**/*.{ts,tsx,css}", "test/**/*.{ts,tsx}", "scripts/**/*.mjs"]
+    },
     "apps/site": {
       "entry": ["scripts/*.mjs"],
       "project": ["src/**/*.{ts,astro,mdx}", "scripts/**/*.mjs"],

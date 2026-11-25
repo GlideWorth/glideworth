@@ -9,7 +9,13 @@ import { createMcpServer } from "./server.js";
  */
 export async function handleMcpHttp(
   req: Request,
-  opts: { services: Services; principal: Principal; allowWrites: boolean },
+  opts: {
+    services: Services;
+    principal: Principal;
+    allowWrites: boolean;
+    /** Public origin of the web app, for links from the chat widgets (null = unknown). */
+    webUrl?: string | null;
+  },
 ): Promise<Response> {
   // Stateless, so there is no stream for server-initiated messages (GET) and no session to end
   // (DELETE). Answering GET with an event stream that closes at once made clients reopen it in a
@@ -34,6 +40,7 @@ export async function handleMcpHttp(
     canWrite: opts.allowWrites && opts.principal.scopes.includes("write"),
     actor: { ...actorOf(opts.principal), kind: "mcp" },
     principal: opts.principal,
+    webUrl: opts.webUrl ?? null,
   });
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,

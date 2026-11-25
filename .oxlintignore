@@ -3,6 +3,7 @@ apps/web/src/routeTree.gen.ts
 packages/core/src/stochastic/data/*.generated.ts
 **/drizzle/meta/
 apps/site/src/data/openapi.json
+apps/api/src/mcp/widget-html.generated.ts
 
 # Build output and caches
 **/.astro/

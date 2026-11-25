@@ -8,6 +8,10 @@ listing every commit. Product news for people using the hosted service is on
 
 ## Unreleased
 
+- **Interactive views in ChatGPT and Claude** (MCP Apps): Monte Carlo and projections, what-if and plan
+  comparisons, solver answers, change-set reviews, one year's cash flow and tax over time render as interactive
+  views. The view's data travels in the tool result's `_meta["glideworth/widget"]`; the text the model reads is
+  unchanged. See "Interactive views" in [docs/MCP.md](docs/MCP.md).
 - **MCP tool annotations corrected** for the ChatGPT and Claude directories: tools that overwrite or remove
   existing state (`apply_change_set`, `discard_change_set`, `cancel_job`, `update_account_balances`,
   `apply_csv_import`, `apply_balance_history_import`, `set_fx_rate`, `set_checkin_schedule`,

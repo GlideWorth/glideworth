@@ -197,9 +197,14 @@ export class ScenariosService {
 
   /** What the scenario would do to the plan, deterministically. Stores nothing. */
   preview(planId: string, templateId: string, params: unknown) {
+    return this.previewWithResults(planId, templateId, params).out;
+  }
+
+  /** `preview`, plus the before/after projections its outcomes come from (the chat widgets chart them). */
+  previewWithResults(planId: string, templateId: string, params: unknown) {
     const { template } = this.instantiate(planId, templateId, params);
     const out = this.sim.preview(planId, template.patch);
-    return {
+    const body = {
       planId,
       planVersion: out.plan.version,
       template: {
@@ -212,6 +217,7 @@ export class ScenariosService {
       changes: out.diff.changes.map((c) => c.description),
       ...(out.preview ? { before: out.preview.before, after: out.preview.after } : {}),
     };
+    return { out: body, results: out.results };
   }
 
   /** Store the scenario as a branch of the plan (the parent is untouched). */

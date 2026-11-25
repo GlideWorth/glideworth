@@ -8,7 +8,7 @@
  *    whole-plan overwrite and no delete tool; "revert" is itself a proposal.
  *  - Outputs are compact JSON (no pretty-printing); heavy tools take `detail: 'summary' | 'full'`.
  */
-import { type Actor, GoalSeekRequest, PatchOp } from "@glideworth/core";
+import { type Actor, GoalSeekRequest, type MonteCarloResult, PatchOp } from "@glideworth/core";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { allows, type Principal, type Scope } from "../auth.js";
@@ -36,6 +36,17 @@ import {
 } from "../views.js";
 import { registerPrompts } from "./prompts.js";
 import { registerResources } from "./resources.js";
+import {
+  registerWidgetResource,
+  type WidgetEnv,
+  outcomeNumbers as numbers,
+  tweakableParams,
+  WithWidget,
+  widgetBuilders,
+  widgetMeta,
+  widgetToolMeta,
+  withWidget,
+} from "./widgets.js";
 
 export interface McpContext {
   services: Services;
@@ -46,7 +57,21 @@ export interface McpContext {
   actor?: Actor;
   /** The authenticated caller (HTTP): writes are recorded in the audit log under this person. */
   principal?: Principal | undefined;
+  /**
+   * Public origin of the web app (GLIDEWORTH_PUBLIC_URL, or this server's origin when it serves the web app).
+   * Chat widgets link into the app from it; null or absent = no links.
+   */
+  webUrl?: string | null | undefined;
 }
+
+/** Solver jobs that have an answer widget (the solve_* tools; goal_seek has none). */
+const WIDGET_SOLVER_KINDS = new Set([
+  "max-spending",
+  "earliest-retirement",
+  "required-savings",
+  "required-portfolio",
+  "safe-withdrawal-rate",
+]);
 
 const SOLVER_KINDS = new Set([
   "max-spending",
@@ -72,6 +97,7 @@ export const SERVER_INSTRUCTIONS = [
   "Household data (balances, snapshots, CSV imports) is written directly by update_account_balances / record_progress_snapshot / apply_csv_import; plan edits always go through change sets or branches.",
   "Read-only unless the server enables writes; write tools are absent otherwise.",
   'Tools return compact JSON; pass detail="full" only when you need everything.',
+  "INTERACTIVE VIEW: in hosts that show Glideworth's interactive view, it already shows the chart and the numbers: answer in a few sentences and do not restate every figure.",
   "ESTIMATES, NOT ADVICE: results are projections from the plan's assumptions, not financial, tax or investment advice; say so when the user may act on a figure. Glideworth never moves money or places trades.",
 ].join("\n");
 
@@ -152,6 +178,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
   );
   const canRead = allows(ctx.scopes, "read");
   const canSim = allows(ctx.scopes, "simulate");
+  const widgetEnv: WidgetEnv = { services, canWrite: ctx.canWrite, webUrl: ctx.webUrl ?? null };
 
   const mainPlans = () => services.plans.list({ status: "active" }).filter((p) => p.isMain);
   /** `planId` omitted -> the main plan, when that is unambiguous (one household, or a single plan). */
@@ -232,6 +259,8 @@ export function createMcpServer(ctx: McpContext): McpServer {
     cfg: { title: string; description: string; input: S; hint: Hint },
     handler: (args: z.infer<z.ZodObject<S>>, extra: Extra) => unknown | Promise<unknown>,
   ) {
+    // Widget tools name the widget template; tools the widget calls are marked callable (widgets.ts).
+    const meta = widgetToolMeta(name);
     server.registerTool(
       name,
       {
@@ -244,6 +273,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
           idempotentHint: cfg.hint.idempotent ?? cfg.hint.readOnly,
           openWorldHint: cfg.hint.openWorld ?? false,
         },
+        ...(meta ? { _meta: meta } : {}),
       },
       (async (args: z.infer<z.ZodObject<S>>, extra: Extra) => {
         try {
@@ -276,6 +306,11 @@ export function createMcpServer(ctx: McpContext): McpServer {
                 (a.planId as string | undefined) ?? (a.householdId as string | undefined) ?? null,
               status: 200,
             });
+          if (out instanceof WithWidget) {
+            // The model reads the same text as without a widget; the payload rides in `_meta`.
+            const payload = widgetMeta(name, out);
+            return { ...asText(out.text), ...(payload ? { _meta: payload } : {}) };
+          }
           return asText(out);
         } catch (err) {
           return asError(err, validIds);
@@ -424,6 +459,36 @@ export function createMcpServer(ctx: McpContext): McpServer {
       progress: Math.round(job.progress * 100) / 100,
       hint: "Not finished yet: call get_job with this jobId (or cancel_job).",
     };
+  };
+
+  /**
+   * A Monte Carlo or solver job's text with its widget: the outcome or answer once finished, pending while it
+   * runs. Other jobs, and failed ones, have none. `text` is jobOut's result for the job.
+   */
+  const jobWidget = (job: JobView, text: unknown) => {
+    const of =
+      job.kind === "monte-carlo" ? "outcome" : WIDGET_SOLVER_KINDS.has(job.kind) ? "answer" : null;
+    if (!of) return text;
+    if (job.status === "queued" || job.status === "running")
+      return withWidget(text, () => widgetBuilders.pending(widgetEnv, job.planId, job.id, of));
+    if (job.status !== "succeeded") return text;
+    return withWidget(text, () => {
+      if (of === "outcome")
+        return widgetBuilders.monteCarloOutcome(
+          widgetEnv,
+          job.planId,
+          text as Record<string, unknown>,
+          services.jobs.result(job.id) as MonteCarloResult,
+        );
+      const target = (job.params as { targetSuccessRate?: unknown } | null)?.targetSuccessRate;
+      return widgetBuilders.answer(
+        widgetEnv,
+        job.planId,
+        job.kind,
+        text as Record<string, unknown>,
+        typeof target === "number" ? target : null,
+      );
+    });
   };
 
   // =============================================================================== read tools
@@ -922,11 +987,18 @@ export function createMcpServer(ctx: McpContext): McpServer {
         },
         hint: { readOnly: true },
       },
-      ({ planId, ...view }) =>
-        services.sim.simulate(planId, {
-          trace: "off",
-          view: { ...view, include: ["summary", "milestones", "warnings"] },
-        }),
+      ({ planId, ...view }) => {
+        // services.sim.simulate with a view, keeping the run for the widget.
+        const run = services.sim.projection(planId, { trace: "off" });
+        const text = compactProjection(
+          run.result,
+          { ...view, include: ["summary", "milestones", "warnings"] },
+          run.cached,
+        );
+        return withWidget(text, () =>
+          widgetBuilders.deterministicOutcome(widgetEnv, planId, run.result),
+        );
+      },
     );
 
     tool(
@@ -969,9 +1041,9 @@ export function createMcpServer(ctx: McpContext): McpServer {
           { settings, keepTrials: false, randomSeed: false },
           actor,
         );
-        return jobOut(await awaitJob(job, wait, extra), (r) =>
-          compactMonteCarlo(r as never, { detail }),
-        );
+        const done = await awaitJob(job, wait, extra);
+        const text = jobOut(done, (r) => compactMonteCarlo(r as never, { detail }));
+        return jobWidget(done, text);
       },
     );
 
@@ -1003,7 +1075,26 @@ export function createMcpServer(ctx: McpContext): McpServer {
       },
       ({ planIds, explain }) => {
         for (const id of planIds.slice(1)) assertSameHousehold(planIds[0]!, id);
-        return services.sim.compare(planIds, explain);
+        const text = services.sim.compare(planIds, explain);
+        return withWidget(text, () => {
+          // The baseline against the first other plan, from the same (cached) projections.
+          const [a, b] = text.plans as [(typeof text.plans)[0], (typeof text.plans)[0]];
+          const run = (id: string) =>
+            services.sim.projection(id, { trace: explain ? "summary" : "off" }).result;
+          return widgetBuilders.compare(widgetEnv, {
+            planId: a.planId,
+            headlinePrefix: `${b.name} against ${a.name}`,
+            beforeLabel: a.name,
+            afterLabel: b.name,
+            before: { ...numbers(a.outcome), success: a.success },
+            after: { ...numbers(b.outcome), success: b.success },
+            beforeRun: run(a.planId),
+            afterRun: run(b.planId),
+            changes: text.differences[0]?.changes ?? [],
+            ops: null,
+            template: null,
+          });
+        });
       },
     );
 
@@ -1159,7 +1250,11 @@ export function createMcpServer(ctx: McpContext): McpServer {
             { ...body, ...(trials ? { monteCarlo: { trials } } : {}) },
             actor,
           );
-          return jobOut(await awaitJob(job, wait, extra), (r) => compactSolver(r as never, detail));
+          const done = await awaitJob(job, wait, extra);
+          return jobWidget(
+            done,
+            jobOut(done, (r) => compactSolver(r as never, detail)),
+          );
         },
       );
     }
@@ -1240,7 +1335,19 @@ export function createMcpServer(ctx: McpContext): McpServer {
         },
         hint: { readOnly: true },
       },
-      ({ planId, ...q }) => services.sim.taxBreakdown(planId, q),
+      ({ planId, ...q }) => {
+        const text = services.sim.taxBreakdown(planId, q);
+        return withWidget(text, () =>
+          widgetBuilders.tax(
+            widgetEnv,
+            planId,
+            text,
+            q.detail === "lines"
+              ? text
+              : services.sim.taxBreakdown(planId, { ...q, detail: "lines" }),
+          ),
+        );
+      },
     );
 
     tool(
@@ -1314,11 +1421,28 @@ export function createMcpServer(ctx: McpContext): McpServer {
       },
       async ({ planId, ops }) => {
         const out = services.sim.preview(planId, z.array(PatchOp).parse(ops));
-        return {
+        const text = {
           planVersion: out.plan.version,
           changes: out.diff.changes.slice(0, 40).map((c) => c.description),
           preview: out.preview,
         };
+        return withWidget(text, () =>
+          out.preview && out.results
+            ? widgetBuilders.compare(widgetEnv, {
+                planId,
+                headlinePrefix: "With these changes",
+                beforeLabel: "Current plan",
+                afterLabel: "With changes",
+                before: numbers(out.preview.before),
+                after: numbers(out.preview.after),
+                beforeRun: out.results.before,
+                afterRun: out.results.after,
+                changes: text.changes,
+                ops,
+                template: null,
+              })
+            : null,
+        );
       },
     );
 
@@ -1338,7 +1462,12 @@ export function createMcpServer(ctx: McpContext): McpServer {
       },
       ({ planId, year, basis, detail }) => {
         const n = services.sim.explainYear(planId, { year, basis });
-        return { planId: n.planId, planVersion: n.planVersion, ...compactYearNarrative(n, detail) };
+        const text = {
+          planId: n.planId,
+          planVersion: n.planVersion,
+          ...compactYearNarrative(n, detail),
+        };
+        return withWidget(text, () => widgetBuilders.year(widgetEnv, planId, n));
       },
     );
 
@@ -1563,7 +1692,34 @@ export function createMcpServer(ctx: McpContext): McpServer {
         },
         hint: { readOnly: true },
       },
-      ({ planId, templateId, params }) => services.scenarios.preview(planId, templateId, params),
+      ({ planId, templateId, params }) => {
+        const { out, results } = services.scenarios.previewWithResults(planId, templateId, params);
+        return withWidget(out, () => {
+          if (!out.before || !out.after || !results) return null;
+          const years = results.before.periods.map((p) => p.year);
+          return widgetBuilders.compare(widgetEnv, {
+            planId,
+            headlinePrefix: out.template.title,
+            beforeLabel: "Current plan",
+            afterLabel: out.template.title,
+            before: numbers(out.before),
+            after: numbers(out.after),
+            beforeRun: results.before,
+            afterRun: results.after,
+            changes: out.changes,
+            ops: out.ops as Record<string, unknown>[],
+            template: {
+              id: templateId,
+              label: out.template.title,
+              params,
+              tweakable: tweakableParams(templateId, params, {
+                firstYear: years[0] ?? 0,
+                lastYear: years[years.length - 1] ?? 0,
+              }),
+            },
+          });
+        });
+      },
     );
 
     tool(
@@ -1606,7 +1762,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
       },
       async ({ jobId, wait }, extra) => {
         const job = await awaitJob(services.jobs.get(jobId), wait, extra);
-        return jobOut(job, (r) =>
+        const text = jobOut(job, (r) =>
           job.kind === "monte-carlo" || job.kind === "historical"
             ? compactMonteCarlo(r as never, {})
             : job.kind === "tax-strategy"
@@ -1617,6 +1773,8 @@ export function createMcpServer(ctx: McpContext): McpServer {
                   ? compactSolver(r as never)
                   : r,
         );
+        // No template of its own, but a finished Monte Carlo or solver job completes a pending widget.
+        return job.status === "succeeded" ? jobWidget(job, text) : text;
       },
     );
   }
@@ -1657,6 +1815,11 @@ export function createMcpServer(ctx: McpContext): McpServer {
           ? "Show the user the changes and before/after, then call apply_change_set (or discard_change_set)."
           : undefined,
     });
+    /** `readable`, with the review widget built from the same change set. */
+    const reviewable = (cs: ReturnType<Services["changeSets"]["get"]>) => {
+      const text = readable(cs);
+      return withWidget(text, () => widgetBuilders.review(widgetEnv, cs, text.changes));
+    };
 
     tool(
       "propose_change_set",
@@ -1678,7 +1841,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
         hint: { readOnly: false },
       },
       async ({ planId, ops, summary, rationale, baseVersion }) => {
-        return readable(
+        return reviewable(
           services.changeSets.propose(
             planId,
             {
@@ -1751,7 +1914,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
         });
         if (!diff.patch.length)
           return { message: `plan already equals version ${version}; nothing to revert` };
-        return readable(
+        return reviewable(
           services.changeSets.propose(
             planId,
             { ops: diff.patch, summary: `Revert to version ${version}`, preview: true },
@@ -2278,6 +2441,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
   }
 
   registerResources(server, ctx);
+  registerWidgetResource(server, widgetEnv.webUrl);
   registerPrompts(server, ctx);
   return server;
 }

@@ -643,15 +643,24 @@ export class SimulationService {
   }
 
   // ----------------------------------------------------------------------------- what-if
-  /** Apply ops in memory: diff + before/after outcomes. Nothing is stored. */
+  /**
+   * Apply ops in memory: diff + before/after outcomes. Nothing is stored. `results` are the two projections the
+   * outcomes come from (the chat widgets chart them).
+   */
   preview(planId: string, ops: PatchOp[], withOutcome = true) {
     const plan = this.plans.get(planId);
     const patched = this.deps.applyPlanPatch(plan, ops);
     const diff: PlanDiff = this.deps.diffPlans(plan, patched);
-    if (!withOutcome) return { plan, patched, diff, preview: undefined };
-    const before = outcomeOf(this.projection(planId, { trace: "off" }).result);
+    if (!withOutcome) return { plan, patched, diff, preview: undefined, results: undefined };
+    const beforeResult = this.projection(planId, { trace: "off" }).result;
     const { input } = this.inputFor(planId, { trace: "off" }, patched);
-    const after = outcomeOf(this.deps.simulate(input));
-    return { plan, patched, diff, preview: { before, after } };
+    const afterResult = this.deps.simulate(input);
+    return {
+      plan,
+      patched,
+      diff,
+      preview: { before: outcomeOf(beforeResult), after: outcomeOf(afterResult) },
+      results: { before: beforeResult, after: afterResult },
+    };
   }
 }

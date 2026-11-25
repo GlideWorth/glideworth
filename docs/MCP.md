@@ -496,6 +496,26 @@ listed and are deprecated.
 | `what_if_spending`         | `planId?`, `change`             | translate "+500/month on dining" into ops, `preview_changes`, report before/after                   |
 | `monthly_checkin`          | `householdId?`                  | collect balances, `update_account_balances`, compare with earlier snapshots and the plan            |
 
+## Interactive views (ChatGPT and Claude)
+
+Hosts that support MCP Apps (ChatGPT, Claude) show some results as an interactive view instead of only text:
+
+| View            | Tools                                                                                                                                                                                   |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Will it last?   | `run_monte_carlo` (a fan of outcomes; a pending view while it runs, finished by `get_job`), `simulate_plan`                                                                             |
+| What changes?   | `preview_whatif` (with steppers for the template's numbers), `preview_changes`, `compare_plans`                                                                                         |
+| Solver answer   | `solve_max_spending`, `solve_retirement_date`, `solve_required_savings`, `solve_required_portfolio`, `solve_safe_withdrawal_rate` (a pending view while it runs, finished by `get_job`) |
+| Review a change | `propose_change_set`, `propose_revert` (Apply and Discard appear only on a connection with writes)                                                                                      |
+| One year        | `explain_year`                                                                                                                                                                          |
+| Tax over time   | `tax_breakdown`                                                                                                                                                                         |
+
+These tools name the view's template, `ui://glideworth/app-<hash>.html` (`text/html;profile=mcp-app`), in their
+`_meta`. The view's data arrives in the tool result's `_meta["glideworth/widget"]`, which the host passes to the
+view and not to the model: the text the model reads is the same compact JSON as in any other client, and its numbers
+are the view's numbers. The view fetches nothing itself, so its content security policy lists no domains. It links
+into the web app when the server knows its public URL (`GLIDEWORTH_PUBLIC_URL`). Self-hosted servers serve the same
+views.
+
 ## Assets in another country
 
 The household lives in one country (its location) for the whole plan; Glideworth does not model moving

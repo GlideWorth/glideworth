@@ -18,5 +18,6 @@ const server = createMcpServer({
   scopes: config.mcpAllowWrites ? ["read", "simulate", "write"] : ["read", "simulate"],
   canWrite: config.mcpAllowWrites,
   actor: { kind: "mcp", label: "mcp-stdio" },
+  webUrl: config.publicUrl ?? null,
 });
 await server.connect(new StdioServerTransport());

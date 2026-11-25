@@ -27,7 +27,7 @@ export const site = {
     address:
       "Unit 001-46348, Building A1, Dubai Digital Park, Dubai Silicon Oasis, Dubai, United Arab Emirates",
   },
-  /** Addresses on the domain. The mailboxes are set up at MXroute (inboxes, with forwarders for the other addresses). */
+  /** Addresses on the domain. They all arrive in one Google Workspace mailbox (the others are aliases of hello@). */
   contact: {
     hello: "hello@glideworth.com",
     support: "support@glideworth.com",

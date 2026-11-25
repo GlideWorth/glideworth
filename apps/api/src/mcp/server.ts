@@ -415,7 +415,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
     .max(110)
     .default(30)
     .describe(
-      "Seconds to wait for the result. If it is not finished, a jobId is returned: poll get_job.",
+      "Seconds to wait for the result. A longer calculation keeps running and returns a jobId; read the result with get_job. Calculations change nothing in the plan or household.",
     );
 
   /** Wait for a job, forwarding progress to the client when it asked for it. */
@@ -1753,7 +1753,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
       {
         title: "Get job",
         description:
-          "Status and progress of an async job (Monte Carlo, solver...). Includes the (compact) result once finished.",
+          "Status and progress of a calculation started by another tool (Monte Carlo, solver...). Includes the (compact) result once finished. Read-only.",
         input: {
           jobId: z.string(),
           wait: z.number().min(0).max(110).default(0).describe("Seconds to wait for completion."),
@@ -2308,26 +2308,18 @@ export function createMcpServer(ctx: McpContext): McpServer {
       {
         title: "What changed since my last check-in",
         description:
-          "Compare the plan and household as they are now with the last check-in: material changes (success rate, milestones, new findings, net worth versus plan), the edits made since and by whom, and notifications. The chance of success is the stored one unless refresh=true, which takes a new check-in (re-runs Monte Carlo; needs write access).",
+          "Compare the plan and household as they are now with the last check-in: material changes (success rate, milestones, new findings, net worth versus plan), the edits made since and by whom, and notifications. Read-only: the chance of success is the stored one, and nothing is saved. To take a new check-in, use run_checkin (needs write access).",
         input: {
           planId,
           since: z
             .string()
             .optional()
             .describe("ISO time to compare from (default: the last check-in)."),
-          refresh: z.boolean().default(false),
         },
         hint: { readOnly: true },
       },
-      async ({ planId, since, refresh }) => {
-        if (refresh && !ctx.canWrite)
-          throw new ApiError(
-            403,
-            "FORBIDDEN",
-            "refresh=true stores a check-in and needs write access; omit it to compare without Monte Carlo",
-          );
-        return services.checkins.sinceLastCheckin(planId, { since, refresh }, actor);
-      },
+      // No refresh option: taking a check-in stores it, so a read-only tool must not (run_checkin does).
+      async ({ planId, since }) => services.checkins.sinceLastCheckin(planId, { since }, actor),
     );
   }
 

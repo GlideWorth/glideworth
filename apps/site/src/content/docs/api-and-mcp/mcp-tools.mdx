@@ -52,7 +52,7 @@ names the candidates.
 | `get_plan_health_history` | The check-in time series: success rate, FI year, net worth against plan, open findings. |
 | `list_notifications` | Notifications raised by check-ins (unread by default). |
 | `get_checkin_schedule` | Cadence, thresholds, last and next run. |
-| `what_changed_since_checkin` | What changed since the last check-in. `refresh=true` takes a new one first and needs write. |
+| `what_changed_since_checkin` | What changed since the last check-in. Read-only; `run_checkin` takes a new one. |
 
 ### Import previews
 

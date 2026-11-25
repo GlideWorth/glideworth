@@ -428,8 +428,13 @@ describe("MCP", () => {
     expect((await call(ro, "list_notifications")).json.unread).toBeGreaterThan(0);
     const since = await call(ro, "what_changed_since_checkin");
     expect(since.json.lastCheckIn).toBeTruthy();
-    const refused = await call(ro, "what_changed_since_checkin", { refresh: true });
-    expect(refused.isError).toBe(true);
+    // Read-only means no check-in is stored, even when a write connection passes the old refresh flag.
+    const tools = (await rw.listTools()).tools;
+    const whatChanged = tools.find((t) => t.name === "what_changed_since_checkin")!;
+    expect(whatChanged.annotations?.readOnlyHint).toBe(true);
+    expect(Object.keys(whatChanged.inputSchema.properties ?? {})).not.toContain("refresh");
+    await call(rw, "what_changed_since_checkin", { refresh: true });
+    expect((await call(ro, "get_plan_health_history")).json.items).toHaveLength(2);
     expect((await call(rw, "set_checkin_schedule", { cadence: "monthly" })).json.cadence).toBe(
       "monthly",
     );

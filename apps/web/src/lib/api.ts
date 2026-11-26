@@ -373,6 +373,17 @@ export function createApiClient(opts: ApiClientOptions = {}) {
       ),
     // --- (i) settings, keys, webhooks, import/export, data management.
     me: () => request("GET", "/api/v1/me", MeInfo),
+    /** The plain-words summary for a partner (read scope; a viewer's landing page). */
+    partnerSummary: (planId: string) =>
+      request("GET", `/api/v1/plans/${encodeURIComponent(planId)}/partner-summary`, PartnerSummary),
+    /** The default chance-of-success run (the plan's own settings): what the partner summary quotes. */
+    runDefaultMonteCarlo: (planId: string) =>
+      request(
+        "POST",
+        `/api/v1/plans/${encodeURIComponent(planId)}/monte-carlo?wait=60`,
+        z.looseObject({ id: z.string(), status: z.string() }),
+        {},
+      ),
     getSettings: () => request("GET", "/api/v1/settings", UserSettings),
     patchSettings: (patch: Record<string, unknown>) =>
       request("PATCH", "/api/v1/settings", UserSettings, patch),
@@ -730,6 +741,41 @@ export const ShareLink = z.object({
   createdBy: z.unknown(),
 });
 export type ShareLink = z.infer<typeof ShareLink>;
+/** GET /plans/{id}/partner-summary: every number in its sentences is listed in `figures`. */
+export const PartnerSummary = z.object({
+  planId: z.string(),
+  planVersion: z.number(),
+  planName: z.string(),
+  currency: z.string(),
+  locale: z.string(),
+  people: z.array(z.object({ id: z.string(), name: z.string() })),
+  headline: z.string(),
+  stopWork: z.object({ text: z.string(), year: z.number().nullable() }),
+  spending: z.object({
+    text: z.string(),
+    yearly: z.number().nullable(),
+    allFunded: z.boolean(),
+  }),
+  confidence: z.object({
+    text: z.string(),
+    level: z.enum(["high", "good", "uncertain", "low", "unknown"]),
+    successRate: z.number().nullable(),
+  }),
+  survivor: z.object({ text: z.string(), applicable: z.boolean() }),
+  risks: z.array(z.object({ id: z.string(), text: z.string(), source: z.string() })),
+  assumptions: z.array(z.object({ label: z.string(), value: z.string(), source: z.string() })),
+  figures: z.array(
+    z.object({
+      id: z.string(),
+      display: z.string(),
+      value: z.number(),
+      kind: z.string(),
+      source: z.string(),
+    }),
+  ),
+  caveats: z.array(z.string()),
+});
+export type PartnerSummary = z.infer<typeof PartnerSummary>;
 const maybeAmount = z.number().nullable();
 export const SharedPlan = z.object({
   // 'glideworth-shared-plan': servers not yet upgraded past the rename.

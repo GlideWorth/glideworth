@@ -7,6 +7,7 @@ import {
   Dices,
   FileText,
   GitCompareArrows,
+  HeartHandshake,
   Landmark,
   LayoutDashboard,
   Lightbulb,
@@ -31,6 +32,7 @@ export const NAV: { group: string; items: NavItem[] }[] = [
     group: "Overview",
     items: [
       { to: "/", label: "Dashboard", icon: LayoutDashboard, owner: "h" },
+      { to: "/summary", label: "Plan in brief", icon: HeartHandshake, owner: "h" },
       { to: "/finances", label: "Current finances", icon: Wallet, owner: "g" },
       { to: "/progress", label: "Progress", icon: TrendingUp, owner: "h" },
     ],

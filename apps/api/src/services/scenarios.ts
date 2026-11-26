@@ -7,6 +7,7 @@
  */
 import {
   type Actor,
+  buildPartnerSummary,
   careerBreakScenario,
   childScenario,
   downsizingScenario,
@@ -15,6 +16,8 @@ import {
   jobLossScenario,
   longTermCareScenario,
   marketCrashScenario,
+  type PartnerSummary,
+  partnerSummarySurvivorCases,
   type Plan,
   type ScenarioTemplate,
   type SimulationInput,
@@ -246,6 +249,28 @@ export class ScenariosService {
    * "What if one partner dies at 70 / 80 / 90?" for each partner. `evaluate` also runs each
    * scenario deterministically and reports before/after outcomes.
    */
+  /**
+   * The one-page summary for a partner, built only from engine results: the deterministic projection, the
+   * cached default Monte Carlo run (null until one has run for this version), one projection per survivor
+   * scenario and the assumption audit. Stores nothing.
+   */
+  partnerSummary(planId: string): PartnerSummary {
+    const { input } = this.sim.inputFor(planId, { trace: "off" });
+    const result = this.sim.projection(planId, { trace: "off" }).result;
+    const survivors = partnerSummarySurvivorCases(input).map((c) => ({
+      personId: c.personId,
+      age: c.age,
+      result: this.sim.preview(planId, c.patch).results!.after,
+    }));
+    return buildPartnerSummary({
+      input,
+      result,
+      monteCarlo: this.sim.cachedMonteCarlo(planId),
+      survivors,
+      findings: this.sim.audit(planId).findings,
+    });
+  }
+
   survivors(planId: string, o: { ages?: number[] | undefined; evaluate: boolean }) {
     const { input, plan } = this.sim.inputFor(planId, { trace: "off" });
     const scenarios = this.ctx.deps.survivorScenarios(input, o.ages ? { ages: o.ages } : {});

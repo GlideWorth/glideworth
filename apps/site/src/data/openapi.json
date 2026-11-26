@@ -23865,6 +23865,332 @@
      }
     }
    },
+   "PartnerSummary": {
+    "type": "object",
+    "properties": {
+     "planId": {
+      "type": "string"
+     },
+     "planVersion": {
+      "type": "integer"
+     },
+     "planName": {
+      "type": "string"
+     },
+     "currency": {
+      "type": "string"
+     },
+     "locale": {
+      "type": "string"
+     },
+     "people": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "id": {
+         "type": "string"
+        },
+        "name": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "id",
+        "name"
+       ]
+      }
+     },
+     "headline": {
+      "type": "string"
+     },
+     "stopWork": {
+      "type": "object",
+      "properties": {
+       "text": {
+        "type": "string"
+       },
+       "year": {
+        "type": [
+         "integer",
+         "null"
+        ]
+       },
+       "month": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "ages": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "personId": {
+           "type": "string"
+          },
+          "name": {
+           "type": "string"
+          },
+          "age": {
+           "type": "number"
+          }
+         },
+         "required": [
+          "personId",
+          "name",
+          "age"
+         ]
+        }
+       }
+      },
+      "required": [
+       "text",
+       "year",
+       "month",
+       "ages"
+      ]
+     },
+     "spending": {
+      "type": "object",
+      "properties": {
+       "text": {
+        "type": "string"
+       },
+       "yearly": {
+        "type": [
+         "number",
+         "null"
+        ],
+        "description": "Today's money."
+       },
+       "year": {
+        "type": [
+         "integer",
+         "null"
+        ]
+       },
+       "allFunded": {
+        "type": "boolean"
+       },
+       "firstShortfallYear": {
+        "type": [
+         "integer",
+         "null"
+        ]
+       }
+      },
+      "required": [
+       "text",
+       "yearly",
+       "year",
+       "allFunded",
+       "firstShortfallYear"
+      ]
+     },
+     "confidence": {
+      "type": "object",
+      "properties": {
+       "text": {
+        "type": "string"
+       },
+       "level": {
+        "type": "string",
+        "enum": [
+         "high",
+         "good",
+         "uncertain",
+         "low",
+         "unknown"
+        ]
+       },
+       "successRate": {
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "trials": {
+        "type": [
+         "integer",
+         "null"
+        ]
+       }
+      },
+      "required": [
+       "text",
+       "level",
+       "successRate",
+       "trials"
+      ]
+     },
+     "survivor": {
+      "type": "object",
+      "properties": {
+       "text": {
+        "type": "string"
+       },
+       "applicable": {
+        "type": "boolean"
+       },
+       "cases": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "personId": {
+           "type": "string"
+          },
+          "name": {
+           "type": "string"
+          },
+          "survivorId": {
+           "type": "string"
+          },
+          "survivorName": {
+           "type": "string"
+          },
+          "age": {
+           "type": "number"
+          },
+          "success": {
+           "type": "boolean"
+          },
+          "firstShortfallYear": {
+           "type": [
+            "integer",
+            "null"
+           ]
+          }
+         },
+         "required": [
+          "personId",
+          "name",
+          "survivorId",
+          "survivorName",
+          "age",
+          "success",
+          "firstShortfallYear"
+         ]
+        }
+       }
+      },
+      "required": [
+       "text",
+       "applicable",
+       "cases"
+      ]
+     },
+     "risks": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "id": {
+         "type": "string"
+        },
+        "text": {
+         "type": "string"
+        },
+        "source": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "id",
+        "text",
+        "source"
+       ]
+      }
+     },
+     "assumptions": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "label": {
+         "type": "string"
+        },
+        "value": {
+         "type": "string"
+        },
+        "source": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "label",
+        "value",
+        "source"
+       ]
+      }
+     },
+     "figures": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "id": {
+         "type": "string"
+        },
+        "display": {
+         "type": "string",
+         "description": "Exactly as written in the sentences."
+        },
+        "value": {
+         "type": "number",
+         "description": "Unrounded, from the source."
+        },
+        "kind": {
+         "type": "string",
+         "enum": [
+          "money",
+          "percent",
+          "year",
+          "age",
+          "count"
+         ]
+        },
+        "source": {
+         "type": "string",
+         "description": "The engine result field it was read from."
+        }
+       },
+       "required": [
+        "id",
+        "display",
+        "value",
+        "kind",
+        "source"
+       ]
+      }
+     },
+     "caveats": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     }
+    },
+    "required": [
+     "planId",
+     "planVersion",
+     "planName",
+     "currency",
+     "locale",
+     "people",
+     "headline",
+     "stopWork",
+     "spending",
+     "confidence",
+     "survivor",
+     "risks",
+     "assumptions",
+     "figures",
+     "caveats"
+    ]
+   },
    "CompareRequest": {
     "type": "object",
     "properties": {
@@ -53203,6 +53529,126 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/Plan"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Invalid request (VALIDATION)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing or invalid API key",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "API key lacks the required scope",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Not found",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "409": {
+      "description": "Conflict (duplicate id, version mismatch, in use)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Scenario is inconsistent (dangling reference, circular milestone...) or Idempotency-Key reused",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Rate limited",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "501": {
+      "description": "The plan uses a feature that is not implemented yet (details.feature, details.workstream)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/plans/{id}/partner-summary": {
+   "get": {
+    "operationId": "getPartnerSummary",
+    "tags": [
+     "Insights"
+    ],
+    "summary": "One-page plain-words summary for a partner (engine results only)",
+    "description": "When you can stop working, what the plan spends, how confident it is, what happens to the survivor if either partner dies, the biggest risks and what was assumed. Every number in the sentences is listed in `figures` with the engine result it came from. The chance of success is the cached default `runMonteCarlo` result for this plan version; until one has run, `confidence.level` is `unknown` (run `POST /plans/{id}/monte-carlo` and fetch again). The landing page of a viewer in the web app. Stores nothing.\n\nScope: `read`.",
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "x-required-scope": "read",
+    "parameters": [
+     {
+      "schema": {
+       "type": "string",
+       "minLength": 1,
+       "maxLength": 64
+      },
+      "required": true,
+      "name": "id",
+      "in": "path"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Summary",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PartnerSummary"
         }
        }
       }

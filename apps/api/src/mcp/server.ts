@@ -849,6 +849,18 @@ export function createMcpServer(ctx: McpContext): McpServer {
     );
 
     tool(
+      "get_partner_summary",
+      {
+        title: "Plan summary for a partner",
+        description:
+          "A one-page plain-words summary to explain the plan to a partner: when you can stop working, what the plan spends, how confident it is, what happens to the survivor if either partner dies, the biggest risks and what was assumed. Every number in its sentences is in `figures` with the engine result it came from: quote the sentences, do not add numbers of your own. The chance of success appears once a default run_monte_carlo has run for this plan version.",
+        input: { planId },
+        hint: { readOnly: true },
+      },
+      ({ planId }) => services.scenarios.partnerSummary(planId),
+    );
+
+    tool(
       "preview_csv_import",
       {
         title: "Preview a CSV import (dry run)",

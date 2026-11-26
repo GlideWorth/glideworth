@@ -20,6 +20,7 @@ import {
   TaxesPage,
 } from "./features/placeholders";
 import { ReportsPage } from "./features/reports/reports-page";
+import { SummaryPage } from "./features/summary/summary-page";
 import { ResultsPage } from "./features/results/results-page";
 // (i) route-level code splitting: these pages load on demand (see routes/lazy-pages.ts).
 import {
@@ -123,6 +124,11 @@ const routeReports = createRoute({
   component: ReportsPage,
 });
 // (i) settings sections, onboarding, import & export centre.
+const routeSummary = createRoute({
+  getParentRoute: () => root,
+  path: "/summary",
+  component: SummaryPage,
+});
 const routeSettingsSection = createRoute({
   getParentRoute: () => root,
   path: "/settings/$section",
@@ -282,6 +288,7 @@ const routeTree = root.addChildren([
   route10,
   routeInsights,
   routeReports,
+  routeSummary,
   routeEstate,
   routeBuilder,
   routeSettingsSection,

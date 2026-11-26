@@ -689,6 +689,54 @@ function useFirstRunRedirect() {
   }, [ws?.firstRun, path, navigate]);
 }
 
+/**
+ * A view-only partner lands on the plan in brief: the first time the dashboard opens in a browser session it
+ * moves to /summary. The dashboard stays one click away in the sidebar.
+ */
+const VIEWER_LANDED = "glideworth:viewer-landed";
+function useViewerLanding() {
+  const access = useAccess();
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
+  const decided = useRef(false);
+  const viewer = !access.loading && access.role === "viewer";
+  useEffect(() => {
+    // Only the first render of a session as a viewer decides; later visits to / stay on the dashboard.
+    if (!viewer || decided.current) return;
+    decided.current = true;
+    let landed = false;
+    try {
+      landed = sessionStorage.getItem(VIEWER_LANDED) === "1";
+      sessionStorage.setItem(VIEWER_LANDED, "1");
+    } catch {
+      // Storage blocked: land once per page load instead.
+    }
+    if (!landed && path === "/") void navigate({ to: "/summary", replace: true });
+  }, [viewer, path, navigate]);
+}
+
+/** One line on every page: whose plan this is and that nothing here changes it. */
+function ViewerBanner() {
+  const access = useAccess();
+  const { data: ws } = useWorkspace();
+  if (access.loading || access.role !== "viewer" || access.planReadOnly) return null;
+  const household = ws?.doc?.household.name;
+  return (
+    <div
+      data-viewer-banner
+      role="status"
+      className="flex items-center gap-2 border-b border-border bg-surface-2 px-4 py-1.5 text-[12.5px] text-ink-2 sm:px-6"
+    >
+      <Eye className="size-3.5 shrink-0" aria-hidden />
+      <span>
+        You are viewing {household ? <strong className="text-ink">{household}</strong> : "this"}{" "}
+        plan with view-only access. Look around and try what-ifs: nothing you do here changes the
+        plan.
+      </span>
+    </div>
+  );
+}
+
 /** Mirror the role into the UI store so editors refuse edits before they happen (viewers). */
 function useReadOnlySync() {
   const access = useAccess();
@@ -775,6 +823,7 @@ function Frame() {
   useFirstRunRedirect();
   useSettingsSync();
   useReadOnlySync();
+  useViewerLanding();
   const focusMode = path.startsWith("/welcome") && !isDemo();
   const mode = useMode();
   const access = useCloudSession()?.workspace?.access;
@@ -810,6 +859,7 @@ function Frame() {
       <div className="flex min-w-0 flex-1 flex-col">
         {isDemo() ? <DemoBanner /> : null}
         <TopBar />
+        <ViewerBanner />
         <main
           id="main"
           ref={mainRef}

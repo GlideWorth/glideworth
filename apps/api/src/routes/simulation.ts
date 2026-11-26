@@ -683,6 +683,77 @@ export function simulationRoutes({ app, svc }: RouteCtx) {
       return c.json(out.branch, 201);
     },
   );
+  const Figure = z.object({
+    id: z.string(),
+    display: z.string().describe("Exactly as written in the sentences."),
+    value: z.number().describe("Unrounded, from the source."),
+    kind: z.enum(["money", "percent", "year", "age", "count"]),
+    source: z.string().describe("The engine result field it was read from."),
+  });
+  const PartnerSummarySchema = z
+    .object({
+      planId: z.string(),
+      planVersion: z.number().int(),
+      planName: z.string(),
+      currency: z.string(),
+      locale: z.string(),
+      people: z.array(z.object({ id: z.string(), name: z.string() })),
+      headline: z.string(),
+      stopWork: z.object({
+        text: z.string(),
+        year: z.number().int().nullable(),
+        month: z.string().nullable(),
+        ages: z.array(z.object({ personId: z.string(), name: z.string(), age: z.number() })),
+      }),
+      spending: z.object({
+        text: z.string(),
+        yearly: z.number().nullable().describe("Today's money."),
+        year: z.number().int().nullable(),
+        allFunded: z.boolean(),
+        firstShortfallYear: z.number().int().nullable(),
+      }),
+      confidence: z.object({
+        text: z.string(),
+        level: z.enum(["high", "good", "uncertain", "low", "unknown"]),
+        successRate: z.number().nullable(),
+        trials: z.number().int().nullable(),
+      }),
+      survivor: z.object({
+        text: z.string(),
+        applicable: z.boolean(),
+        cases: z.array(
+          z.object({
+            personId: z.string(),
+            name: z.string(),
+            survivorId: z.string(),
+            survivorName: z.string(),
+            age: z.number(),
+            success: z.boolean(),
+            firstShortfallYear: z.number().int().nullable(),
+          }),
+        ),
+      }),
+      risks: z.array(z.object({ id: z.string(), text: z.string(), source: z.string() })),
+      assumptions: z.array(z.object({ label: z.string(), value: z.string(), source: z.string() })),
+      figures: z.array(Figure),
+      caveats: z.array(z.string()),
+    })
+    .meta({ id: "PartnerSummary" });
+  app.openapi(
+    route("read", {
+      method: "get",
+      path: `${P}/partner-summary`,
+      operationId: "getPartnerSummary",
+      tags: ["Insights"],
+      summary: "One-page plain-words summary for a partner (engine results only)",
+      description:
+        "When you can stop working, what the plan spends, how confident it is, what happens to the survivor if either partner dies, the biggest risks and what was assumed. Every number in the sentences is listed in `figures` with the engine result it came from. The chance of success is the cached default `runMonteCarlo` result for this plan version; until one has run, `confidence.level` is `unknown` (run `POST /plans/{id}/monte-carlo` and fetch again). The landing page of a viewer in the web app. Stores nothing.",
+      request: { params: IdParam },
+      responses: { 200: json(PartnerSummarySchema, "Summary") },
+    }),
+    (c) => c.json(svc(c).scenarios.partnerSummary(c.req.valid("param").id) as never, 200),
+  );
+
   app.openapi(
     route("simulate", {
       method: "get",

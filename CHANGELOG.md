@@ -25,6 +25,10 @@ listing every commit. Product news for people using the hosted service is on
   income is taxed individually and lowest band first, then passes the rest to the next entry. Each withdrawal's
   ledger entry records the rule (`rule`). Existing plans give the same results. Document schema version 7 (no
   data change).
+- **The plan in brief, for a partner**: `GET /plans/{id}/partner-summary`, MCP `get_partner_summary` and the web
+  page _Plan in brief_ (printable) explain the plan in plain words, from engine results only. A partner invited as
+  a viewer lands on it and sees a line saying they are viewing the plan with view-only access. A new test walks
+  every REST operation and MCP tool as a viewer and proves nothing that writes succeeds.
 - **Interactive views in ChatGPT and Claude** (MCP Apps): Monte Carlo and projections, what-if and plan
   comparisons, solver answers, change-set reviews, one year's cash flow and tax over time render as interactive
   views. The view's data travels in the tool result's `_meta["glideworth/widget"]`; the text the model reads is

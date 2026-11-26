@@ -5,6 +5,7 @@ import {
   type Explanation,
   type Finding,
   type GuytonKlingerThresholds,
+  type MonteCarloResult,
   MonteCarloSettings,
   withReplacedDataset,
   type OutcomeSummary,
@@ -143,6 +144,20 @@ export class SimulationService {
       !req.randomSeed,
       actor,
     );
+  }
+
+  /**
+   * The chance-of-success result a default `runMonteCarlo` job (`{}`: the plan's own settings, fixed seed)
+   * produced for the current plan and household versions, or null when none has run. Reads the same cache
+   * entry that job writes, so the figure is the one the app shows; never runs anything.
+   */
+  cachedMonteCarlo(planId: string): MonteCarloResult | null {
+    const plan = this.plans.get(planId);
+    const settings = this.mcSettings(plan, undefined, false);
+    const { householdVersion } = this.inputFor(planId, { trace: "off" });
+    const params = { settings, keepTrials: false };
+    const hash = hashOf({ kind: "monte-carlo", params, hv: householdVersion });
+    return (this.cache.get(planId, plan.version, "monte-carlo", hash) as MonteCarloResult) ?? null;
   }
 
   startHistorical(

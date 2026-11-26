@@ -187,6 +187,13 @@ capped by their role (browser session, API key and OAuth token alike). A `viewer
 `403 FORBIDDEN` with `details: { required: "write", role: "viewer" }`; owner-only routes say `details.required: "owner"`.
 Demoting or disabling a user takes effect on all their credentials at once (sessions end, keys are capped or refused).
 
+**A partner who only looks.** Invite them as a `viewer`: they sign in with their own passphrase, see everything
+and can run projections and unsaved what-ifs, but nothing that writes is open to them (proved for every operation
+and MCP tool by `apps/api/test/viewer-sweep.test.ts`). In the web app they land on `GET /plans/{id}/partner-summary`:
+the plan in plain words (when you can stop working, what it spends, how confident it is, what happens to the
+survivor, the biggest risks, what was assumed), with every number listed in `figures` next to the engine result it
+came from. Deleting or disabling them ends their sessions, keys and OAuth tokens at once.
+
 | Route (owner only unless noted)                                   | Purpose                                                                                                                                                                                                                                                                                                                                   |
 | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET /users`                                                      | people who can sign in: `{ items: [{ id, login, name, role, status: active\|invited\|disabled, createdAt, lastLoginAt }] }`                                                                                                                                                                                                               |

@@ -21,14 +21,13 @@ import {
   runDeterministic,
 } from "./search.js";
 import {
-  annualRecurringAmount,
   applyVariable,
+  currentYearSpending,
   flowMethodKind,
   isScalableFlow,
   planStartMonth,
   scalableFlowIds,
   scaledBalance,
-  scaledExpenses,
 } from "./variables.js";
 
 function fmtTarget(objective: SolverObjective, target: number, currency?: string): string {
@@ -201,7 +200,7 @@ export async function solveMaxSpending(
     },
     deps,
   );
-  const base = annualRecurringAmount(scaledExpenses(input.plan, opts.expenseIds));
+  const base = currentYearSpending(input, opts.expenseIds);
   const cur = input.household.currency;
   const goal = fmtTarget(
     objective,

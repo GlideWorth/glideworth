@@ -1,5 +1,8 @@
 /** Applying a solver variable's candidate value to a simulation input (as a plan patch where possible). */
-import { formatMonth, parseMonth } from "../engine/dates.js";
+import { resolveWindow } from "../engine/amounts.js";
+import type { EngineContext } from "../engine/context.js";
+import { formatMonth, overlapMonths, parseMonth } from "../engine/dates.js";
+import { initMilestones, resolveRef } from "../engine/milestones.js";
 import type { SimulationInput } from "../engine/types.js";
 import { ScenarioError } from "../errors.js";
 import { applyPlanPatch } from "../insights/patch.js";
@@ -8,6 +11,7 @@ import type { PatchOp } from "../schema/changes.js";
 import type { ExpenseEvent } from "../schema/events.js";
 import type { CurrentFinances, Plan } from "../schema/plan.js";
 import { FREQUENCY_PER_YEAR } from "../schema/primitives.js";
+import type { TimeRange } from "../schema/time.js";
 import type { SolverVariable } from "./contracts.js";
 
 /** Month index of the plan start (snapshot plans start at their own asOf). */
@@ -42,6 +46,62 @@ export function annualRecurringAmount(expenses: ExpenseEvent[]): number {
   return expenses
     .filter((e) => e.frequency !== "once")
     .reduce((s, e) => s + e.amount.value * FREQUENCY_PER_YEAR[e.frequency], 0);
+}
+
+/**
+ * Enough context to resolve time ranges. Metric milestones stay pending: a line that starts at
+ * one has not started, and a line that ends at one is still running.
+ */
+function planHorizon(input: SimulationInput): EngineContext {
+  const start = planStartMonth(input);
+  const maxEnd = start + input.plan.assumptions.maxYears * 12;
+  const ctx = {
+    start,
+    endExclusive: maxEnd,
+    people: input.household.people.map((p) => ({
+      id: p.id,
+      role: p.role,
+      birth: parseMonth(p.birthMonth),
+      name: p.name,
+    })),
+    household: input.household,
+    milestones: new Map(),
+  } as EngineContext;
+  initMilestones(ctx, input.plan.milestones);
+  let endExclusive = maxEnd;
+  const end = input.plan.assumptions.end;
+  if (end.kind === "ref") {
+    const resolved = resolveRef(ctx, end.ref);
+    if (typeof resolved === "number") endExclusive = Math.min(maxEnd, resolved);
+  } else {
+    const months = [...ctx.milestones.values()]
+      .filter((m) => m.def.kind === "life-expectancy" && typeof m.month === "number")
+      .map((m) => m.month as number);
+    if (months.length > 0) endExclusive = Math.min(maxEnd, Math.max(...months) + 1);
+  }
+  ctx.endExclusive = endExclusive;
+  return ctx;
+}
+
+function overlapsYear(ctx: EngineContext, range: TimeRange, from: number, to: number): boolean {
+  const w = resolveWindow(ctx, range);
+  if (w.start === null) return false;
+  return overlapMonths(w.start, w.end, from, to) > 0;
+}
+
+/**
+ * Recurring spending the plan is paying in the calendar year it starts, in entered money.
+ * Lines that start later (care at 85) or have already ended (childcare years ago) are left out.
+ * The figure is the annual rate of the lines that overlap the year, not a prorated part-year.
+ */
+export function currentYearSpending(input: SimulationInput, expenseIds?: string[]): number {
+  const ctx = planHorizon(input);
+  const yearEnd = (Math.floor(ctx.start / 12) + 1) * 12;
+  return annualRecurringAmount(
+    scaledExpenses(input.plan, expenseIds).filter((e) =>
+      overlapsYear(ctx, e.range, ctx.start, yearEnd),
+    ),
+  );
 }
 
 export interface Candidate {

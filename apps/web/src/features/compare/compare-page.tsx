@@ -35,7 +35,12 @@ import { useMcStore } from "../chance/mc-store";
 import { attempt, bridge, diffFormat } from "../results/core-bridge";
 import { exampleDiff } from "../results/fixtures";
 import { useAnalysis } from "../results/use-analysis";
-import { attributeDifference, type CompareMetrics, compareMetrics } from "./compare-model";
+import {
+  attributeDifference,
+  type CompareMetrics,
+  compareMetrics,
+  defaultCompareIds,
+} from "./compare-model";
 import { type SessionScenario, useScenarioStore } from "./scenario-store";
 import { PrivateText } from "../../components/ui/private-text";
 
@@ -127,11 +132,11 @@ export function CompareView() {
     setIds((cur) => {
       const valid = cur.filter((id) => all.some((c) => c.id === id));
       if (valid.length >= 2) return valid;
-      const fromPreset = preset.filter((id) => all.some((c) => c.id === id));
-      if (fromPreset.length >= 2) return fromPreset.slice(0, 4);
-      const first = plan?.id ?? all[0]!.id;
-      const second = all.find((c) => c.id !== first)?.id;
-      return second ? [first, second] : [first];
+      return defaultCompareIds(
+        all.map((c) => ({ id: c.id, parentPlanId: c.plan.lineage?.parentPlanId })),
+        plan?.id,
+        preset,
+      );
     });
   }, [all, preset, plan]);
 

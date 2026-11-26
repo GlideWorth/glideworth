@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   applyPlanPatch,
+  currentYearSpending,
   DEFAULT_SOLVER_SEED,
   goalSeek,
   type ProjectionResult,
@@ -337,6 +338,93 @@ describe("Monte Carlo objective (common random numbers)", () => {
 });
 
 void always;
+
+describe("planned spending is the lines active this year", () => {
+  // £42,600 is being spent now. Two care lines start at 85 (£55,000) and childcare of £5,200
+  // ended when the child turned 5. Adding every line up reports £102,800.
+  const withFutureCosts = () => {
+    const input = makeInput({
+      accounts: [{ id: "c", name: "Cash", type: "cash", owner: "me", balance: 2_000_000 }],
+      plan: {
+        milestones: [
+          {
+            id: "ret",
+            name: "Retirement",
+            kind: "retirement",
+            personId: "me",
+            criteria: [{ kind: "age", personId: "me", age: 65 }],
+          },
+        ],
+        expenses: [
+          expense("now", 42_600),
+          expense("ltc", 25_000, {
+            type: "long-term-care",
+            range: { start: { kind: "age", personId: "me", age: 85 }, end: { kind: "planEnd" } },
+          }),
+          expense("ltc2", 30_000, {
+            type: "long-term-care",
+            range: { start: { kind: "age", personId: "me", age: 85 }, end: { kind: "planEnd" } },
+          }),
+          expense("childcare", 5_200, {
+            type: "childcare",
+            range: {
+              start: { kind: "dependentAge", dependentId: "child", age: 0 },
+              end: { kind: "dependentAge", dependentId: "child", age: 5 },
+            },
+          }),
+          expense("at-retirement", 12_000, {
+            range: { start: { kind: "milestone", milestoneId: "ret" }, end: { kind: "planEnd" } },
+          }),
+        ],
+      },
+    });
+    input.household.dependents.push({
+      id: "child",
+      name: "Robin",
+      birthMonth: "2010-06",
+      independentAtAge: 18,
+    });
+    return input;
+  };
+
+  it("reports £42,600, not the £102,800 sum of every line", () => {
+    const input = withFutureCosts();
+    expect(currentYearSpending(input)).toBe(42_600);
+  });
+
+  it("includes a line that starts later this year and skips one that starts next year", () => {
+    const input = makeInput({
+      plan: {
+        expenses: [
+          expense("june", 1_000, {
+            range: { start: { kind: "date", date: "2027-06" }, end: { kind: "planEnd" } },
+          }),
+          expense("next", 9_000, {
+            range: { start: { kind: "date", date: "2028-01" }, end: { kind: "planEnd" } },
+          }),
+          expense("monthly", 2_000, { frequency: "monthly" }),
+        ],
+      },
+    });
+    expect(currentYearSpending(input)).toBe(1_000 + 2_000 * 12);
+  });
+
+  it("excludes the sample plan's healthcare, which starts at retirement", async () => {
+    const { buildSimulationInput } = await import("../src/index.js");
+    const { createSampleDocument } = await import("../src/samples/index.js");
+    const input = buildSimulationInput(createSampleDocument(), "plan-main");
+    // Living 5,200 a month and travel 9,000. Healthcare 6,000 starts at retirement.
+    expect(currentYearSpending(input)).toBe(5_200 * 12 + 9_000);
+  });
+
+  it("quotes that baseline from solveMaxSpending", async () => {
+    const input = withFutureCosts();
+    const r = await solveMaxSpending(input, { objective: { kind: "noShortfall" } });
+    expect(r.details!.currentAnnualSpending).toBe(42_600);
+    expect(r.explanation).toContain("£42,600");
+    expect(r.explanation).not.toContain("102,800");
+  });
+});
 
 describe("integration with the real Monte Carlo runner (workstream c)", () => {
   it("solves max spending on the sample plan with the default evaluator, cancellably", async () => {

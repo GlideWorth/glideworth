@@ -1,13 +1,13 @@
 import {
   type Explanation,
   type Finding,
-  FREQUENCY_PER_YEAR,
   type GoalSeekResult,
   type MonteCarloSettings,
   type Plan,
   type ProjectionResult,
   RiskGuardrails,
   type SimulationInput,
+  currentYearSpending,
   scalableFlowIds,
 } from "@glideworth/core";
 import {
@@ -366,19 +366,10 @@ function GoalSeekPanel({
     if (kind === "savings") return `${f.percent(v, 0)} of current contributions`;
     return formatMonth(monthFromOffset(asOf, v), f.locale);
   };
-  // What the solver scales: recurring spending lines as entered (today's money), the same base it
-  // reports its answer against. Projected spending also includes housing and debt costs, which the
-  // solver leaves alone, so it would not match the answer's "planned" figure.
-  const baselineSpending = plan.expenses
-    .filter(
-      (e) =>
-        e.enabled &&
-        e.frequency !== "once" &&
-        e.spendingType !== "not-spending" &&
-        e.type !== "tax-payment" &&
-        e.type !== "tax-deduction",
-    )
-    .reduce((s, e) => s + e.amount.value * FREQUENCY_PER_YEAR[e.frequency], 0);
+  // The same base the solver quotes: recurring lines running this year, in the money they were
+  // entered in. Lines that start later are still scaled, but they are not spending today.
+  // Projected spending also includes housing and debt costs, which the solver leaves alone.
+  const baselineSpending = currentYearSpending(input);
 
   return (
     <Card>

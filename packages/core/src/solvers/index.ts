@@ -19,6 +19,7 @@ export * from "./roth-conversion-plan.js";
 export * from "./tax-strategy.js";
 export {
   applyVariable,
+  currentYearSpending,
   isScalableFlow,
   milestoneAtMonthPatch,
   planStartMonth,

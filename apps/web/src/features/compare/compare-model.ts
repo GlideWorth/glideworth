@@ -1,7 +1,34 @@
-/** Compare: metrics per plan, and an accounting attribution of the end-net-worth difference. */
+/** Compare: which plans to open, metrics per plan, and an attribution of the end-net-worth difference. */
 
 import type { ProjectionResult } from "@glideworth/core";
 import { conv, total } from "../../lib/money";
+
+export interface CompareCandidateRef {
+  id: string;
+  /** Set when this plan is a branch of another plan in the household. */
+  parentPlanId?: string | undefined;
+}
+
+/**
+ * Plans to select when Compare opens. The first id is the baseline.
+ * A branch is shown against its parent, so the parent stays the baseline and the diffs describe
+ * what the branch changes. An explicit pair (a what-if sent here from Insights) is kept as given.
+ */
+export function defaultCompareIds(
+  candidates: readonly CompareCandidateRef[],
+  activeId: string | undefined,
+  preset: readonly string[],
+): string[] {
+  const known = new Set(candidates.map((c) => c.id));
+  const fromPreset = preset.filter((id) => known.has(id));
+  if (fromPreset.length >= 2) return fromPreset.slice(0, 4);
+  const active = activeId && known.has(activeId) ? activeId : candidates[0]?.id;
+  if (!active) return [];
+  const parent = candidates.find((c) => c.id === active)?.parentPlanId;
+  if (parent && known.has(parent) && parent !== active) return [parent, active];
+  const second = candidates.find((c) => c.id !== active)?.id;
+  return second ? [active, second] : [active];
+}
 
 export interface CompareMetrics {
   endNetWorthReal: number;

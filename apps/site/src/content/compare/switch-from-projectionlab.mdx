@@ -1,0 +1,260 @@
+---
+title: "Switch from ProjectionLab: move your plan"
+description: "Leaving ProjectionLab? Import your JSON backup, see what came across and what did not, and what Glideworth does that ProjectionLab users asked for."
+ogTitle: Switching from ProjectionLab
+eyebrow: Switching
+competitor: ProjectionLab
+checkedOn: 2026-11-26
+sources:
+  - label: "ProjectionLab help: Back up and restore your data (updated 17 Nov 2026)"
+    url: https://projectionlab.com/help/back-up-and-restore
+  - label: "ProjectionLab help: Import or export balance history (updated 17 Nov 2026)"
+    url: https://projectionlab.com/help/import-or-export-balance-history
+  - label: "ProjectionLab help: v5 Transition Guide (updated 24 Nov 2026)"
+    url: https://projectionlab.com/help/projectionlab-v5-early-access-guide
+  - label: "ProjectionLab blog: Meet the new ProjectionLab (20 Nov 2026)"
+    url: https://projectionlab.com/blog/meet-the-new-projectionlab
+  - label: ProjectionLab changelog (Version 5.0.0, 20 Nov 2026)
+    url: https://projectionlab.com/changelog
+  - label: "ProjectionLab: Important Update on Self-Hosting ProjectionLab (6 Mar 2025)"
+    url: https://projectionlab.com/help/offline-version
+  - label: ProjectionLab pricing page
+    url: https://projectionlab.com/pricing
+  - label: ProjectionLab home page
+    url: https://projectionlab.com/
+  - label: ProjectionLab changelog (Optimize tool, v4.6.0)
+    url: https://projectionlab.com/changelog
+    accessed: 2026-11-16
+  - label: ProjectionLab about page
+    url: https://projectionlab.com/about
+    accessed: 2026-11-16
+  - label: "ProjectionLab roadmap (Changemap, since retired): branching plan model with variables shared with parent plan"
+    url: https://changemap.co/projectifi/projectifi/task/6243-branching-plan-model-with-variables/
+    accessed: 2026-11-19
+  - label: "ProjectionLab roadmap (Changemap, since retired): family account"
+    url: https://changemap.co/projectifi/projectifi/task/6249-family-account/
+    accessed: 2026-11-19
+  - label: "ProjectionLab roadmap (Changemap, since retired): risk-based withdrawal guardrails"
+    url: https://changemap.co/projectifi/projectifi/task/9189-risk-based-withdrawal-guardrails/
+    accessed: 2026-11-19
+  - label: "ProjectionLab roadmap (Changemap, since retired): MCP server for LLM integration"
+    url: https://changemap.co/projectifi/projectifi/task/11092-mcp-server-for-llm-integration/
+    accessed: 2026-11-23
+---
+
+import { formatPrice, pricing } from '../../config/pricing';
+import { site } from '../../config/site';
+
+If you have decided to leave ProjectionLab, or want to see whether your plan holds up somewhere else, this page
+covers how to bring the plan across, what arrives intact and what you will need to check by hand. It also covers
+what you gain, what you give up, and how to try Glideworth before you pay anything.
+
+For a side-by-side look at the two products, read the [ProjectionLab alternative](/compare/projectionlab/)
+comparison instead.
+
+<Callout type="note" title="How to read this page">
+  Statements about ProjectionLab come from its own public pages, which we read on 26 November 2026 unless a
+  different date is given, and every one links to its source. We did not use ProjectionLab's app. Statements about
+  Glideworth describe the code as it is today. If something here is wrong or out of date, write to <a
+  href={`mailto:${site.contact.hello}`}>{site.contact.hello}</a> and we will fix it.
+</Callout>
+
+## Bring your plan across
+
+Glideworth imports the JSON backup file ProjectionLab lets you download. The file is converted in your browser, and
+you see a report of what was carried over before anything is saved.
+
+<Steps>
+1. **Download your ProjectionLab backup.** ProjectionLab's help says to go to **Account Settings &gt; Data &gt;
+   Export Data** and choose **Export**. The file holds your plans, Net Worth, history and settings
+   ([ProjectionLab help](https://projectionlab.com/help/back-up-and-restore)). Keep it private: it is your whole
+   financial picture.
+2. **Open Glideworth.** Start a free trial, or run your own copy. Open **Import &amp; export** and choose the
+   **From ProjectionLab** tab, or choose "Import from ProjectionLab" on the Welcome page.
+3. **Choose the file** (up to 25 MB). It is read and converted in your browser, and nothing is uploaded while you
+   review.
+4. **Read the report.** It shows counts of what was imported and lists every field that was dropped, approximated
+   or not recognised, by its place in your file. It never repeats your amounts.
+5. **Import.** If you already have data in Glideworth, choose whether the import replaces it or is merged into it.
+6. **Work through the checklist.** Glideworth then gives you a short checklist: people, location and currency;
+   account balances; each plan; the parts of the report that need a look; and a first chance-of-success run on
+   your main plan.
+</Steps>
+
+For the field-by-field detail, see how to [import ProjectionLab JSON](/docs/importing/projectionlab/).
+
+### Which ProjectionLab version the importer reads
+
+The importer was built and tested against ProjectionLab's version 4.6 export, where it accounts for every one of
+the 1,135 key paths in the file. ProjectionLab released version 5.0.0 on 20 November 2026
+([changelog](https://projectionlab.com/changelog)). A version 5 backup still imports: the report warns that the
+version is newer than the importer's and lists every key it does not recognise, so nothing is dropped without a
+line in the report. We have not yet tested the importer against a version 5 backup, so read that report with
+care. If you downloaded a backup before you moved to version 5, that file is in the format the importer was tested
+against.
+
+### What comes across
+
+- People, where you live, and your currency.
+- Accounts, property and debts, with balances, owners, growth, dividends, fees and withdrawal rules.
+- Every plan: income, expenses, milestones, savings priorities, the withdrawal strategy, tax settings and Monte
+  Carlo settings.
+- Your net-worth history.
+
+Amounts in today's dollars stay in today's dollars, and future-dollar amounts stay as future dollars.
+
+### What does not, or not exactly
+
+The report marks each of these, so you know where to look:
+
+- **Approximations.** Some ProjectionLab settings have no exact match and are converted, with a note saying how.
+  For example, rental management fees, "after a given age" withdrawal rules, savings priorities in target mode,
+  and Monte Carlo return settings.
+- **No equivalent yet.** Starting conditions other than the default one, a per-plan override of an asset's loan
+  or value, and debt payments that are not monthly.
+- **Left out on purpose.** Chart and table preferences, layout and other interface settings, billing state, and
+  your ProjectionLab plugin API key, which is never read into the plan or the report.
+- **Results.** Glideworth runs its own engine and tax tables, so even identical inputs give different projected
+  figures. Compare the two before you rely on either.
+
+### Per-account balance history
+
+ProjectionLab version 5 can export your balance history as a CSV file from its history tools
+([ProjectionLab help](https://projectionlab.com/help/import-or-export-balance-history)). Glideworth can import a
+balance history from a CSV or TSV file or from cells pasted from a spreadsheet: you match each column to an
+account, check every cell in a preview, then merge or replace. See
+[Import balance history](/docs/importing/balance-history/). We have not tested it with a ProjectionLab history
+file specifically.
+
+## What ProjectionLab users asked for, already in Glideworth
+
+ProjectionLab collected feature requests on a public roadmap board, Changemap. Its launch post for version 5 says
+it has saved that feedback and is retiring the board
+([launch post](https://projectionlab.com/blog/meet-the-new-projectionlab)), and the request pages no longer open.
+The vote counts below are as we read them on the date shown.
+
+- **What-if scenarios that follow your main plan.** In Glideworth a what-if is a branch: it keeps only its
+  differences, so when you update the main plan, the branch picks up the change. You compare them side by side
+  and merge one back if you like it. ProjectionLab's request for a "branching plan model with variables shared
+  with parent plan" had 275 votes
+  ([roadmap](https://changemap.co/projectifi/projectifi/task/6243-branching-plan-model-with-variables/), read
+  19 Nov 2026). See [branches and change sets](/features/branches-and-change-sets/).
+- **One household, two sign-ins.** Your partner gets their own sign-in as an editor, and an adviser can be a
+  read-only viewer. The "family account" request had 249 votes
+  ([roadmap](https://changemap.co/projectifi/projectifi/task/6249-family-account/), read 19 Nov 2026). See
+  [sharing and roles](/features/sharing-and-roles/).
+- **Spending guardrails based on risk.** Glideworth shows what spending its guardrails allow this year and the
+  portfolio level at which they would cut it. "Risk-based withdrawal guardrails" had 137 votes
+  ([roadmap](https://changemap.co/projectifi/projectifi/task/9189-risk-based-withdrawal-guardrails/), read
+  19 Nov 2026). See [withdrawal strategies and guardrails](/features/withdrawal-strategies/).
+- **Talk to ChatGPT or Claude about your plan.** Connect your assistant and ask why the plan fails in a bad
+  decade, or what retiring two years earlier would cost. Any change it suggests is a proposal you approve. "MCP
+  server for LLM integration" had 89 votes
+  ([roadmap](https://changemap.co/projectifi/projectifi/task/11092-mcp-server-for-llm-integration/), read
+  23 Nov 2026). See [ChatGPT and Claude on your plan](/features/mcp-server/).
+- **Several currencies.** Accounts, property, debts and income can each keep their own currency, with exchange
+  rates you set and can stress-test. See [multi-currency planning](/features/multi-currency/).
+
+## If version 5 changed your plan
+
+ProjectionLab's own transition guide lists what to check after the update
+([v5 Transition Guide](https://projectionlab.com/help/projectionlab-v5-early-access-guide), updated 24 Nov 2026).
+Among other things, it says:
+
+- Accounts that existed in only one plan "could not be carried over automatically", and "any related
+  contributions or transfers were removed too". Once you select **Got it**, the list of affected accounts "cannot
+  be reopened".
+- Version 4 stored progress as category totals, so ProjectionLab estimated the history of each account from those
+  totals, and the guide asks you to review the estimates.
+- Starting Conditions no longer has its own page, and version 5 requires a main plan.
+- Liquid, qualified-age and penalty settings now come from Net Worth and apply across plans by default.
+- "Plugins and integrations may need to be updated for this release."
+
+If you are reviewing every plan anyway, that is a reasonable moment to import a copy into Glideworth and compare.
+Glideworth's import report tells you what it changed, field by field, before you save.
+
+## No lock-in
+
+- **Everything exports.** Your whole household comes out as a Glideworth JSON file you can import again, and the
+  projection tables come out as CSV.
+- **The code is open source** (AGPL-3.0). If the company behind Glideworth disappeared, you or anyone could keep
+  running it.
+- **Self-hosting is free, with every feature.** For technical users: one Docker container or one Node process,
+  your data in a single file on your own machine. No licence key, and nothing is switched off. See
+  [self-hosting](/self-hosting/).
+
+On ProjectionLab's side: in March 2025 it decided to release future updates to its web app only, and bug-fix
+support for self-hosted copies ran until 31 December 2025. Existing self-hosted copies "will remain operational
+indefinitely" ([self-hosting update](https://projectionlab.com/help/offline-version)). Its pricing page lists
+Basic, Premium and Pro plans and no self-hosted plan ([pricing](https://projectionlab.com/pricing)).
+
+## Money in more than one country
+
+If you live in the US but still have, say, a UK pension or a flat in London, Glideworth taxes each item where it
+sits as well as where you live. Accounts, property and income in another country are taxed there as a non-resident,
+and the country you live in gives credit for that tax under its treaty. The tax results show tax by country and
+why, and any item can be explained with the rule behind it.
+
+The household lives in one country for the whole plan. See
+[assets and income in another country](/docs/planning/tax-and-currency/#assets-and-income-in-another-country) for
+the treaty pairs and countries covered, and what is not modelled.
+
+ProjectionLab's home page offers "a growing list of international tax presets and account types, including Canada,
+the United Kingdom, Australia, Germany, the Netherlands, and more" ([home page](https://projectionlab.com/)). We
+found nothing on its public pages about how it taxes assets held in a country you do not live in; that does not
+mean it has no such feature.
+
+## Where ProjectionLab is still better
+
+- **Maturity.** ProjectionLab has been developed since 2021 ([about](https://projectionlab.com/about), read
+  16 Nov 2026) and has a release history and community channels. Glideworth is new.
+- **Tax optimisation.** ProjectionLab's Optimize tool, added in version 4.6.0, targets federal brackets, IRMAA,
+  ACA limits and the NIIT cliff ([changelog](https://projectionlab.com/changelog), read 16 Nov 2026). Glideworth
+  models Roth conversions, IRMAA and the ACA credit, but its optimiser is less developed.
+- **Advisers.** ProjectionLab has a Pro plan for advisers and coaches who manage clients
+  ([pricing](https://projectionlab.com/pricing)). Glideworth has no adviser tier.
+- **A free hosted tier.** ProjectionLab's Basic plan is free ([pricing](https://projectionlab.com/pricing)).
+  Glideworth's hosted service is paid after the trial; only self-hosting is free.
+
+## Try it before you move anything
+
+<Steps>
+1. **Look around the demo.** A sample household with plans already built, and no sign-up:
+   <a href={site.demoUrl} rel="noopener noreferrer">{site.demoUrl.replace('https://', '')}</a>.
+2. **Start the {pricing.trialDays}-day free trial.** {pricing.trialNeedsCard ? 'It needs a card.' : 'No card needed.'}
+   <a href={site.signupUrl} rel="noopener noreferrer">Sign up</a>, import your ProjectionLab backup and read the report. The
+   [import guide](/docs/importing/projectionlab/) has the details.
+3. **Decide.** {pricing.planName} is {formatPrice(pricing.monthly)} a month or {formatPrice(pricing.yearly)} a year
+   after the trial, in US dollars. If you do not subscribe, your plans stay there read-only and nothing is
+   charged. Or [self-host it](/self-hosting/) for free.
+</Steps>
+
+## Questions
+
+<FAQ items={[
+  {
+    q: 'Can I import a ProjectionLab version 5 backup?',
+    a: '<p>Yes, on a best-effort basis. The importer was built and tested against the version 4.6 export. A version 5 file imports, and the report warns about the newer version and lists every key it does not recognise. Read that report before you rely on the result.</p>'
+  },
+  {
+    q: 'Will my numbers match ProjectionLab’s?',
+    a: '<p>No. Your inputs carry over, but Glideworth runs its own engine and tax tables, so projected figures differ. Compare both before acting on either.</p>'
+  },
+  {
+    q: 'Is my file uploaded when I import it?',
+    a: '<p>Not while you review. The file is read and converted in your browser. Only the converted plan is saved, when you choose Import.</p>'
+  },
+  {
+    q: 'Can I take my data out of Glideworth again?',
+    a: '<p>Yes. Export the whole household as Glideworth JSON, and projection tables as CSV. The code is open source, and you can self-host it for free.</p>'
+  },
+  {
+    q: 'What does Glideworth cost?',
+    a: `<p>${pricing.planName} is ${formatPrice(pricing.monthly)} a month or ${formatPrice(pricing.yearly)} a year after a ${pricing.trialDays}-day free trial${pricing.trialNeedsCard ? '' : ' with no card'}. Self-hosting is free, with every feature. See <a href="/pricing/">pricing</a>.</p>`
+  }
+]} />
+
+<Callout type="note" title="Estimates, not advice">
+  Glideworth is planning software. Its figures are estimates from your own assumptions, not financial, tax or
+  investment advice. This page describes both products as they were on the dates shown.
+</Callout>

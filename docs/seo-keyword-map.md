@@ -27,7 +27,7 @@ The number in parentheses is the length of that rendered string. The H1 is the v
 collection page the H1 is the frontmatter title, without ` · Glideworth`. Where the H1 and the SEO title
 differ, both are the current source, not a target to rewrite in this file.
 
-109 indexable URLs.
+110 indexable URLs.
 
 ## Rules
 
@@ -64,6 +64,7 @@ primary keyword. `—` means the URL has no secondary.
 | /compare/                                             | retirement planner comparisons                | —                                                                      | Comparisons · Glideworth (24)                                              | Comparisons                                                                             |
 | /compare/boldin/                                      | boldin alternative                            | boldin mcp                                                             | Glideworth and Boldin compared · Glideworth (43)                           | Glideworth and Boldin compared                                                          |
 | /compare/projectionlab/                               | projectionlab alternative                     | glideworth vs projectionlab                                            | Glideworth and ProjectionLab compared · Glideworth (50)                    | Glideworth and ProjectionLab compared                                                   |
+| /compare/switch-from-projectionlab/                   | switch from projectionlab                     | migrate from projectionlab                                             | Switch from ProjectionLab: move your plan · Glideworth (54)                | Switch from ProjectionLab: move your plan                                               |
 | /compare/spreadsheets/                                | retirement spreadsheet alternative            | firecalc alternative                                                   | Glideworth and spreadsheets or free calculators compared · Glideworth (69) | Glideworth and spreadsheets or free calculators compared                                |
 | /contact/                                             | contact glideworth                            | —                                                                      | Contact · Glideworth (20)                                                  | Get in touch                                                                            |
 | /docs/                                                | glideworth documentation                      | —                                                                      | Documentation · Glideworth (26)                                            | Documentation                                                                           |
@@ -227,6 +228,14 @@ them mentions Boldin's MCP, the anchor is "boldin mcp" and the link is `/compare
 for. It is listed against both comparison pages and it has no owner. It is not a primary or a secondary
 on either page in the table. Do not add it to both. Giving it an owner means choosing one URL (one of
 these two, or a new page) and pointing the other at that URL with the anchor "projectionlab vs boldin".
+
+### Switching from ProjectionLab
+
+`/compare/switch-from-projectionlab/` owns **switch from projectionlab**, with **migrate from projectionlab**
+as its secondary. It is for readers who have already decided to leave, so it does not target
+**projectionlab alternative** (owned by `/compare/projectionlab/`) or **import projectionlab json** (owned by
+`/docs/importing/projectionlab/`). It links to both with those keywords as the anchors, and both link back
+with the anchor "switch from ProjectionLab".
 
 ## Unowned searches
 

@@ -194,6 +194,7 @@ export const clusters: { subject: string; paths: string[] }[] = [
     paths: [
       "/compare/boldin/",
       "/compare/projectionlab/",
+      "/compare/switch-from-projectionlab/",
       "/compare/boldin-vs-projectionlab/",
       "/compare/spreadsheets/",
       "/pricing/",
@@ -253,6 +254,7 @@ export const clusters: { subject: string; paths: string[] }[] = [
     paths: [
       "/features/import-and-export/",
       "/docs/importing/projectionlab/",
+      "/compare/switch-from-projectionlab/",
       "/docs/importing/csv/",
       "/docs/importing/glideworth-json/",
       "/compare/projectionlab/",

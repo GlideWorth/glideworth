@@ -75,7 +75,7 @@ export async function ogEntries(): Promise<OgEntry[]> {
       entries.push({
         path: `${base}${e.id}/`,
         title: e.data.ogTitle ?? e.data.title,
-        eyebrow,
+        eyebrow: ("eyebrow" in e.data && e.data.eyebrow) || eyebrow,
         description: e.data.description,
       });
     }

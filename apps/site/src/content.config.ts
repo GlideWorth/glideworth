@@ -83,6 +83,8 @@ const compare = defineCollection({
     ...seo,
     /** The product or method compared with, e.g. "Spreadsheets". */
     competitor: z.string(),
+    /** The kicker above the title and on the social image; "Comparison" when left out. */
+    eyebrow: z.string().optional(),
     /** The date every claim about the other product was last checked against its sources. */
     checkedOn: z.coerce.date(),
     /** Every claim about another product needs a source here. */

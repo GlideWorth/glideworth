@@ -58,6 +58,7 @@ export const footerNav: { heading: string; links: NavLink[] }[] = [
       { label: "Glideworth and Boldin", href: "/compare/boldin/" },
       { label: "Glideworth and spreadsheets", href: "/compare/spreadsheets/" },
       { label: "Glideworth and ProjectionLab", href: "/compare/projectionlab/" },
+      { label: "Switch from ProjectionLab", href: "/compare/switch-from-projectionlab/" },
       { label: "Blog", href: "/blog/" },
     ],
   },

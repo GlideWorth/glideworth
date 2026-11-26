@@ -31,6 +31,7 @@ import { api } from "../../lib/api";
 import { cn } from "../../lib/cn";
 import { formatMoney, plural } from "../../lib/format";
 import { makeFormatter, useActivePlan, useFormat } from "../../lib/workspace";
+import { requiredColumnNote, unsupportedBankFileMessage } from "./csv-file";
 import { FileDrop, formatBytes, type PickedFile } from "./file-drop";
 import { CATEGORY_META } from "./import-model";
 import { persistWorkspace } from "./persist";
@@ -57,7 +58,7 @@ const KINDS: { value: CsvKind; label: string; description: string }[] = [
   },
 ];
 
-const FIELDS: Record<CsvKind, { field: Field; label: string; required?: boolean }[]> = {
+export const FIELDS: Record<CsvKind, { field: Field; label: string; required?: boolean }[]> = {
   "account-balances": [
     { field: "account", label: "Account name", required: true },
     { field: "balance", label: "Balance", required: true },
@@ -136,7 +137,8 @@ export function CsvImport({ initialKind = "account-balances" }: { initialKind?: 
         <FileDrop
           accept=".csv,.tsv,.txt,text/csv"
           title="Choose a CSV file"
-          hint="Comma, semicolon or tab separated. Read in this browser; nothing is saved until you apply it."
+          hint="Comma, semicolon or tab separated. OFX, QFX and QIF are not supported. Read in this browser; nothing is saved until you apply it."
+          refuse={(picked) => unsupportedBankFileMessage(picked, kind)}
           onFile={setFile}
         />
       )}
@@ -664,7 +666,9 @@ function CsvWorkbench({
               setExcluded={setExcluded}
             />
           ) : null}
-          {(o?.issues ?? []).length ? <CsvIssues issues={o!.issues} /> : null}
+          {(o?.issues ?? []).length ? (
+            <CsvIssues issues={o!.issues} fields={fields} missing={a?.missing ?? []} />
+          ) : null}
           {offline ? (
             <p className="rounded-md bg-ochre-soft px-3 py-2 text-[12.5px] text-ochre">
               The Glideworth server is not reachable, so this preview cannot be applied right now.
@@ -1006,7 +1010,15 @@ function MiniSpark({ values }: { values: number[] }) {
   );
 }
 
-function CsvIssues({ issues }: { issues: CsvImportOutcome["issues"] }) {
+function CsvIssues({
+  issues,
+  fields,
+  missing,
+}: {
+  issues: CsvImportOutcome["issues"];
+  fields: { field: Field; label: string }[];
+  missing: Field[];
+}) {
   const [open, setOpen] = useState(false);
   const shown = open ? issues : issues.slice(0, 5);
   return (
@@ -1031,13 +1043,19 @@ function CsvIssues({ issues }: { issues: CsvImportOutcome["issues"] }) {
               aria-label={i.severity}
             />
             <span className="text-ink-2">
-              <span className="font-mono text-[11.5px] text-ink-3">
-                {i.sourcePath.replace("csv:row:", "row ")}
-              </span>{" "}
-              {i.message}
-              {i.category ? (
-                <span className="text-ink-3"> · {CATEGORY_META[i.category].label}</span>
-              ) : null}
+              {i.code === "csv.missing-columns" ? (
+                requiredColumnNote(missing, fields)
+              ) : (
+                <>
+                  <span className="font-mono text-[11.5px] text-ink-3">
+                    {i.sourcePath.replace("csv:row:", "row ")}
+                  </span>{" "}
+                  {i.message}
+                  {i.category ? (
+                    <span className="text-ink-3"> · {CATEGORY_META[i.category].label}</span>
+                  ) : null}
+                </>
+              )}
             </span>
           </li>
         ))}

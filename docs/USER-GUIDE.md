@@ -116,7 +116,8 @@ same steps in the web app, or use the API/MCP calls shown.
 
 You can bring in a spreadsheet or an export from a bank or budgeting app instead of typing figures in. In the
 web app, go to **Import**, open the **CSV files** tab and choose the file: it is read in your browser and nothing
-is saved until you press **Apply import**. Through the API it is `POST /households/{id}/import/csv` (see
+is saved until you press **Apply import**. OFX, QFX and QIF files are refused there; export a CSV instead.
+Through the API it is `POST /households/{id}/import/csv` (see
 [API.md](API.md#csv-import-dry-run-first)); through MCP, `preview_csv_import` then `apply_csv_import`.
 
 **Three kinds of file.** Pick the one that matches what the file holds:

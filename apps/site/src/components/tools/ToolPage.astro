@@ -2,7 +2,8 @@
 /**
  * The page shell every calculator uses: header, the calculator (with build-time results for the default
  * inputs), the path into the full planner, the explanation (default slot), FAQ with FAQPage data,
- * related reading and the not-advice note. Structured data: WebApplication + BreadcrumbList (via
+ * related reading and the not-advice note. A page whose readers search for a term rather than a
+ * calculator puts the answer in the `answer` slot, shown before the calculator. Structured data: WebApplication + BreadcrumbList (via
  * crumbs) + FAQPage (via FAQ).
  *
  *   <ToolPage id="coast-fire" heading="…" lede="…" faq={[…]} adds="…">…explanation…</ToolPage>
@@ -54,6 +55,16 @@ const others = TOOLS.filter((t) => t.id !== id);
   jsonLd={[webApplication({ name: meta.name, path: meta.path, description: pm.description })]}
 >
   <div class="container tool-page">
+    {
+      Astro.slots.has('answer') && (
+        <div class="tool-explain">
+          <Prose>
+            <slot name="answer" />
+          </Prose>
+        </div>
+      )
+    }
+
     <Calculator spec={spec} vm={vm} name={meta.name} />
 
     {planner && <PlannerCta spec={spec} adds={adds} />}

@@ -161,6 +161,13 @@ export const pages = {
     ogTitle: "72(t) calculator",
     ogEyebrow: "Free calculator",
   },
+  "/tools/rule-of-55/": {
+    title: "Rule of 55: 401(k) withdrawals before 59½",
+    description:
+      "The rule of 55 explained: who qualifies, which plans it covers, the mistakes that lose it, and a free check of your options before 59½, with IRS sources.",
+    ogTitle: "Rule of 55",
+    ogEyebrow: "Free calculator",
+  },
   "/tools/irmaa-calculator/": {
     title: "IRMAA calculator: Medicare IRMAA brackets",
     description:

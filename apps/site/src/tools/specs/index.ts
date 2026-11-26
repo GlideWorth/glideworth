@@ -690,6 +690,124 @@ export const ukPensionAgeSpec: ToolSpec = {
   ],
 };
 
+/**
+ * Rule of 55 check (US). The ages and rules are in engine/rule-of-55.ts with their sources; this file
+ * holds only the inputs.
+ */
+export const ruleOf55Spec: ToolSpec = {
+  id: "rule-of-55",
+  path: "/tools/rule-of-55/",
+  mode: "instant",
+  fields: [
+    {
+      kind: "number",
+      key: "by",
+      label: "Year of birth",
+      unit: "count",
+      min: 1940,
+      max: 2010,
+      step: 1,
+      default: 1971,
+      help: "The rule counts the calendar year you turn 55, not your birthday.",
+    },
+    {
+      kind: "select",
+      key: "bm",
+      label: "Month of birth",
+      help: "Used only for the month you reach 59½.",
+      options: MONTH_NAMES.map((name, i) => ({ value: String(i + 1), label: name })),
+      default: "6",
+    },
+    {
+      kind: "number",
+      key: "leave",
+      label: "Year you leave your job",
+      unit: "count",
+      min: 1990,
+      max: 2080,
+      step: 1,
+      default: 2026,
+      help: "The year you stop work, or plan to.",
+    },
+    {
+      kind: "select",
+      key: "src",
+      label: "Where the money is",
+      help: "Rolling a workplace plan into an IRA gives up the rule of 55.",
+      options: [
+        { value: "this-plan", label: "In the plan of the employer I am leaving" },
+        { value: "old-plan", label: "In the plan of an employer I left earlier" },
+        { value: "ira", label: "In an IRA (including a rollover IRA)" },
+      ],
+      default: "this-plan",
+    },
+    {
+      kind: "number",
+      key: "oldLeave",
+      label: "Year you left that employer",
+      unit: "count",
+      min: 1960,
+      max: 2080,
+      step: 1,
+      default: 2015,
+      help: "What counts is the year you left the employer whose plan holds the money.",
+      showWhen: { key: "src", values: ["old-plan"] },
+    },
+    {
+      kind: "select",
+      key: "type",
+      label: "Type of plan",
+      help: "A 457(b) of a state or local government has no 10% additional tax at all.",
+      options: [
+        { value: "qualified", label: "401(k), 403(b) or other workplace plan" },
+        { value: "gov457", label: "457(b) of a state or local government" },
+      ],
+      default: "qualified",
+      showWhen: { key: "src", values: ["this-plan", "old-plan"] },
+    },
+    {
+      kind: "select",
+      key: "ps",
+      label: "Public safety employee or firefighter?",
+      help: "Police, firefighters, EMS, corrections officers and some federal roles in a government plan, or a firefighter in a private plan.",
+      options: [
+        { value: "no", label: "No" },
+        { value: "yes", label: "Yes" },
+      ],
+      default: "no",
+    },
+    {
+      kind: "number",
+      key: "svc",
+      label: "Years of service under the plan",
+      unit: "years",
+      min: 0,
+      max: 50,
+      step: 1,
+      default: 20,
+      help: "When you leave. For public safety, 25 years counts even before 50.",
+      showWhen: { key: "ps", values: ["yes"] },
+    },
+  ],
+  validate(v) {
+    const e: Record<string, string> = {};
+    const leaveAge = n(v, "leave") - n(v, "by");
+    if (leaveAge < 16) e.leave = "That is before you turn 16.";
+    else if (leaveAge > 80) e.leave = "That is after you turn 80.";
+    if (v.src === "old-plan") {
+      if (n(v, "oldLeave") > n(v, "leave"))
+        e.oldLeave = "An earlier employer: no later than the year you leave your job.";
+      else if (n(v, "oldLeave") - n(v, "by") < 16) e.oldLeave = "That is before you turn 16.";
+    }
+    if (v.ps === "yes") {
+      const sep = v.src === "old-plan" ? n(v, "oldLeave") : n(v, "leave");
+      if (n(v, "svc") > sep - n(v, "by") - 16)
+        e.svc = "More years of service than you could have had by then.";
+    }
+    return e;
+  },
+};
+
 export const uaeGratuitySpec: ToolSpec = {
   id: "uae-gratuity",
   path: "/tools/uae-gratuity-calculator/",
@@ -1294,6 +1412,7 @@ export const SPECS: Record<ToolId, ToolSpec> = {
   "monte-carlo": monteCarloSpec,
   rmd: rmdSpec,
   "sepp-72t": seppSpec,
+  "rule-of-55": ruleOf55Spec,
   irmaa: irmaaSpec,
   "uk-fire": ukFireSpec,
   "uk-pension-age": ukPensionAgeSpec,

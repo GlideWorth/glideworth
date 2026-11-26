@@ -130,6 +130,15 @@ export const TOOLS: readonly ToolMeta[] = [
     group: "tax",
   },
   {
+    id: "rule-of-55",
+    path: "/tools/rule-of-55/",
+    name: "Rule of 55 check",
+    summary:
+      "Whether the rule of 55 lets you take money from your 401(k) or 403(b) without the 10% tax, and the other ways to reach it before 59½.",
+    question: "Can I take money from my 401(k) if I retire at 55?",
+    group: "tax",
+  },
+  {
     id: "irmaa",
     path: "/tools/irmaa-calculator/",
     name: "IRMAA calculator",

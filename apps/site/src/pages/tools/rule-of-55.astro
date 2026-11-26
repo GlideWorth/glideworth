@@ -1,0 +1,271 @@
+---
+import ToolPage from '../../components/tools/ToolPage.astro';
+import { externalLinkProps } from '../../lib/links';
+import {
+  ACCESS_AGE,
+  checkRuleOf55,
+  CONVERSION_YEARS,
+  PENALTY_RATE,
+  PUBLIC_SAFETY_AGE,
+  PUBLIC_SAFETY_SERVICE,
+  READ_ON,
+  type Rule55Input,
+  SEPARATION_AGE,
+  SEPP_MIN_YEARS,
+  SOURCES,
+} from '../../tools/engine/rule-of-55';
+
+const pen = `${Math.round(PENALTY_RATE * 100)}%`;
+const access = ACCESS_AGE === 59.5 ? '59½' : String(ACCESS_AGE);
+
+// Examples, computed by the check's own code when the page is built. Born in 1971: turns 55 in 2026.
+const BORN = 1971;
+const base: Rule55Input = {
+  birthYear: BORN,
+  birthMonth: 6,
+  leaveYear: BORN + SEPARATION_AGE,
+  source: 'this-plan',
+  planType: 'qualified',
+  oldLeaveYear: 2015,
+  publicSafety: false,
+  serviceYears: 20,
+};
+const examples: [string, Rule55Input][] = [
+  [`Leaves in ${BORN + SEPARATION_AGE - 1} (turns ${SEPARATION_AGE - 1} that year)`, { ...base, leaveYear: BORN + SEPARATION_AGE - 1 }],
+  [`Leaves in ${BORN + SEPARATION_AGE} (turns ${SEPARATION_AGE})`, base],
+  [`Leaves in ${BORN + SEPARATION_AGE + 1} (turns ${SEPARATION_AGE + 1})`, { ...base, leaveYear: BORN + SEPARATION_AGE + 1 }],
+  [`Leaves in ${BORN + SEPARATION_AGE} and rolls the 401(k) into an IRA`, { ...base, source: 'ira' }],
+  [`Leaves in ${BORN + SEPARATION_AGE}; 401(k) from a job left in 2015 (at 44)`, { ...base, source: 'old-plan' }],
+  [`Police officer, government plan, leaves at ${PUBLIC_SAFETY_AGE - 1}`, { ...base, publicSafety: true, leaveYear: BORN + PUBLIC_SAFETY_AGE - 1 }],
+  [`Police officer, government plan, leaves at ${PUBLIC_SAFETY_AGE}`, { ...base, publicSafety: true, leaveYear: BORN + PUBLIC_SAFETY_AGE }],
+  [`Police officer, government plan, leaves at ${PUBLIC_SAFETY_AGE + 1}`, { ...base, publicSafety: true, leaveYear: BORN + PUBLIC_SAFETY_AGE + 1 }],
+  [`Firefighter leaves at 45 with ${PUBLIC_SAFETY_SERVICE - 1} years of service`, { ...base, publicSafety: true, leaveYear: BORN + 45, serviceYears: PUBLIC_SAFETY_SERVICE - 1 }],
+  [`Firefighter leaves at 45 with ${PUBLIC_SAFETY_SERVICE} years of service`, { ...base, publicSafety: true, leaveYear: BORN + 45, serviceYears: PUBLIC_SAFETY_SERVICE }],
+];
+const STATUS = { applies: 'Yes', 'does-not-apply': 'No', 'not-needed': 'Not needed', ira: 'No' } as const;
+const rows = examples.map(([label, x]) => [label, STATUS[checkRuleOf55(x).status]]);
+
+const faq = [
+  {
+    q: 'What is the rule of 55?',
+    a: `<p>If you leave your job in or after the calendar year you turn ${SEPARATION_AGE}, you can take money from that employer’s 401(k), 403(b) or other workplace plan without the ${pen} additional tax on withdrawals before ${access}. It comes from section 72(t)(2)(A)(v) of the Internal Revenue Code. Income tax on the withdrawal still applies.</p>`,
+  },
+  {
+    q: 'Does the rule of 55 work with an IRA?',
+    a: `<p>No. The law says this exception does not apply to IRAs, and that includes a rollover IRA holding money from a 401(k). If you might need the money before ${access}, leave it in the employer’s plan until you have taken what you need, or use one of the other routes on this page.</p>`,
+  },
+  {
+    q: `Can I retire at 54 and use the rule of 55?`,
+    a: `<p>Only if you turn ${SEPARATION_AGE} in the same calendar year. Someone born in November who leaves in March of the year they turn ${SEPARATION_AGE} qualifies. Someone who leaves the year before does not, even after they turn ${SEPARATION_AGE}: the IRS gives the example of a person who left at 49 and cannot use the exception at ${SEPARATION_AGE}.</p>`,
+  },
+  {
+    q: 'Is the rule of 55 different for police and firefighters?',
+    a: `<p>Yes. For qualified public safety employees in a government plan, and firefighters in a private-sector plan, the age is ${PUBLIC_SAFETY_AGE}, or ${PUBLIC_SAFETY_SERVICE} years of service under the plan if that comes first. Qualified public safety employees include state and local police, firefighters, emergency medical services, corrections officers and forensic security employees, and some federal roles such as federal law enforcement officers, customs and border protection officers, federal firefighters and air traffic controllers.</p>`,
+  },
+  {
+    q: 'Do I still pay tax on rule of 55 withdrawals?',
+    a: `<p>Yes. The rule removes only the ${pen} additional tax. The withdrawal still counts as taxable income for the year, the same as a withdrawal after ${access}.</p>`,
+  },
+];
+---
+
+<ToolPage
+  id="rule-of-55"
+  heading="Rule of 55: take money from your 401(k) before 59½"
+  lede={`If you leave your job in or after the year you turn ${SEPARATION_AGE}, you can take money from that employer’s 401(k) or 403(b) without the ${pen} additional tax. Here is who qualifies, what loses it, and a quick check of your own options before ${access}.`}
+  faq={faq}
+  adds=""
+  planner={false}
+  related={[
+    { href: '/tools/72t-calculator/', label: '72(t) calculator: payments from an IRA before 59½' },
+    { href: '/tools/roth-conversion-calculator/', label: 'Roth conversion calculator' },
+    { href: '/planning/us/', label: 'Retirement planning in the United States' },
+  ]}
+>
+  <Fragment slot="answer">
+    <h2>What the rule of 55 is</h2>
+    <p>
+      Money taken from a 401(k), 403(b) or IRA before you reach {access} normally carries a {pen} additional tax on top of
+      income tax. The rule of 55 is one of the exceptions: a payment from a workplace plan is free of the {pen} if you left
+      that employer in or after the calendar year you turn {SEPARATION_AGE}. It does not matter why you left: retired,
+      laid off or moved on.
+    </p>
+
+    <h2>Who qualifies</h2>
+    <ul>
+      <li>
+        <strong>You leave the employer in or after the year you turn {SEPARATION_AGE}.</strong> It counts the calendar
+        year, not your birthday. If you turn {SEPARATION_AGE} in November {BORN + SEPARATION_AGE}, leaving in March
+        {' '}{BORN + SEPARATION_AGE} qualifies.
+      </li>
+      <li>
+        <strong>The money is in that employer’s plan.</strong> A plan from a job you left before the year you turned
+        {' '}{SEPARATION_AGE} does not qualify, even once you are older.
+      </li>
+      <li>
+        <strong>Police, firefighters and other public safety workers: {PUBLIC_SAFETY_AGE}, or {PUBLIC_SAFETY_SERVICE}
+        {' '}years of service.</strong> For qualified public safety employees in a government plan (state and local police,
+        firefighters, emergency medical services, corrections officers and forensic security employees, and federal law
+        enforcement officers, customs and border protection officers, federal firefighters, air traffic controllers and a few
+        other federal roles), and firefighters in a private-sector plan, the age is {PUBLIC_SAFETY_AGE}, or
+        {' '}{PUBLIC_SAFETY_SERVICE} years of service under the plan if that comes first.
+      </li>
+    </ul>
+
+    <h2>Which accounts it covers</h2>
+    <ul>
+      <li><strong>Covered:</strong> the 401(k), 403(b) or other workplace plan of the employer you left.</li>
+      <li>
+        <strong>Not covered:</strong> IRAs of every kind, including SEP and SIMPLE IRAs and a rollover IRA holding money
+        from a 401(k).
+      </li>
+      <li>
+        <strong>Not needed:</strong> a 457(b) plan of a state or local government. Its payouts carry no {pen} additional tax
+        at any age, except on money rolled into it from another kind of plan or an IRA.
+      </li>
+    </ul>
+
+    <h2>Mistakes that lose it</h2>
+    <ul>
+      <li>
+        <strong>Rolling the plan into an IRA.</strong> It is the most common way to lose the rule of 55. Once the money is in
+        an IRA, the exception is gone. Keep at least what you need before {access} in the employer’s plan.
+      </li>
+      <li>
+        <strong>Leaving a year too early.</strong> Leaving in December of the year you turn {SEPARATION_AGE - 1} does not
+        qualify, even if you wait until {SEPARATION_AGE} to withdraw.
+      </li>
+      <li>
+        <strong>Assuming the plan will pay.</strong> The law allows the withdrawals; the plan decides whether it offers them
+        and in what form, such as a single lump sum or payments over a set period. Read your summary plan description, or ask
+        the plan, before you leave.
+      </li>
+      <li>
+        <strong>Forgetting income tax.</strong> The rule removes only the {pen} additional tax. The withdrawal is still
+        taxable income that year.
+      </li>
+    </ul>
+
+    <h2>Other ways to reach money before {access}</h2>
+    <ul>
+      <li>
+        <strong>72(t) payments:</strong> a fixed yearly amount from an IRA, or from a workplace plan after you leave. Once
+        started, the payments must not change until {SEPP_MIN_YEARS} years have passed and you are {access}, whichever is
+        later. The <a href="/tools/72t-calculator/">72(t) calculator</a> works out the payment.
+      </li>
+      <li>
+        <strong>Roth IRA contributions:</strong> what you paid in, not the growth, can come out at any time without income
+        tax or the {pen} additional tax.
+      </li>
+      <li>
+        <strong>A Roth conversion ladder:</strong> money converted from a traditional IRA to a Roth IRA is taxed as income in
+        the year you convert, and can come out without the {pen} from the start of the {CONVERSION_YEARS}th year after the
+        year of the conversion. Each conversion has its own {CONVERSION_YEARS}-year wait.
+      </li>
+      <li><strong>Taxable savings:</strong> ordinary brokerage and savings accounts have no early-withdrawal tax.</li>
+    </ul>
+    <p>Check your own dates below: when you leave, where the money is, and how many years you need to bridge.</p>
+  </Fragment>
+
+  <h2>How the check works</h2>
+  <ol>
+    <li>
+      <strong>Your age that year.</strong> The age you reach in the calendar year you leave the employer whose plan holds
+      the money: the year minus your year of birth.
+    </li>
+    <li>
+      <strong>The exception.</strong> It applies to a 401(k), 403(b) or other workplace plan when that age is at least
+      {' '}{SEPARATION_AGE}, or {PUBLIC_SAFETY_AGE} for public safety employees and firefighters, who also qualify with
+      {' '}{PUBLIC_SAFETY_SERVICE} years of service under the plan. It never applies to an IRA. A governmental 457(b) does not
+      need it.
+    </li>
+    <li>
+      <strong>The bridge.</strong> The time from the end of the year you leave to the month you reach {access} (six months
+      after your 59th birthday). 72(t) payments are assumed to start in January after you leave, and the first Roth
+      conversion to happen in the year you leave.
+    </li>
+  </ol>
+
+  <h2>Examples</h2>
+  <p>Computed by the check’s own code when this page was built, for someone born in June {BORN}.</p>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="Rule of 55 examples">
+    <table>
+      <caption>Does the rule of 55 apply?</caption>
+      <thead><tr><th scope="col">Situation</th><th scope="col">Rule of 55</th></tr></thead>
+      <tbody>{rows.map(([label, status]) => <tr><th scope="row">{label}</th><td>{status}</td></tr>)}</tbody>
+    </table>
+  </div>
+
+  <h2>In the Glideworth planner</h2>
+  <p>
+    The planner does not apply the rule of 55 for you: it does not know when you leave a job or which employer a plan
+    belongs to. Each account has an early-withdrawal penalty setting with a qualifying age you can change. If the rule
+    applies to your 401(k), set that account’s qualifying age to your age when you leave, and the projection stops charging
+    the {pen} from then. The planner also models 72(t) payments from an account. See
+    {' '}<a href="/planning/us/">retirement planning in the United States</a> for what the US tax estimate covers.
+  </p>
+
+  <h2>What this check leaves out</h2>
+  <ul>
+    <li>
+      Whether your plan offers withdrawals to people who have left, and in what form. Only the plan can tell you.
+    </li>
+    <li>
+      Money rolled into the plan of the employer you are leaving from an earlier plan or an IRA. Whether the exception
+      covers it is not stated in the sources this page uses, so the check does not say.
+    </li>
+    <li>
+      Non-governmental 457(b) plans (of tax-exempt organizations), and the other exceptions to the {pen} additional tax
+      (disability, medical expenses, a court order in a divorce and others).
+    </li>
+    <li>The higher additional tax on a SIMPLE IRA in its first two years.</li>
+    <li>
+      Whether working for a new employer after you leave changes anything. The sources this page uses do not say, so the
+      check does not either.
+    </li>
+    <li>
+      Whether your job counts as qualified public safety employment. The check takes your answer; the statute lists the
+      roles.
+    </li>
+    <li>
+      The Roth five-year rule for earnings, the limits and methods of 72(t) payments, and the tax on any withdrawal. This
+      is general information, not tax advice.
+    </li>
+  </ul>
+
+  <h2>Sources</h2>
+  <p>Every rule on this page comes from these official sources, read on {READ_ON}.</p>
+  <ul>
+    <li>
+      <a href={SOURCES.usc72} {...externalLinkProps(SOURCES.usc72)}>26 U.S.C. 72(t)</a> (United States Code, 2024 edition):
+      the {pen} additional tax, (t)(1); age {access}, (t)(2)(A)(i); 72(t) payments, (t)(2)(A)(iv); separation from service
+      after age {SEPARATION_AGE}, (t)(2)(A)(v), with no condition on why you leave since Pub. L. 100-647 (1988) removed the
+      words “on account of early retirement under the plan”; not for IRAs, (t)(3)(A); payments from a workplace plan must begin after you
+      leave, (t)(3)(B); changing payments, (t)(4); governmental 457(b), (t)(9); public safety employees and firefighters,
+      age {PUBLIC_SAFETY_AGE} or {PUBLIC_SAFETY_SERVICE} years of service, (t)(10), as amended by the Pension Protection Act
+      of 2006 (Pub. L. 109-280, section 828), the Defending Public Safety Employees’ Retirement Act (Pub. L. 114-26), Pub.
+      L. 114-113 and the SECURE 2.0 Act of 2022 (Pub. L. 117-328, sections 308, 329 and 330).
+    </li>
+    <li>
+      <a href={SOURCES.pub575} {...externalLinkProps(SOURCES.pub575)}>IRS Publication 575 (2025), Pension and Annuity Income</a>,
+      “Tax on Early Distributions” and “Separation from service”: the calendar-year rule, the example of leaving at 49, and
+      who counts as a qualified public safety employee.
+    </li>
+    <li>
+      <a href={SOURCES.exceptions} {...externalLinkProps(SOURCES.exceptions)}>IRS: Exceptions to tax on early distributions</a>:
+      the table showing the exception for workplace plans but not IRAs, SEP or SIMPLE IRAs, and the note on governmental
+      457(b) plans. The IRS marks this page as historical; the statute above is the primary source.
+    </li>
+    <li>
+      <a href={SOURCES.distribute} {...externalLinkProps(SOURCES.distribute)}>IRS: When can a retirement plan distribute
+      benefits?</a>: a plan does not have to allow every distribution the law permits, and its plan document sets when and
+      in what form it pays.
+    </li>
+    <li>
+      <a href={SOURCES.usc408A} {...externalLinkProps(SOURCES.usc408A)}>26 U.S.C. 408A(d)</a> and
+      {' '}<a href={SOURCES.pub590b} {...externalLinkProps(SOURCES.pub590b)}>IRS Publication 590-B (2025)</a>, “Additional Tax
+      on Early Distributions” and “Ordering Rules for Distributions”: conversions are taxed as income, (d)(3)(A); the
+      {' '}{CONVERSION_YEARS}-year period for each conversion, (d)(3)(F); contributions come out first, (d)(4)(B).
+    </li>
+  </ul>
+</ToolPage>

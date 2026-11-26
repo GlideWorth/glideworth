@@ -155,7 +155,7 @@ export const clusters: { subject: string; paths: string[] }[] = [
   },
   {
     subject: "72(t) payments",
-    paths: ["/tools/72t-calculator/", "/tools/rmd-calculator/"],
+    paths: ["/tools/72t-calculator/", "/tools/rmd-calculator/", "/tools/rule-of-55/"],
   },
   {
     subject: "UK pensions and early retirement",

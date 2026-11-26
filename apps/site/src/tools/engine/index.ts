@@ -16,6 +16,7 @@ import { runIrmaa } from "./irmaa";
 import { runIsaVsPension } from "./isa-vs-pension";
 import { runMonteCarloTool } from "./monte-carlo";
 import { runRmd } from "./rmd";
+import { runRuleOf55 } from "./rule-of-55";
 import { runSepp } from "./sepp";
 import { runUaeGratuity } from "./uae-gratuity";
 import { runUkFire } from "./uk-fire";
@@ -37,6 +38,7 @@ const RUNNERS: Record<ToolId, (v: Values, opts: RunOptions) => Promise<ViewModel
   "monte-carlo": runMonteCarloTool,
   rmd: runRmd,
   "sepp-72t": runSepp,
+  "rule-of-55": runRuleOf55,
   irmaa: runIrmaa,
   "uk-fire": runUkFire,
   "uk-pension-age": runUkPensionAge,

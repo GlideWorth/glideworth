@@ -153,6 +153,7 @@
   "apps/site/src/pages/tools/retirement-withdrawal-calculator.astro": "2026-11-24",
   "apps/site/src/pages/tools/rmd-calculator.astro": "2026-11-24",
   "apps/site/src/pages/tools/roth-conversion-calculator.astro": "2026-11-24",
+  "apps/site/src/pages/tools/rule-of-55.astro": "2026-11-26",
   "apps/site/src/pages/tools/uae-gratuity-calculator.astro": "2026-11-24",
   "apps/site/src/pages/tools/uk-fire-calculator.astro": "2026-11-24",
   "apps/site/src/pages/tools/uk-pension-age-calculator.astro": "2026-11-24",

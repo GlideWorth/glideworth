@@ -14,6 +14,7 @@ export type ToolId =
   | "monte-carlo"
   | "rmd"
   | "sepp-72t"
+  | "rule-of-55"
   | "irmaa"
   | "uk-fire"
   | "uk-pension-age"

@@ -61,6 +61,14 @@ const { code, lang = 'plaintext', title, copy = true } = Astro.props;
     overflow: hidden;
     background: var(--code-bg);
   }
+  /* The global reset zeroes margins, and outside .prose nothing spaces blocks apart, so the block
+     brings its own gap from whatever sits above and below it. */
+  :global(*) + .codeblock {
+    margin-block-start: var(--space-m);
+  }
+  .codeblock + :global(*) {
+    margin-block-start: var(--space-m);
+  }
   .codeblock :global(pre) {
     border: 0;
     border-radius: 0;

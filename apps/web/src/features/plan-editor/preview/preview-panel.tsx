@@ -11,6 +11,7 @@ import { Chart } from "../../../components/charts/echarts";
 import { axisStyle, baseOption, type ChartTokens } from "../../../components/charts/tokens";
 import { cn } from "../../../lib/cn";
 import { formatMoney } from "../../../lib/format";
+import { formatWarning } from "../../../lib/warning-text";
 import { total } from "../../../lib/money";
 import { useFormat } from "../../../lib/workspace";
 import { useUi } from "../../../stores/ui";
@@ -266,6 +267,7 @@ export function PreviewPanel({ plan, className }: { plan: Plan | undefined; clas
   const { running, ms, error, invalid, result } = usePreview();
   const [showWarnings, setShowWarnings] = useState(false);
   const basis = useUi((s) => s.basis);
+  const f = useFormat();
   const warnings = (result?.warnings ?? []).filter((w) => w.code !== "SHORTFALL");
   return (
     <section aria-label="Live projection" className={cn("flex flex-col gap-3", className)}>
@@ -329,7 +331,9 @@ export function PreviewPanel({ plan, className }: { plan: Plan | undefined; clas
               {warnings.slice(0, 30).map((w, i) => (
                 // oxlint-disable-next-line react/no-array-index-key -- warnings have no ids
                 <li key={i} className="py-0.5">
-                  <PrivateText>{w.message}</PrivateText>
+                  <PrivateText>
+                    {result ? formatWarning(result, w, basis, (v) => f.money(v, true)) : w.message}
+                  </PrivateText>
                   {plan && isDatasetReplaced(w) ? (
                     <DismissDatasetNotice
                       plan={plan}

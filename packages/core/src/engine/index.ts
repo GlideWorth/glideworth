@@ -17,3 +17,4 @@ export {
   usRmdStartAge,
 } from "./tables.js";
 export * from "./types.js";
+export { warningText } from "./warnings.js";

@@ -120,6 +120,19 @@ describe("single-country households are unchanged by the cross-border model", ()
       // Results carry the document schema version (2 since moving country was removed); the
       // baseline was recorded at version 1, so hash the result as that engine wrote it.
       (r.meta as { schemaVersion?: number }).schemaVersion = 1;
+      // 2026-11-25: a warning that quotes money formats it in the household currency and keeps a
+      // `{token}` template with the nominal amounts, so a screen can format it. Rebuild the message
+      // the way the engine used to (`toFixed(2)`) and drop the new fields before hashing, so this
+      // guard still checks the numbers and the sentence.
+      for (const w of r.warnings) {
+        if (!w.template || !w.amounts) continue;
+        let message = w.template;
+        for (const a of w.amounts)
+          message = message.replaceAll(`{${a.token}}`, a.nominal.toFixed(2));
+        w.message = message;
+        delete w.template;
+        delete w.amounts;
+      }
       expect(fnv(JSON.stringify(r))).toBe(BEFORE[name]);
     });
 });

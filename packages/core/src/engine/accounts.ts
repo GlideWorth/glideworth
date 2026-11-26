@@ -37,6 +37,7 @@ import { resolveRef } from "./milestones.js";
 import { rulesFor } from "./rules.js";
 import { scheduleAt } from "./schedule.js";
 import type { LedgerEntry } from "./types.js";
+import { moneyWarning } from "./warnings.js";
 
 /** UK lump-sum allowance (tax-free pension cash per person, frozen in nominal terms; UK tax data). */
 export const UK_LUMP_SUM_ALLOWANCE = pickYear(UK_TAX_YEARS, 2026).pensions.lumpSumAllowance;
@@ -558,7 +559,11 @@ export function withdraw(
     ctx.warnings.push({
       code: "EARLY_WITHDRAWAL_PENALTY",
       severity: "warning",
-      message: `In ${ps.bounds.year}, ${fmt(w)} was withdrawn from ${a.def.name} at age ${age.toFixed(1)}${qAge === null ? "" : `, before its penalty-free age of ${qAge.toFixed(1)}`}, so a ${(rate * 100).toFixed(0)}% early-withdrawal penalty applies.`,
+      ...moneyWarning(
+        ctx.household,
+        `In ${ps.bounds.year}, {withdrawn} was withdrawn from ${a.def.name} at age ${age.toFixed(1)}${qAge === null ? "" : `, before its penalty-free age of ${qAge.toFixed(1)}`}, so a ${(rate * 100).toFixed(0)}% early-withdrawal penalty applies.`,
+        [{ token: "withdrawn", nominal: w, measure: "flow" }],
+      ),
       periodIndex: ps.bounds.index,
       refs: [a.def.id],
     });

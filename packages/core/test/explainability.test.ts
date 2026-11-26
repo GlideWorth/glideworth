@@ -5,7 +5,8 @@
 import { describe, expect, it } from "vitest";
 import { simulate } from "../src/engine/simulate.js";
 import type { ProjectionResult, SimWarning } from "../src/engine/types.js";
-import { buildSimulationInput, reconcileYear, WarningCode } from "../src/index.js";
+import { fmtMoney } from "../src/insights/format.js";
+import { buildSimulationInput, reconcileYear, WarningCode, warningText } from "../src/index.js";
 import {
   createSampleDocument,
   createUkSampleDocument,
@@ -130,9 +131,23 @@ describe("every warning code has a plain-English message with its year and cause
   });
 
   it("SHORTFALL says how much, when, and that money is locked away when it is", () => {
-    const w = runs.SHORTFALL_DEPLETED!.warnings.find((x) => x.code === "SHORTFALL")!;
-    expect(w.message).toMatch(/^In 2028, .* could not be funded: .*cannot be withdrawn from yet/);
-    const d = runs.SHORTFALL_DEPLETED!.warnings.find((x) => x.code === "DEPLETED")!;
+    const run = runs.SHORTFALL_DEPLETED!;
+    const w = run.warnings.find((x) => x.code === "SHORTFALL")!;
+    expect(w.template).toMatch(
+      /^In 2028, \{shortfall\} of expenses could not be funded: .*cannot be withdrawn from yet/,
+    );
+    expect(w.message).toMatch(/^In 2028, £[\d,]+ of expenses could not be funded/);
+    expect(w.message).not.toMatch(/\{|\d+\.\d{2}/);
+    expect(w.amounts?.map((a) => a.token)).toEqual(["shortfall", "locked"]);
+    const text = warningText(w, {
+      basis: "nominal",
+      period: run.periods[w.periodIndex!]!,
+      format: (v) => fmtMoney(v, { currency: "GBP", locale: "en-GB" }),
+    });
+    expect(text).toMatch(/^In 2028, £[\d,]+ of expenses could not be funded/);
+    expect(text).toContain("£");
+    expect(text).not.toMatch(/\{shortfall\}|\{locked\}/);
+    const d = run.warnings.find((x) => x.code === "DEPLETED")!;
     expect(d.message).toMatch(/is depleted in 2028: withdrawals to cover spending/);
   });
 });

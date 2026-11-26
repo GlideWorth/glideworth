@@ -16,6 +16,7 @@ import { Segmented } from "../../components/ui/segmented";
 import { Select } from "../../components/ui/select";
 import { Stat } from "../../components/ui/stat";
 import { formatMonth } from "../../lib/format";
+import { formatWarning } from "../../lib/warning-text";
 import { hasPartialPeriods } from "../../lib/period";
 import { DismissDatasetNotice, isDatasetReplaced } from "./dataset-notice";
 import { conv, KIND_LABEL, MODE_LABEL, rangePresets } from "./model";
@@ -265,25 +266,26 @@ export function ResultsView() {
                     <AlertTriangle className="size-3.5" /> {warns.length} warning
                     {warns.length > 1 ? "s" : ""}
                   </div>
-                  {warns.slice(0, 4).map((w) =>
-                    isDatasetReplaced(w) ? (
-                      <div key={w.message} className="flex flex-wrap items-start gap-x-2">
+                  {warns.slice(0, 4).map((w) => {
+                    const text = formatWarning(result, w, basis, (v) => f.money(v, true));
+                    return isDatasetReplaced(w) ? (
+                      <div key={text} className="flex flex-wrap items-start gap-x-2">
                         <span className="min-w-0 flex-1">
-                          <PrivateText>{w.message}</PrivateText>
+                          <PrivateText>{text}</PrivateText>
                         </span>
                         {plan ? <DismissDatasetNotice plan={plan} /> : null}
                       </div>
                     ) : (
                       <button
                         type="button"
-                        key={w.message}
+                        key={text}
                         className="text-left hover:underline"
                         onClick={() => w.periodIndex !== null && setSelected(w.periodIndex)}
                       >
-                        <PrivateText>{w.message}</PrivateText>
+                        <PrivateText>{text}</PrivateText>
                       </button>
-                    ),
-                  )}
+                    );
+                  })}
                   {ewWarn.length ? (
                     <div className="text-[11.5px]">
                       Early-withdrawal penalties apply in {ewWarn.length} year(s).

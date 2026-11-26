@@ -4,6 +4,7 @@
  * insights.explainProjection is available its findings are shown alongside.
  */
 import type { PeriodResult, ProjectionResult, ValueBasis } from "@glideworth/core";
+import { formatWarning } from "../../lib/warning-text";
 import { conv, type EntityIndex } from "./model";
 
 export interface NarrativeLine {
@@ -29,7 +30,7 @@ export function yearNarrative(
   i: number,
   basis: ValueBasis,
   index: EntityIndex,
-  money: (v: number) => string,
+  money: (v: number, compact?: boolean) => string,
   pct: (v: number) => string,
 ): NarrativeLine[] {
   const p = result.periods[i];
@@ -92,7 +93,10 @@ export function yearNarrative(
   for (const w of result.warnings
     .filter((x) => x.periodIndex === i && x.severity !== "info")
     .slice(0, 3))
-    out.push({ tone: "warning", text: w.message });
+    out.push({
+      tone: "warning",
+      text: formatWarning(result, w, basis, (v) => money(v, true)),
+    });
   if (prev) {
     const d =
       conv(p, T.netWorth, basis, "stock") - conv(prev, prev.totals.netWorth, basis, "stock");

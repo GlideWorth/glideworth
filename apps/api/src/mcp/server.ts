@@ -936,6 +936,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
               series: ["netWorth", "liquidNetWorth", "spending", "taxes", "shortfall"],
             },
             run.cached,
+            hh.household.locale,
           );
           outcome = {
             ...outcomeOf(run.result),

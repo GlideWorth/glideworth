@@ -11,6 +11,7 @@ import { ChartLoading, ErrorState } from "../../components/charts/states";
 import { Button } from "../../components/ui/button";
 import { ScrollRegion } from "../../components/ui/table";
 import { formatMonth } from "../../lib/format";
+import { formatWarning } from "../../lib/warning-text";
 import { periodShortLabel } from "../../lib/period";
 import { useFormat } from "../../lib/workspace";
 import { useUi } from "../../stores/ui";
@@ -364,11 +365,14 @@ export function ReportView() {
               {result.warnings
                 .filter((w) => w.severity !== "info")
                 .slice(0, 8)
-                .map((w) => (
-                  <li key={w.message}>
-                    <PrivateText>{w.message}</PrivateText>
-                  </li>
-                ))}
+                .map((w) => {
+                  const text = formatWarning(result, w, basis, (v) => f.money(v, true));
+                  return (
+                    <li key={text}>
+                      <PrivateText>{text}</PrivateText>
+                    </li>
+                  );
+                })}
               <li>
                 This is a deterministic projection: markets grow at the plan's assumed rates every
                 year. Real outcomes vary; see the chance-of-success analysis.

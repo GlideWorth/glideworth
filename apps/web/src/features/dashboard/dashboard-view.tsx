@@ -41,6 +41,7 @@ import {
 } from "../../lib/fx-math";
 import { firstFullYear, total } from "../../lib/money";
 import { useResolvedTheme } from "../../lib/theme";
+import { formatWarning } from "../../lib/warning-text";
 import { useFormat, useProjection } from "../../lib/workspace";
 import { successTone } from "../../stores/prefs";
 import { useUi } from "../../stores/ui";
@@ -420,14 +421,14 @@ export function DashboardView() {
         .map((x) => ({
           code: x.code,
           severity: x.severity === "error" ? "critical" : "warning",
-          title: x.message,
+          title: result ? formatWarning(result, x, basis, (v) => f.money(v, true)) : x.message,
           message: "",
           periodIndex: x.periodIndex,
           refs: x.refs,
           evidence: [],
         })),
     };
-  }, [input, result]);
+  }, [input, result, basis, f]);
   const upcoming = (result?.milestones ?? [])
     .filter((m) => m.status === "reached" && m.month)
     .sort((a, b) => a.month!.localeCompare(b.month!))

@@ -18012,6 +18012,15 @@
        "type": "string"
       },
       "default": []
+     },
+     "template": {
+      "type": "string"
+     },
+     "amounts": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/WarningAmount"
+      }
      }
     },
     "required": [
@@ -18019,6 +18028,29 @@
      "severity",
      "message",
      "periodIndex"
+    ]
+   },
+   "WarningAmount": {
+    "type": "object",
+    "properties": {
+     "token": {
+      "type": "string"
+     },
+     "nominal": {
+      "type": "number"
+     },
+     "measure": {
+      "type": "string",
+      "enum": [
+       "flow",
+       "stock"
+      ]
+     }
+    },
+    "required": [
+     "token",
+     "nominal",
+     "measure"
     ]
    },
    "ProjectionSummary": {

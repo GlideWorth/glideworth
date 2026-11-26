@@ -29,7 +29,7 @@ import type { JobKind } from "../jobs/run.js";
 import { inBasis } from "../money.js";
 import type { MonteCarloRequest, ProjectionView } from "../schemas.js";
 import { hashOf } from "../util.js";
-import { compactProjection, outcomeOf } from "../views.js";
+import { compactProjection, outcomeOf, presentedWarnings } from "../views.js";
 import type { ResultCache } from "./cache.js";
 import type { ServiceCtx } from "./context.js";
 import type { HouseholdsService } from "./households.js";
@@ -89,7 +89,11 @@ export class SimulationService {
   simulate(planId: string, req: { view?: ProjectionView | undefined } & SimulationOptionsInput) {
     const { view, ...options } = req;
     const run = this.projection(planId, options);
-    return view ? compactProjection(run.result, view, run.cached) : run.result;
+    const locale = this.households.get(run.plan.householdId).household.locale;
+    // The full result's money is nominal (meta.valueBasis). A compact view names its own basis.
+    return view
+      ? compactProjection(run.result, view, run.cached, locale)
+      : { ...run.result, warnings: presentedWarnings(run.result, "nominal", locale) };
   }
 
   outcome(planId: string): OutcomeSummary {

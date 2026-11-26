@@ -1,15 +1,18 @@
 /** Compact, agent- and client-friendly projections of engine/stochastic results. Pure functions. */
-import type {
-  DifferenceAttribution,
-  GoalSeekResult,
-  MonteCarloResult,
-  OutcomeSummary,
-  Plan,
-  ProjectionResult,
-  RothConversionPlan,
-  StrategyComparison,
-  ValueBasis,
-  YearNarrative,
+import {
+  type DifferenceAttribution,
+  fmtMoney,
+  type GoalSeekResult,
+  type MonteCarloResult,
+  type OutcomeSummary,
+  type Plan,
+  type ProjectionResult,
+  type RothConversionPlan,
+  type SimWarning,
+  type StrategyComparison,
+  type ValueBasis,
+  warningText,
+  type YearNarrative,
 } from "@glideworth/core";
 import type { z } from "zod";
 import { inBasis, totalInBasis } from "./money.js";
@@ -25,6 +28,26 @@ const DEFAULT_SERIES: Series[] = [
   "shortfall",
 ];
 
+/** Fill `{token}` amounts so an API client sees currency, not the engine's placeholder. */
+export function presentedWarnings(
+  result: ProjectionResult,
+  basis: ValueBasis,
+  locale?: string,
+): SimWarning[] {
+  return result.warnings.map((w) => {
+    if (!w.template || !w.amounts?.length) return w;
+    const period = w.periodIndex !== null ? result.periods[w.periodIndex] : undefined;
+    return {
+      ...w,
+      message: warningText(w, {
+        basis,
+        period,
+        format: (v) => fmtMoney(v, { currency: result.meta.currency, locale }),
+      }),
+    };
+  });
+}
+
 export const roundMoney = (n: number): number => Math.round(n);
 const round4 = (n: number): number => Math.round(n * 10_000) / 10_000;
 
@@ -32,6 +55,7 @@ export function compactProjection(
   result: ProjectionResult,
   viewIn: z.input<typeof ProjectionView> | undefined,
   cached: boolean,
+  locale?: string,
 ) {
   const view = viewIn ?? {};
   const basis: ValueBasis = view.basis ?? "real";
@@ -91,7 +115,9 @@ export function compactProjection(
           })),
         }
       : {}),
-    ...(include.has("warnings") ? { warnings: result.warnings.slice(0, 25) } : {}),
+    ...(include.has("warnings")
+      ? { warnings: presentedWarnings(result, basis, locale).slice(0, 25) }
+      : {}),
     years,
     ...(include.has("trace") ? { trace: result.trace.slice(0, 200) } : {}),
   };

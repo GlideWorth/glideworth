@@ -19,6 +19,7 @@ import { leftoverTarget } from "./flows.js";
 import { fxAt } from "./indices.js";
 import { evaluateDynamicMilestones } from "./milestones.js";
 import { updatePerformance } from "./strategy.js";
+import { moneyWarning } from "./warnings.js";
 import type { ExpenseLine, PeriodTotals } from "./types.js";
 
 const UK_PENSIONS = new Set(["uk-sipp", "uk-workplace-pension", "uk-pension"]);
@@ -357,7 +358,16 @@ export function runClose(ctx: EngineContext, ps: PeriodState): void {
     ctx.warnings.push({
       code: "SHORTFALL",
       severity: "error",
-      message: `In ${ps.bounds.year}, ${fmt(ps.shortfall)} of expenses could not be funded: income and every account that could be drawn on were used up${locked > 0.005 ? ` (${fmt(locked)} more is held in accounts that cannot be withdrawn from yet)` : ""}.`,
+      ...moneyWarning(
+        ctx.household,
+        `In ${ps.bounds.year}, {shortfall} of expenses could not be funded: income and every account that could be drawn on were used up${locked > 0.005 ? ` ({locked} more is held in accounts that cannot be withdrawn from yet)` : ""}.`,
+        [
+          { token: "shortfall", nominal: ps.shortfall, measure: "flow" },
+          ...(locked > 0.005
+            ? [{ token: "locked", nominal: locked, measure: "stock" as const }]
+            : []),
+        ],
+      ),
       periodIndex: ps.bounds.index,
       refs: [],
     });
@@ -378,7 +388,11 @@ export function runClose(ctx: EngineContext, ps: PeriodState): void {
       ctx.warnings.push({
         code: "NEGATIVE_BALANCE",
         severity: "warning",
-        message: `${a.def.name} has a negative balance (${fmt(a.balance)}) at the end of ${ps.bounds.year}: more was taken out than it held.`,
+        ...moneyWarning(
+          ctx.household,
+          `${a.def.name} has a negative balance ({balance}) at the end of ${ps.bounds.year}: more was taken out than it held.`,
+          [{ token: "balance", nominal: a.balance, measure: "stock" }],
+        ),
         periodIndex: ps.bounds.index,
         refs: [a.def.id],
       });

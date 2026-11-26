@@ -7,11 +7,13 @@ import {
   type GlideworthDocument,
   type MoneyMeasure,
   type Plan,
+  fmtMoney,
   type ProjectionResult,
   SAMPLING_METHOD_LABEL,
   toBasis,
   totalsMeasure,
   type ValueBasis,
+  warningText,
 } from "@glideworth/core";
 import { type Table, yearByYearTable } from "./tables.js";
 
@@ -290,7 +292,12 @@ export function buildReportData(
     warnings: result.warnings.map((w) => ({
       code: w.code,
       severity: w.severity,
-      message: w.message,
+      message: warningText(w, {
+        basis,
+        period: w.periodIndex !== null ? result.periods[w.periodIndex] : undefined,
+        format: (v) =>
+          fmtMoney(v, { currency: doc.household.currency, locale: doc.household.locale }),
+      }),
     })),
   };
 }

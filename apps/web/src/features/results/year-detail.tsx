@@ -30,6 +30,7 @@ import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/table";
 import { cn } from "../../lib/cn";
 import { isPartialPeriod, periodSpan } from "../../lib/period";
 import { useRestoreFocus } from "../../lib/restore-focus";
+import { formatWarning } from "../../lib/warning-text";
 import { useFormat } from "../../lib/workspace";
 import { YearTaxByCountry } from "../crossborder/tax-by-country";
 import { bridge } from "./core-bridge";
@@ -491,7 +492,10 @@ function YearDetailBody({
           <Section title="Withdrawals">
             {early.length ? (
               <div className="mb-1 flex items-center gap-1.5 rounded-md bg-negative-soft px-2.5 py-1.5 text-[12.5px] text-negative">
-                <AlertTriangle className="size-3.5" /> {early[0]!.message}
+                <AlertTriangle className="size-3.5 shrink-0" />
+                <PrivateText>
+                  {formatWarning(result, early[0]!, basis, (v) => f.money(v, true))}
+                </PrivateText>
               </div>
             ) : null}
             <Rows

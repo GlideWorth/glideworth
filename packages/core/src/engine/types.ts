@@ -513,13 +513,34 @@ export const WarningCode = z.enum([
 ]);
 export type WarningCode = z.infer<typeof WarningCode>;
 
+/**
+ * A money figure inside a warning. `template` writes it as `{token}` (for example `{shortfall}`)
+ * so a display layer can format the nominal amount in the household currency and in the basis
+ * that screen is showing. Flows deflate by the start-of-period index; balances by the end index.
+ */
+export const WarningAmount = z
+  .object({
+    token: z.string(),
+    nominal: z.number(),
+    measure: z.enum(["flow", "stock"]),
+  })
+  .meta({ id: "WarningAmount" });
+export type WarningAmount = z.infer<typeof WarningAmount>;
+
 export const SimWarning = z
   .object({
     code: WarningCode,
     severity: z.enum(["info", "warning", "error"]),
+    /** Plain English, complete on its own. Money in it is nominal, in the household currency. */
     message: z.string(),
     periodIndex: z.number().int().nullable(),
     refs: z.array(z.string()).default([]),
+    /**
+     * `message` with each figure in `amounts` as a `{token}`, so a caller can format it in the money
+     * basis it shows (`warningText`). Set only when the warning quotes money.
+     */
+    template: z.string().optional(),
+    amounts: z.array(WarningAmount).optional(),
   })
   .meta({ id: "SimWarning" });
 export type SimWarning = z.infer<typeof SimWarning>;

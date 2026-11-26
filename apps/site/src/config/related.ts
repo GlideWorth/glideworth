@@ -31,6 +31,45 @@ export const clusters: { subject: string; paths: string[] }[] = [
     subject: "Planning in the Middle East",
     paths: ["/planning/", "/planning/il/", "/planning/ae/", "/planning/es/", "/planning/fr/"],
   },
+  // Country tax explainers follow the country clusters: each guide keeps its neighbours and fills
+  // its free slots with its own articles.
+  {
+    subject: "UK pension tax",
+    paths: [
+      "/blog/do-you-pay-tax-on-the-state-pension/",
+      "/planning/uk/",
+      "/tools/uk-pension-age-calculator/",
+      "/tools/uk-pension-drawdown-calculator/",
+    ],
+  },
+  {
+    subject: "Australian retirement tax",
+    paths: [
+      "/blog/sapto-how-much-can-a-pensioner-earn-tax-free/",
+      "/blog/minimum-pension-drawdown-rates-australia/",
+      "/planning/au/",
+    ],
+  },
+  {
+    subject: "Canadian retirement income",
+    paths: [
+      "/blog/oas-clawback-2026/",
+      "/blog/rrif-and-lif-withdrawal-rates-2026/",
+      "/planning/ca/",
+    ],
+  },
+  {
+    subject: "KiwiSaver tax",
+    paths: ["/blog/kiwisaver-tax-esct-and-pir-rates/", "/planning/nz/"],
+  },
+  {
+    subject: "Retiring from the UAE",
+    paths: [
+      "/blog/uae-retirement-for-expats-dews-and-gratuity/",
+      "/planning/ae/",
+      "/tools/uae-gratuity-calculator/",
+    ],
+  },
   // These pages still have free related slots after their own clusters. Listing the country
   // first makes the slot point at a guide that would otherwise have few inbound links.
   {

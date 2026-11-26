@@ -326,4 +326,16 @@ export function validateReferences(ctx: EngineContext): void {
     );
   for (const id of Object.keys(ctx.plan.accountSettings))
     need(accountIds.has(id), `accountSettings for unknown account '${id}'`, id);
+  ctx.plan.drawdown.order.forEach((e, i) => {
+    if (e.kind !== "proportional" && e.kind !== "fillToCeiling") return;
+    const id = `drawdown.order[${i}]`;
+    accounts(e.accountIds, "drawdown entry", id);
+    if (e.kind === "fillToCeiling")
+      for (const x of e.accountIds)
+        need(
+          ctx.accountById.get(x)?.info.taxTreatment === "tax-deferred",
+          `drawdown entry '${id}' fills a tax ceiling from '${x}', which is not a pre-tax (tax-deferred) account`,
+          id,
+        );
+  });
 }

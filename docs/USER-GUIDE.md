@@ -49,7 +49,12 @@ as spending, as you choose.
 **Drawdown.** When spending exceeds income, money comes out of your accounts in a set order (by default
 cash, then taxable investments, then pensions, then tax-free accounts). You can reorder it, and you can set
 when each account can be touched (pensions cannot be drawn before the minimum pension age, for example).
-Withdrawals are taxed according to the account type.
+Withdrawals are taxed according to the account type. To draw from several accounts in the same year, add an
+entry that draws **accounts together** (in proportion to their balances) or **pre-tax accounts up to a tax
+ceiling**: pensions or traditional IRAs are drawn only while taxable income stays within a band you choose (the
+personal allowance, the basic-rate band, the 12% bracket) or an income you set, for each partner separately where
+income is taxed individually, and the next entry in the order pays the rest. The year detail shows which rule
+decided each withdrawal.
 
 **Today's money versus future money.** Every amount you enter says which it is. "Today's money" (real) is
 what it would buy at today's prices; "future money" (nominal) is the actual number of pounds in that year.

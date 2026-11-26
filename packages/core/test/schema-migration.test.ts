@@ -165,12 +165,12 @@ const acaSizeOf = (plan: { expenses: unknown[] }) => {
 
 describe("schema 5 -> 6: ACA household size 'auto' and dependentAge dates", () => {
   it("is the current version", () => {
-    expect(SCHEMA_VERSION).toBe(6);
+    expect(SCHEMA_VERSION).toBeGreaterThanOrEqual(6);
   });
 
   it("a stored ACA household size is kept as a manual override, and the engine uses it", () => {
     const doc = migrateDocument(v5UsDocument(5));
-    expect(doc.schemaVersion).toBe(6);
+    expect(doc.schemaVersion).toBe(SCHEMA_VERSION);
     const main = doc.plans.find((p) => p.id === SAMPLE_PLAN_ID)!;
     expect(acaSizeOf(main)).toBe(5);
     const r = simulate(buildSimulationInput(doc, SAMPLE_PLAN_ID));
@@ -224,6 +224,8 @@ describe("schema 5 -> 6: ACA household size 'auto' and dependentAge dates", () =
       .map((p) => p.year);
     expect(years[0]).toBe(2035);
     expect(years.at(-1)).toBeLessThanOrEqual(2039);
-    expect(() => migrateDocument({ ...doc, schemaVersion: 7 })).toThrow(/newer than supported/);
+    expect(() => migrateDocument({ ...doc, schemaVersion: SCHEMA_VERSION + 1 })).toThrow(
+      /newer than supported/,
+    );
   });
 });

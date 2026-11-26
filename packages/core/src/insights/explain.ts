@@ -13,6 +13,7 @@ import {
 import { ScenarioError } from "../errors.js";
 import type { PatchOp } from "../schema/changes.js";
 import type { MilestoneCriterion } from "../schema/milestones.js";
+import { describeDrawdownEntry, describeDrawdownRule } from "../schema/strategies.js";
 import type { Explanation, Finding } from "./contracts.js";
 import { fmtMoney, fmtPercent } from "./format.js";
 
@@ -271,7 +272,9 @@ function withdrawalFindings(
           .map((e) =>
             e.kind === "category"
               ? e.category
-              : (nm.get(e.kind === "account" ? e.accountId : e.assetId) ?? "asset"),
+              : e.kind === "account" || e.kind === "realAsset"
+                ? (nm.get(e.kind === "account" ? e.accountId : e.assetId) ?? "asset")
+                : describeDrawdownEntry(e, (id) => nm.get(id) ?? id),
           )
           .join(
             " → ",
@@ -539,10 +542,13 @@ export function explainYear(
     }));
   if (p.taxes.total > 0)
     outflows.push({ label: "Taxes", amount: conv(p.taxes.total), kind: "tax" });
+  const people = new Map(input.household.people.map((x) => [x.id, x.name]));
   const withdrawals: NarrativeLine[] = p.ledger
     .filter((l) => l.kind === "withdrawal")
     .map((l) => ({
-      label: label(l.from),
+      label: l.rule
+        ? `${label(l.from)} (${describeDrawdownRule(l.rule, (id) => people.get(id) ?? id)})`
+        : label(l.from),
       amount: conv(l.amount),
       kind: "withdrawal",
       ...(l.causeId ? { refId: l.causeId } : {}),

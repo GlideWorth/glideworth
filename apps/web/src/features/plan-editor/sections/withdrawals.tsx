@@ -3,8 +3,10 @@
  * withdrawal strategies, flexible spending rules and risk-based guardrails.
  */
 import {
+  ACCOUNT_TYPE_INFO,
   DEFAULT_DRAWDOWN_ORDER,
   type DrawdownCategory,
+  describeDrawdownCeiling,
   type DrawdownEntry,
   type FlexSpending,
   type Plan,
@@ -43,24 +45,53 @@ export function WithdrawalsSection() {
   const order = plan.drawdown.order;
   const setDrawdown = (v: Partial<Plan["drawdown"]>, label: string, key?: string) =>
     update((p) => ({ ...p, drawdown: { ...p.drawdown, ...v } }), label, key);
-  const label = (e: DrawdownEntry) =>
-    e.kind === "category"
-      ? DRAWDOWN_LABEL[e.category]
-      : e.kind === "account"
-        ? (finances.accounts.find((a) => a.id === e.accountId)?.name ?? "Missing account")
-        : (finances.realAssets.find((a) => a.id === e.assetId)?.name ?? "Missing asset");
-  const hint = (e: DrawdownEntry) =>
-    e.kind === "category"
-      ? DRAWDOWN_HINT[e.category]
-      : e.kind === "account"
-        ? "This account specifically, ahead of its category"
-        : "Sold when reached (if “sell if needed” is on)";
-  const key = (e: DrawdownEntry) =>
-    e.kind === "category"
-      ? `c:${e.category}`
-      : e.kind === "account"
-        ? `a:${e.accountId}`
-        : `r:${e.assetId}`;
+  const accountName = (id: string) =>
+    finances.accounts.find((a) => a.id === id)?.name ?? "Missing account";
+  const preTax = finances.accounts.filter(
+    (a) => ACCOUNT_TYPE_INFO[a.type]?.taxTreatment === "tax-deferred",
+  );
+  const label = (e: DrawdownEntry) => {
+    switch (e.kind) {
+      case "category":
+        return DRAWDOWN_LABEL[e.category];
+      case "account":
+        return accountName(e.accountId);
+      case "realAsset":
+        return finances.realAssets.find((a) => a.id === e.assetId)?.name ?? "Missing asset";
+      case "proportional":
+        return `Together: ${e.accountIds.map(accountName).join(" + ")}`;
+      case "fillToCeiling":
+        return `Pre-tax up to the ${describeDrawdownCeiling(e.ceiling)}`;
+    }
+  };
+  const hint = (e: DrawdownEntry) => {
+    switch (e.kind) {
+      case "category":
+        return DRAWDOWN_HINT[e.category];
+      case "account":
+        return "This account specifically, ahead of its category";
+      case "realAsset":
+        return "Sold when reached (if “sell if needed” is on)";
+      case "proportional":
+        return "Drawn in the same year, in proportion to their balances";
+      case "fillToCeiling":
+        return "Only while taxable income stays under the ceiling, then the next entry";
+    }
+  };
+  const key = (e: DrawdownEntry, i: number) => {
+    switch (e.kind) {
+      case "category":
+        return `c:${e.category}`;
+      case "account":
+        return `a:${e.accountId}`;
+      case "realAsset":
+        return `r:${e.assetId}`;
+      default:
+        return `${e.kind}:${i}`;
+    }
+  };
+  const replaceAt = (index: number, e: DrawdownEntry, what: string) =>
+    setDrawdown({ order: order.map((x, i) => (i === index ? e : x)) }, what, `entry-${index}`);
   const missingCats = ALL_CATEGORIES.filter(
     (c) => !order.some((e) => e.kind === "category" && e.category === c),
   );
@@ -110,6 +141,47 @@ export function WithdrawalsSection() {
                     </ActionMenuItem>
                   ))}
                   <ActionMenuSeparator />
+                  <ActionMenuLabel>Several accounts in one year</ActionMenuLabel>
+                  <ActionMenuItem
+                    disabled={preTax.length === 0}
+                    onSelect={() =>
+                      setDrawdown(
+                        {
+                          order: [
+                            {
+                              kind: "fillToCeiling",
+                              ceiling: { kind: "bracket", rate: 0 },
+                              accountIds: [],
+                            },
+                            ...order,
+                          ],
+                        },
+                        "Add fill to a tax ceiling",
+                      )
+                    }
+                  >
+                    Pre-tax accounts up to a tax ceiling
+                  </ActionMenuItem>
+                  <ActionMenuItem
+                    disabled={finances.accounts.length < 2}
+                    onSelect={() =>
+                      setDrawdown(
+                        {
+                          order: [
+                            {
+                              kind: "proportional",
+                              accountIds: finances.accounts.slice(0, 2).map((a) => a.id),
+                            },
+                            ...order,
+                          ],
+                        },
+                        "Add accounts drawn together",
+                      )
+                    }
+                  >
+                    Accounts drawn together (by balance)
+                  </ActionMenuItem>
+                  <ActionMenuSeparator />
                   <ActionMenuLabel>A specific account</ActionMenuLabel>
                   {finances.accounts
                     .filter((a) => !order.some((e) => e.kind === "account" && e.accountId === a.id))
@@ -151,7 +223,7 @@ export function WithdrawalsSection() {
           <SortableList
             aria-label="Drawdown order"
             items={order}
-            getId={key}
+            getId={(e) => key(e, order.indexOf(e))}
             getLabel={label}
             onReorder={(from, to) =>
               setDrawdown({ order: moveItem(order, from, to) }, "Reorder drawdown")
@@ -166,6 +238,13 @@ export function WithdrawalsSection() {
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[13px] font-medium">{label(e)}</div>
                   <div className="truncate text-[11.5px] text-ink-3">{hint(e)}</div>
+                  {e.kind === "proportional" || e.kind === "fillToCeiling" ? (
+                    <BlendedEntryEditor
+                      entry={e}
+                      accounts={e.kind === "fillToCeiling" ? preTax : finances.accounts}
+                      onChange={(next) => replaceAt(index, next, "Edit drawdown entry")}
+                    />
+                  ) : null}
                 </div>
                 <Button
                   size="icon"
@@ -826,5 +905,101 @@ function GuardrailsCard() {
         ) : null}
       </div>
     </Card>
+  );
+}
+
+/**
+ * Settings of a blended drawdown entry: which accounts, and for a fill entry its ceiling. A
+ * proportional entry keeps at least two accounts; a fill entry with none ticked uses every pre-tax
+ * account.
+ */
+function BlendedEntryEditor({
+  entry,
+  accounts,
+  onChange,
+}: {
+  entry: Extract<DrawdownEntry, { kind: "proportional" | "fillToCeiling" }>;
+  accounts: { id: string; name: string }[];
+  onChange: (e: DrawdownEntry) => void;
+}) {
+  const ids = entry.accountIds;
+  const toggle = (id: string) => {
+    const next = ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
+    if (entry.kind === "proportional" && next.length < 2) return;
+    onChange({ ...entry, accountIds: next });
+  };
+  return (
+    <div className="mt-2 flex flex-col gap-2">
+      {entry.kind === "fillToCeiling" ? (
+        <div className="grid gap-2 sm:grid-cols-2">
+          <EnumField<"bracket" | "income">
+            label="Ceiling"
+            value={entry.ceiling.kind}
+            onChange={(k) =>
+              onChange({
+                ...entry,
+                ceiling:
+                  k === "bracket"
+                    ? { kind: "bracket", rate: 0 }
+                    : { kind: "income", amount: { value: 50_000, basis: "real" } },
+              })
+            }
+            options={[
+              { value: "bracket", label: "Top of a tax band" },
+              { value: "income", label: "A taxable income I choose" },
+            ]}
+          />
+          {entry.ceiling.kind === "bracket" ? (
+            <FormField
+              label="Band rate"
+              hint="0% = the tax-free allowance; e.g. 20% = the UK basic-rate band, 12% = the US 12% bracket. Per person where income is taxed individually."
+            >
+              {(id) => (
+                <PercentInput
+                  id={id}
+                  value={entry.ceiling.kind === "bracket" ? entry.ceiling.rate : 0}
+                  onValueChange={(rate) =>
+                    onChange({ ...entry, ceiling: { kind: "bracket", rate: rate ?? 0 } })
+                  }
+                />
+              )}
+            </FormField>
+          ) : (
+            <FormField
+              label="Taxable income up to"
+              hint="Each year, per person where taxed individually."
+            >
+              {(id) => (
+                <AmountInput
+                  id={id}
+                  value={
+                    entry.ceiling.kind === "income"
+                      ? entry.ceiling.amount
+                      : { value: 0, basis: "real" }
+                  }
+                  onChange={(amount) => onChange({ ...entry, ceiling: { kind: "income", amount } })}
+                />
+              )}
+            </FormField>
+          )}
+        </div>
+      ) : null}
+      <div className="flex flex-wrap gap-1" role="group" aria-label="Accounts in this entry">
+        {accounts.map((a) => (
+          <Button
+            key={a.id}
+            size="sm"
+            variant={ids.includes(a.id) ? "subtle" : "ghost"}
+            aria-pressed={ids.includes(a.id)}
+            onClick={() => toggle(a.id)}
+          >
+            {a.name}
+          </Button>
+        ))}
+      </div>
+      {entry.kind === "fillToCeiling" && ids.length === 0 ? (
+        <p className="text-[11.5px] text-ink-3">None ticked: every pre-tax account.</p>
+      ) : null}
+    </div>
   );
 }

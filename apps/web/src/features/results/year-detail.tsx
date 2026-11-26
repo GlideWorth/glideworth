@@ -3,6 +3,7 @@
  * expenses, taxes, flows, withdrawals and an evidence-backed narrative.
  */
 import {
+  describeDrawdownRule,
   type Finding,
   type PeriodResult,
   type ProjectionResult,
@@ -495,7 +496,9 @@ function YearDetailBody({
             ) : null}
             <Rows
               rows={withdrawals.map((e) => [
-                name(e.fromRef, e.fromLabel),
+                e.rule
+                  ? `${name(e.fromRef, e.fromLabel)} (${describeDrawdownRule(e.rule, (id) => input?.household.people.find((x) => x.id === id)?.name ?? id)})`
+                  : name(e.fromRef, e.fromLabel),
                 conv(p, e.amount, basis, "flow"),
               ])}
               money={plain}

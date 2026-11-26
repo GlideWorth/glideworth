@@ -295,6 +295,31 @@ describe("read and compute tools", () => {
     expect(Object.keys(sim.years[0]).sort()).toEqual(["ages", "netWorth", "year"]);
   });
 
+  it("preview_changes accepts blended drawdown entries (fill to a tax ceiling, accounts together)", async () => {
+    h = setup();
+    const c = await httpClient(READ_KEY);
+    const prev = await call<Json>(c, "preview_changes", {
+      planId: "plan-main",
+      ops: [
+        {
+          op: "add",
+          path: "/drawdown/order/0",
+          value: { kind: "fillToCeiling", ceiling: { kind: "bracket", rate: 0.12 } },
+        },
+        {
+          op: "add",
+          path: "/drawdown/order/1",
+          value: { kind: "proportional", accountIds: ["acc-brokerage", "acc-jordan-roth"] },
+        },
+      ],
+    });
+    expect(prev.__raw.isError).toBeFalsy();
+    expect(prev.preview.after).toBeDefined();
+    // The two ops are one change to the drawdown order, described in words.
+    expect(JSON.stringify(prev.changes)).toContain("up to the top of the 12% band");
+    expect(JSON.stringify(prev.changes)).toContain("(in proportion to balances)");
+  });
+
   it("runs Monte Carlo (waiting for the job), compare, explain, audit, sensitivity, solvers, tax and what-if previews", async () => {
     h = setup({
       deps: {

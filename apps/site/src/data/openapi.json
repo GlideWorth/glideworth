@@ -2713,7 +2713,7 @@
      "schemaVersion": {
       "type": "number",
       "enum": [
-       6
+       7
       ]
      },
      "exportedAt": {
@@ -8707,6 +8707,53 @@
        "kind",
        "assetId"
       ]
+     },
+     {
+      "type": "object",
+      "properties": {
+       "kind": {
+        "type": "string",
+        "enum": [
+         "proportional"
+        ]
+       },
+       "accountIds": {
+        "type": "array",
+        "items": {
+         "$ref": "#/components/schemas/Id"
+        },
+        "minItems": 2
+       }
+      },
+      "required": [
+       "kind",
+       "accountIds"
+      ]
+     },
+     {
+      "type": "object",
+      "properties": {
+       "kind": {
+        "type": "string",
+        "enum": [
+         "fillToCeiling"
+        ]
+       },
+       "ceiling": {
+        "$ref": "#/components/schemas/DrawdownCeiling"
+       },
+       "accountIds": {
+        "type": "array",
+        "items": {
+         "$ref": "#/components/schemas/Id"
+        },
+        "default": []
+       }
+      },
+      "required": [
+       "kind",
+       "ceiling"
+      ]
      }
     ]
    },
@@ -8721,6 +8768,46 @@
      "hsa",
      "education",
      "real-assets"
+    ]
+   },
+   "DrawdownCeiling": {
+    "oneOf": [
+     {
+      "type": "object",
+      "properties": {
+       "kind": {
+        "type": "string",
+        "enum": [
+         "bracket"
+        ]
+       },
+       "rate": {
+        "$ref": "#/components/schemas/Rate"
+       }
+      },
+      "required": [
+       "kind",
+       "rate"
+      ]
+     },
+     {
+      "type": "object",
+      "properties": {
+       "kind": {
+        "type": "string",
+        "enum": [
+         "income"
+        ]
+       },
+       "amount": {
+        "$ref": "#/components/schemas/Amount"
+       }
+      },
+      "required": [
+       "kind",
+       "amount"
+      ]
+     }
     ]
    },
    "WithdrawalStrategy": {
@@ -17648,6 +17735,37 @@
      },
      "causeId": {
       "type": "string"
+     },
+     "rule": {
+      "type": "object",
+      "properties": {
+       "kind": {
+        "type": "string",
+        "enum": [
+         "proportional",
+         "fill-to-ceiling"
+        ]
+       },
+       "entry": {
+        "type": "integer"
+       },
+       "owner": {
+        "type": "string"
+       },
+       "ceiling": {
+        "type": "string"
+       },
+       "bandRate": {
+        "type": "number"
+       },
+       "room": {
+        "type": "number"
+       }
+      },
+      "required": [
+       "kind",
+       "entry"
+      ]
      }
     },
     "required": [

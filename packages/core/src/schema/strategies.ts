@@ -4,14 +4,87 @@ import { DrawdownCategory } from "./accounts.js";
 import { Amount, Fraction, Id, Rate } from "./primitives.js";
 import { DateRef, TimeRange } from "./time.js";
 
+/**
+ * The taxable-income ceiling of a `fillToCeiling` drawdown entry. Uses only thresholds already in
+ * the tax tables: `bracket` keeps each person's (or, where income is taxed jointly, the household's)
+ * ordinary income within the band taxed at `rate` (0 = within the personal allowance / standard
+ * deduction; 0.2 = within the UK basic-rate band; 0.12 = within the US 12% bracket); `income` keeps
+ * it at or below an amount you choose (taxable income, or AGI where the tax system reports one).
+ */
+export const DrawdownCeiling = z
+  .discriminatedUnion("kind", [
+    z.object({ kind: z.literal("bracket"), rate: Rate }),
+    z.object({ kind: z.literal("income"), amount: Amount }),
+  ])
+  .meta({ id: "DrawdownCeiling" });
+export type DrawdownCeiling = z.infer<typeof DrawdownCeiling>;
+
 export const DrawdownEntry = z
   .discriminatedUnion("kind", [
     z.object({ kind: z.literal("category"), category: DrawdownCategory }),
     z.object({ kind: z.literal("account"), accountId: Id }),
     z.object({ kind: z.literal("realAsset"), assetId: Id }),
+    /** Draw from these accounts together, each in proportion to its withdrawable balance. */
+    z.object({ kind: z.literal("proportional"), accountIds: z.array(Id).min(2) }),
+    /**
+     * Draw from pre-tax (tax-deferred) accounts only while taxable income stays within `ceiling`,
+     * then pass the rest of the need to the next entry. Per person where the tax system taxes
+     * individuals (the lowest-taxed person first), for the household where it taxes jointly. The
+     * accounts stay available to later entries. Empty `accountIds` = every tax-deferred account.
+     */
+    z.object({
+      kind: z.literal("fillToCeiling"),
+      ceiling: DrawdownCeiling,
+      accountIds: z.array(Id).default([]),
+    }),
   ])
   .meta({ id: "DrawdownEntry" });
 export type DrawdownEntry = z.infer<typeof DrawdownEntry>;
+
+const grouped = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+/** A ceiling in words, for the ledger, the trace and change descriptions. */
+export function describeDrawdownCeiling(c: DrawdownCeiling): string {
+  if (c.kind === "bracket")
+    return c.rate === 0
+      ? "tax-free allowance (0% band)"
+      : `top of the ${+(c.rate * 100).toFixed(2)}% band`;
+  return `taxable income of ${grouped(c.amount.value)}${c.amount.basis === "nominal" ? " (nominal)" : " (today's money)"}`;
+}
+
+/** One drawdown entry in words; `name` turns an account or asset id into its name. */
+export function describeDrawdownEntry(e: DrawdownEntry, name: (id: string) => string): string {
+  switch (e.kind) {
+    case "category":
+      return e.category;
+    case "account":
+      return name(e.accountId);
+    case "realAsset":
+      return name(e.assetId);
+    case "proportional":
+      return `${e.accountIds.map(name).join(" + ")} (in proportion to balances)`;
+    case "fillToCeiling":
+      return `${e.accountIds.length ? e.accountIds.map(name).join(" + ") : "pre-tax accounts"} up to the ${describeDrawdownCeiling(e.ceiling)}`;
+  }
+}
+
+/** Why a blended drawdown entry drew a ledger withdrawal, in words (see LedgerEntry.rule). */
+export function describeDrawdownRule(
+  rule: {
+    kind: "proportional" | "fill-to-ceiling";
+    entry: number;
+    owner?: string | undefined;
+    ceiling?: string | undefined;
+    bandRate?: number | undefined;
+  },
+  personName: (id: string) => string = (id) => id,
+): string {
+  if (rule.kind === "proportional")
+    return `drawdown entry ${rule.entry}: in proportion to balances`;
+  const who = rule.owner ? `${personName(rule.owner)}'s` : "the household's";
+  const band = rule.bandRate === undefined ? "" : ` ${+(rule.bandRate * 100).toFixed(2)}% band`;
+  return `drawdown entry ${rule.entry}: fills ${who}${band}, up to the ${rule.ceiling ?? "ceiling"}`;
+}
 
 export const DEFAULT_DRAWDOWN_ORDER: DrawdownEntry[] = [
   { kind: "category", category: "cash" },
@@ -30,7 +103,7 @@ export const DrawdownSettings = z
     order: z.array(DrawdownEntry).default(DEFAULT_DRAWDOWN_ORDER),
     /** Within a category: proportional to balance, or in list order. */
     withinCategory: z.enum(["ordered", "proportional"]).default("ordered"),
-    /** Couples: split withdrawals across owners by balance (PL v4.6.0). Not implemented yet (workstream a). */
+    /** Couples: split each category's withdrawal across owners in proportion to their balances. */
     splitByOwner: z.boolean().default(false),
     /** Minimum cash buffer kept before drawing other accounts. */
     cashBuffer: Amount.optional(),

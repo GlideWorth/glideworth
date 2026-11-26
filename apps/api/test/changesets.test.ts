@@ -134,4 +134,46 @@ describe("change sets", () => {
     ).toBe(403);
     expect((await h.call(`/api/v1/change-sets/${cs.id}`, { key: READ_KEY })).status).toBe(200);
   });
+
+  it("sets blended drawdown entries (fill to a tax ceiling, accounts drawn together) through a change set", async () => {
+    const blended = [
+      {
+        op: "add",
+        path: "/drawdown/order/0",
+        value: {
+          kind: "fillToCeiling",
+          ceiling: { kind: "bracket", rate: 0.12 },
+          accountIds: ["acc-avery-401k"],
+        },
+      },
+      {
+        op: "add",
+        path: "/drawdown/order/1",
+        value: { kind: "proportional", accountIds: ["acc-brokerage", "acc-jordan-roth"] },
+      },
+    ];
+    const r = await propose({ ops: blended, summary: "Fill the 12% bracket first" });
+    expect(r.status).toBe(201);
+    expect(r.json.preview!.after).toBeDefined();
+    const applied = await h.call<{
+      plan: { drawdown: { order: { kind: string }[] } };
+    }>(`/api/v1/change-sets/${r.json.id}/apply`, { method: "POST" });
+    expect(applied.status).toBe(200);
+    expect(applied.json.plan.drawdown.order.slice(0, 2).map((e) => e.kind)).toEqual([
+      "fillToCeiling",
+      "proportional",
+    ]);
+    // A proportional entry needs at least two accounts: the schema rejects one.
+    const bad = await propose({
+      ops: [
+        {
+          op: "add",
+          path: "/drawdown/order/0",
+          value: { kind: "proportional", accountIds: ["acc-brokerage"] },
+        },
+      ],
+    });
+    expect(bad.status).toBeGreaterThanOrEqual(400);
+    expect(bad.status).toBeLessThan(500);
+  });
 });

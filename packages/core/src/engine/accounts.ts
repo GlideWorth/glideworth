@@ -36,6 +36,7 @@ import { type MonthIndex, monthAtAge, monthOfYear, parseMonth, yearOf } from "./
 import { resolveRef } from "./milestones.js";
 import { rulesFor } from "./rules.js";
 import { scheduleAt } from "./schedule.js";
+import type { LedgerEntry } from "./types.js";
 
 /** UK lump-sum allowance (tax-free pension cash per person, frozen in nominal terms; UK tax data). */
 export const UK_LUMP_SUM_ALLOWANCE = pickYear(UK_TAX_YEARS, 2026).pensions.lumpSumAllowance;
@@ -299,6 +300,8 @@ export interface WithdrawOptions {
   asTransfer?: boolean;
   /** Roth conversion (tax-deferred -> tax-free): reported to the tax plug-ins as a conversion. */
   isConversion?: boolean;
+  /** Drawdown rule recorded on the ledger entry (proportional / fill-to-ceiling entries). */
+  rule?: LedgerEntry["rule"];
 }
 
 const DEPLETION_CAUSE: Record<WithdrawOptions["purpose"], string> = {
@@ -349,6 +352,27 @@ function taxFreeShare(a: AccountState): number {
   if (b.taxFreeWithdrawalShare !== undefined) return b.taxFreeWithdrawalShare;
   const method = b.ukDrawdownMethod ?? (isUkPension(a) ? "ufpls" : undefined);
   return method === "ufpls" ? 0.25 : 0;
+}
+
+/**
+ * Gross withdrawal from an account whose taxable part is about `taxable`, following `withdraw`'s
+ * rules for tax-deferred accounts (tax-free share, UK lump sum allowance, PCLS and early access).
+ * IRA basis is ignored, so the estimate never draws more taxable income than asked.
+ */
+export function grossForTaxable(
+  ctx: EngineContext,
+  ps: PeriodState,
+  a: AccountState,
+  taxable: number,
+): number {
+  if (a.info.taxTreatment !== "tax-deferred") return taxable;
+  const ukPension = isUkPension(a) || a.behaviour.ukDrawdownMethod !== undefined;
+  if (a.behaviour.ukDrawdownMethod === "pcls" || (ukPension && isEarly(ctx, a, ps.bounds.start)))
+    return taxable;
+  const share = Math.min(taxFreeShare(a), 1 - 1e-9);
+  if (share <= 0) return taxable;
+  const gross = taxable / (1 - share);
+  return ukPension ? Math.min(gross, taxable + lsaRemaining(ctx, a.owner, ps.bounds.year)) : gross;
 }
 
 /** Fraction of the period a flow is invested for under each cash-flow timing convention. */
@@ -558,6 +582,7 @@ export function withdraw(
     amount: w,
     kind: o.asTransfer ? "transfer" : "withdrawal",
     causeId: o.causeId ?? a.def.id,
+    ...(o.rule ? { rule: o.rule } : {}),
   });
   traceEvent(
     ctx,

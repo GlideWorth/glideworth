@@ -370,6 +370,22 @@ export const LedgerEntry = z
     ]),
     /** Flow / event / account id that caused the movement. */
     causeId: z.string().optional(),
+    /** The drawdown rule that decided a withdrawal (only for `proportional` / `fillToCeiling` entries). */
+    rule: z
+      .object({
+        kind: z.enum(["proportional", "fill-to-ceiling"]),
+        /** Position of the entry in `plan.drawdown.order` (1 = first). */
+        entry: z.number().int(),
+        /** fill-to-ceiling: whose taxable income was measured (absent where it is taxed jointly). */
+        owner: z.string().optional(),
+        /** fill-to-ceiling: the ceiling, in words ("top of the 20% band", "income 50,000"). */
+        ceiling: z.string().optional(),
+        /** fill-to-ceiling: the marginal rate of the band this withdrawal filled. */
+        bandRate: z.number().optional(),
+        /** fill-to-ceiling: taxable income that still fitted in that band before this withdrawal. */
+        room: z.number().optional(),
+      })
+      .optional(),
   })
   .meta({ id: "LedgerEntry" });
 export type LedgerEntry = z.infer<typeof LedgerEntry>;

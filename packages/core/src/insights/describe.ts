@@ -4,7 +4,7 @@ import type { ExpenseEvent, IncomeEvent } from "../schema/events.js";
 import type { Flow } from "../schema/flows.js";
 import type { Milestone, MilestoneCriterion } from "../schema/milestones.js";
 import type { Plan } from "../schema/plan.js";
-import type { DrawdownEntry } from "../schema/strategies.js";
+import { type DrawdownEntry, describeDrawdownEntry } from "../schema/strategies.js";
 import type { DateRef, RateSpec } from "../schema/time.js";
 import {
   ASSUMPTION_LABELS,
@@ -181,9 +181,7 @@ function frequencyPhrase(entity: unknown): Parameters<typeof fmtAmount>[1] {
 }
 
 function drawdownLabel(e: DrawdownEntry, f: FormatContext): string {
-  if (e.kind === "category") return e.category;
-  if (e.kind === "account") return f.entities?.[e.accountId] ?? e.accountId;
-  return f.entities?.[e.assetId] ?? e.assetId;
+  return describeDrawdownEntry(e, (id) => f.entities?.[id] ?? id);
 }
 
 /** Turn one op into a PlanChange (null for ops with nothing to say, like `test`). */

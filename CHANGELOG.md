@@ -19,6 +19,12 @@ listing every commit. Product news for people using the hosted service is on
   Glideworth's side (engine, tax tables, market history), the passage of time, updated balances, household
   details and each plan edit, in a stated order. The dashboard's check-in card shows it. Check-ins taken before
   this release show the total only.
+- **Draw from several accounts in the same year.** Two new, opt-in drawdown-order entries: `proportional` draws
+  chosen accounts together in proportion to their balances, and `fillToCeiling` draws pre-tax accounts only while
+  taxable income stays within a ceiling (a tax band rate from the tax tables, or an income), per person where
+  income is taxed individually and lowest band first, then passes the rest to the next entry. Each withdrawal's
+  ledger entry records the rule (`rule`). Existing plans give the same results. Document schema version 7 (no
+  data change).
 - **Interactive views in ChatGPT and Claude** (MCP Apps): Monte Carlo and projections, what-if and plan
   comparisons, solver answers, change-set reviews, one year's cash flow and tax over time render as interactive
   views. The view's data travels in the tool result's `_meta["glideworth/widget"]`; the text the model reads is

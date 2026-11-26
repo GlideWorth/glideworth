@@ -11,7 +11,7 @@ import { Timestamp } from "./primitives.js";
 import { ProgressSnapshot, UserSettings } from "./progress-settings.js";
 
 /** Bump when a breaking schema change ships, and add a migration below. */
-export const SCHEMA_VERSION = 6 as const;
+export const SCHEMA_VERSION = 7 as const;
 
 /** The `app` marker every document is written with. */
 export const DOCUMENT_APP = "glideworth" as const;
@@ -100,6 +100,14 @@ export const MIGRATIONS: Migration[] = [
       "ACA household size may be 'auto' (the new default for new ACA expenses) and a DateRef may follow a dependent's age ('dependentAge'). Stored data is unchanged: an ACA expense saved with a household size keeps that number, now read as a manual override, so its results do not move.",
     // Additive change: nothing to rewrite. The version bump stops an older build from reading a
     // document that uses 'auto' or 'dependentAge'.
+    up: (raw) => raw,
+  },
+  {
+    from: 6,
+    describe:
+      "the drawdown order may contain 'proportional' (several accounts drawn together by balance) and 'fillToCeiling' (pre-tax accounts drawn up to a taxable-income ceiling) entries; no data change",
+    // Additive change: nothing to rewrite. The version bump stops an older build from reading a
+    // document whose drawdown order uses the new entries.
     up: (raw) => raw,
   },
 ];

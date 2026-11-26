@@ -6,6 +6,7 @@ import type {
   OutcomeSummary,
   Plan,
   ProjectionResult,
+  RothConversionPlan,
   StrategyComparison,
   ValueBasis,
   YearNarrative,
@@ -396,6 +397,41 @@ export function compactStrategies(c: StrategyComparison, detail: Detail = "summa
     ranked: c.ranked.slice(0, 6).map(row),
     ...(c.ranked.length > 6 ? { rankedTruncated: c.ranked.length } : {}),
     best: c.best ? { ...row(c.best), description: c.best.description, patch: c.best.patch } : null,
+  };
+}
+
+/**
+ * A Roth conversion plan an agent can relay: the verdict and sentence, the comparison, and the years
+ * with a conversion (each with its reason). Zero years are counted, not listed, unless detail is 'full'.
+ */
+export function compactRothPlan(r: RothConversionPlan, detail: Detail = "summary") {
+  if (detail === "full") return r;
+  const converting = r.schedule.filter((s) => s.amount > 0);
+  return {
+    status: r.status,
+    verdict: r.verdict,
+    summary: r.summary,
+    outcomes: r.outcomes.map((o) => ({
+      ...o,
+      lifetimeTaxReal: roundMoney(o.lifetimeTaxReal),
+      afterTaxEndWealthReal: roundMoney(o.afterTaxEndWealthReal),
+      endNetWorthReal: roundMoney(o.endNetWorthReal),
+      totalConvertedReal: roundMoney(o.totalConvertedReal),
+    })),
+    targets: r.targets,
+    years: converting.map((s) => ({
+      year: s.year,
+      personId: s.personId,
+      amount: roundMoney(s.amount),
+      binding: s.binding,
+      roomLeft: s.roomLeft === null ? null : roundMoney(s.roomLeft),
+      taxOnConversion: roundMoney(s.taxOnConversion),
+      reason: s.reason,
+    })),
+    yearsWithoutConversion: r.schedule.length - converting.length,
+    ...(r.patch.length ? { patch: r.patch } : {}),
+    assumptions: r.assumptions,
+    converged: r.converged,
   };
 }
 

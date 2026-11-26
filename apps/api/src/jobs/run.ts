@@ -21,6 +21,7 @@ export const JOB_KINDS = [
   "result-change",
   "tax-strategy",
   "strategy-matrix",
+  "roth-conversion-plan",
   /** Internal: one slice of a sharded Monte Carlo run (never submitted through the API). */
   "mc-shard",
   /** Internal: deterministic projection (used to exercise the worker pipeline). */
@@ -121,6 +122,8 @@ export async function runJob(spec: JobSpec, hooks: JobHooks, deps: CoreDeps): Pr
         { successRate: params.successRate !== false },
         solverDeps,
       );
+    case "roth-conversion-plan":
+      return deps.planRothConversions(input, params.request, solverDeps);
     case "projection":
       return deps.simulate(input);
   }

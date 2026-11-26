@@ -13,6 +13,8 @@ import {
   type PlanDiff,
   type ProjectionResult,
   type RiskGuardrails,
+  RothConversionPlanRequest,
+  type RothConversionPlanRequest as RothConversionPlanRequestInput,
   type SimulationInput,
   SimulationOptions,
   type SimulationOptionsInput,
@@ -382,6 +384,34 @@ export class SimulationService {
           hv: householdVersion,
           mc,
         }),
+      },
+      actor,
+    });
+  }
+
+  /**
+   * Roth conversion plan (US): a conversion amount per year and person with the reason, compared with
+   * no conversions. A job: the planner runs the engine many times. Read-only; its `patch` is applied
+   * only through a change set.
+   */
+  startRothConversionPlan(
+    planId: string,
+    raw: RothConversionPlanRequestInput,
+    actor: Actor,
+  ): JobView {
+    const plan = this.plans.get(planId);
+    const request = RothConversionPlanRequest.parse(raw ?? {});
+    const { input, plan: stored, householdVersion } = this.inputFor(planId, { trace: "off" });
+    const mc = request.successRate ? this.mcSettings(plan, undefined, false) : null;
+    return this.jobs.submit({
+      kind: "roth-conversion-plan",
+      planId,
+      planVersion: stored.version,
+      input: mc ? { ...input, plan: { ...input.plan, monteCarlo: mc } } : input,
+      params: { request, maxEvaluations: request.maxEvaluations },
+      cache: {
+        kind: "solver",
+        hash: hashOf({ kind: "roth-conversion-plan", request, hv: householdVersion, mc }),
       },
       actor,
     });

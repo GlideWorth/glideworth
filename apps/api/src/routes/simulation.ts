@@ -6,6 +6,7 @@ import {
   MonteCarloResult,
   Plan,
   ProjectionResult,
+  RothConversionPlanRequest,
   SimulationInput,
 } from "@glideworth/core";
 import { z } from "@hono/zod-openapi";
@@ -178,6 +179,14 @@ export function simulationRoutes({ app, svc }: RouteCtx) {
         "Compare tax strategies (drawdown order, UK allowance use / lump-sum timing, US bracket filling) or your own candidate patches (async job)",
       schema: TaxStrategyRequest,
       start: (s, id, b, a) => s.sim.startTaxStrategy(id, b, a),
+    },
+    {
+      seg: "solve/roth-conversions",
+      op: "planRothConversions",
+      summary:
+        "Roth conversion plan (US): an amount per year and person, filling the room under a bracket, IRMAA tier or the ACA limit after all other income, with the reason, the tax, and a comparison with no conversions (async job; estimates, not advice)",
+      schema: RothConversionPlanRequest,
+      start: (s, id, b, a) => s.sim.startRothConversionPlan(id, b, a),
     },
     {
       seg: "insights/strategy-matrix",

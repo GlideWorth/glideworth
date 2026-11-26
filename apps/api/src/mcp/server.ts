@@ -29,6 +29,7 @@ import {
   compactPlan,
   compactProjection,
   compactSolver,
+  compactRothPlan,
   compactStrategies,
   compactYearNarrative,
   outcomeOf,
@@ -89,7 +90,7 @@ export const SERVER_INSTRUCTIONS = [
   "START: get_plan_summary (one compact call: plan + outcome; planId defaults to the main plan, householdId to the only household). Use ids exactly as returned by list_* tools.",
   'COMMON QUESTIONS: "chance of success / why does it fail" -> run_monte_carlo (read failureAnalysis) then explain_year on the first failing year; "how much can I spend" -> solve_max_spending; "retire N years earlier" -> preview_whatif early-retirement, create_branch_from_template, compare_plans; "problems with my assumptions" -> audit_plan (each finding may carry a suggested change you can preview with preview_changes); "update balances" -> update_account_balances.',
   "MORE ANALYSIS: strategy_matrix, income_by_tax_rate. MULTI-CURRENCY: list_fx_rates / set_fx_rate. CHECK-INS: what_changed_since_checkin, explain_result_change (why a result moved, by cause), get_plan_health_history, list_notifications; create_share_link for read-only sharing.",
-  "ANALYSE: simulate_plan (deterministic), run_monte_carlo (chance of success), explain_projection / explain_year(s) / explain_difference, audit_plan, sensitivity, compare_plans, solve_* (max spending, earliest retirement, required savings / portfolio, safe withdrawal rate), evaluate_guardrails / guyton_klinger, optimise_tax_strategy.",
+  "ANALYSE: simulate_plan (deterministic), run_monte_carlo (chance of success), explain_projection / explain_year(s) / explain_difference, audit_plan, sensitivity, compare_plans, solve_* (max spending, earliest retirement, required savings / portfolio, safe withdrawal rate), evaluate_guardrails / guyton_klinger, optimise_tax_strategy, plan_roth_conversions (US: a conversion amount per year with the reason).",
   "WHAT-IF: list_whatif_templates -> preview_whatif (nothing stored) -> create_branch_from_template; survivor_scenarios for couples.",
   "ASSETS ABROAD: the household lives in one country for the whole plan; accounts, property and income in another country are taxed there as a non-resident, with treaty relief at home. tax_by_country (rows by country and basis), explain_item_taxation (how one item is taxed and why), cross_border_rules (non-resident rules, treaties, wrapper recognition).",
   "DATA: export_table / export_report for tables and report data; preview_csv_import (dry run) before apply_csv_import; balance history per account (a spreadsheet of dates x accounts): preview_balance_history_import before apply_balance_history_import.",
@@ -1614,6 +1615,58 @@ export function createMcpServer(ctx: McpContext): McpServer {
     );
 
     tool(
+      "plan_roth_conversions",
+      {
+        title: "Plan Roth conversions",
+        description:
+          "US plans: propose a Roth conversion amount for each year and person. Each amount fills the room left under a ceiling after all the year's other income (wages, pensions, taxable Social Security, interest, dividends, gains, RMDs): the top of a federal bracket, optionally an IRMAA tier (from age 63), and the ACA premium tax credit limit in marketplace years. Each year says what bound it, the room left and the tax on the conversion. Compares with no conversions (and the plan's current conversions) on lifetime tax, after-tax wealth at the end and success, and says plainly when no conversions is better. Omit `targets` to let it choose the bracket per block of years. A job. Read-only: to apply, pass `patch` to propose_change_set and show the user. Estimates, not advice.",
+        input: {
+          planId,
+          targets: z
+            .array(
+              z.object({
+                personId: z.string().optional(),
+                fromYear: z.number().int().optional(),
+                toYear: z.number().int().optional(),
+                bracketRate: z.number().min(0).max(1).nullable(),
+              }),
+            )
+            .max(200)
+            .optional()
+            .describe(
+              "Your ceilings by person and year (later entries win); bracketRate 0.22 = up to the top of the 22% bracket, null = no conversion. Omit to let the planner choose.",
+            ),
+          irmaaTier: z
+            .number()
+            .int()
+            .min(1)
+            .max(5)
+            .nullable()
+            .default(null)
+            .describe("Keep MAGI within this IRMAA tier (1 = no surcharge) when someone is 63+."),
+          aca: z
+            .boolean()
+            .default(true)
+            .describe("Stay under the ACA subsidy limit in marketplace years."),
+          fromYear: z.number().int().optional(),
+          toYear: z.number().int().optional(),
+          objective: z.enum(["afterTaxEndWealth", "lifetimeTax"]).default("afterTaxEndWealth"),
+          successRate: z
+            .boolean()
+            .default(false)
+            .describe("Also run Monte Carlo per compared plan (slower)."),
+          detail,
+          wait: waitSeconds,
+        },
+        hint: { readOnly: true, idempotent: true },
+      },
+      async ({ planId, detail, wait, ...request }, extra) => {
+        const job = services.sim.startRothConversionPlan(planId, request, actor);
+        return jobOut(await awaitJob(job, wait, extra), (r) => compactRothPlan(r as never, detail));
+      },
+    );
+
+    tool(
       "strategy_matrix",
       {
         title: "Strategy matrix",
@@ -1767,11 +1820,13 @@ export function createMcpServer(ctx: McpContext): McpServer {
             ? compactMonteCarlo(r as never, {})
             : job.kind === "tax-strategy"
               ? compactStrategies(r as never)
-              : job.kind === "attribution"
-                ? { attribution: compactAttribution(r as never) }
-                : SOLVER_KINDS.has(job.kind)
-                  ? compactSolver(r as never)
-                  : r,
+              : job.kind === "roth-conversion-plan"
+                ? compactRothPlan(r as never)
+                : job.kind === "attribution"
+                  ? { attribution: compactAttribution(r as never) }
+                  : SOLVER_KINDS.has(job.kind)
+                    ? compactSolver(r as never)
+                    : r,
         );
         // No template of its own, but a finished Monte Carlo or solver job completes a pending widget.
         return job.status === "succeeded" ? jobWidget(job, text) : text;

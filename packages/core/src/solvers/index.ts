@@ -15,6 +15,7 @@ export {
 } from "./goal-seek.js";
 export * from "./guardrails.js";
 export * from "./sensitivity.js";
+export * from "./roth-conversion-plan.js";
 export * from "./tax-strategy.js";
 export {
   applyVariable,

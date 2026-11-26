@@ -21247,6 +21247,119 @@
      "patch"
     ]
    },
+   "RothConversionPlanRequest": {
+    "type": "object",
+    "properties": {
+     "targets": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/RothConversionTarget"
+      },
+      "maxItems": 200,
+      "description": "Your own ceilings by person and year (later entries win). Omit to let the planner choose the bracket for each block of years."
+     },
+     "irmaaTier": {
+      "type": [
+       "integer",
+       "null"
+      ],
+      "minimum": 1,
+      "maximum": 5,
+      "default": null,
+      "description": "Also keep MAGI at or below this IRMAA tier (1 = no surcharge) in years when someone is 63 or older. Null = no IRMAA ceiling."
+     },
+     "aca": {
+      "type": "boolean",
+      "default": true,
+      "description": "Keep income under the ACA premium tax credit cliff in years with marketplace cover."
+     },
+     "fromYear": {
+      "type": "integer",
+      "minimum": 1900,
+      "maximum": 2300
+     },
+     "toYear": {
+      "type": "integer",
+      "minimum": 1900,
+      "maximum": 2300
+     },
+     "objective": {
+      "type": "string",
+      "enum": [
+       "afterTaxEndWealth",
+       "lifetimeTax"
+      ],
+      "default": "afterTaxEndWealth",
+      "description": "What the planner optimises when it chooses ceilings: after-tax wealth at the end (net legacy, today's money) or lifetime tax."
+     },
+     "blockYears": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 50,
+      "default": 5
+     },
+     "bracketRates": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/Rate"
+      },
+      "maxItems": 10,
+      "description": "Brackets the planner may choose from (default: the federal rates up to 32%)."
+     },
+     "sourceAccountIds": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/Id"
+      },
+      "maxItems": 50
+     },
+     "successRate": {
+      "type": "boolean",
+      "default": false,
+      "description": "Also run Monte Carlo (chance of success) for each compared plan (slower)."
+     },
+     "maxEvaluations": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 500,
+      "default": 150
+     }
+    }
+   },
+   "RothConversionTarget": {
+    "type": "object",
+    "properties": {
+     "personId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "description": "Whose conversions this applies to; omit for everyone."
+     },
+     "fromYear": {
+      "type": "integer",
+      "minimum": 1900,
+      "maximum": 2300
+     },
+     "toYear": {
+      "type": "integer",
+      "minimum": 1900,
+      "maximum": 2300
+     },
+     "bracketRate": {
+      "type": [
+       "number",
+       "null"
+      ],
+      "minimum": -1,
+      "maximum": 10,
+      "description": "Convert up to the top of this federal bracket (0.22 = the 22% bracket); null = no conversion in these years."
+     }
+    },
+    "required": [
+     "bracketRate"
+    ]
+   },
    "StrategyMatrixRequest": {
     "type": "object",
     "properties": {
@@ -50187,6 +50300,173 @@
       "application/json": {
        "schema": {
         "$ref": "#/components/schemas/TaxStrategyRequest"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Finished job (cached or waited)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Job"
+        }
+       }
+      }
+     },
+     "202": {
+      "description": "Accepted: job queued or running",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Job"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Invalid request (VALIDATION)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing or invalid API key",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "API key lacks the required scope",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Not found",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "409": {
+      "description": "Conflict (duplicate id, version mismatch, in use)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Scenario is inconsistent (dangling reference, circular milestone...) or Idempotency-Key reused",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Rate limited",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "501": {
+      "description": "The plan uses a feature that is not implemented yet (details.feature, details.workstream)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/plans/{id}/solve/roth-conversions": {
+   "post": {
+    "operationId": "planRothConversions",
+    "tags": [
+     "Solvers"
+    ],
+    "summary": "Roth conversion plan (US): an amount per year and person, filling the room under a bracket, IRMAA tier or the ACA limit after all other income, with the reason, the tax, and a comparison with no conversions (async job; estimates, not advice)",
+    "description": "Returns **202** with a Job. Poll `GET /jobs/{id}`, stream `GET /jobs/{id}/events` (SSE) and fetch `GET /jobs/{id}/result`. Pass `?wait=<seconds>` to block until it finishes (200 with the finished Job). Identical requests on an unchanged plan are served from the result cache.\n\nScope: `simulate` (or `read`).",
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "x-required-scope": "simulate",
+    "parameters": [
+     {
+      "schema": {
+       "type": "string",
+       "minLength": 1,
+       "maxLength": 64
+      },
+      "required": true,
+      "name": "id",
+      "in": "path"
+     },
+     {
+      "schema": {
+       "type": [
+        "number",
+        "null"
+       ],
+       "minimum": 0,
+       "maximum": 120,
+       "default": 0,
+       "description": "Seconds to wait for the job to finish before responding (0 = return immediately with 202)."
+      },
+      "required": false,
+      "description": "Seconds to wait for the job to finish before responding (0 = return immediately with 202).",
+      "name": "wait",
+      "in": "query"
+     },
+     {
+      "schema": {
+       "type": "string",
+       "maxLength": 255,
+       "description": "Makes this write safe to retry: the first successful response is replayed for 24h."
+      },
+      "required": false,
+      "description": "Makes this write safe to retry: the first successful response is replayed for 24h.",
+      "name": "idempotency-key",
+      "in": "header"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RothConversionPlanRequest"
        }
       }
      }

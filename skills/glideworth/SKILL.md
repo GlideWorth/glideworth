@@ -70,6 +70,7 @@ Report money in today's money unless the user asks otherwise, and say so.
 | "Why did the plan end up here?"                   | `explain_projection`; `sensitivity` for the assumptions that matter most                                                                              |
 | "What is wrong with my assumptions?"              | `audit_plan`; preview a finding's fix with `preview_changes`                                                                                          |
 | "How much tax will I pay? How do I pay less?"     | `tax_breakdown`, `income_by_tax_rate`, `optimise_tax_strategy`, `strategy_matrix`                                                                     |
+| "Should I convert to Roth? How much each year?"   | `plan_roth_conversions` (US; omit `targets` to let it choose), then `propose_change_set` with its `patch` if the user agrees                          |
 | "How is my flat abroad taxed?"                    | `explain_item_taxation`, `tax_by_country`, `cross_border_rules`                                                                                       |
 | "Why do these two plans differ?"                  | `explain_difference`, `diff_plans`, `compare_plans`                                                                                                   |
 | "What changed since my last check-in?"            | `what_changed_since_checkin`, `get_plan_health_history`, `list_notifications`                                                                         |

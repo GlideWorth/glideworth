@@ -49,7 +49,7 @@ function merged(outs: TaxYearOutput[]): Record<string, number> {
   return f;
 }
 
-function largestSatisfying(pred: (x: number) => boolean, max: number, tol: number): number {
+export function largestSatisfying(pred: (x: number) => boolean, max: number, tol: number): number {
   if (!pred(0)) return 0;
   let lo = 0;
   let hi = 1_000;

@@ -24,6 +24,7 @@ export interface CoreDeps {
   sensitivityAnalysis: typeof core.sensitivityAnalysis;
   optimiseTaxStrategy: typeof core.optimiseTaxStrategy;
   compareStrategies: typeof core.compareStrategies;
+  planRothConversions: typeof core.planRothConversions;
   explainProjection: typeof core.explainProjection;
   explainYear: typeof core.explainYear;
   explainYears: typeof core.explainYears;
@@ -61,6 +62,7 @@ export const coreDeps: CoreDeps = {
   sensitivityAnalysis: core.sensitivityAnalysis,
   optimiseTaxStrategy: core.optimiseTaxStrategy,
   compareStrategies: core.compareStrategies,
+  planRothConversions: core.planRothConversions,
   explainProjection: core.explainProjection,
   explainYear: core.explainYear,
   explainYears: core.explainYears,

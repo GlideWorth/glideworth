@@ -509,6 +509,7 @@ export function withdraw(
     penaltyRate: lisaCharge ? 0 : penaltyRate,
     ownerAge: age,
     ...(o.isConversion ? { isConversion: true } : {}),
+    ...(o.isConversion && o.causeId ? { causeId: o.causeId } : {}),
   });
   if (lisaCharge) {
     const rate = a.behaviour.earlyWithdrawal.enabled

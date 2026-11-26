@@ -76,6 +76,12 @@ export interface SimulateDeps {
    * bundled `HISTORICAL_SERIES` (US 1871-), so callers need not pass it.
    */
   historical?: HistoricalDataset;
+  /**
+   * Called once per period after the cash-flow settle, with the engine's live state (read-only by
+   * contract). Used by planners that need the year's final tax input, e.g. the Roth conversion plan.
+   * Absent in normal runs, so results do not change.
+   */
+  afterSettle?: (ctx: EngineContext, ps: PeriodState) => void;
 }
 
 /**
@@ -465,7 +471,10 @@ export function simulate(
       wealth: null,
       qualified: { healthcare: 0, education: 0 },
     };
-    for (const phase of PIPELINE) phase.run(ctx, ps);
+    for (const phase of PIPELINE) {
+      phase.run(ctx, ps);
+      if (phase.id === "cashflow.settle") deps.afterSettle?.(ctx, ps);
+    }
   }
   finalizeMilestones(ctx);
 

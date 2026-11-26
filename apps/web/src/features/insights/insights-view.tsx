@@ -79,6 +79,7 @@ import {
 import { scaleExpenses, scaleFlows, type Variant } from "./plan-edits";
 import { PlanChangePreview, SOLVER_PROJECTION_NOTE } from "./plan-preview";
 import { SurvivorPanel, TemplateGallery } from "./scenario-panels";
+import { RothConversionPanel } from "./roth-conversion-panel";
 import { TaxStrategyPanel } from "./tax-strategy-panel";
 import { PrivateText } from "../../components/ui/private-text";
 
@@ -1220,6 +1221,9 @@ export function InsightsView() {
           </div>
           <GoalSeekPanel input={input} result={result} plan={plan} asOf={input.finances.asOf} />
           <TaxStrategyPanel input={input} plan={plan} />
+          {input.household.location.country === "US" ? (
+            <RothConversionPanel input={input} plan={plan} />
+          ) : null}
           <StrategyMatrixPanel input={input} plan={plan} />
           <ScenarioGallery input={input} result={result} plan={plan} />
           <TemplateGallery input={input} result={result} />

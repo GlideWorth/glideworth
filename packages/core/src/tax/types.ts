@@ -69,6 +69,8 @@ export interface TaxWithdrawalItem {
   ownerAge: number;
   /** OPTIONAL: true when this item is a Roth conversion / RRSP->TFSA style transfer (no cash out). */
   isConversion?: boolean;
+  /** OPTIONAL: the flow or strategy that caused a conversion (lets a planner tell its own apart). */
+  causeId?: string;
 }
 
 export interface TaxDeductionItem {

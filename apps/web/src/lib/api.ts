@@ -4,6 +4,8 @@
  * In dev the Vite server proxies /api and injects the API key server-side.
  */
 import {
+  ChangeSet,
+  PlanChange,
   CurrentFinances,
   FxRate,
   type FxRateInput,
@@ -12,6 +14,7 @@ import {
   type HouseholdInput,
   Plan,
   type PlanInput,
+  type PatchOp,
   ProgressSnapshot,
   type ProgressSnapshotInput,
   ProjectionResult,
@@ -205,6 +208,25 @@ export function createApiClient(opts: ApiClientOptions = {}) {
         undefined,
         ifMatch(version),
       ),
+    /** Propose plan edits as a change set (nothing changes until it is applied). */
+    proposeChangeSet: (
+      planId: string,
+      body: { ops: PatchOp[]; summary: string; rationale?: string; baseVersion?: number },
+    ) =>
+      request(
+        "POST",
+        `/api/v1/plans/${encodeURIComponent(planId)}/change-sets`,
+        ChangeSet.extend({ changes: z.array(PlanChange) }),
+        body,
+      ),
+    applyChangeSet: (id: string) =>
+      request(
+        "POST",
+        `/api/v1/change-sets/${encodeURIComponent(id)}/apply`,
+        z.object({ changeSet: ChangeSet, plan: Plan }),
+      ),
+    discardChangeSet: (id: string) =>
+      request("POST", `/api/v1/change-sets/${encodeURIComponent(id)}/discard`, ChangeSet),
     createBranch: (
       id: string,
       body: { name: string; description?: string; pinParentVersion?: boolean },

@@ -64,10 +64,10 @@ export const facts = {
    * mcpTools: the registry as apps/api/test/tool-count.test.ts counts it (all scopes, writes on); mcpReadTools
    * are the tools marked read-only, mcpWriteTools the rest.
    */
-  apiOperations: 300,
+  apiOperations: 301,
   apiOperationsSelfHost: selfHostOperations,
-  mcpTools: 70,
-  mcpReadTools: 50,
+  mcpTools: 71,
+  mcpReadTools: 52,
   mcpWriteTools: 19,
 
   // From docs/STATUS.md and docs/PARITY.md, checked 2026-11-23 (not used in page text).

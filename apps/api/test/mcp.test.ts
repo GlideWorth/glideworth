@@ -231,6 +231,13 @@ describe("tool registration follows scope and the writes flag", () => {
       expect(t.title, t.name).toBeTruthy();
       if (t.annotations!.readOnlyHint) expect(t.annotations!.openWorldHint, t.name).toBe(false);
     }
+    // Claude's directory check: the title in the annotations too, and every parameter with a type (no $ref).
+    for (const t of tools) {
+      expect(t.annotations!.title, t.name).toBe(t.title);
+      expect(JSON.stringify(t.inputSchema), t.name).not.toContain('"$ref"');
+      for (const [k, v] of Object.entries(t.inputSchema.properties ?? {}) as [string, Json][])
+        expect(v.type ?? v.anyOf ?? v.enum, `${t.name}.${k}`).toBeDefined();
+    }
     for (const n of CALCULATION_TOOLS)
       expect(tools.find((t) => t.name === n)!.annotations!.idempotentHint, n).toBe(true);
   });

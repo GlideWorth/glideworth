@@ -38,8 +38,10 @@ listing every commit. Product news for people using the hosted service is on
   `solve_*` tools, `goal_seek`, `evaluate_guardrails`, `explain_difference`, `optimise_tax_strategy`,
   `strategy_matrix`, `plan_roth_conversions`) are `readOnlyHint: false` (idempotent, not destructive): each stores a job record. They change
   no plan or household data and stay out of the audit log. `what_changed_since_checkin` no longer takes
-  `refresh`, which stored a check-in; use `run_checkin`. The server instructions now say results are estimates,
-  not advice.
+  `refresh`, which stored a check-in; use `run_checkin`. Every tool also carries its title in
+  `annotations.title` (Claude's directory reads it there), and no tool input uses a JSON Schema `$ref`
+  (`options` of the balance-history import tools is inlined). The server instructions now say results are
+  estimates, not advice.
 - **Claude Code plugin**: `/plugin marketplace add GlideWorth/glideworth`, then `/plugin install
   glideworth@glideworth`, adds the hosted MCP server and the Glideworth skill.
 - **Tiered employer match** ([#9](https://github.com/GlideWorth/glideworth/issues/9)): a contribution's employer

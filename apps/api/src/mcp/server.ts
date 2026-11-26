@@ -278,6 +278,8 @@ export function createMcpServer(ctx: McpContext): McpServer {
         description: cfg.description,
         inputSchema: cfg.input,
         annotations: {
+          // Claude's directory reads the title from the annotations; other clients read the top-level one.
+          title: cfg.title,
           readOnlyHint: cfg.hint.readOnly,
           destructiveHint: cfg.hint.destructive ?? false,
           idempotentHint: cfg.hint.idempotent ?? cfg.hint.readOnly,
@@ -366,9 +368,14 @@ export function createMcpServer(ctx: McpContext): McpServer {
       .describe(
         'Already-mapped values: [{date:"2026-01-31",values:{"account:<id>":1234.5,"debt:<id>":800,"loan:<realAssetId>":null}}]. Ids from list_accounts. null = blank (replace clears it).',
       ),
-    options: HistoryParseOptions.optional().describe(
-      'With text: e.g. {"dateFormat":"DMY","columns":{"Savings":"account:acc-cash","Total":"skip"}}. Ambiguous dates are an error until dateFormat is given.',
-    ),
+    // A fresh object without the schema's registry id: an id becomes a JSON Schema $ref, and directory checks
+    // (Claude's) read a $ref'd parameter as having no type.
+    options: z
+      .object(HistoryParseOptions.shape)
+      .optional()
+      .describe(
+        'With text: e.g. {"dateFormat":"DMY","columns":{"Savings":"account:acc-cash","Total":"skip"}}. Ambiguous dates are an error until dateFormat is given.',
+      ),
     skipInvalid: z
       .boolean()
       .default(false)

@@ -14,7 +14,7 @@
  * (`MarketPeriod.fx`, MonteCarloSettings.fx): the period's growth becomes `(1 + drift) x shock`.
  */
 import { ScenarioError } from "../errors.js";
-import { type FxRate, fxPairKey } from "../schema/assumptions.js";
+import { type FxRate, mergeFxRates } from "../schema/assumptions.js";
 import type { EngineContext } from "./context.js";
 import { priceIndexAt } from "./context.js";
 import type { MonthIndex } from "./dates.js";
@@ -108,10 +108,7 @@ export interface ResolvedFx {
  * (a plan's USD>GBP overrides the household's GBP>USD), and within one table the last entry for a pair wins.
  */
 export function fxTable(ctx: EngineContext): FxRate[] {
-  const out = new Map<string, FxRate>();
-  for (const r of ctx.finances.fxRates ?? []) out.set(fxPairKey(r.from, r.to), r);
-  for (const r of ctx.plan.assumptions.fxRates ?? []) out.set(fxPairKey(r.from, r.to), r);
-  return [...out.values()];
+  return mergeFxRates(ctx.finances.fxRates, ctx.plan.assumptions.fxRates);
 }
 
 /** Resolve every currency used by accounts, assets, debts and events to the base currency. */

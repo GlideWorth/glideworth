@@ -1,4 +1,10 @@
-import type { CurrentFinances, Household, Plan } from "@glideworth/core";
+import {
+  type CurrentFinances,
+  type FxRate,
+  type Household,
+  mergeFxRates,
+  type Plan,
+} from "@glideworth/core";
 import { useMemo } from "react";
 import { useFormat } from "../../lib/workspace";
 import { useUi } from "../../stores/ui";
@@ -8,6 +14,17 @@ import { timeContext } from "../plan-editor/state/resolve";
 
 export function useDraftDoc() {
   return useEditorStore((s) => s.draft);
+}
+
+/**
+ * Rates for the "now" totals: the household table with the reference plan's pairs replacing them,
+ * the same merge the projection uses.
+ */
+export function useNowFxRates(): FxRate[] {
+  const household = useEditorStore((s) => s.draft?.finances.fxRates);
+  const plan = useReferencePlan();
+  const planRates = plan?.assumptions.fxRates;
+  return useMemo(() => mergeFxRates(household, planRates), [household, planRates]);
 }
 
 /** The plan whose milestones date pickers on this page refer to (active, else main, else first). */

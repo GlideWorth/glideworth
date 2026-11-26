@@ -52,6 +52,21 @@ export function fxPairKey(a: string, b: string): string {
 }
 
 /**
+ * Household rates, then the plan's. A plan pair replaces the household's pair in either direction
+ * (a plan's USD>GBP overrides the household's GBP>USD). Within one table the last entry for a pair wins.
+ * This is the table the projection converts with (`fxTable`).
+ */
+export function mergeFxRates(
+  household: readonly FxRate[] | undefined,
+  plan: readonly FxRate[] | undefined,
+): FxRate[] {
+  const out = new Map<string, FxRate>();
+  for (const r of household ?? []) out.set(fxPairKey(r.from, r.to), r);
+  for (const r of plan ?? []) out.set(fxPairKey(r.from, r.to), r);
+  return [...out.values()];
+}
+
+/**
  * Problems with an FX rate table, shared by the API (every write path) and the web editor so both refuse
  * the same tables: a pair from a currency to itself, and the same pair twice (in either direction).
  */

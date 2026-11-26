@@ -328,7 +328,7 @@ export function ProgressView() {
     first && latest ? conv(latest.date, latest.netWorth) - conv(first.date, first.netWorth) : 0;
   const drifted = doc
     ? shown.flatMap((s) => {
-        const drift = storedTotalDrift(doc, s);
+        const drift = storedTotalDrift(doc, s, plan);
         return drift ? [{ snap: s, drift }] : [];
       })
     : [];
@@ -727,7 +727,7 @@ export function ProgressView() {
               {[...snaps].reverse().map((s, i, arr) => {
                 const prev = arr[i + 1];
                 const d = prev ? s.netWorth - prev.netWorth : null;
-                const drift = doc ? storedTotalDrift(doc, s) : null;
+                const drift = doc ? storedTotalDrift(doc, s, plan) : null;
                 return (
                   <TR key={s.id}>
                     <TD className="num whitespace-nowrap">{formatDay(s.date, f.locale)}</TD>
@@ -810,7 +810,7 @@ export function ProgressView() {
         />
       ) : null}
       {doc && exportOpen ? (
-        <HistoryExportDialog open={exportOpen} onOpenChange={setExportOpen} doc={doc} />
+        <HistoryExportDialog open={exportOpen} onOpenChange={setExportOpen} doc={doc} plan={plan} />
       ) : null}
       {editing ? (
         <SnapshotDialog

@@ -2,6 +2,7 @@ import {
   ACCOUNT_TYPE_INFO,
   type Finding,
   type GlideworthDocument,
+  mergeFxRates,
   type Plan,
   type ProgressSnapshot,
   type ProjectionResult,
@@ -69,8 +70,16 @@ const WIDGETS = [
 ] as const;
 type WidgetId = (typeof WIDGETS)[number][0];
 
-export function currentNetWorth(doc: GlideworthDocument | undefined) {
-  const fin = doc ? financesInBase(doc.finances, doc.household.currency) : undefined;
+export function currentNetWorth(
+  doc: GlideworthDocument | undefined,
+  plan?: Pick<Plan, "assumptions">,
+) {
+  const fin = doc
+    ? financesInBase(
+        { ...doc.finances, fxRates: mergeFxRates(doc.finances.fxRates, plan?.assumptions.fxRates) },
+        doc.household.currency,
+      )
+    : undefined;
   const assets =
     (fin?.accounts.reduce((s, a) => s + a.balance, 0) ?? 0) +
     (fin?.realAssets.reduce((s, r) => s + r.currentValue, 0) ?? 0);
@@ -87,18 +96,20 @@ type SnapshotBalances = Pick<ProgressSnapshot, "netWorth" | "accounts" | "realAs
  *
  * A snapshot stores each balance in its own currency and a total that counted a missing exchange
  * rate at face value. Today's total leaves those holdings out, so subtracting the stored total
- * reports the exclusion as a loss. Value the recorded balances with today's rates instead: a
+ * reports the exclusion as a loss. Value the recorded balances with today's rates instead (the
+ * household table with `plan`'s pairs replacing them, the same merge as net worth today): a
  * currency with no rate counts on neither side. A snapshot that only stored a total is kept as
  * recorded — there are no balances to revalue.
  */
 export function snapshotNetWorthLikeToday(
   doc: GlideworthDocument,
   snapshot: SnapshotBalances,
+  plan?: Pick<Plan, "assumptions">,
 ): number {
   if (snapshot.accounts.length + snapshot.realAssets.length + snapshot.debts.length === 0)
     return snapshot.netWorth;
   const base = doc.household.currency;
-  const rates = doc.finances.fxRates;
+  const rates = mergeFxRates(doc.finances.fxRates, plan?.assumptions.fxRates);
   const accountCurrency = new Map(doc.finances.accounts.map((a) => [a.id, a.currency]));
   const assetCurrency = new Map(doc.finances.realAssets.map((r) => [r.id, r.currency]));
   const debtCurrency = new Map(doc.finances.debts.map((d) => [d.id, d.currency]));
@@ -139,11 +150,12 @@ function recordsForeignBalance(doc: GlideworthDocument, snapshot: SnapshotBalanc
 export function storedTotalDrift(
   doc: GlideworthDocument,
   snapshot: SnapshotBalances,
+  plan?: Pick<Plan, "assumptions">,
 ): { stored: number; revalued: number } | null {
   if (snapshot.accounts.length + snapshot.realAssets.length + snapshot.debts.length === 0)
     return null;
   if (!recordsForeignBalance(doc, snapshot)) return null;
-  const revalued = snapshotNetWorthLikeToday(doc, snapshot);
+  const revalued = snapshotNetWorthLikeToday(doc, snapshot, plan);
   if (Math.abs(snapshot.netWorth - revalued) < 0.5) return null;
   return { stored: snapshot.netWorth, revalued };
 }
@@ -359,10 +371,16 @@ export function DashboardView() {
   const setWidget = useChartPrefs((s) => s.setDashboardWidget);
   const on = (id: WidgetId) => prefs[id] !== false;
   const index = useMemo(() => buildEntityIndex(doc, plan), [doc, plan]);
-  const now = currentNetWorth(doc);
+  const now = currentNetWorth(doc, plan);
   const leftOut = doc
     ? unconvertedSentence(
-        unconvertedHoldings(doc.finances, doc.household.currency),
+        unconvertedHoldings(
+          {
+            ...doc.finances,
+            fxRates: mergeFxRates(doc.finances.fxRates, plan?.assumptions.fxRates),
+          },
+          doc.household.currency,
+        ),
         doc.household.currency,
         (amount, currency) => f.moneyIn(amount, currency),
       )
@@ -380,8 +398,8 @@ export function DashboardView() {
     if (!doc) return [];
     return [...doc.progress]
       .sort((a, b) => a.date.localeCompare(b.date))
-      .map((s) => snapshotNetWorthLikeToday(doc, s));
-  }, [doc]);
+      .map((s) => snapshotNetWorthLikeToday(doc, s, plan));
+  }, [doc, plan]);
   const spark = [...history, now.netWorth];
   const prevSnap = history.at(-1);
   const audit = useMemo((): { findings: Finding[]; source: "audit" | "warnings" } => {

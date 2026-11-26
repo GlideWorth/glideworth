@@ -8,6 +8,10 @@ listing every commit. Product news for people using the hosted service is on
 
 ## Unreleased
 
+- **Today's totals follow the plan's exchange rates.** Current finances and the dashboard convert foreign
+  balances with the same table as the projection: the household's rates, with the plan's pairs replacing them.
+  A balance whose rate lives only on the plan is included, and the "no exchange rate, cannot be simulated"
+  warning stays off when that plan already supplies the rate.
 - **Share links return before Monte Carlo finishes.** `POST /plans/{id}/share-links` takes `deferMonteCarlo`
   (default false) and its response has `monteCarlo: { status, jobId? }`. With it, the link is returned as soon
   as the snapshot is stored and the chance of success is added when the run finishes; the web app uses this and

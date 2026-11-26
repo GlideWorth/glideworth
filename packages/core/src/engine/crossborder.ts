@@ -17,7 +17,7 @@
  */
 import type { AccountType, TaxTreatment } from "../schema/accounts.js";
 import { ACCOUNT_TYPE_INFO } from "../schema/account-types.js";
-import { fxPairKey } from "../schema/assumptions.js";
+import { fxPairKey, mergeFxRates } from "../schema/assumptions.js";
 import type { Location } from "../schema/household.js";
 import { COUNTRY_TAX_CURRENCY } from "../tax/crossborder/currency.js";
 import { NON_RESIDENT_RULES } from "../tax/crossborder/nonresident.js";
@@ -142,9 +142,12 @@ export function initCrossBorder(ctx: EngineContext): void {
 function addTaxCurrencies(ctx: EngineContext, countries: Set<string>): void {
   const baseCurrency = ctx.household.currency;
   ctx.fx ??= new Map();
-  const table = new Map<string, { from: string; to: string; rate: number; annualDrift: number }>();
-  for (const r of ctx.finances.fxRates ?? []) table.set(fxPairKey(r.from, r.to), r);
-  for (const r of ctx.plan.assumptions.fxRates ?? []) table.set(fxPairKey(r.from, r.to), r);
+  const table = new Map(
+    mergeFxRates(ctx.finances.fxRates, ctx.plan.assumptions.fxRates).map((r) => [
+      fxPairKey(r.from, r.to),
+      r,
+    ]),
+  );
   for (const c of countries) {
     const cur = COUNTRY_TAX_CURRENCY[c];
     if (!cur || cur === baseCurrency || ctx.fx.has(cur)) continue;

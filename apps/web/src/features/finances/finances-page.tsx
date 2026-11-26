@@ -85,7 +85,13 @@ import { AccountSheet } from "./account-sheet";
 import { AssetSheet } from "./asset-sheet";
 import { DebtSheet } from "./debt-sheet";
 import { COUNTRIES, HouseholdSheet } from "./household-sheet";
-import { updateFinances, useDraftDoc, useFinanceScope } from "./use-finances";
+import {
+  updateFinances,
+  useDraftDoc,
+  useFinanceScope,
+  useNowFxRates,
+  useReferencePlan,
+} from "./use-finances";
 
 type Editing = { kind: "account" | "asset" | "debt"; id: string } | { kind: "household" } | null;
 
@@ -279,12 +285,14 @@ function NetWorthCard() {
   const doc = useDraftDoc()!;
   const readOnly = useUi((s) => s.readOnly);
   const f = useFormat();
+  const rates = useNowFxRates();
+  const finances = useMemo(() => ({ ...doc.finances, fxRates: rates }), [doc.finances, rates]);
   const nw = useMemo(
-    () => netWorth(financesInBase(doc.finances, doc.household.currency), doc.household),
-    [doc.finances, doc.household],
+    () => netWorth(financesInBase(finances, doc.household.currency), doc.household),
+    [finances, doc.household],
   );
   const leftOut = unconvertedSentence(
-    unconvertedHoldings(doc.finances, doc.household.currency),
+    unconvertedHoldings(finances, doc.household.currency),
     doc.household.currency,
     (amount, currency) => f.moneyIn(amount, currency),
   );
@@ -466,10 +474,10 @@ function AccountsCard({
   const readOnly = useUi((s) => s.readOnly);
   const f = useFormat();
   const doc = useDraftDoc()!;
+  const rates = useNowFxRates();
   const [showArchived, setShowArchived] = useState(false);
   const visible = accounts.filter((a) => showArchived || !a.archived);
-  const inBase = (a: Account) =>
-    toBase(a.balance, a.currency, doc.household.currency, doc.finances.fxRates) ?? 0;
+  const inBase = (a: Account) => toBase(a.balance, a.currency, doc.household.currency, rates) ?? 0;
   const total = accounts.filter((a) => !a.archived).reduce((s, a) => s + inBase(a), 0);
   const archivedCount = accounts.filter((a) => a.archived).length;
   const gb = doc.household.location.country === "GB";
@@ -587,6 +595,7 @@ function AccountRow({
 }) {
   const readOnly = useUi((s) => s.readOnly);
   const doc = useDraftDoc()!;
+  const rates = useNowFxRates();
   const f = useFormat();
   const info = ACCOUNT_TYPE_INFO[a.type];
   const idx = doc.finances.accounts.indexOf(a);
@@ -622,8 +631,7 @@ function AccountRow({
           {info.label} · {ownerLabel(doc.household, a.owner)}
           {a.institution ? ` · ${a.institution}` : ""}
           {a.currency ? ` · ${a.currency}` : ""}
-          {a.currency &&
-          fxRateToBase(a.currency, doc.household.currency, doc.finances.fxRates) === null
+          {a.currency && fxRateToBase(a.currency, doc.household.currency, rates) === null
             ? " · not in the total"
             : ""}
           {(a.jurisdiction ?? info.country ?? doc.household.location.country) !==
@@ -751,13 +759,13 @@ function AssetsCard({
 }) {
   const readOnly = useUi((s) => s.readOnly);
   const doc = useDraftDoc()!;
+  const rates = useNowFxRates();
   const f = useFormat();
   const assets = doc.finances.realAssets;
   const total = assets
     .filter((a) => !a.archived)
     .reduce(
-      (s, a) =>
-        s + (toBase(a.currentValue, a.currency, doc.household.currency, doc.finances.fxRates) ?? 0),
+      (s, a) => s + (toBase(a.currentValue, a.currency, doc.household.currency, rates) ?? 0),
       0,
     );
   const menu = (
@@ -849,8 +857,7 @@ function AssetsCard({
                     ? ` · loan ${f.moneyIn(a.loan.balance, a.currency ?? f.currency, true)}`
                     : ""}
                   {a.currency ? ` · ${a.currency}` : ""}
-                  {a.currency &&
-                  fxRateToBase(a.currency, doc.household.currency, doc.finances.fxRates) === null
+                  {a.currency && fxRateToBase(a.currency, doc.household.currency, rates) === null
                     ? " · not in the total"
                     : ""}
                   {a.country && a.country !== doc.household.location.country
@@ -921,6 +928,7 @@ function DebtsCard({
 }) {
   const readOnly = useUi((s) => s.readOnly);
   const doc = useDraftDoc()!;
+  const rates = useNowFxRates();
   const f = useFormat();
   const debts = doc.finances.debts;
   const loans = doc.finances.realAssets.filter((r) => r.loan && !r.archived);
@@ -928,14 +936,11 @@ function DebtsCard({
     debts
       .filter((d) => !d.archived)
       .reduce(
-        (s, d) =>
-          s + (toBase(d.balance, d.currency, doc.household.currency, doc.finances.fxRates) ?? 0),
+        (s, d) => s + (toBase(d.balance, d.currency, doc.household.currency, rates) ?? 0),
         0,
       ) +
     loans.reduce(
-      (s, r) =>
-        s +
-        (toBase(r.loan!.balance, r.currency, doc.household.currency, doc.finances.fxRates) ?? 0),
+      (s, r) => s + (toBase(r.loan!.balance, r.currency, doc.household.currency, rates) ?? 0),
       0,
     );
   const payoff = (balance: number, apr: number, payment: number) => {
@@ -1052,8 +1057,7 @@ function DebtsCard({
                     {f.percent(d.interest.apr, 2)} ·{" "}
                     {f.moneyIn(d.monthlyPayment.value, d.currency ?? f.currency)}/mo ·{" "}
                     {payoff(d.balance, d.interest.apr, d.monthlyPayment.value)}
-                    {d.currency &&
-                    fxRateToBase(d.currency, doc.household.currency, doc.finances.fxRates) === null
+                    {d.currency && fxRateToBase(d.currency, doc.household.currency, rates) === null
                       ? " · not in the total"
                       : ""}
                     {d.country && d.country !== doc.household.location.country
@@ -1118,6 +1122,7 @@ function FxRatesCard() {
   const f = useFormat();
   const readOnly = useUi((s) => s.readOnly);
   const plans = useEditorStore((s) => s.draft?.plans ?? []);
+  const plan = useReferencePlan();
   const base = doc.household.currency;
   const inUse = foreignCurrencies(doc, plans);
   const rates = doc.finances.fxRates ?? [];
@@ -1152,6 +1157,7 @@ function FxRatesCard() {
           rates={rates}
           base={base}
           inUse={inUse}
+          coveredBy={plan?.assumptions.fxRates}
           disabled={readOnly}
           onChange={(fxRates) =>
             updateFinances(

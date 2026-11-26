@@ -1,5 +1,5 @@
 /** Export balance history: pick accounts and a layout, then copy or download (CSV or TSV). */
-import type { GlideworthDocument } from "@glideworth/core";
+import type { GlideworthDocument, Plan } from "@glideworth/core";
 import { exportBalanceHistory, historyTargets, snapshotValues } from "@glideworth/importers";
 import { Copy, Download, Info } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -18,10 +18,12 @@ export function HistoryExportDialog({
   open,
   onOpenChange,
   doc,
+  plan,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   doc: GlideworthDocument;
+  plan?: Pick<Plan, "assumptions">;
 }) {
   const f = useFormat();
   const targets = useMemo(
@@ -31,10 +33,10 @@ export function HistoryExportDialog({
   const drifted = useMemo(
     () =>
       doc.progress.flatMap((s) => {
-        const drift = storedTotalDrift(doc, s);
+        const drift = storedTotalDrift(doc, s, plan);
         return drift ? [{ date: s.date, drift }] : [];
       }),
-    [doc],
+    [doc, plan],
   );
   const recorded = useMemo(() => {
     const s = new Set<string>();

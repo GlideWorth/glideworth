@@ -1,8 +1,9 @@
 /**
- * Today's value of a foreign-currency amount in the household's base currency, with the rates as
- * entered (`CurrentFinances.fxRates`, as of `asOf`): a direct pair, or the inverse of one. The engine
- * does the same at the plan start; this is for the "now" figures on Current finances and the
- * dashboard. A missing pair converts to nothing here — never 1:1 — and is flagged beside the total.
+ * Today's value of a foreign-currency amount in the household's base currency: a direct pair, or the
+ * inverse of one. Pass the merged table (`mergeFxRates`: household rates, plan pairs replacing them),
+ * the same table the projection uses at the plan start. These helpers are for the "now" figures on
+ * Current finances and the dashboard. A missing pair converts to nothing here — never 1:1 — and is
+ * flagged beside the total.
  */
 import type { FxRate } from "@glideworth/core";
 

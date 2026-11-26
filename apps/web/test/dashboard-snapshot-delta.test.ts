@@ -92,6 +92,34 @@ describe("dashboard snapshot delta", () => {
     expect(snapshotNetWorthLikeToday(doc, snapshot)).toBeCloseTo(currentNetWorth(doc).netWorth);
   });
 
+  it("values today's net worth with the plan rate when the household table has none", () => {
+    const doc = withUsdCash(createUkSampleDocument());
+    const plan = doc.plans[0]!;
+    const gbp = currentNetWorth({
+      ...doc,
+      finances: {
+        ...doc.finances,
+        accounts: doc.finances.accounts.filter((a) => a.currency !== "USD"),
+      },
+    }).netWorth;
+
+    plan.assumptions.fxRates = [{ from: "USD", to: "GBP", rate: 0.78, annualDrift: 0 }];
+    expect(doc.finances.fxRates ?? []).toEqual([]);
+    // Without the plan, the US$12,000 is still left out.
+    expect(currentNetWorth(doc).netWorth).toBeCloseTo(gbp);
+    // 12,000 × 0.78 = 9,360, the same rate the projection would use.
+    expect(currentNetWorth(doc, plan).netWorth).toBeCloseTo(gbp + 12_000 * 0.78);
+
+    const snapshot = faceValueSnapshot(doc);
+    expect(snapshotNetWorthLikeToday(doc, snapshot, plan)).toBeCloseTo(
+      currentNetWorth(doc, plan).netWorth,
+    );
+
+    // A household rate does not win: the plan pair replaces it, in either direction.
+    doc.finances.fxRates = [{ from: "GBP", to: "USD", rate: 1.25, annualDrift: 0 }];
+    expect(currentNetWorth(doc, plan).netWorth).toBeCloseTo(gbp + 12_000 * 0.78);
+  });
+
   it("does not flag a total that differs for a reason other than exchange rates", () => {
     // A single-currency household imports a file with a Net worth column and only some accounts.
     const doc = createUkSampleDocument();

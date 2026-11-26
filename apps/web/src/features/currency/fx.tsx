@@ -86,12 +86,22 @@ export function hasPair(rates: readonly FxRate[], currency: string, base: string
   );
 }
 
+/** Currencies in use that none of `tables` can convert to `base`. An empty table does not cover any. */
+export function missingFxCurrencies(
+  inUse: readonly string[],
+  base: string,
+  tables: readonly (readonly FxRate[] | undefined)[],
+): string[] {
+  return inUse.filter((c) => !tables.some((rates) => !!rates && hasPair(rates, c, base)));
+}
+
 export function FxRatesEditor({
   rates,
   base,
   inUse,
   onChange,
   inheritFrom,
+  coveredBy,
   disabled,
 }: {
   rates: FxRate[];
@@ -101,12 +111,15 @@ export function FxRatesEditor({
   onChange: (rates: FxRate[]) => void;
   /** Plan overrides: the household's rates, shown for reference. */
   inheritFrom?: FxRate[];
+  /**
+   * Another table that already converts these currencies (the plan's rates, on the household
+   * editor). A currency covered here is not "missing": the projection can already simulate it.
+   */
+  coveredBy?: readonly FxRate[];
   disabled?: boolean;
 }) {
   const f = useFormat();
-  const missing = inUse.filter(
-    (c) => !hasPair(rates, c, base) && !(inheritFrom && hasPair(inheritFrom, c, base)),
-  );
+  const missing = missingFxCurrencies(inUse, base, [rates, inheritFrom, coveredBy]);
   const set = (i: number, patch: Partial<FxRate>) =>
     onChange(rates.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   // The same check the server applies to every write of the table (core `fxRateIssues`).

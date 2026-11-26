@@ -6,6 +6,7 @@ import {
   createDefaultTaxRegistry,
   defaultsForCountry,
   fxRateIssues,
+  mergeFxRates,
   reconcileYear,
   simulate,
   TAX_SIMPLIFICATIONS,
@@ -127,6 +128,17 @@ describe("FX tables: one pair per currency pair, in either direction", () => {
   it("a plan override in the inverse direction replaces the household pair", () => {
     expect(openingInBase(run())).toBeCloseTo(800, 6);
     expect(openingInBase(run([{ from: "GBP", to: "USD", rate: 2 }]))).toBeCloseTo(500, 6);
+  });
+  it("mergeFxRates lets a plan pair replace the household pair in either direction", () => {
+    const household = [{ from: "USD", to: "GBP", rate: 0.8, annualDrift: 0 }];
+    expect(mergeFxRates(household, undefined)).toEqual(household);
+    expect(mergeFxRates(undefined, household)).toEqual(household);
+    expect(mergeFxRates(household, [{ from: "GBP", to: "USD", rate: 2, annualDrift: 0 }])).toEqual([
+      { from: "GBP", to: "USD", rate: 2, annualDrift: 0 },
+    ]);
+    expect(
+      mergeFxRates(household, [{ from: "EUR", to: "GBP", rate: 0.85, annualDrift: 0 }]),
+    ).toEqual([household[0], { from: "EUR", to: "GBP", rate: 0.85, annualDrift: 0 }]);
   });
   it("fxRateIssues flags same-currency rows and a pair given twice in either direction", () => {
     expect(fxRateIssues([{ from: "GBP", to: "USD" }])).toEqual([]);

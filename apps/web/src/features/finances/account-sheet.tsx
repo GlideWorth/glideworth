@@ -29,7 +29,13 @@ import { setIntent } from "../plan-editor/state/intent";
 import { ACCOUNT_TYPE_HINT, accountTypeGroups, HELP } from "../plan-editor/state/labels";
 import { useIssues } from "../plan-editor/state/validation";
 import { AccountBehaviourEditor } from "./account-behaviour";
-import { updateFinances, useDraftDoc, useInheritLabels, useReferencePlan } from "./use-finances";
+import {
+  updateFinances,
+  useDraftDoc,
+  useInheritLabels,
+  useNowFxRates,
+  useReferencePlan,
+} from "./use-finances";
 
 export function AccountSheet({ id, onClose }: { id: string | null; onClose: () => void }) {
   return (
@@ -41,6 +47,7 @@ export function AccountSheet({ id, onClose }: { id: string | null; onClose: () =
 
 function AccountSheetBody({ id, onClose }: { id: string; onClose: () => void }) {
   const doc = useDraftDoc();
+  const rates = useNowFxRates();
   const f = useFormat();
   const plan = useReferencePlan();
   const account = doc?.finances.accounts.find((a) => a.id === id);
@@ -289,11 +296,7 @@ function AccountSheetBody({ id, onClose }: { id: string; onClose: () => void }) 
         description={`As of ${formatMonth(doc.finances.asOf, f.locale)}${
           account.currency
             ? (() => {
-                const r = fxRateToBase(
-                  account.currency,
-                  doc.household.currency,
-                  doc.finances.fxRates,
-                );
+                const r = fxRateToBase(account.currency, doc.household.currency, rates);
                 return r === null
                   ? ` · no exchange rate to ${doc.household.currency} yet: add one under Exchange rates`
                   : ` · ${f.money(account.balance * r)} in ${doc.household.currency}`;

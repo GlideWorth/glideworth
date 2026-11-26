@@ -11,7 +11,7 @@ import { NumberInput } from "../../components/ui/number-input";
 import { Select } from "../../components/ui/select";
 import { COUNTRY_LIST, countryLabel, currencyOfCountry } from "../../lib/countries";
 import { hasPair } from "../currency/fx";
-import { updateFinances, useDraftDoc } from "../finances/use-finances";
+import { updateFinances, useDraftDoc, useNowFxRates } from "../finances/use-finances";
 import { FormField } from "../plan-editor/components/form";
 
 const COUNTRY_SELECT = COUNTRY_LIST.filter((c) => c.code !== "XX").map((c) => ({
@@ -81,13 +81,14 @@ export function CurrencyPrompt({
   what?: string;
 }) {
   const doc = useDraftDoc();
+  const rates = useNowFxRates();
   if (!doc) return null;
   const base = doc.household.currency;
   const local = currencyOfCountry(country);
   const cur = currency ?? base;
   const suggest =
     local && local !== cur && country !== doc.household.location.country ? local : null;
-  const needsRate = cur !== base && !hasPair(doc.finances.fxRates ?? [], cur, base);
+  const needsRate = cur !== base && !hasPair(rates, cur, base);
   if (!suggest && !needsRate) return null;
   return (
     <div className="flex flex-col gap-2 rounded-md border border-border bg-surface-2 px-3 py-2 text-[12.5px]">

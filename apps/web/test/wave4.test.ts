@@ -2,7 +2,7 @@ import { ACCOUNT_TYPE_INFO, type Household } from "@glideworth/core";
 import { createUkSampleDocument } from "@glideworth/core/samples";
 import { describe, expect, it } from "vitest";
 import { measureOfRef } from "../src/features/builder/builder-model";
-import { foreignCurrencies, hasPair } from "../src/features/currency/fx";
+import { foreignCurrencies, hasPair, missingFxCurrencies } from "../src/features/currency/fx";
 import { describeRejection } from "../src/features/plan-editor/state/sync";
 import { buildPlanFromTemplate } from "../src/features/plans/templates";
 import { describeAction } from "../src/features/settings/people-section";
@@ -152,6 +152,19 @@ describe("multi-currency helpers", () => {
     expect(unconvertedSentence(unconvertedHoldings(fin, "GBP"), "GBP", (n, c) => `${c} ${n}`)).toBe(
       "USD 12000 is not included: USD has no exchange rate to GBP.",
     );
+  });
+  it("does not treat a currency as missing when the plan already supplies its rate", () => {
+    const plan = [{ from: "USD", to: "GBP", rate: 0.78, annualDrift: 0 }];
+    expect(missingFxCurrencies(["USD"], "GBP", [[], plan])).toEqual([]);
+    expect(missingFxCurrencies(["USD"], "GBP", [[]])).toEqual(["USD"]);
+    expect(missingFxCurrencies(["EUR"], "GBP", [[], plan])).toEqual(["EUR"]);
+    // Either direction covers the pair, matching the projection.
+    expect(
+      missingFxCurrencies(["USD"], "GBP", [
+        [],
+        [{ from: "GBP", to: "USD", rate: 1.25, annualDrift: 0 }],
+      ]),
+    ).toEqual([]);
   });
 });
 

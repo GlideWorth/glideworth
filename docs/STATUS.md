@@ -191,6 +191,16 @@ Figures that could not be confirmed or are provisional:
   rate. The CDHR (minimum 20% tax above €250,000 / €500,000) is extended by the 2026 finance law per secondary
   sources only; it is not modelled.
 - US TCJA-sunset variant: an estimate, not law.
+- US Social Security claiming rules (checked 2026-11-26): full retirement age, early-claiming reductions, delayed
+  retirement credits and the spouse's reduction in `packages/core/src/engine/tables.ts` are now cited to 20 CFR
+  404.409, 404.410 and 404.313 (eCFR) and checked against SSA's tables by year of birth (read from Internet Archive
+  copies; ssa.gov refuses automated access). Births on 1 January are not moved to the year before, as SSA does, and
+  the 8% delayed credit is right only for births after 1942. **Not confirmed**: how the spousal top-up is worked out
+  when the spouse claims their own benefit after full retirement age (the engine and the Social Security break-even
+  calculator take half the worker's PIA less the spouse's own PIA, added to the spouse's own benefit with its
+  credits). The engine also reduces a spousal top-up for the months before full retirement age at the spouse's own
+  claim, while the calculator uses the month the top-up starts (20 CFR 404.410(b)); they differ only when the
+  worker claims after the spouse.
 - Ireland (checked 2026-11-19): CGT is 33% to 6 October 2026 and 31% from 7 October 2026 (Revenue); with no disposal
   dates, 2026 uses the average by days (32.53%) and 2027 onward 31%. The 2027 table is Budget 2027 as announced
   (Department of Finance Tax Policy Changes book and summary, Parliamentary Budget Office paper; Finance (No. 2) Bill

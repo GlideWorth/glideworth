@@ -26,7 +26,8 @@ export type ToolId =
   | "retirement-spending"
   | "historical-backtest"
   | "uk-drawdown"
-  | "isa-vs-pension";
+  | "isa-vs-pension"
+  | "social-security";
 
 /** Input values by field key. Numbers are in the field's display unit (percent fields hold 5 for 5%). */
 export type Values = Record<string, number | string>;

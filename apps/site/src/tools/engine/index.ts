@@ -27,6 +27,7 @@ import { runWithdrawal } from "./withdrawal";
 import { runRetirementTax } from "./retirement-tax";
 import { runRothConversion } from "./roth-conversion";
 import { runAcaSubsidy } from "./aca-subsidy";
+import { runSocialSecurity } from "./social-security";
 
 const RUNNERS: Record<ToolId, (v: Values, opts: RunOptions) => Promise<ViewModel>> = {
   "coast-fire": runCoast,
@@ -51,6 +52,7 @@ const RUNNERS: Record<ToolId, (v: Values, opts: RunOptions) => Promise<ViewModel
   "historical-backtest": runHistoricalBacktest,
   "uk-drawdown": runUkDrawdown,
   "isa-vs-pension": runIsaVsPension,
+  "social-security": runSocialSecurity,
 };
 
 export type { RunOptions };

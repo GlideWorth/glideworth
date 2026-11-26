@@ -149,6 +149,16 @@ export const TOOLS: readonly ToolMeta[] = [
     article: { href: "/planning/us/", title: "Retirement planning in the United States" },
   },
   {
+    id: "social-security",
+    path: "/tools/social-security-break-even-calculator/",
+    name: "Social Security break-even calculator",
+    summary:
+      "Your monthly benefit if you claim at 62, at full retirement age or at 70, the age from which waiting pays more in total, and what a spouse and a survivor get.",
+    question: "When should I claim Social Security?",
+    group: "tax",
+    article: { href: "/planning/us/", title: "Retirement planning in the United States" },
+  },
+  {
     id: "uk-fire",
     path: "/tools/uk-fire-calculator/",
     name: "UK FIRE calculator",

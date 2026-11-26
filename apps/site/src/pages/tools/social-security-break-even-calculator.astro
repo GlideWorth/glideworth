@@ -1,0 +1,277 @@
+---
+import { ssClaimFactor, ssFullRetirementAge, ssSpousalFactor } from '@glideworth/core';
+import ToolPage from '../../components/tools/ToolPage.astro';
+import {
+  breakEvenAge,
+  breakEvenFormula,
+  claimShare,
+  FIRST_AGE,
+  LAST_AGE,
+  monthsEarly,
+  ownMonthly,
+  spousalTopUp,
+  SPOUSAL_SHARE,
+  SURVIVOR_FLOOR,
+  survivorBenefit,
+} from '../../tools/engine/social-security';
+import { ageText } from '../../tools/engine/uk-pension-age';
+import { money, pct } from '../../tools/format';
+import { externalLinkProps } from '../../lib/links';
+import { socialSecuritySpec } from '../../tools/specs';
+import { defaults, num } from '../../tools/state';
+
+const m = (x: number) => money(Math.floor(x + 1e-9), 'USD');
+const ex = defaults(socialSecuritySpec);
+const born = num(ex, 'born');
+const pia = num(ex, 'pia');
+const you = { born, pia };
+const fra = ssFullRetirementAge(born);
+const at62 = ownMonthly(you, FIRST_AGE);
+const at70 = ownMonthly(you, LAST_AGE);
+const be = breakEvenAge(you, FIRST_AGE, LAST_AGE)!;
+const beFormula = breakEvenFormula(born, FIRST_AGE, LAST_AGE);
+const beFra70 = breakEvenAge(you, fra, LAST_AGE)!;
+const be62Fra = breakEvenAge(you, FIRST_AGE, fra)!;
+const at3pct = breakEvenAge(you, FIRST_AGE, LAST_AGE, { cola: 0, discount: 0.03 });
+
+// Spouse example: a lower earner born two years later, claiming at their own full retirement age.
+const spouse = { born: born + 2, pia: 800 };
+const sFra = ssFullRetirementAge(spouse.born);
+const topUpAtFra = spousalTopUp(spouse, sFra, you, fra);
+const topUpAt62 = spousalTopUp(spouse, FIRST_AGE, you, FIRST_AGE);
+const widow62 = survivorBenefit(you, FIRST_AGE);
+const widow70 = survivorBenefit(you, LAST_AGE);
+
+// Full retirement age by birth year, grouped, from core.
+const fraGroups: { from: number; to: number; fra: number }[] = [];
+for (let y = 1943; y <= 1960; y++) {
+  const f = ssFullRetirementAge(y);
+  const last = fraGroups[fraGroups.length - 1];
+  if (last && last.fra === f) last.to = y;
+  else fraGroups.push({ from: y, to: y, fra: f });
+}
+const groupText = (g: { from: number; to: number }, i: number) =>
+  i === fraGroups.length - 1 ? `${g.from} or later` : g.from === g.to ? String(g.from) : `${g.from} to ${g.to}`;
+const at62Row = (y: number) => {
+  const me = monthsEarly(y, FIRST_AGE);
+  return { me, own: 1 - ssClaimFactor(me), spouse: 1 - ssSpousalFactor(me), at70: ssClaimFactor(monthsEarly(y, LAST_AGE)) };
+};
+
+const ECFR = 'https://www.ecfr.gov/current/title-20/chapter-III/part-404';
+const SRC = {
+  fra: `${ECFR}/subpart-E/section-404.409`,
+  reduce: `${ECFR}/subpart-E/section-404.410`,
+  dual: `${ECFR}/subpart-E/section-404.411`,
+  drc: `${ECFR}/subpart-C/section-404.313`,
+  spouse: `${ECFR}/subpart-D/section-404.333`,
+  widow: `${ECFR}/subpart-D/section-404.338`,
+  act: 'https://www.ssa.gov/OP_Home/ssact/title02/0202.htm',
+  ssaEarly: 'https://www.ssa.gov/benefits/retirement/planner/agereduction.html',
+  ssaLate: 'https://www.ssa.gov/benefits/retirement/planner/delayret.html',
+  statement: 'https://www.ssa.gov/myaccount/',
+};
+
+const faq = [
+  {
+    q: 'What is the Social Security break-even age?',
+    a: `<p>The age from which waiting to claim has paid you more in total than claiming earlier. A bigger check that starts later needs time to catch up with the smaller checks you would already have had. For someone born in ${born} with ${m(pia)} a month at full retirement age, claiming at 62 pays ${m(at62)} a month and claiming at 70 pays ${m(at70)}; the larger checks catch up at ${ageText(be, true)}.</p>`,
+  },
+  {
+    q: 'Should I claim Social Security at 62, 67 or 70?',
+    a: `<p>If you live past the break-even age, waiting pays more over your life; if not, claiming earlier does. Nobody knows their lifespan, so the decision also turns on your health, whether you need the money now, and, if you are married, on your spouse: the higher earner’s claiming age sets what the survivor keeps for the rest of their life. This calculator shows the numbers; it is not advice.</p>`,
+  },
+  {
+    q: 'How much is Social Security reduced if I claim at 62?',
+    a: `<p>By 5/9 of 1% for each of the first 36 months before your full retirement age and 5/12 of 1% for each month before that. With a full retirement age of 67 that is 60 months early and 30% less: ${pct(1 - ssClaimFactor(60), 0)}. With 66 and 6 months it is ${pct(1 - ssClaimFactor(54), 1)}.</p>`,
+  },
+  {
+    q: 'How much more do I get for waiting until 70?',
+    a: `<p>Two-thirds of 1% for each month after your full retirement age, 8% a year, for anyone born in 1943 or later. With a full retirement age of 67 that is 36 months and 24% more at 70. Nothing more is added after 70.</p>`,
+  },
+  {
+    q: 'How do the spousal and survivor benefits work?',
+    a: `<p>A spouse can receive up to half of the other’s benefit at full retirement age, as a top-up over their own; it is smaller if they claim before their own full retirement age and is not raised by the other’s delayed credits. When one spouse dies, the survivor keeps the larger of the two benefits, including the delayed credits the one who died had earned. That is why the higher earner’s claiming age matters to both of you.</p>`,
+  },
+  {
+    q: 'Where do I find my benefit at full retirement age?',
+    a: `<p>On your Social Security statement, which you can see by signing in at <a href="${SRC.statement}" rel="noopener noreferrer">ssa.gov/myaccount</a>. It shows your estimated monthly benefit at different claiming ages, including your full retirement age. Use that figure here.</p>`,
+  },
+];
+---
+
+<ToolPage
+  id="social-security"
+  heading="Social Security break-even calculator"
+  lede="Claim at 62 for smaller checks sooner, or wait for bigger ones? See your monthly benefit at every claiming age, the age from which waiting pays more in total, and, if you are married, what your spouse and a survivor would get. It runs in your browser; nothing you type is sent anywhere."
+  faq={faq}
+  adds="In the planner, Social Security starts at the claiming age you choose and is paid year by year alongside your savings, pensions and spending. It adds the spousal top-up and the survivor benefit, holds back benefits under the earnings test if you work before full retirement age, and estimates the federal tax on them, so you can compare claiming ages on copies of your plan."
+  related={[
+    { href: '/planning/us/', label: 'Retirement planning in the United States' },
+    { href: '/tools/retirement-tax-calculator/', label: 'Retirement tax calculator: tax on Social Security and IRA withdrawals' },
+  ]}
+>
+  <h2>How the calculator works</h2>
+  <ol>
+    <li>
+      <strong>Your full retirement age</strong> comes from your year of birth: 66 for 1943 to 1954, rising by two months a
+      year to 67 for anyone born in 1960 or later.
+    </li>
+    <li>
+      <strong>Your monthly benefit at each claiming age</strong> is your benefit at full retirement age, reduced for each
+      month you claim early or increased for each month you wait, up to 70.
+    </li>
+    <li>
+      <strong>Lifetime benefits by age</strong> add up the monthly checks from the month you claim. With the
+      optional assumptions, checks rise each year with the cost-of-living rate and are discounted back to 62.
+    </li>
+    <li>
+      <strong>The break-even age</strong> for two claiming ages is the first month at which the later claim has paid at
+      least as much in total as the earlier one.
+    </li>
+  </ol>
+  <p>
+    The rules are the ones the Glideworth planner uses for its own Social Security estimate, read from the planning
+    engine, so this page and the planner agree.
+  </p>
+
+  <h2>The formula</h2>
+  <p class="formula">Break-even age A: F₁ × (A − a₁) = F₂ × (A − a₂), so A = (a₂ × F₂ − a₁ × F₁) ÷ (F₂ − F₁)</p>
+  <p>
+    a₁ and a₂ are the two claiming ages and F₁ and F₂ the share of your full benefit each pays. With no cost-of-living
+    increase or discounting the break-even age does not depend on the size of your benefit, only on the two claiming
+    ages and your full retirement age.
+  </p>
+
+  <h2>Worked example</h2>
+  <p>
+    Computed by the calculator’s own code when this page was built. Someone born in {born} has a full retirement age of
+    {' '}{ageText(fra, true)} and, from their statement, {m(pia)} a month at that age. Claiming at 62 is
+    {' '}{monthsEarly(born, FIRST_AGE)} months early, so they get {pct(claimShare(born, FIRST_AGE), 0)}: {m(at62)} a month.
+    Waiting until 70 is {-monthsEarly(born, LAST_AGE)} months late, so they get {pct(claimShare(born, LAST_AGE), 0)}:
+    {' '}{m(at70)} a month. The formula puts the break-even at ({LAST_AGE} × {claimShare(born, LAST_AGE).toFixed(2)} −
+    {' '}{FIRST_AGE} × {claimShare(born, FIRST_AGE).toFixed(2)}) ÷ ({claimShare(born, LAST_AGE).toFixed(2)} −
+    {' '}{claimShare(born, FIRST_AGE).toFixed(2)}) = {beFormula.toFixed(2)}; counting month by month, waiting until 70 is
+    ahead from {ageText(be, true)}. The other pairs: 62 against {ageText(fra)} breaks even at {ageText(be62Fra, true)}, and
+    {' '}{ageText(fra)} against 70 at {ageText(beFra70, true)}. Discounting at 3% a year after inflation pushes the 62
+    against 70 break-even to {at3pct === null ? 'after 110' : ageText(at3pct, true)}.
+  </p>
+  <p>
+    Married to someone born in {spouse.born} with {m(spouse.pia)} a month of their own at full retirement age, the spouse
+    gets a top-up of half of {m(pia)} less their own {m(spouse.pia)}: {m(topUpAtFra)} a month if they start it at their
+    full retirement age, or {m(topUpAt62)} if both claim at 62. If the higher earner dies first, the survivor keeps
+    {' '}{m(widow62)} a month if the higher earner had claimed at 62 and {m(widow70)} if they had waited until 70.
+  </p>
+
+  <h2>Full retirement age and the effect of claiming age</h2>
+  <div class="table-scroll" tabindex="0" role="region" aria-label="Full retirement age and claiming adjustments by year of birth">
+    <table>
+      <caption>Full retirement age by year of birth, and what claiming at 62 or 70 does to the benefit</caption>
+      <thead>
+        <tr>
+          <th>Born</th><th>Full retirement age</th><th>Months from 62</th><th>Own benefit at 62</th><th>Spouse’s benefit at 62</th><th>Own benefit at 70</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          fraGroups.map((g, i) => {
+            const r = at62Row(g.from);
+            return (
+              <tr>
+                <td>{groupText(g, i)}</td>
+                <td>{ageText(g.fra, true)}</td>
+                <td>{r.me}</td>
+                <td>−{pct(r.own, 2)}</td>
+                <td>−{pct(r.spouse, 2)}</td>
+                <td>+{pct(r.at70 - 1, 0)}</td>
+              </tr>
+            );
+          })
+        }
+      </tbody>
+    </table>
+  </div>
+  <p>
+    The spouse’s reduction applies to the spouse’s benefit of up to {pct(SPOUSAL_SHARE, 0)} of the worker’s full
+    benefit. These percentages match the tables Social Security publishes for each year of birth; the calculator does
+    not round them, while Social Security rounds each benefit down to the dollar.
+  </p>
+
+  <h2>Rules and sources</h2>
+  <ul>
+    <li>
+      Full retirement age by date of birth: <a href={SRC.fra} {...externalLinkProps(SRC.fra)}>20 CFR 404.409(a)</a>, read
+      2026-11-26.
+    </li>
+    <li>
+      Early claiming: 5/9 of 1% for each of the first 36 months before full retirement age and 5/12 of 1% for each further
+      month; for a spouse’s benefit 25/36 of 1% and 5/12 of 1%:
+      {' '}<a href={SRC.reduce} {...externalLinkProps(SRC.reduce)}>20 CFR 404.410(a) and (b)</a>, read 2026-11-26.
+    </li>
+    <li>
+      Delayed retirement credits: 2/3 of 1% for each month from full retirement age to 70, for anyone born after
+      1 January 1943: <a href={SRC.drc} {...externalLinkProps(SRC.drc)}>20 CFR 404.313(b)(2)</a>, read 2026-11-26.
+    </li>
+    <li>
+      Spouse’s benefit: half the worker’s primary insurance amount
+      (<a href={SRC.spouse} {...externalLinkProps(SRC.spouse)}>20 CFR 404.333</a>), as a top-up over the spouse’s own
+      primary insurance amount and reduced for the months before full retirement age in which it starts
+      (<a href={SRC.dual} {...externalLinkProps(SRC.dual)}>20 CFR 404.411(d)</a>); filing for your own benefit counts as
+      filing for the spouse’s benefit and the other way round (<a href={SRC.act} {...externalLinkProps(SRC.act)}>Social Security
+      Act §202(r)</a>). Read 2026-11-26.
+    </li>
+    <li>
+      Survivor’s benefit: the deceased’s benefit including delayed credits; if they claimed early, the larger of what they
+      were paid and {pct(SURVIVOR_FLOOR, 1)} of their primary insurance amount
+      (<a href={SRC.widow} {...externalLinkProps(SRC.widow)}>20 CFR 404.338</a>; Social Security Act §202(e)(2)(D)). The
+      survivor’s own benefit is deducted from it (Social Security Act §202(k)(3)(A)), so the survivor keeps the larger of
+      the two. Read 2026-11-26.
+    </li>
+    <li>
+      Cross-checked against Social Security’s tables “<a href={SRC.ssaEarly} {...externalLinkProps(SRC.ssaEarly)}>Retirement
+      Age and Benefit Reduction</a>” and “<a href={SRC.ssaLate} {...externalLinkProps(SRC.ssaLate)}>Delayed Retirement
+      Credits</a>”. ssa.gov does not allow automated reading, so these and the Social Security Act were read from Internet
+      Archive copies of late October and early November 2026.
+    </li>
+  </ul>
+
+  <h2>What the result means, and what it does not</h2>
+  <p>
+    A break-even age is not a recommendation. It tells you how long you would need to live for waiting to pay more in
+    total. If you live past it, the later claim wins; if you die before it, the earlier claim had paid more. Neither you
+    nor the calculator knows which will happen, and the choice also depends on whether you need the income now, on your
+    other savings and taxes, and on a spouse who may live on your benefit after you. These are estimates, not advice.
+  </p>
+
+  <h2>What this leaves out</h2>
+  <ul>
+    <li>
+      The earnings test: if you claim before full retirement age and keep working, some benefits are held back. The
+      planner models it; this page does not.
+    </li>
+    <li>Income tax on benefits. See the <a href="/tools/retirement-tax-calculator/">retirement tax calculator</a>.</li>
+    <li>
+      The Windfall Elimination Provision and Government Pension Offset, divorced-spouse benefits, child and parent
+      benefits, the family maximum, disability benefits and suspending benefits after claiming.
+    </li>
+    <li>
+      Survivor benefits claimed before the survivor’s full retirement age (they can start at 60, reduced), and survivors
+      whose spouse died before claiming. The survivor amounts shown assume the one who died had already claimed and the
+      survivor is at their full retirement age for survivor benefits.
+    </li>
+    <li>
+      A spouse who delays their own benefit past full retirement age: the calculator adds the top-up worked out from
+      their primary insurance amount, as the planner does. Social Security’s exact treatment of that case is not confirmed
+      here.
+    </li>
+    <li>
+      Exact dates: ages are whole years and months from your year of birth (birth months between spouses are not asked),
+      delayed credits earned in the year you claim are counted at once rather than from the next January, Social Security
+      rounds benefits to the dime and the dollar, and you must be 62 for the whole month to be paid for it.
+    </li>
+    <li>
+      The size of future benefits: the calculator takes your statement’s figure as given. It does not model changes to
+      the law or a shortfall in the trust fund; the planner lets you assume a share of the benefit is paid.
+    </li>
+    <li>Birth years before 1955; their benefits are already, or nearly, past the age of 70.</li>
+  </ul>
+</ToolPage>

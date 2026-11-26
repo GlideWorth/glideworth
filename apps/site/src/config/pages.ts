@@ -175,6 +175,13 @@ export const pages = {
     ogTitle: "IRMAA calculator",
     ogEyebrow: "Free calculator",
   },
+  "/tools/social-security-break-even-calculator/": {
+    title: "Social Security break-even calculator",
+    description:
+      "Free Social Security break-even calculator: your monthly benefit at 62, full retirement age or 70, the age waiting pays off, and what a spouse and survivor get.",
+    ogTitle: "Social Security break-even calculator",
+    ogEyebrow: "Free calculator",
+  },
   "/tools/uk-fire-calculator/": {
     title: "UK FIRE calculator: the ISA-to-pension bridge",
     description:

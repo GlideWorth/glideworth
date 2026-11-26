@@ -1402,6 +1402,79 @@ export const isaVsPensionSpec: ToolSpec = {
   },
 };
 
+export const socialSecuritySpec: ToolSpec = {
+  id: "social-security",
+  path: "/tools/social-security-break-even-calculator/",
+  mode: "instant",
+  fields: [
+    year(
+      "born",
+      "Year you were born",
+      1964,
+      "Sets your full retirement age. Born on 1 January? Enter the year before, as Social Security does.",
+      1955,
+      2010,
+    ),
+    money(
+      "pia",
+      "Monthly benefit at full retirement age",
+      2_000,
+      "From your Social Security statement at ssa.gov/myaccount: the amount at your full retirement age.",
+      { max: 10_000 },
+    ),
+    age(
+      "claim",
+      "Age you are thinking of claiming",
+      65,
+      "Compared with 62, your full retirement age and 70. Whole years.",
+      62,
+      70,
+    ),
+    percent(
+      "cola",
+      "Cost-of-living increase a year",
+      0,
+      "Benefits rise with prices each year. Leave at 0% to see everything in today’s money; enter a rate to see future dollars.",
+      0,
+      10,
+      { advanced: true },
+    ),
+    percent(
+      "disc",
+      "Discount rate a year",
+      0,
+      "What a dollar now is worth over a dollar later, in the same terms as the cost-of-living rate. 0% adds up the checks; a higher rate makes waiting pay off later.",
+      0,
+      10,
+      { advanced: true },
+    ),
+    {
+      kind: "select" as const,
+      key: "spouse",
+      label: "Married?",
+      help: "Adds the spousal top-up and what the survivor keeps.",
+      options: [
+        { value: "no", label: "No, just me" },
+        { value: "yes", label: "Yes, add my spouse" },
+      ],
+      default: "no",
+    },
+    year("sborn", "Year your spouse was born", 1966, "Sets their full retirement age.", 1955, 2010),
+    money(
+      "spia",
+      "Spouse’s monthly benefit at full retirement age",
+      900,
+      "From their own Social Security statement. Use 0 if they have no work record of their own.",
+      { max: 10_000 },
+    ),
+    age("sclaim", "Age your spouse claims", 67, "Whole years, 62 to 70.", 62, 70),
+  ].map((f) =>
+    ["sborn", "spia", "sclaim"].includes(f.key)
+      ? { ...f, showWhen: { key: "spouse", values: ["yes"] } }
+      : f,
+  ),
+};
+
 export const SPECS: Record<ToolId, ToolSpec> = {
   "coast-fire": coastSpec,
   fire: fireSpec,
@@ -1425,4 +1498,5 @@ export const SPECS: Record<ToolId, ToolSpec> = {
   "historical-backtest": historicalBacktestSpec,
   "uk-drawdown": ukDrawdownSpec,
   "isa-vs-pension": isaVsPensionSpec,
+  "social-security": socialSecuritySpec,
 };

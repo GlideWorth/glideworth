@@ -154,6 +154,14 @@ export const clusters: { subject: string; paths: string[] }[] = [
     paths: ["/tools/rmd-calculator/", "/tools/irmaa-calculator/", "/planning/us/"],
   },
   {
+    subject: "Social Security claiming",
+    paths: [
+      "/tools/social-security-break-even-calculator/",
+      "/planning/us/",
+      "/tools/retirement-tax-calculator/",
+    ],
+  },
+  {
     subject: "72(t) payments",
     paths: ["/tools/72t-calculator/", "/tools/rmd-calculator/", "/tools/rule-of-55/"],
   },

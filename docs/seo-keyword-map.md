@@ -157,6 +157,7 @@ primary keyword. `—` means the URL has no secondary.
 | /tools/monte-carlo-retirement-calculator/             | monte carlo retirement calculator             | retirement success rate calculator                                     | Monte Carlo retirement calculator · Glideworth (46)                        | Monte Carlo retirement calculator                                                       |
 | /tools/retirement-withdrawal-calculator/              | safe withdrawal rate calculator               | 4% rule; retirement withdrawal calculator; guyton klinger / guardrails | Retirement withdrawal calculator: SWR, 4% rule · Glideworth (59)           | Retirement withdrawal calculator: safe withdrawal rate, the 4% rule and four strategies |
 | /tools/rule-of-55/                                    | rule of 55                                    | rule of 55 calculator; 401(k) withdrawal at 55                         | Rule of 55: 401(k) withdrawals before 59½ · Glideworth (54)                | Rule of 55: take money from your 401(k) before 59½                                      |
+| /tools/social-security-break-even-calculator/         | social security break even calculator         | social security 62 vs 67; social security spousal benefits calculator  | Social Security break-even calculator · Glideworth (50)                    | Social Security break-even calculator                                                   |
 
 ## Overlaps to watch
 

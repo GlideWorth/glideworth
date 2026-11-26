@@ -95,7 +95,23 @@ export function auMinimumDrawdown(age: number): number {
   return 0.14;
 }
 
-/** US Social Security full retirement age (years) by birth year. */
+/*
+ * US Social Security claiming rules. Sources (read 2026-11-26):
+ * - 20 CFR 404.409(a), full retirement age by date of birth:
+ *   https://www.ecfr.gov/current/title-20/chapter-III/part-404/subpart-E/section-404.409
+ * - 20 CFR 404.410(a) and (b), reductions for old-age and for wife's or husband's benefits:
+ *   https://www.ecfr.gov/current/title-20/chapter-III/part-404/subpart-E/section-404.410
+ * - 20 CFR 404.313(b)(2), delayed retirement credits (2/3 of 1% a month for births after 1/1/1943):
+ *   https://www.ecfr.gov/current/title-20/chapter-III/part-404/subpart-C/section-404.313
+ * - SSA, "Retirement Age and Benefit Reduction" and "Delayed Retirement Credits" (worked percentages by
+ *   birth year; ssa.gov refuses automated access, so read from the Internet Archive copies of
+ *   2 Nov 2026 and 31 Oct 2026): https://www.ssa.gov/benefits/retirement/planner/agereduction.html,
+ *   https://www.ssa.gov/benefits/retirement/planner/delayret.html
+ * Birth years stand for dates of birth: someone born on 1 January is treated by SSA as born in the
+ * year before (404.409 ranges run from 2 January), which these functions do not do.
+ */
+
+/** US Social Security full retirement age (years) by birth year (20 CFR 404.409(a)). */
 export function ssFullRetirementAge(birthYear: number): number {
   if (birthYear <= 1937) return 65;
   if (birthYear <= 1942) return 65 + ((birthYear - 1937) * 2) / 12;
@@ -104,14 +120,22 @@ export function ssFullRetirementAge(birthYear: number): number {
   return 67;
 }
 
-/** Own-benefit factor for claiming `monthsEarly` (> 0 early, < 0 delayed) relative to FRA. */
+/**
+ * Own-benefit factor for claiming `monthsEarly` (> 0 early, < 0 delayed) relative to FRA: 5/9 of 1%
+ * for each of the first 36 months early and 5/12 of 1% for each further month (20 CFR 404.410(a));
+ * 2/3 of 1% for each month delayed (20 CFR 404.313(b)(2), births after 1 January 1943 only), up to 70.
+ */
 export function ssClaimFactor(monthsEarly: number): number {
   if (monthsEarly > 0)
     return 1 - Math.min(monthsEarly, 36) * (5 / 900) - Math.max(0, monthsEarly - 36) * (5 / 1200);
   return 1 + -monthsEarly * (2 / 300);
 }
 
-/** Spousal-benefit factor (no delayed credits). */
+/**
+ * Spousal-benefit factor: 25/36 of 1% for each of the first 36 months early and 5/12 of 1% for each
+ * further month (20 CFR 404.410(b)). No delayed credits: the spouse's benefit is half the worker's
+ * primary insurance amount (20 CFR 404.333), so the worker's own delayed credits do not raise it.
+ */
 export function ssSpousalFactor(monthsEarly: number): number {
   if (monthsEarly <= 0) return 1;
   return 1 - Math.min(monthsEarly, 36) * (25 / 3600) - Math.max(0, monthsEarly - 36) * (5 / 1200);

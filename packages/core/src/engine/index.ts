@@ -12,6 +12,7 @@ export {
   singleLifeExpectancy,
   ssClaimFactor,
   ssFullRetirementAge,
+  ssSpousalFactor,
   uniformLifetimeDivisor,
   usRmdStartAge,
 } from "./tables.js";

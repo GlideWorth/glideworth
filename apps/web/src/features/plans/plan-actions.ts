@@ -172,10 +172,13 @@ export async function mergeBranch(
   await flushSaves(qc);
   if (offline()) throw new Error("Merging a branch needs the Glideworth server.");
   const out = await api.mergeBranch(branch.id, { strategy });
+  // Drop a fetch that started before the merge: it still lists the branch, and applying it would
+  // put the branch back on screen until a full reload.
+  await qc.cancelQueries({ queryKey: ["workspace"] });
   if (out.branchDeleted) removePlanFromWorkspace(branch.id);
   addPlanToWorkspace(out.plan);
+  afterStructuralChange(qc);
   // Other branches of the parent are re-materialised server-side: reload everything.
   await qc.invalidateQueries({ queryKey: ["workspace"] });
-  afterStructuralChange(qc);
   return out.plan;
 }

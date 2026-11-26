@@ -33,10 +33,13 @@ import {
   getEntity,
   type HouseholdEntity,
   isDirty,
+  addPlanToWorkspace,
   loadDocument,
   planKey,
   redo,
+  removePlanFromWorkspace,
   resetEditorStore,
+  syncFromServer,
   undo,
   useEditorStore,
 } from "../src/features/plan-editor/state/doc-store";
@@ -173,6 +176,36 @@ describe("editor store: dirty tracking and undo/redo", () => {
     const s = useEditorStore.getState();
     expect(dirtyKeys(s)).toEqual(["household"]);
     expect((getEntity(s.draft!, "household") as HouseholdEntity).finances.asOf).toBe("2027-01");
+  });
+});
+
+describe("a removed plan is not restored by a stale workspace document", () => {
+  beforeEach(() => {
+    resetEditorStore();
+    loadDocument(createSampleDocument(), "api");
+  });
+
+  it("drops the plan and ignores a refetch that still contains it", () => {
+    const id = useEditorStore.getState().draft!.plans[0]!.id;
+    const stale = structuredClone(useEditorStore.getState().base!);
+    removePlanFromWorkspace(id);
+    syncFromServer(stale);
+    expect(useEditorStore.getState().draft!.plans.map((p) => p.id)).not.toContain(id);
+    expect(useEditorStore.getState().base!.plans.map((p) => p.id)).not.toContain(id);
+  });
+
+  it("keeps a plan added locally that the older document has not seen", () => {
+    const before = structuredClone(useEditorStore.getState().base!);
+    const src = useEditorStore.getState().draft!.plans[0]!;
+    const extra = Plan.parse({
+      ...structuredClone(src),
+      id: "plan-local",
+      name: "Local plan",
+      isMain: false,
+    });
+    addPlanToWorkspace(extra);
+    syncFromServer(before);
+    expect(useEditorStore.getState().draft!.plans.some((p) => p.id === "plan-local")).toBe(true);
   });
 });
 

@@ -39,6 +39,18 @@ describe("form fields on touch screens", () => {
   });
 });
 
+describe("import tabs on a narrow screen", () => {
+  // overflow-x: auto with the other axis left at visible computes that axis to auto, so the tab
+  // row gained a vertical scrollbar and collapsed into a tiny box. The triggers stay one row and
+  // scroll sideways.
+  const page = readFileSync(resolve(__dirname, "../src/features/import/import-page.tsx"), "utf8");
+
+  it("scrolls the tab row sideways without a vertical scrollbar", () => {
+    expect(page).toContain("flex-nowrap overflow-x-auto overflow-y-hidden");
+    expect(page).toContain("shrink-0 whitespace-nowrap");
+  });
+});
+
 describe("tour on phones", () => {
   // Below 640px the top bar has no menu button and no search button: the bottom bar's More button
   // opens the navigation drawer, and search moves into the top bar's overflow menu.

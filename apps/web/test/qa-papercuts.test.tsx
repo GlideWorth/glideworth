@@ -3,8 +3,9 @@
  * projection is still loading, and the demo chance page reusing the dashboard's run.
  */
 import { periodAge, type MonteCarloResult } from "@glideworth/core";
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { createSampleDocument } from "@glideworth/core/samples";
+import { act, cleanup, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { showDemoRunLoading, showNoRunYet } from "../src/features/chance/chance-display";
 import { useMcStore } from "../src/features/chance/mc-store";
 import {
@@ -12,6 +13,12 @@ import {
   useRememberedChance,
   writeDemoChance,
 } from "../src/features/demo/demo-chance";
+import {
+  editEntity,
+  type HouseholdEntity,
+  loadDocument,
+  resetEditorStore,
+} from "../src/features/plan-editor/state/doc-store";
 import { monthIndex, timelineYearAge } from "../src/features/plan-editor/state/finance-math";
 import { awaitingProjection } from "../src/features/results/use-active-projection";
 import { setDemoModeForTests } from "../src/lib/demo";
@@ -152,5 +159,116 @@ describe("a saved demo run is reused for the same plan version", () => {
     writeDemoChance(remembered);
     render(<RememberedProbe version={5} />);
     expect(screen.getByText("none")).toBeTruthy();
+  });
+});
+
+describe("a workspace run survives a reload of this tab", () => {
+  beforeEach(() => {
+    setDemoModeForTests(false);
+    sessionStorage.clear();
+    useMcStore.setState({ byPlan: {}, demoPhase: {} });
+    resetEditorStore();
+    loadDocument(createSampleDocument(), "api");
+  });
+
+  afterEach(() => {
+    cleanup();
+    sessionStorage.clear();
+    useMcStore.setState({ byPlan: {}, demoPhase: {} });
+    resetEditorStore();
+  });
+
+  const run = {
+    result: remembered.result,
+    planVersion: 4,
+    example: false as const,
+    at: 10,
+  };
+
+  it("restores the last run after the in-memory store is cleared", () => {
+    useMcStore.getState().put("plan-main", run);
+    useMcStore.setState({ byPlan: {}, demoPhase: {} });
+    render(<RememberedProbe version={4} />);
+    expect(screen.getByText("1000")).toBeTruthy();
+  });
+
+  it("does not restore a run saved for a different plan version", () => {
+    useMcStore.getState().put("plan-main", run);
+    useMcStore.setState({ byPlan: {}, demoPhase: {} });
+    render(<RememberedProbe version={5} />);
+    expect(screen.getByText("none")).toBeTruthy();
+  });
+
+  it("does not restore a run after the household it was computed from has changed", () => {
+    useMcStore.getState().put("plan-main", run);
+    useMcStore.setState({ byPlan: {}, demoPhase: {} });
+    // A balance update changes the result and leaves the plan version alone.
+    editEntity<HouseholdEntity>(
+      "household",
+      (h) => ({
+        ...h,
+        finances: {
+          ...h.finances,
+          accounts: h.finances.accounts.map((a, i) =>
+            i === 0 ? { ...a, balance: a.balance + 5000 } : a,
+          ),
+        },
+      }),
+      "Update balance",
+    );
+    render(<RememberedProbe version={4} />);
+    expect(screen.getByText("none")).toBeTruthy();
+  });
+
+  it("does not show one household's run to another household with the same plan id", () => {
+    useMcStore.getState().put("plan-main", run);
+    useMcStore.setState({ byPlan: {}, demoPhase: {} });
+    const other = createSampleDocument();
+    other.household.id = "hh-someone-else";
+    resetEditorStore();
+    loadDocument(other, "api");
+    render(<RememberedProbe version={4} />);
+    expect(screen.getByText("none")).toBeTruthy();
+  });
+
+  it("restores once the household has loaded, when the plan arrived first", () => {
+    useMcStore.getState().put("plan-main", run);
+    useMcStore.setState({ byPlan: {}, demoPhase: {} });
+    const doc = createSampleDocument();
+    resetEditorStore();
+    render(<RememberedProbe version={4} />);
+    expect(screen.getByText("none")).toBeTruthy();
+    act(() => loadDocument(doc, "api"));
+    expect(screen.getByText("1000")).toBeTruthy();
+  });
+
+  it("does not keep an example preview", () => {
+    useMcStore.getState().put("plan-main", { ...run, example: true });
+    useMcStore.setState({ byPlan: {}, demoPhase: {} });
+    render(<RememberedProbe version={4} />);
+    expect(screen.getByText("none")).toBeTruthy();
+  });
+
+  it("drops per-trial rows when session storage rejects the full result", () => {
+    const spy = vi.spyOn(Storage.prototype, "setItem");
+    spy.mockImplementationOnce(() => {
+      throw new DOMException("quota", "QuotaExceededError");
+    });
+    try {
+      useMcStore.getState().put("plan-main", {
+        ...run,
+        result: {
+          ...remembered.result,
+          trialSummaries: [{ t: 1 }] as unknown as MonteCarloResult["trialSummaries"],
+        },
+      });
+      const saved = JSON.parse(
+        sessionStorage.getItem("glideworth:chance:v2:hh-sample:plan-main") ?? "null",
+      );
+      expect(saved.result.successRate).toBe(0.88);
+      expect(saved.result.trialSummaries).toEqual([]);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

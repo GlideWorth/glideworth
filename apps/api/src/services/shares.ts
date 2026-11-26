@@ -26,6 +26,13 @@ import type { SimulationService } from "./simulation.js";
 export type SharePrivacy = "full" | "percent" | "hidden";
 export const MAX_SHARE_DAYS = 365;
 
+/** How the chance of success was attached to a new link. `pending` means the run continues after the response. */
+export type ShareMonteCarlo =
+  | { status: "skipped" }
+  | { status: "included" }
+  | { status: "pending"; jobId: string }
+  | { status: "unavailable" };
+
 export interface ShareLinkInfo {
   id: string;
   planId: string;
@@ -44,6 +51,23 @@ export interface ShareLinkInfo {
 
 // The `cairn-share:` domain separator predates the rename and is part of every stored token hash: it stays, so
 // links shared before the upgrade keep working.
+/**
+ * Stored beside the snapshot, never served: the owner asked for the chance of success on this link. Refresh
+ * reads it, so a link whose first run failed or was still running gets the figure on the next refresh.
+ */
+const WANTS_SUCCESS_RATE = "_successRateRequested";
+/** How long a link waits for a Monte Carlo run it was returned ahead of. Queued runs can take minutes. */
+const DEFERRED_RUN_WAIT_MS = 15 * 60_000;
+
+type StoredSnapshot = {
+  generatedAt?: string;
+  summary?: { monteCarloTrials?: number | null } & Record<string, unknown>;
+  [WANTS_SUCCESS_RATE]?: boolean;
+} & Record<string, unknown>;
+
+const wantsSuccessRate = (snap: StoredSnapshot): boolean =>
+  snap[WANTS_SUCCESS_RATE] === true || snap.summary?.monteCarloTrials != null;
+
 const hashToken = (t: string) => createHash("sha256").update(`cairn-share:${t}`).digest("hex");
 const pct1 = (n: number) => Math.round(n * 1000) / 10;
 
@@ -85,6 +109,78 @@ export class SharesService {
     };
   }
 
+  /**
+   * Start (or reuse) the plan's Monte Carlo run. `defer` returns as soon as the job is queued so creating
+   * a link does not wait for a full run; the caller fills the snapshot in when the job finishes. A result
+   * already in the cache is included immediately either way.
+   */
+  private async monteCarloFigure(
+    planId: string,
+    actor: Actor,
+    defer: boolean,
+  ): Promise<
+    | { status: "included"; successRate: number; trials: number }
+    | { status: "pending"; jobId: string }
+    | { status: "unavailable" }
+  > {
+    try {
+      const job = this.sim.startMonteCarlo(planId, { keepTrials: false, randomSeed: false }, actor);
+      if (job.status === "succeeded") {
+        const mc = this.sim.jobs.result(job.id) as MonteCarloResult;
+        return { status: "included", successRate: mc.successRate, trials: mc.trials };
+      }
+      if (defer) return { status: "pending", jobId: job.id };
+      const done = await this.sim.jobs.waitFor(job.id, 120_000);
+      if (done.status !== "succeeded") return { status: "unavailable" };
+      const mc = this.sim.jobs.result(job.id) as MonteCarloResult;
+      return { status: "included", successRate: mc.successRate, trials: mc.trials };
+    } catch {
+      // The link still works without a Monte Carlo figure.
+      return { status: "unavailable" };
+    }
+  }
+
+  /**
+   * Write the finished run onto a link that was created before the run completed. `generatedAt` names the
+   * snapshot the run belongs to: a link refreshed since then has a newer snapshot (perhaps of an edited
+   * plan) with its own figure, and this run must not overwrite it.
+   */
+  private writeSuccessRate(
+    linkId: string,
+    generatedAt: string,
+    successRate: number,
+    trials: number,
+  ): void {
+    const r = this.db.select().from(shareLinks).where(eq(shareLinks.id, linkId)).get();
+    if (!r || r.revokedAt) return;
+    const snap = r.snapshot as StoredSnapshot;
+    if (snap.generatedAt !== generatedAt) return;
+    this.db
+      .update(shareLinks)
+      .set({
+        snapshot: {
+          ...snap,
+          summary: { ...(snap.summary ?? {}), successRate, monteCarloTrials: trials },
+        },
+        snapshotAt: nowIso(),
+      })
+      .where(eq(shareLinks.id, linkId))
+      .run();
+  }
+
+  private attachMonteCarlo(linkId: string, generatedAt: string, jobId: string): void {
+    void this.sim.jobs
+      .waitFor(jobId, DEFERRED_RUN_WAIT_MS)
+      .then((done) => {
+        if (done.status !== "succeeded") return;
+        const mc = this.sim.jobs.result(jobId) as MonteCarloResult;
+        this.writeSuccessRate(linkId, generatedAt, mc.successRate, mc.trials);
+      })
+      .catch(() => {
+        // The link stays without a figure; Refresh can try again.
+      });
+  }
+
   /** The public payload. Built only from the plan's computed results. */
   private async snapshot(
     planId: string,
@@ -96,35 +192,33 @@ export class SharesService {
       expiresAt: string;
     },
     actor: Actor,
-  ) {
+    defer = false,
+  ): Promise<{ view: ReturnType<typeof buildPublicView>; monteCarlo: ShareMonteCarlo }> {
     const plan = this.plans.get(planId);
     const { result } = this.sim.projection(planId, { trace: "off" });
     let successRate: number | null = null;
     let trials: number | null = null;
+    let monteCarlo: ShareMonteCarlo = { status: "skipped" };
     if (o.successRate) {
-      try {
-        const job = this.sim.startMonteCarlo(
-          planId,
-          { keepTrials: false, randomSeed: false },
-          actor,
-        );
-        const done = await this.sim.jobs.waitFor(job.id, 120_000);
-        if (done.status === "succeeded") {
-          const mc = this.sim.jobs.result(job.id) as MonteCarloResult;
-          successRate = mc.successRate;
-          trials = mc.trials;
-        }
-      } catch {
-        // The link still works without a Monte Carlo figure.
+      const figure = await this.monteCarloFigure(planId, actor, defer);
+      if (figure.status === "included") {
+        successRate = figure.successRate;
+        trials = figure.trials;
+        monteCarlo = { status: "included" };
+      } else {
+        monteCarlo = figure;
       }
     }
-    return buildPublicView(result, {
-      planName: plan.name,
-      currency: this.households.get(plan.householdId).household.currency,
-      ...o,
-      successRate,
-      trials,
-    });
+    return {
+      view: buildPublicView(result, {
+        planName: plan.name,
+        currency: this.households.get(plan.householdId).household.currency,
+        ...o,
+        successRate,
+        trials,
+      }),
+      monteCarlo,
+    };
   }
 
   async create(
@@ -135,9 +229,11 @@ export class SharesService {
       basis: ValueBasis;
       expiresInDays?: number | undefined;
       includeSuccessRate: boolean;
+      /** Return the link before the Monte Carlo run finishes, and fill the figure in afterwards. */
+      deferMonteCarlo?: boolean;
     },
     actor: Actor,
-  ): Promise<{ link: ShareLinkInfo; token: string }> {
+  ): Promise<{ link: ShareLinkInfo; token: string; monteCarlo: ShareMonteCarlo }> {
     this.plans.get(planId);
     const max = this.opts.maxActive?.();
     if (max !== undefined) {
@@ -170,6 +266,7 @@ export class SharesService {
         expiresAt,
       },
       actor,
+      input.deferMonteCarlo === true,
     );
     const token =
       this.opts.mintToken?.() ?? `glideworth_share_${randomBytes(32).toString("base64url")}`;
@@ -184,12 +281,14 @@ export class SharesService {
         privacy: input.privacy,
         basis: input.basis,
         expiresAt,
-        snapshot: snap,
+        snapshot: { ...snap.view, [WANTS_SUCCESS_RATE]: input.includeSuccessRate },
         snapshotAt: nowIso(),
         createdBy: actor,
       })
       .run();
-    return { link: this.get(id), token };
+    if (snap.monteCarlo.status === "pending")
+      this.attachMonteCarlo(id, snap.view.generatedAt, snap.monteCarlo.jobId);
+    return { link: this.get(id), token, monteCarlo: snap.monteCarlo };
   }
 
   get(id: string): ShareLinkInfo {
@@ -219,23 +318,23 @@ export class SharesService {
     const r = this.db.select().from(shareLinks).where(eq(shareLinks.id, id)).get();
     if (!r) throw notFound("share link", id);
     if (r.revokedAt) throw new ApiError(409, "CONFLICT", "this link is revoked");
+    const wanted = wantsSuccessRate(r.snapshot as StoredSnapshot);
     const snap = await this.snapshot(
       r.planId,
       {
         privacy: r.privacy,
         basis: r.basis,
         label: r.label,
-        // Keep what the link was created with: a snapshot that carried a Monte Carlo figure is refreshed with one.
-        successRate:
-          (r.snapshot as { summary?: { monteCarloTrials?: number | null } }).summary
-            ?.monteCarloTrials != null,
+        // Keep what the link was created with, including a figure that was asked for and never arrived
+        // (the run failed, was cancelled, or is still going): this refresh runs it again.
+        successRate: wanted,
         expiresAt: r.expiresAt,
       },
       actor,
     );
     this.db
       .update(shareLinks)
-      .set({ snapshot: snap, snapshotAt: nowIso() })
+      .set({ snapshot: { ...snap.view, [WANTS_SUCCESS_RATE]: wanted }, snapshotAt: nowIso() })
       .where(eq(shareLinks.id, id))
       .run();
     return this.get(id);
@@ -268,7 +367,8 @@ export class SharesService {
       .set({ viewCount: r.viewCount + 1, lastViewedAt: nowIso() })
       .where(eq(shareLinks.id, r.id))
       .run();
-    return r.snapshot;
+    const { [WANTS_SUCCESS_RATE]: _private, ...view } = r.snapshot as StoredSnapshot;
+    return view;
   }
 }
 

@@ -56,7 +56,15 @@ export function shareRoutes(
                   includeSuccessRate: z
                     .boolean()
                     .default(true)
-                    .describe("Run Monte Carlo now and include the chance of success."),
+                    .describe(
+                      "Include the chance of success. Without deferMonteCarlo the request waits for the Monte Carlo run (often about half a minute the first time; a repeat is immediate).",
+                    ),
+                  deferMonteCarlo: z
+                    .boolean()
+                    .default(false)
+                    .describe(
+                      'With includeSuccessRate, return the link before the run finishes. The response then has monteCarlo.status "pending" and a jobId; the snapshot\'s chance of success is filled in when the job succeeds. A cached run is included immediately.',
+                    ),
                 })
                 .meta({
                   id: "ShareLinkCreate",
@@ -70,7 +78,18 @@ export function shareRoutes(
       responses: {
         201: json(
           z
-            .object({ link: Link, token: z.string(), path: z.string(), apiPath: z.string() })
+            .object({
+              link: Link,
+              token: z.string(),
+              path: z.string(),
+              apiPath: z.string(),
+              monteCarlo: z
+                .object({
+                  status: z.enum(["skipped", "included", "pending", "unavailable"]),
+                  jobId: z.string().optional(),
+                })
+                .describe("Whether the chance of success is already on the snapshot."),
+            })
             .meta({ id: "ShareLinkCreated" }),
           "Created",
         ),
@@ -85,6 +104,7 @@ export function shareRoutes(
           basis: z.enum(["real", "nominal"]).default("real"),
           expiresInDays: z.number().int().min(1).max(365).default(30),
           includeSuccessRate: z.boolean().default(true),
+          deferMonteCarlo: z.boolean().default(false),
         })
         .safeParse(body ?? {});
       if (!parsed.success)
@@ -96,6 +116,7 @@ export function shareRoutes(
           token: out.token,
           path: `/share/${out.token}`,
           apiPath: `/api/v1/shared/${out.token}`,
+          monteCarlo: out.monteCarlo,
         } as never,
         201,
       );

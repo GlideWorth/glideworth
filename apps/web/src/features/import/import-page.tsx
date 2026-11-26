@@ -30,10 +30,19 @@ export function ImportPage() {
         onValueChange={(t) => void navigate({ to: "/import", search: { tab: t }, replace: true })}
         className="flex flex-col gap-5"
       >
-        <TabsList aria-label="Import and export" className="overflow-x-auto">
-          <TabsTrigger value="projectionlab">From ProjectionLab</TabsTrigger>
-          <TabsTrigger value="csv">CSV files</TabsTrigger>
-          <TabsTrigger value="backup">Backup & export</TabsTrigger>
+        <TabsList
+          aria-label="Import and export"
+          className="flex-nowrap overflow-x-auto overflow-y-hidden"
+        >
+          <TabsTrigger value="projectionlab" className="shrink-0 whitespace-nowrap">
+            From ProjectionLab
+          </TabsTrigger>
+          <TabsTrigger value="csv" className="shrink-0 whitespace-nowrap">
+            CSV files
+          </TabsTrigger>
+          <TabsTrigger value="backup" className="shrink-0 whitespace-nowrap">
+            Backup & export
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="projectionlab">
           <ProjectionLabImport />

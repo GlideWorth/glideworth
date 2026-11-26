@@ -7,30 +7,20 @@
  * it. The result is also kept in session storage so a full page load of /demo/chance (a new
  * JavaScript context) still shows the run the dashboard just finished.
  */
-import type { MonteCarloResult, Plan, SimulationInput } from "@glideworth/core";
+import type { Plan, SimulationInput } from "@glideworth/core";
 import { useEffect, useLayoutEffect } from "react";
 import { DEMO_KEYS, isDemo } from "../../lib/demo";
+import { type SavedChance, parseSavedChance, readSavedChance } from "../chance/chance-memory";
 import { McCancelled, runChanceOfSuccess } from "../chance/mc-pool";
 import { type ChanceRun, useMcStore } from "../chance/mc-store";
+import { useEditorStore } from "../plan-editor/state/doc-store";
 
-interface SavedChance {
-  planId: string;
-  planVersion: number;
-  result: MonteCarloResult;
-  at: number;
-}
+export type { SavedChance };
 
 export function readDemoChance(): SavedChance | null {
   if (!isDemo()) return null;
   try {
-    const raw = sessionStorage.getItem(DEMO_KEYS.chance);
-    if (!raw) return null;
-    const v = JSON.parse(raw) as SavedChance;
-    if (!v || typeof v.planId !== "string" || typeof v.planVersion !== "number" || !v.result)
-      return null;
-    if (typeof v.result.successRate !== "number" || typeof v.result.trials !== "number")
-      return null;
-    return v;
+    return parseSavedChance(sessionStorage.getItem(DEMO_KEYS.chance));
   } catch {
     return null;
   }
@@ -55,9 +45,9 @@ export function cancelDemoChanceRun(): void {
 }
 
 /**
- * The run already in memory for this plan version, or the one saved from the dashboard in this
- * tab. Reading session storage before paint is what lets /demo/chance open onto 88% instead of
- * "No run yet" after a full navigation.
+ * The run already in memory for this plan version, or the one saved in this tab. Reading session
+ * storage before paint is what lets /chance (and the dashboard) open onto the last run instead of
+ * "No run yet" after a reload. A different plan version is a different plan, so it is not restored.
  */
 export function useRememberedChance(
   plan: { id: string; version: number } | undefined,
@@ -66,10 +56,13 @@ export function useRememberedChance(
   const stored = useMcStore((s) => (plan ? s.byPlan[plan.id] : undefined));
   const planId = plan?.id;
   const planVersion = plan?.version;
+  // The saved run is checked against the household in the editor, which loads just after the plan
+  // on a reload: look again once it is there.
+  const household = useEditorStore((s) => (s.ready ? s.householdId : null));
   useLayoutEffect(() => {
-    if (!isDemo() || planId === undefined || planVersion === undefined) return;
+    if (planId === undefined || planVersion === undefined) return;
     if (stored && stored.planVersion === planVersion) return;
-    const saved = readDemoChance();
+    const saved = isDemo() ? readDemoChance() : readSavedChance(planId);
     if (!saved || saved.planId !== planId || saved.planVersion !== planVersion) return;
     put(planId, {
       result: saved.result,
@@ -77,7 +70,7 @@ export function useRememberedChance(
       example: false,
       at: saved.at,
     });
-  }, [planId, planVersion, stored, put]);
+  }, [planId, planVersion, stored, put, household]);
   return stored && planVersion !== undefined && stored.planVersion === planVersion
     ? stored
     : undefined;

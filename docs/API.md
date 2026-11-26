@@ -732,7 +732,12 @@ Give someone (an adviser, a friend) a link to a plan's **results** without an ac
 the plan name, a summary (chance of success, retirement and FI year, funded or not), the reached milestones
 (life-expectancy ones are left out: they name a person) and a year-by-year table. It never contains the
 household, people, accounts, balances, settings or other plans, and the public route never computes, so an
-anonymous caller costs nothing.
+anonymous caller costs nothing. Including the chance of success runs Monte Carlo.
+`deferMonteCarlo: true` (default false) returns the link before that run finishes: the response includes
+`monteCarlo: { status: "pending", jobId }` and the snapshot's chance of success is filled in when the job
+succeeds. A cached run is included immediately (`status: "included"`). Poll `GET /jobs/{id}` for progress.
+A link that asked for the chance of success and has none yet (the run failed, was cancelled, or is still going)
+gets it from `POST /share-links/{id}/refresh`, which runs Monte Carlo again and waits for it.
 
 | Route                                                                                                                                                                          | Purpose                                                                                                                                                                                                                                         |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

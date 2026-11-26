@@ -25375,13 +25375,35 @@
      },
      "apiPath": {
       "type": "string"
+     },
+     "monteCarlo": {
+      "type": "object",
+      "properties": {
+       "status": {
+        "type": "string",
+        "enum": [
+         "skipped",
+         "included",
+         "pending",
+         "unavailable"
+        ]
+       },
+       "jobId": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "status"
+      ],
+      "description": "Whether the chance of success is already on the snapshot."
      }
     },
     "required": [
      "link",
      "token",
      "path",
-     "apiPath"
+     "apiPath",
+     "monteCarlo"
     ]
    },
    "ShareLink": {
@@ -25497,7 +25519,12 @@
      "includeSuccessRate": {
       "type": "boolean",
       "default": true,
-      "description": "Run Monte Carlo now and include the chance of success."
+      "description": "Include the chance of success. Without deferMonteCarlo the request waits for the Monte Carlo run (often about half a minute the first time; a repeat is immediate)."
+     },
+     "deferMonteCarlo": {
+      "type": "boolean",
+      "default": false,
+      "description": "With includeSuccessRate, return the link before the run finishes. The response then has monteCarlo.status \"pending\" and a jobId; the snapshot's chance of success is filled in when the job succeeds. A cached run is included immediately."
      }
     },
     "examples": [

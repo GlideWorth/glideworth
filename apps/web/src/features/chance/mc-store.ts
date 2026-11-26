@@ -1,9 +1,11 @@
 /**
- * Latest chance-of-success result per plan (in memory for the session), so the dashboard,
- * insights and the report can show it without re-running.
+ * Latest chance-of-success result per plan, so the dashboard, insights and the report can show
+ * it without re-running. A real run is also written to session storage (see chance-memory) so a
+ * reload of this tab keeps it; example previews are memory only.
  */
 import type { MonteCarloResult } from "@glideworth/core";
 import { create } from "zustand";
+import { rememberChanceRun } from "./chance-memory";
 
 export interface ChanceRun {
   result: MonteCarloResult;
@@ -25,7 +27,10 @@ interface McStore {
 export const useMcStore = create<McStore>()((set) => ({
   byPlan: {},
   demoPhase: {},
-  put: (planId, e) => set((s) => ({ byPlan: { ...s.byPlan, [planId]: e } })),
+  put: (planId, e) => {
+    set((s) => ({ byPlan: { ...s.byPlan, [planId]: e } }));
+    rememberChanceRun(planId, e);
+  },
   setDemoPhase: (planId, phase) =>
     set((s) => {
       const demoPhase = { ...s.demoPhase };

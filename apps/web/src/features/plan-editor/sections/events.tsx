@@ -2009,6 +2009,21 @@ function AcaHouseholdSizeField({
   );
 }
 
+export type UsHealthcarePresentation = "shown" | "collapsed" | "hidden";
+
+/**
+ * ACA and Medicare are US products. A standard expense elsewhere keeps the rise-rate note and hides
+ * the US choices. An expense that already uses them stays editable, collapsed.
+ */
+export function usHealthcarePresentation(
+  country: string,
+  kind: "standard" | "aca" | "medicare",
+): UsHealthcarePresentation {
+  if (country === "US") return "shown";
+  if (kind === "standard") return "hidden";
+  return "collapsed";
+}
+
 function ExpenseSpecific({
   event,
   set,
@@ -2017,44 +2032,48 @@ function ExpenseSpecific({
   set: (fn: (e: AnyEvent) => AnyEvent, l: string, k?: string) => void;
 }) {
   const { people, accounts } = useScope();
+  const country = useEditorStore((s) => s.draft?.household.location.country ?? "GB");
   const s = (v: Record<string, unknown>, label: string, key?: string) =>
     set((e) => ({ ...e, ...v }) as AnyEvent, label, key);
   if (event.type === "healthcare") {
     const h = event.healthcare;
-    return (
+    const presentation = usHealthcarePresentation(country, h.kind);
+    const section = (
       <FormSection title="Healthcare cover">
-        <Segmented<"standard" | "aca" | "medicare">
-          aria-label="Healthcare cover"
-          size="sm"
-          value={h.kind}
-          onChange={(k) =>
-            s(
-              {
-                healthcare:
-                  k === "standard"
-                    ? { kind: "standard" }
-                    : k === "aca"
-                      ? {
-                          kind: "aca",
-                          benchmarkPremium: { value: 600, basis: "real" },
-                          householdSize: "auto",
-                          advanceCreditShare: 1,
-                        }
-                      : {
-                          kind: "medicare",
-                          personId: people[0]!.id,
-                          supplemental: { kind: "none" },
-                        },
-              },
-              "Change cover",
-            )
-          }
-          options={[
-            { value: "standard", label: "Standard / private" },
-            { value: "aca", label: "ACA (US)" },
-            { value: "medicare", label: "Medicare (US)" },
-          ]}
-        />
+        {presentation === "hidden" ? null : (
+          <Segmented<"standard" | "aca" | "medicare">
+            aria-label="Healthcare cover"
+            size="sm"
+            value={h.kind}
+            onChange={(k) =>
+              s(
+                {
+                  healthcare:
+                    k === "standard"
+                      ? { kind: "standard" }
+                      : k === "aca"
+                        ? {
+                            kind: "aca",
+                            benchmarkPremium: { value: 600, basis: "real" },
+                            householdSize: "auto",
+                            advanceCreditShare: 1,
+                          }
+                        : {
+                            kind: "medicare",
+                            personId: people[0]!.id,
+                            supplemental: { kind: "none" },
+                          },
+                },
+                "Change cover",
+              )
+            }
+            options={[
+              { value: "standard", label: "Standard / private" },
+              { value: "aca", label: "ACA (US)" },
+              { value: "medicare", label: "Medicare (US)" },
+            ]}
+          />
+        )}
         {h.kind === "aca" ? (
           <FieldGrid>
             <FormField label="Benchmark premium (monthly)">
@@ -2166,6 +2185,17 @@ function ExpenseSpecific({
         )}
       </FormSection>
     );
+    if (presentation === "collapsed") {
+      return (
+        <details className="rounded-lg border border-border px-3 py-2">
+          <summary className="cursor-pointer text-[13px] font-medium text-ink">
+            US health insurance (ACA / Medicare)
+          </summary>
+          {section}
+        </details>
+      );
+    }
+    return section;
   }
   if (event.type === "charity") {
     const c = event.charity ?? { vehicle: "cash" as const, carryforward: true };

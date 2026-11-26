@@ -163,7 +163,74 @@ describe("privacy modes", () => {
     expect(j.summary.successRate).toBeGreaterThanOrEqual(0);
     expect(j.summary.successRate).toBeLessThanOrEqual(1);
     expect(j.summary.monteCarloTrials).toBeGreaterThan(0);
+    expect(r.json.monteCarlo.status).toBe("included");
   }, 60_000);
+
+  it("returns the link before a deferred Monte Carlo run finishes, then fills in the rate", async () => {
+    h = setup({ realEngine: true });
+    const patched = await h.call("/api/v1/plans/plan-main/monte-carlo-settings", {
+      method: "PATCH",
+      body: { trials: 40 },
+    });
+    expect(patched.status, patched.text).toBe(200);
+    const started = Date.now();
+    const r = await h.call("/api/v1/plans/plan-main/share-links", {
+      method: "POST",
+      body: { privacy: "hidden", includeSuccessRate: true, deferMonteCarlo: true },
+    });
+    expect(r.status, r.text).toBe(201);
+    expect(Date.now() - started).toBeLessThan(15_000);
+    expect(r.json.monteCarlo).toMatchObject({ status: "pending" });
+    expect(typeof r.json.monteCarlo.jobId).toBe("string");
+    let rate: number | null = null;
+    for (let i = 0; i < 40 && typeof rate !== "number"; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      rate = (await pub(r.json.token)).json.summary.successRate;
+    }
+    expect(rate).toBeGreaterThanOrEqual(0);
+    expect(rate).toBeLessThanOrEqual(1);
+  }, 30_000);
+});
+
+describe("a chance of success that was asked for and did not arrive", () => {
+  it("is run again by Refresh, and the stored request never reaches the public payload", async () => {
+    h = setup({ realEngine: true });
+    const patched = await h.call("/api/v1/plans/plan-main/monte-carlo-settings", {
+      method: "PATCH",
+      body: { trials: 2000 },
+    });
+    expect(patched.status, patched.text).toBe(200);
+    const r = await h.call("/api/v1/plans/plan-main/share-links", {
+      method: "POST",
+      body: { privacy: "hidden", includeSuccessRate: true, deferMonteCarlo: true },
+    });
+    expect(r.json.monteCarlo.status).toBe("pending");
+    const cancelled = await h.call(`/api/v1/jobs/${r.json.monteCarlo.jobId}/cancel`, {
+      method: "POST",
+    });
+    expect(cancelled.json.status).toBe("cancelled");
+    expect((await pub(r.json.token)).json.summary.successRate).toBeNull();
+
+    const refreshed = await h.call(`/api/v1/share-links/${r.json.link.id}/refresh`, {
+      method: "POST",
+    });
+    expect(refreshed.status, refreshed.text).toBe(200);
+    const view = (await pub(r.json.token)).json;
+    expect(view.summary.successRate).toBeGreaterThanOrEqual(0);
+    expect(view.summary.successRate).toBeLessThanOrEqual(1);
+    expect(view.summary.monteCarloTrials).toBe(2000);
+    expect(JSON.stringify(view)).not.toContain("successRateRequested");
+  }, 120_000);
+
+  it("stays off after Refresh on a link created without it", async () => {
+    h = setup();
+    const c = await create();
+    const refreshed = await h.call(`/api/v1/share-links/${c.link.id}/refresh`, { method: "POST" });
+    expect(refreshed.status, refreshed.text).toBe(200);
+    const view = (await pub(c.token)).json;
+    expect(view.summary.successRate).toBeNull();
+    expect(JSON.stringify(view)).not.toContain("successRateRequested");
+  });
 });
 
 describe("expiry, revocation and refresh", () => {

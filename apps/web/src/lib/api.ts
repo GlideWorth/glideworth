@@ -499,13 +499,36 @@ export function createApiClient(opts: ApiClientOptions = {}) {
         basis: "real" | "nominal";
         expiresInDays: number;
         includeSuccessRate: boolean;
+        /** Return the link before the Monte Carlo run finishes. */
+        deferMonteCarlo?: boolean;
       },
     ) =>
       request(
         "POST",
         `/api/v1/plans/${encodeURIComponent(planId)}/share-links`,
-        z.object({ link: ShareLink, token: z.string(), path: z.string(), apiPath: z.string() }),
+        z.object({
+          link: ShareLink,
+          token: z.string(),
+          path: z.string(),
+          apiPath: z.string(),
+          monteCarlo: z
+            .object({
+              status: z.enum(["skipped", "included", "pending", "unavailable"]),
+              jobId: z.string().optional(),
+            })
+            .optional(),
+        }),
         body,
+      ),
+    getJob: (id: string) =>
+      request(
+        "GET",
+        `/api/v1/jobs/${encodeURIComponent(id)}`,
+        z.object({
+          id: z.string(),
+          status: z.enum(["queued", "running", "succeeded", "failed", "cancelled"]),
+          progress: z.number(),
+        }),
       ),
     listShareLinks: (planId?: string) =>
       request(

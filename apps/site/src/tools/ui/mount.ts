@@ -5,6 +5,7 @@
  * browser is idle. Nothing typed into the page leaves the browser: no network requests, no storage.
  */
 import { plannerUrl } from "../carry";
+import { applyResultVisibility } from "./result-visibility";
 import { currencySymbol, inputText } from "../format";
 import { renderResults } from "../render";
 import { defaults, fromQuery, isActive, parseNumber, toQuery, validate } from "../state";
@@ -47,15 +48,18 @@ export function mountCalculator(spec: ToolSpec): void {
     warm();
   };
 
+  let invalid = false;
+
   function setStatus(text: string, busy = false) {
     statusText.textContent = text;
     status.hidden = text === "" && !busy;
-    results.classList.toggle("is-stale", busy);
-    results.setAttribute("aria-busy", String(busy));
+    applyResultVisibility(results, { invalid, busy });
+    results.setAttribute("aria-busy", String(busy && !invalid));
   }
 
   function showProgress(done: number, total: number) {
-    if (!progress) return;
+    // A progress message can arrive after the run was cancelled for an invalid input.
+    if (!progress || invalid) return;
     progress.hidden = false;
     progress.max = total;
     progress.value = done;
@@ -173,11 +177,16 @@ export function mountCalculator(spec: ToolSpec): void {
     updateCurrency();
     if (Object.keys(errors).length > 0) {
       clearTimeout(timer);
+      // Forget the run as well as cancelling it: its "Cancelled. The results below…" would replace
+      // the validation message while the results are hidden.
       current?.cancel();
+      current = null;
+      hideProgress();
+      invalid = true;
       setStatus("Correct the highlighted input to update the results.", false);
-      results.classList.add("is-stale");
       return;
     }
+    invalid = false;
     history.replaceState(null, "", `${location.pathname}?${toQuery(spec, values)}${location.hash}`);
     updateLinks();
     schedule(immediate ? 0 : spec.mode === "simulation" ? 600 : 250);
@@ -213,6 +222,7 @@ export function mountCalculator(spec: ToolSpec): void {
   root.querySelector('[data-action="reset"]')?.addEventListener("click", () => {
     current?.cancel();
     current = null;
+    invalid = false;
     clearTimeout(timer);
     hideProgress();
     values = defaults(spec);
@@ -251,11 +261,17 @@ export function mountCalculator(spec: ToolSpec): void {
     updateVisibility();
     updateCurrency();
     updateLinks();
-    if (fromUrl.invalid.length) {
+    if (fromUrl.invalid.length)
       notice = `Some values in the link could not be read and were reset to the defaults (${fromUrl.invalid.join(", ")}).`;
-      setStatus(notice);
-    }
-    if (Object.keys(errors).length === 0) {
+    if (Object.keys(errors).length > 0) {
+      invalid = true;
+      setStatus(
+        notice
+          ? `${notice} Correct the highlighted input to update the results.`
+          : "Correct the highlighted input to update the results.",
+      );
+    } else {
+      if (notice) setStatus(notice);
       setStatus("Calculating the inputs from your link…", true);
       idle(compute, 800);
     }

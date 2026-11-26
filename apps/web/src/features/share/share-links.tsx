@@ -55,6 +55,21 @@ export function shareUrl(path: string): string {
   return `${window.location.origin}${path}`;
 }
 
+export function revokePrompt(link: { label: string | null }): {
+  title: string;
+  description: string;
+} {
+  const name = link.label?.trim() || "Untitled link";
+  return {
+    title: `Revoke “${name}”?`,
+    description: `Anyone who has “${name}” loses access immediately.`,
+  };
+}
+
+export function replaceShareLink<T extends { id: string }>(items: T[], next: T): T[] {
+  return items.map((item) => (item.id === next.id ? next : item));
+}
+
 /** Links for one plan (or every plan with `planId` undefined), with create / refresh / revoke. */
 export function ShareLinksPanel({ planId, planName }: { planId?: string; planName?: string }) {
   const { data: ws } = useWorkspace();
@@ -69,13 +84,32 @@ export function ShareLinksPanel({ planId, planName }: { planId?: string; planNam
     retry: false,
   });
   const [creating, setCreating] = useState(false);
-  const [created, setCreated] = useState<{ url: string; name: string } | null>(null);
+  const [created, setCreated] = useState<{
+    url: string;
+    name: string;
+    monteCarlo?: { status: string; jobId?: string };
+  } | null>(null);
   const invalidate = () => qc.invalidateQueries({ queryKey: ["share-links"] });
   const act = useMutation({
     mutationFn: (a: { kind: "revoke" | "refresh"; id: string }) =>
       a.kind === "revoke" ? api.revokeShareLink(a.id) : api.refreshShareLink(a.id),
-    onSuccess: (_l, a) => {
-      void invalidate();
+    onSuccess: (link, a) => {
+      for (const [key, data] of qc.getQueriesData<{ items: ShareLink[] }>({
+        queryKey: ["share-links"],
+      })) {
+        if (!data?.items.some((item) => item.id === link.id)) continue;
+        qc.setQueryData(key, { ...data, items: replaceShareLink(data.items, link) });
+      }
+      void invalidate().then(() => {
+        // A refetch that left before the revoke can still say Active. The response we just got is revoked.
+        if (link.status !== "revoked") return;
+        for (const [key, data] of qc.getQueriesData<{ items: ShareLink[] }>({
+          queryKey: ["share-links"],
+        })) {
+          if (!data?.items.some((item) => item.id === link.id)) continue;
+          qc.setQueryData(key, { ...data, items: replaceShareLink(data.items, link) });
+        }
+      });
       toast({
         title: a.kind === "revoke" ? "Link revoked" : "Snapshot refreshed",
         description:
@@ -206,8 +240,7 @@ export function ShareLinksPanel({ planId, planName }: { planId?: string; planNam
                     onClick={async () => {
                       if (
                         await confirmAction({
-                          title: "Revoke this link?",
-                          description: "Anyone who has it loses access immediately.",
+                          ...revokePrompt(l),
                           confirmLabel: "Revoke",
                         })
                       )
@@ -228,9 +261,9 @@ export function ShareLinksPanel({ planId, planName }: { planId?: string; planNam
           planName={planName ?? "this plan"}
           open={creating}
           onOpenChange={setCreating}
-          onCreated={(url) => {
+          onCreated={(url, monteCarlo) => {
             void invalidate();
-            setCreated({ url, name: planName ?? "the plan" });
+            setCreated({ url, name: planName ?? "the plan", monteCarlo });
           }}
         />
       ) : null}
@@ -243,6 +276,18 @@ export function ShareLinksPanel({ planId, planName }: { planId?: string; planNam
             <code className="block rounded-lg border border-border bg-surface-2 px-3 py-2.5 font-mono text-[12px] break-all select-all">
               {created?.url}
             </code>
+            {created?.monteCarlo?.status === "included" ? (
+              <p className="text-[12.5px] text-ink-2">Chance of success is on the link.</p>
+            ) : null}
+            {created?.monteCarlo?.status === "unavailable" ? (
+              <p role="alert" className="text-[12.5px] text-ink-2">
+                The link is ready. The chance of success could not be added. Use Refresh on the link
+                to try again.
+              </p>
+            ) : null}
+            {created?.monteCarlo?.status === "pending" && created.monteCarlo.jobId ? (
+              <DeferredChance jobId={created.monteCarlo.jobId} />
+            ) : null}
             <div className="flex items-center justify-end gap-2">
               {created ? <CopyButton text={created.url} label="Copy link" /> : null}
               <Button variant="primary" onClick={() => setCreated(null)}>
@@ -267,7 +312,10 @@ function CreateShareDialog({
   planName: string;
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  onCreated: (url: string) => void;
+  onCreated: (
+    url: string,
+    monteCarlo?: { status: "skipped" | "included" | "pending" | "unavailable"; jobId?: string },
+  ) => void;
 }) {
   const [label, setLabel] = useState("");
   const [privacy, setPrivacy] = useState<ShareLink["privacy"]>("full");
@@ -284,6 +332,8 @@ function CreateShareDialog({
         basis,
         expiresInDays: Number(days),
         includeSuccessRate: success,
+        // The run continues after the link is returned. Waiting here used to take half a minute.
+        deferMonteCarlo: success,
       }),
     onSuccess: (r) => {
       posthog?.capture("share_link_created", {
@@ -294,7 +344,7 @@ function CreateShareDialog({
       });
       onOpenChange(false);
       setLabel("");
-      onCreated(shareUrl(r.path));
+      onCreated(shareUrl(r.path), r.monteCarlo);
     },
     onError: (e) =>
       setError(
@@ -376,7 +426,7 @@ function CreateShareDialog({
           </div>
           <SwitchField
             label="Include the chance of success"
-            hint="Runs a Monte Carlo simulation now (a few seconds)."
+            hint="The link is created straight away. The chance of success is added when the run finishes (often about half a minute the first time; a repeat is immediate)."
             checked={success}
             onCheckedChange={setSuccess}
           />
@@ -396,5 +446,63 @@ function CreateShareDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+export type DeferredChanceState = "running" | "added" | "failed" | "unknown";
+
+/**
+ * What to say about a run the link was returned ahead of. `unknown` is a job that cannot be read (the
+ * server restarted, or the request failed): the dialog must not keep saying "Running… 0%" for ever.
+ */
+export function deferredChanceState(q: {
+  status?: string | undefined;
+  isError: boolean;
+}): DeferredChanceState {
+  if (q.status === "succeeded") return "added";
+  if (q.status === "failed" || q.status === "cancelled") return "failed";
+  return q.isError ? "unknown" : "running";
+}
+
+/** The chance of success for a link that was returned before its Monte Carlo run finished. */
+function DeferredChance({ jobId }: { jobId: string }) {
+  const q = useQuery({
+    queryKey: ["job", jobId],
+    queryFn: () => api.getJob(jobId),
+    retry: 2,
+    refetchInterval: (query) =>
+      deferredChanceState({
+        status: query.state.data?.status,
+        isError: query.state.status === "error",
+      }) === "running"
+        ? 500
+        : false,
+  });
+  const state = deferredChanceState({ status: q.data?.status, isError: q.isError });
+  const pct = Math.round((q.data?.progress ?? 0) * 100);
+  if (state === "added")
+    return <p className="text-[12.5px] text-ink-2">Chance of success is on the link.</p>;
+  if (state === "failed")
+    return (
+      <p role="alert" className="text-[12.5px] text-ink-2">
+        The link is ready. The chance of success could not be added. Use Refresh on the link to try
+        again.
+      </p>
+    );
+  if (state === "unknown")
+    return (
+      <p role="alert" className="text-[12.5px] text-ink-2">
+        The link is ready. The progress of the chance of success run could not be read. If the
+        figure is missing from the link, use Refresh on the link to run it again.
+      </p>
+    );
+  return (
+    <div className="flex flex-col gap-1.5" role="status">
+      <p className="text-[12.5px] text-ink-2">
+        Running the chance of success… {pct}%. A first run often takes about half a minute. The
+        figure appears on the link when it finishes.
+      </p>
+      <progress value={q.data?.progress ?? 0} max={1} className="h-1.5 w-full" />
+    </div>
   );
 }

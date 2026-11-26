@@ -73,6 +73,11 @@ export interface EditorState {
   past: HistoryEntry[];
   future: HistoryEntry[];
   save: Partial<Record<EntityKey, EntitySave>>;
+  /**
+   * Plan ids removed in this session. A workspace refetch that still contains one of them must not
+   * put it back; a full reload starts from the server and clears this.
+   */
+  removedPlans: string[];
   /** Bumped on every draft change (autosave + persistence subscribe to it). */
   rev: number;
 }
@@ -140,6 +145,7 @@ export const useEditorStore = create<EditorState>()(() => ({
   past: [],
   future: [],
   save: {},
+  removedPlans: [],
   rev: 0,
 }));
 
@@ -165,6 +171,7 @@ export function loadDocument(
     past: [],
     future: [],
     save,
+    removedPlans: [],
     rev: get().rev + 1,
   });
 }
@@ -176,11 +183,14 @@ export function loadDocument(
 export function syncFromServer(doc: GlideworthDocument) {
   const s = get();
   if (!s.base || !s.draft || s.base === doc) return;
+  const removed = new Set(s.removedPlans);
+  const incoming =
+    removed.size === 0 ? doc : { ...doc, plans: doc.plans.filter((p) => !removed.has(p.id)) };
   let base = s.base;
   let draft = s.draft;
-  const keys: EntityKey[] = ["household", ...doc.plans.map((p) => planKey(p.id))];
+  const keys: EntityKey[] = ["household", ...incoming.plans.map((p) => planKey(p.id))];
   for (const k of keys) {
-    const serverValue = getEntity(doc, k);
+    const serverValue = getEntity(incoming, k);
     const dirty = isDirty(s, k);
     base = setEntity(base, k, serverValue);
     if (!dirty) draft = setEntity(draft, k, serverValue);
@@ -346,6 +356,7 @@ export function addPlanToWorkspace(plan: Plan) {
   set({
     base: setEntity(s.base, planKey(plan.id), plan),
     draft: setEntity(s.draft, planKey(plan.id), plan),
+    removedPlans: s.removedPlans.filter((id) => id !== plan.id),
     rev: s.rev + 1,
   });
 }
@@ -362,6 +373,7 @@ export function removePlanFromWorkspace(id: string) {
     past: s.past.filter((h) => h.entity !== key),
     future: s.future.filter((h) => h.entity !== key),
     save,
+    removedPlans: s.removedPlans.includes(id) ? s.removedPlans : [...s.removedPlans, id],
     rev: s.rev + 1,
   });
 }
@@ -382,6 +394,7 @@ export function resetEditorStore() {
     past: [],
     future: [],
     save: {},
+    removedPlans: [],
     rev: 0,
   });
 }

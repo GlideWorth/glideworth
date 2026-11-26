@@ -8,6 +8,11 @@ listing every commit. Product news for people using the hosted service is on
 
 ## Unreleased
 
+- **Share links return before Monte Carlo finishes.** `POST /plans/{id}/share-links` takes `deferMonteCarlo`
+  (default false) and its response has `monteCarlo: { status, jobId? }`. With it, the link is returned as soon
+  as the snapshot is stored and the chance of success is added when the run finishes; the web app uses this and
+  shows the run's progress. Refreshing a link that asked for the chance of success and never got it (a failed
+  or cancelled run) now runs it again. MCP `create_share_link` still waits for the figure.
 - **Why did my results change?** Each check-in now keeps what it was computed from. `GET
   /plans/{id}/result-change` and the read-only MCP tool `explain_result_change` show how far the chance of
   success, the financial-independence year and end-of-plan net worth moved since a check-in, split into

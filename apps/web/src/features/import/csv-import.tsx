@@ -676,6 +676,35 @@ function CsvWorkbench({
           ) : null}
         </CardBody>
       </Card>
+      {a?.ambiguousDates ? (
+        <div
+          role="alert"
+          className="flex flex-col gap-2 rounded-md border border-ochre/40 bg-ochre-soft px-3 py-2.5"
+        >
+          <p className="flex items-start gap-2 text-[13px] text-ink">
+            <CircleAlert className="mt-0.5 size-4 shrink-0 text-ochre" aria-hidden />
+            {ambiguousDateOrderMessage(a.dateFormat)}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant={a.dateFormat === "DD/MM/YYYY" ? "primary" : "secondary"}
+              onClick={() => setDateFormat("DD/MM/YYYY")}
+            >
+              Day first (DD/MM)
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={a.dateFormat === "MM/DD/YYYY" ? "primary" : "secondary"}
+              onClick={() => setDateFormat("MM/DD/YYYY")}
+            >
+              Month first (MM/DD)
+            </Button>
+          </div>
+        </div>
+      ) : null}
       <div className="flex items-center gap-2">
         <Button variant="ghost" onClick={onReset} disabled={busy}>
           Cancel
@@ -693,6 +722,12 @@ function CsvWorkbench({
       </div>
     </div>
   );
+}
+
+/** Shown before Apply when every date fits both day-first and month-first. */
+export function ambiguousDateOrderMessage(format: string): string {
+  const reading = format === "MM/DD/YYYY" ? "month first (MM/DD)" : "day first (DD/MM)";
+  return `Check the date order. Every date in this file fits both day-first and month-first, so the wrong choice moves spending into a different month. They are currently read as ${reading}.`;
 }
 
 function ErrorNote({ children }: { children: ReactNode }) {

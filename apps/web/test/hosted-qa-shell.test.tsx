@@ -198,6 +198,41 @@ describe("connected apps in hosted mode (item H)", () => {
     expect(screen.queryByText(/registered with this server/)).toBeNull();
   });
 
+  it("marks an app's write permission inactive while the workspace does not allow AI changes", async () => {
+    const grant = {
+      id: "g1",
+      clientId: "c1",
+      clientName: "Claude",
+      scopes: ["read", "simulate", "write"],
+      createdAt: "2026-11-01T00:00:00.000Z",
+      lastUsedAt: null,
+      refreshExpiresAt: "2027-11-01T00:00:00.000Z",
+    };
+    const settings = (mcpWrites: boolean) => () =>
+      json({ id: "acc_1", name: "Home", mcpWrites, role: "owner" });
+    stubFetch(CLOUD_SIGNED_IN, {
+      ...noHousehold,
+      "GET /api/v1/me/oauth-grants": () => json({ items: [grant] }),
+      "GET /api/v1/oauth/clients": () => json({ items: [] }),
+      "GET /api/v1/workspace/settings": settings(false),
+    });
+    const view = await open("/settings/apps");
+    expect(await screen.findByText("write · inactive")).toBeTruthy();
+    view.unmount();
+    cleanup();
+
+    stubFetch(CLOUD_SIGNED_IN, {
+      ...noHousehold,
+      "GET /api/v1/me/oauth-grants": () => json({ items: [grant] }),
+      "GET /api/v1/oauth/clients": () => json({ items: [] }),
+      "GET /api/v1/workspace/settings": settings(true),
+    });
+    await open("/settings/apps");
+    expect(await screen.findByText("Claude")).toBeTruthy();
+    await waitFor(() => expect(screen.getByText("write")).toBeTruthy());
+    expect(screen.queryByText("write · inactive")).toBeNull();
+  });
+
   it("self-host keeps the server-wide registry wording", async () => {
     stubFetch(SELFHOST_STATUS, {
       ...noHousehold,

@@ -14,8 +14,9 @@ years earlier?" and get answers from your own plan.
 
 ## Safety
 
-- **Read-only by default.** Write tools only exist when the workspace owner turns MCP writes on and you grant the
-  `write` scope on the consent screen.
+- **Read-only by default.** Write tools only exist when you grant the `write` scope on the consent screen and the
+  workspace allows AI assistants to make changes. If you own the workspace, granting `write` turns that on; the
+  consent screen says so.
 - **No silent edits.** Plan changes are proposed as change sets with a diff and a before/after outcome, and
   applied only after you agree. Every applied change is in the plan history.
 - **No money movement.** Glideworth does not link to banks, move money or place trades.

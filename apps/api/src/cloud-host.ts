@@ -372,10 +372,9 @@ function createCloudApp(
         const s = sessionOf(c);
         return s ? { userId: s.userId, name: s.name, csrf: s.csrf } : null;
       },
-      workspaces: (userId) =>
-        rt.workspaces
-          .listForUser(userId)
-          .map((w) => ({ accountId: w.accountId, name: w.name, role: w.role })),
+      workspaces: (userId) => rt.workspaces.consentWorkspaces(userId),
+      allowMcpWrites: (accountId, userId, client) =>
+        rt.workspaces.allowMcpWritesByConsent(accountId, userId, client),
       membership(accountId, userId) {
         const m = rt.workspaces.membership(accountId, userId);
         return m ? { tenantUserId: m.tenantUserId, role: m.role, userName: m.userName } : null;

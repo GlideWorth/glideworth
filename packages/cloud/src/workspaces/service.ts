@@ -864,6 +864,60 @@ export class WorkspacesService {
     this.audit(s, "workspace.renamed", me.accountId);
   }
 
+  /**
+   * The workspaces an OAuth consent page offers: what each lets the app do. `mcpWrites` is the owner's "Allow AI
+   * assistants to make changes" switch; `members` lets an owner's consent say when that switch affects others.
+   */
+  consentWorkspaces(userId: UserId): Array<{
+    accountId: AccountId;
+    name: string;
+    role: Role;
+    mcpWrites: boolean;
+    members: number;
+  }> {
+    return this.listForUser(userId).map((w) => {
+      const row = this.db
+        .select({
+          mcpWrites: accounts.mcpWrites,
+          members: sql<number>`(select count(*) from memberships m where m.account_id = ${accounts.id})`,
+        })
+        .from(accounts)
+        .where(eq(accounts.id, w.accountId))
+        .get();
+      return {
+        accountId: w.accountId,
+        name: w.name,
+        role: w.role,
+        mcpWrites: !!row?.mcpWrites,
+        members: Number(row?.members ?? 1),
+      };
+    });
+  }
+
+  /**
+   * An owner who grants an app write access on the consent page has decided to allow AI assistants to make changes,
+   * so the switch turns on with it (the page says so). Only the owner can: anyone else is refused.
+   */
+  allowMcpWritesByConsent(accountId: AccountId, userId: UserId, client: string): boolean {
+    const m = this.membership(accountId, userId);
+    if (m?.role !== "owner") throw forbidden();
+    const res = this.db
+      .update(accounts)
+      .set({ mcpWrites: true })
+      .where(and(eq(accounts.id, accountId), eq(accounts.mcpWrites, false)))
+      .run();
+    if (res.changes !== 1) return false;
+    this.d.audit.record({
+      actorType: "user",
+      actorId: userId,
+      accountId,
+      subjectUserId: userId,
+      event: "workspace.mcp_writes_changed",
+      detail: { enabled: true, via: "oauth-consent", client: stripControl(client).slice(0, 200) },
+    });
+    return true;
+  }
+
   setMcpWrites(s: SessionContext, enabled: boolean): void {
     const me = this.requireOwner(s);
     if (typeof enabled !== "boolean")

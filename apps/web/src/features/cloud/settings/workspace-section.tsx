@@ -103,7 +103,7 @@ export function WorkspaceSection() {
         <div className="px-5 py-4">
           <SwitchField
             label="Allow AI assistants to make changes"
-            hint="When off, assistants connected through MCP can read your plans and run simulations but cannot change anything. Turn it on only for assistants you trust with edits."
+            hint="When off, assistants connected through MCP can read your plans and run simulations but cannot change anything, whatever they were allowed when they connected. Turning it off takes effect at once. Granting write access when you connect an assistant also turns this on. Settings → Connected apps shows which apps have write access."
             checked={w.mcpWrites === true}
             disabled={!owner || save.isPending}
             onCheckedChange={(v) => save.mutate({ mcpWrites: v })}

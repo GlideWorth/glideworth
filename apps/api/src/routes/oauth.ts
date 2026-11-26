@@ -48,7 +48,18 @@ export interface CloudOAuth {
   registry: OAuthService;
   /** The signed-in person (cloud session cookie), or null. */
   session(c: Context): { userId: string; name: string; csrf: string } | null;
-  workspaces(userId: string): Array<{ accountId: string; name: string; role: string }>;
+  /**
+   * The workspaces the person can connect: `mcpWrites` is the owner's "Allow AI assistants to make changes" switch,
+   * `members` how many people share the workspace (an owner's consent names the effect on them).
+   */
+  workspaces(
+    userId: string,
+  ): Array<{ accountId: string; name: string; role: string; mcpWrites: boolean; members: number }>;
+  /**
+   * The owner granted write: turn the workspace's switch on with it. Refused for anyone but the owner. True when
+   * it was off and is now on.
+   */
+  allowMcpWrites(accountId: string, userId: string, client: string): boolean;
   /** The membership, read again at approval (removal applies at once). */
   membership(
     accountId: string,
@@ -96,6 +107,25 @@ label{display:block;margin:.4rem 0}input[type=text],input[type=password]{width:1
 button{font:inherit;padding:.55rem 1.1rem;border-radius:8px;border:1px solid #1d2420;background:#1d2420;color:#fff;cursor:pointer;margin-right:.5rem}
 button.secondary{background:#fff;color:#1d2420}.err{color:#a40000}.muted{color:#555;font-size:.9rem}
 @media (prefers-color-scheme:dark){body{background:#151a17;color:#e8ece9}main{background:#1f2622}code{background:#2c342f}button{background:#e8ece9;color:#151a17;border-color:#e8ece9}button.secondary{background:#1f2622;color:#e8ece9}.muted{color:#aab}.err{color:#ff8a8a}}`;
+
+type ConsentWorkspace = ReturnType<CloudOAuth["workspaces"]>[number];
+
+/** What ticking write does in one workspace, in plain words (HTML); empty when it simply grants it. */
+function writeNote(w: ConsentWorkspace): string {
+  if (w.role === "viewer") return "Not available: viewers can't make changes.";
+  if (w.mcpWrites) return "";
+  if (w.role === "owner")
+    return `Ticking this also allows AI assistants to make changes in this workspace${
+      w.members > 1 ? ", for everyone in it" : ""
+    }. You can turn that off in Workspace settings.`;
+  return "Your workspace owner hasn't allowed AI assistants to make changes yet. This app can make changes once they do.";
+}
+
+/** Write is pre-ticked only where it grants nothing more than this app's access: never for an owner turning changes on. */
+function writeTickedByDefault(w: ConsentWorkspace): boolean {
+  if (w.role === "viewer") return false;
+  return w.mcpWrites || w.role !== "owner";
+}
 
 function page(
   c: Context,
@@ -368,7 +398,12 @@ ${q.error ? `<p class="err">${esc(q.error)}</p>` : ""}`,
     const boxes = r.scopes
       .map((s) => {
         const ok = allowed.has(s as never);
-        return `<label><input type="checkbox" name="grant" value="${esc(s)}" ${ok ? "checked" : "disabled"}> <strong>${esc(s)}</strong>: ${esc(SCOPE_TEXT[s] ?? s)}${ok ? "" : ` <span class="muted">(not available to your ${esc(me.user.role)} role)</span>`}</label>`;
+        // Write that the server has switched off is said next to the box, not in a footnote.
+        const off =
+          ok && s === "write" && !opts.allowWrites
+            ? "<br><span>Changes by AI assistants are turned off on this server (GLIDEWORTH_MCP_ALLOW_WRITES), so this app can make changes only once its administrator turns them on.</span>"
+            : "";
+        return `<label><input type="checkbox" name="grant" value="${esc(s)}" ${ok ? "checked" : "disabled"}> <strong>${esc(s)}</strong>: ${esc(SCOPE_TEXT[s] ?? s)}${ok ? "" : ` <span class="muted">(not available to your ${esc(me.user.role)} role)</span>`}${off}</label>`;
       })
       .join("");
     const hidden = [
@@ -395,7 +430,7 @@ ${q.error ? `<p class="err">${esc(q.error)}</p>` : ""}`,
 <p>Signed in as <strong>${esc(me.user.name)}</strong> (${esc(me.user.role)}). After you decide you are sent back to <code>${esc(host.origin)}</code>${loopbackWarning(host)}.</p>
 <form method="post" action="/oauth/authorize">${hidden}<input type="hidden" name="csrf" value="${esc(me.session.csrf)}">
 <p>This app will be able to:</p>${boxes}
-<p class="muted">You can remove this access later in Glideworth. ${opts.allowWrites ? "" : "This server has MCP write tools turned off, so write access has no effect until the owner enables them."}</p>
+<p class="muted">You can remove this access later in Glideworth.</p>
 <button type="submit" name="decision" value="approve">Allow</button><button class="secondary" type="submit" name="decision" value="deny">Deny</button></form>`,
     );
   });
@@ -443,16 +478,40 @@ ${q.error ? `<p class="err">${esc(q.error)}</p>` : ""}`,
           `<label><input type="radio" name="workspace" value="${esc(w.accountId)}" ${i === 0 ? "checked" : ""} required> <strong>${esc(w.name)}</strong> <span class="muted">(${esc(w.role)})</span></label>`,
       )
       .join("");
+    // The write box says what ticking it does in the picked workspace, so it never offers something that silently
+    // does nothing. With several workspaces each one's note shows when its radio is picked.
+    const first = spaces[0] as (typeof spaces)[number];
+    const several = spaces.length > 1;
+    const notes = spaces
+      .map((w) => {
+        const text = writeNote(w);
+        if (!text) return "";
+        const where = several ? `In <strong>${esc(w.name)}</strong>: ` : "";
+        return `<span class="wsnote" data-ws="${esc(w.accountId)}">${where}${text}</span>`;
+      })
+      .join("");
     const boxes = r.scopes
-      .map(
-        (sc) =>
-          `<label><input type="checkbox" name="grant" value="${esc(sc)}" checked> <strong>${esc(sc)}</strong>: ${esc(SCOPE_TEXT[sc] ?? sc)}</label>`,
-      )
+      .map((sc) => {
+        if (sc !== "write")
+          return `<label><input type="checkbox" name="grant" value="${esc(sc)}" checked> <strong>${esc(sc)}</strong>: ${esc(SCOPE_TEXT[sc] ?? sc)}</label>`;
+        // A viewer's write is dropped at approval whatever is ticked; an owner turning changes on ticks it themself.
+        const viewerOnly = !several && first.role === "viewer";
+        const ticked = writeTickedByDefault(first);
+        return `<label><input type="checkbox" name="grant" value="write" ${viewerOnly ? "disabled" : ticked ? "checked" : ""}> <strong>write</strong>: ${esc(SCOPE_TEXT.write as string)}${notes ? `<br>${notes}` : ""}</label>`;
+      })
       .join("");
     const hidden = AUTHORIZE_FIELDS.map((k) =>
       q[k] !== undefined ? `<input type="hidden" name="${k}" value="${esc(q[k] as string)}">` : "",
     ).join("");
     const host = new URL(r.redirectUri);
+    const noteCss = several
+      ? `<style>.wsnote{display:block;margin-top:.25rem}@supports selector(:has(*)){.wsnote{display:none}${spaces
+          .map(
+            (w) =>
+              `form:has(input[name=workspace][value="${esc(w.accountId)}"]:checked) .wsnote[data-ws="${esc(w.accountId)}"]{display:block}`,
+          )
+          .join("")}}</style>`
+      : "<style>.wsnote{display:block;margin-top:.25rem}</style>";
     return page(
       c,
       "Allow access to Glideworth",
@@ -461,8 +520,10 @@ ${q.error ? `<p class="err">${esc(q.error)}</p>` : ""}`,
 <form method="post" action="/oauth/authorize">${hidden}<input type="hidden" name="csrf" value="${esc(me.csrf)}">
 <p>Workspace:</p>${radios}
 <p>This app will be able to:</p>${boxes}
-<p class="muted">Access never exceeds your role in the workspace you pick. Write tools also need the workspace owner to turn on MCP writes. You can remove this access later in Glideworth.</p>
+<p class="muted">Access never exceeds your role in the workspace you pick. You can remove this access later in Glideworth.</p>
 <button type="submit" name="decision" value="approve">Allow</button><button class="secondary" type="submit" name="decision" value="deny">Deny</button></form>`,
+      200,
+      noteCss,
     );
   };
 
@@ -511,6 +572,12 @@ ${q.error ? `<p class="err">${esc(q.error)}</p>` : ""}`,
         error_description: "no scope was granted",
         state: r.state,
       });
+    // The owner granting write has decided to let AI assistants make changes: the consent page said ticking it
+    // turns the workspace's switch on (an editor's write waits for the owner; a viewer's was dropped above).
+    const changesAllowed =
+      m.role === "owner" && granted.includes("write")
+        ? cloud.allowMcpWrites(accountId, me.userId, r.client.name)
+        : false;
     const code = await cloud.withTenant(accountId, (s) => {
       const issued = s.oauth.issueCode({
         clientId: r.client.id,
@@ -528,7 +595,11 @@ ${q.error ? `<p class="err">${esc(q.error)}</p>` : ""}`,
         resourceType: "oauth-client",
         resourceId: r.client.id,
         status: 200,
-        detail: { client: r.client.name, scopes: granted },
+        detail: {
+          client: r.client.name,
+          scopes: granted,
+          ...(changesAllowed ? { allowedAssistantChanges: true } : {}),
+        },
       });
       return issued;
     });

@@ -29,6 +29,12 @@ listing every commit. Product news for people using the hosted service is on
   page _Plan in brief_ (printable) explain the plan in plain words, from engine results only. A partner invited as
   a viewer lands on it and sees a line saying they are viewing the plan with view-only access. A new test walks
   every REST operation and MCP tool as a viewer and proves nothing that writes succeeds.
+- **Granting write on the consent page does what it says.** In a hosted workspace that does not yet allow AI
+  assistants to make changes, an owner who ticks `write` on the OAuth consent page now turns that switch on (the
+  page says so, and adds "for everyone in it" when others share the workspace); the box is no longer pre-ticked
+  for them. An editor is told the owner has not allowed changes yet, and a viewer's box is disabled. Connected
+  apps mark a `write` grant inactive while changes are off. Self-hosted consent says next to the box when
+  `GLIDEWORTH_MCP_ALLOW_WRITES` is off.
 - **Interactive views in ChatGPT and Claude** (MCP Apps): Monte Carlo and projections, what-if and plan
   comparisons, solver answers, change-set reviews, one year's cash flow and tax over time render as interactive
   views. The view's data travels in the tool result's `_meta["glideworth/widget"]`; the text the model reads is

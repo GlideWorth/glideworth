@@ -674,7 +674,9 @@ resources and prompts, client set-up and the safety model are in [MCP.md](MCP.md
 - **Safety model.**
   - Read-only by default. Write tools are registered only when `GLIDEWORTH_MCP_ALLOW_WRITES=true` **and** the key
     has `write` scope (cloud: when the workspace owner turned MCP writes on **and** the credential has `write`,
-    which a read-only workspace never has).
+    which a read-only workspace never has). On the cloud consent page the write box says what ticking it does in
+    the picked workspace: an owner granting `write` turns MCP writes on (for everyone, when others share the
+    workspace); an editor's grant waits for the owner; a viewer's box is disabled.
   - Plan edits are **change sets** (RFC 6902 ops against `baseVersion`, a before/after preview, an explicit
     apply that fails with a conflict if the plan moved) or **branches**; there is no whole-plan overwrite and
     no delete tool. Household data writes (balances, snapshots, CSV import) are direct and atomic.

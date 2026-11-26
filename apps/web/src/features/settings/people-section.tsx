@@ -28,6 +28,7 @@ import { ROLE_HINT, ROLE_LABEL, useAccess } from "../../lib/access";
 import { ApiRequestError, api, type Role, type UserInfo } from "../../lib/api";
 import { useMode } from "../../lib/auth";
 import { useFormat } from "../../lib/workspace";
+import { cloudApi } from "../cloud/client";
 import { acceptLink } from "../share/accept-page";
 import { CopyButton, relativeTime } from "./keys-section";
 import { LoadErrorText, SectionIntro, SettingsGroup } from "./settings-ui";
@@ -430,6 +431,14 @@ export function ConnectedAppsSection() {
     queryFn: api.listOAuthGrants,
     retry: false,
   });
+  // Hosted workspaces: an app's write permission works only while the owner allows AI assistants to make changes.
+  const workspace = useQuery({
+    queryKey: ["cloud", "workspace"],
+    queryFn: cloudApi.workspaceSettings,
+    enabled: cloud,
+    retry: false,
+  });
+  const changesOff = cloud && workspace.data?.mcpWrites === false;
   const clients = useQuery({
     queryKey: ["oauth-clients"],
     queryFn: api.listOAuthClients,
@@ -478,11 +487,21 @@ export function ConnectedAppsSection() {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-[13px] font-semibold">{g.clientName}</span>
-                    {g.scopes.map((s) => (
-                      <Badge key={s} tone={s === "write" ? "ochre" : "neutral"}>
-                        {s}
-                      </Badge>
-                    ))}
+                    {g.scopes.map((s) =>
+                      s === "write" && changesOff ? (
+                        <Badge
+                          key={s}
+                          tone="neutral"
+                          title="Inactive: AI assistants are not allowed to make changes in this workspace (Workspace settings)."
+                        >
+                          write · inactive
+                        </Badge>
+                      ) : (
+                        <Badge key={s} tone={s === "write" ? "ochre" : "neutral"}>
+                          {s}
+                        </Badge>
+                      ),
+                    )}
                   </div>
                   <div className="mt-0.5 text-[11.5px] text-ink-3">
                     Allowed {relativeTime(g.createdAt, f.locale)} · last used{" "}

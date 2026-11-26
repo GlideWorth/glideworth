@@ -254,7 +254,16 @@ export function createMcpServer(ctx: McpContext): McpServer {
     idempotent?: boolean;
     destructive?: boolean;
     openWorld?: boolean;
+    /** Record each call in the audit log (default: every tool that is not read-only). */
+    audit?: boolean;
   };
+  /**
+   * Tools that start a calculation (Monte Carlo, solvers, sensitivity, Roth conversions...). Each call stores a job record and counts
+   * against the workspace's job quota, so they are not read-only (the OpenAI tool scan holds them to that). They
+   * change nothing in the plan or household and repeat the same result, so they are idempotent, not destructive,
+   * and kept out of the audit log, which records changes to data.
+   */
+  const CALCULATION: Hint = { readOnly: false, idempotent: true, audit: false };
   function tool<S extends z.ZodRawShape>(
     name: string,
     cfg: { title: string; description: string; input: S; hint: Hint },
@@ -295,7 +304,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
           )
             a.householdId = defaultHouseholdId();
           const out = await handler(args, extra);
-          if (!cfg.hint.readOnly)
+          if (cfg.hint.audit ?? !cfg.hint.readOnly)
             services.audit.record({
               userId: ctx.principal?.userId ?? null,
               userName: ctx.principal?.userName ?? null,
@@ -1029,7 +1038,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
           detail,
           wait: waitSeconds,
         },
-        hint: { readOnly: true, idempotent: true },
+        hint: CALCULATION,
       },
       async ({ planId, trials, seed, method, detail, wait }, extra) => {
         const settings = {
@@ -1055,7 +1064,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
         description:
           "Replay the plan through every historical start year (no randomness). Returns the share of start years that succeeded and the worst cases.",
         input: { planId, detail, wait: waitSeconds },
-        hint: { readOnly: true, idempotent: true },
+        hint: CALCULATION,
       },
       async ({ planId, detail, wait }, extra) => {
         const job = services.sim.startHistorical(planId, {}, actor);
@@ -1145,7 +1154,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
             .default("endNetWorthReal"),
           wait: waitSeconds,
         },
-        hint: { readOnly: true },
+        hint: CALCULATION,
       },
       async ({ planId, metric, wait }, extra) => {
         if (metric !== "successRate") return services.sim.sensitivity(planId, { metric });
@@ -1235,7 +1244,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
             wait: waitSeconds,
             ...extraShape,
           } as z.ZodRawShape,
-          hint: { readOnly: true, idempotent: true },
+          hint: CALCULATION,
         },
         async (args, extra) => {
           const { planId, wait, trials, detail, ...body } = args as {
@@ -1281,7 +1290,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
           detail,
           wait: waitSeconds,
         },
-        hint: { readOnly: true, idempotent: true },
+        hint: CALCULATION,
       },
       async ({ planId, wait, detail, ...req }, extra) => {
         const parsed = GoalSeekRequest.parse(req);
@@ -1309,7 +1318,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
             ),
           wait: waitSeconds,
         },
-        hint: { readOnly: true, idempotent: true },
+        hint: CALCULATION,
       },
       async ({ planId, trials, wait }, extra) =>
         jobOut(
@@ -1514,7 +1523,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
           detail,
           wait: waitSeconds,
         },
-        hint: { readOnly: true },
+        hint: CALCULATION,
       },
       async ({ basePlanId, otherPlanId, attribute, metric, detail, wait }, extra) => {
         assertSameHousehold(basePlanId, otherPlanId);
@@ -1590,7 +1599,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
           detail,
           wait: waitSeconds,
         },
-        hint: { readOnly: true, idempotent: true },
+        hint: CALCULATION,
       },
       async ({ planId, objective, candidates, detail, wait }, extra) => {
         const job = services.sim.startTaxStrategy(
@@ -1619,7 +1628,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
       {
         title: "Plan Roth conversions",
         description:
-          "US plans: propose a Roth conversion amount for each year and person. Each amount fills the room left under a ceiling after all the year's other income (wages, pensions, taxable Social Security, interest, dividends, gains, RMDs): the top of a federal bracket, optionally an IRMAA tier (from age 63), and the ACA premium tax credit limit in marketplace years. Each year says what bound it, the room left and the tax on the conversion. Compares with no conversions (and the plan's current conversions) on lifetime tax, after-tax wealth at the end and success, and says plainly when no conversions is better. Omit `targets` to let it choose the bracket per block of years. A job. Read-only: to apply, pass `patch` to propose_change_set and show the user. Estimates, not advice.",
+          "US plans: propose a Roth conversion amount for each year and person. Each amount fills the room left under a ceiling after all the year's other income (wages, pensions, taxable Social Security, interest, dividends, gains, RMDs): the top of a federal bracket, optionally an IRMAA tier (from age 63), and the ACA premium tax credit limit in marketplace years. Each year says what bound it, the room left and the tax on the conversion. Compares with no conversions (and the plan's current conversions) on lifetime tax, after-tax wealth at the end and success, and says plainly when no conversions is better. Omit `targets` to let it choose the bracket per block of years. A job; changes nothing in the plan: to apply, pass `patch` to propose_change_set and show the user. Estimates, not advice.",
         input: {
           planId,
           targets: z
@@ -1658,7 +1667,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
           detail,
           wait: waitSeconds,
         },
-        hint: { readOnly: true, idempotent: true },
+        hint: CALCULATION,
       },
       async ({ planId, detail, wait, ...request }, extra) => {
         const job = services.sim.startRothConversionPlan(planId, request, actor);
@@ -1673,7 +1682,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
         description:
           "Strategies x metrics (lifetime tax, net legacy, chance of success, final net worth) for the built-in tax/drawdown strategies, with per-column scores (0 worst .. 1 best) and the best row per column. A job; set successRate=false to skip the slow Monte Carlo column.",
         input: { planId, successRate: z.boolean().default(true), wait: waitSeconds },
-        hint: { readOnly: true, idempotent: true },
+        hint: CALCULATION,
       },
       async ({ planId, successRate, wait }, extra) => {
         const job = services.sim.startStrategyMatrix(planId, { successRate }, actor);

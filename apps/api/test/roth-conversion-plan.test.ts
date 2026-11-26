@@ -64,7 +64,7 @@ describe("Roth conversion plan", () => {
     }
   }, 120_000);
 
-  it("MCP: plan_roth_conversions is a read-only tool returning the compact plan", async () => {
+  it("MCP: plan_roth_conversions is a calculation tool on a read-only connection, returning the compact plan", async () => {
     h = setup({ realEngine: true });
     const server = createMcpServer({
       services: h.services,
@@ -75,7 +75,12 @@ describe("Roth conversion plan", () => {
     const c = new Client({ name: "t", version: "1" });
     await Promise.all([server.connect(a), c.connect(b)]);
     const tool = (await c.listTools()).tools.find((t) => t.name === "plan_roth_conversions");
-    expect(tool?.annotations?.readOnlyHint).toBe(true);
+    // A calculation: it stores a job record (not read-only) but changes no plan data and repeats its result.
+    expect(tool?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+    });
     const r = (await c.callTool({
       name: "plan_roth_conversions",
       arguments: { wait: 60 },

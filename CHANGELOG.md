@@ -23,7 +23,12 @@ listing every commit. Product news for people using the hosted service is on
   `apply_csv_import`, `apply_balance_history_import`, `set_fx_rate`, `set_checkin_schedule`,
   `mark_notifications_read`) are now `destructiveHint: true`, so clients ask before running them;
   `list_share_links` is `readOnlyHint: true`; `create_share_link` is `openWorldHint: true` (it publishes a public
-  URL). The server instructions now say results are estimates, not advice.
+  URL). The 14 tools that start a calculation (`run_monte_carlo`, `run_historical_backtest`, `sensitivity`, the
+  `solve_*` tools, `goal_seek`, `evaluate_guardrails`, `explain_difference`, `optimise_tax_strategy`,
+  `strategy_matrix`, `plan_roth_conversions`) are `readOnlyHint: false` (idempotent, not destructive): each stores a job record. They change
+  no plan or household data and stay out of the audit log. `what_changed_since_checkin` no longer takes
+  `refresh`, which stored a check-in; use `run_checkin`. The server instructions now say results are estimates,
+  not advice.
 - **Claude Code plugin**: `/plugin marketplace add GlideWorth/glideworth`, then `/plugin install
   glideworth@glideworth`, adds the hosted MCP server and the Glideworth skill.
 - **Tiered employer match** ([#9](https://github.com/GlideWorth/glideworth/issues/9)): a contribution's employer

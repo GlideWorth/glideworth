@@ -53,6 +53,23 @@ async function call<T = Json>(
   return Object.assign(Array.isArray(parsed) ? ([...parsed] as never) : parsed, { __raw: res });
 }
 const names = async (c: Client) => (await c.listTools()).tools.map((t) => t.name).sort();
+/** Tools that start a calculation: each stores a job record, so they are not read-only, but they change no data. */
+const CALCULATION_TOOLS = [
+  "run_monte_carlo",
+  "run_historical_backtest",
+  "sensitivity",
+  "solve_max_spending",
+  "solve_retirement_date",
+  "solve_required_savings",
+  "solve_required_portfolio",
+  "solve_safe_withdrawal_rate",
+  "goal_seek",
+  "evaluate_guardrails",
+  "explain_difference",
+  "optimise_tax_strategy",
+  "strategy_matrix",
+  "plan_roth_conversions",
+];
 
 const fakeMc = {
   method: "normal",
@@ -91,7 +108,13 @@ describe("tool registration follows scope and the writes flag", () => {
     const c = await httpClient(READ_KEY);
     const tools = (await c.listTools()).tools;
     expect(tools.length).toBeGreaterThan(20);
-    expect(tools.every((t) => t.annotations?.readOnlyHint === true)).toBe(true);
+    // Read-only apart from the calculation tools, which store only a job record.
+    const notReadOnly = tools.filter((t) => t.annotations?.readOnlyHint !== true);
+    expect(notReadOnly.map((t) => t.name).sort()).toEqual([...CALCULATION_TOOLS].sort());
+    for (const t of notReadOnly) {
+      expect(t.annotations?.destructiveHint, t.name).toBe(false);
+      expect(t.annotations?.idempotentHint, t.name).toBe(true);
+    }
     const n = tools.map((t) => t.name);
     expect(n).toEqual(
       expect.arrayContaining([
@@ -183,6 +206,8 @@ describe("tool registration follows scope and the writes flag", () => {
         .map((t) => [t.name, [t.annotations!.destructiveHint, t.annotations!.openWorldHint]]),
     );
     expect(hints).toEqual({
+      // Calculations store a job record (the OpenAI tool scan: not read-only) and change no plan or household data.
+      ...Object.fromEntries(CALCULATION_TOOLS.map((n) => [n, [false, false]])),
       cancel_job: [true, false],
       propose_change_set: [false, false],
       apply_change_set: [true, false],
@@ -206,7 +231,19 @@ describe("tool registration follows scope and the writes flag", () => {
       expect(t.title, t.name).toBeTruthy();
       if (t.annotations!.readOnlyHint) expect(t.annotations!.openWorldHint, t.name).toBe(false);
     }
+    for (const n of CALCULATION_TOOLS)
+      expect(tools.find((t) => t.name === n)!.annotations!.idempotentHint, n).toBe(true);
   });
+
+  it("keeps calculations out of the audit log, which records changes to data", async () => {
+    h = setup({ mcpAllowWrites: true });
+    const c = await httpClient(WRITE_KEY);
+    const before = h.services.audit.list().length;
+    await call(c, "run_monte_carlo", { planId: "plan-main", trials: 100, wait: 60 });
+    expect(h.services.audit.list().length).toBe(before);
+    await call(c, "create_branch", { planId: "plan-main", name: "Audited" });
+    expect(h.services.audit.list()[0]!.action).toBe("mcp:create_branch");
+  }, 60_000);
 });
 
 describe("read and compute tools", () => {

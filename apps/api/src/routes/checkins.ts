@@ -1,5 +1,6 @@
 /** Scheduled check-ins: plan health history, notifications, "what changed since my last check-in". */
 import { z } from "@hono/zod-openapi";
+import { ResultChange, ResultChangeUnavailable } from "@glideworth/core";
 import { ApiError } from "../errors.js";
 import { ScheduleConfig } from "../services/checkins.js";
 import { actorOf, IdParam, json, type RouteCtx, route } from "./helpers.js";
@@ -89,6 +90,25 @@ const SchedulePatch = z
   })
   .partial()
   .meta({ id: "SchedulePatch" });
+
+const ResultChangeContext = {
+  planId: z.string(),
+  planName: z.string(),
+  currency: z.string(),
+  from: z
+    .object({ checkInId: z.string(), takenAt: z.string() })
+    .nullable()
+    .describe("The earlier point: a check-in (null when the plan has none)."),
+  to: z
+    .object({ checkInId: z.string().nullable(), takenAt: z.string() })
+    .describe("The later point: a check-in, or now (checkInId null)."),
+};
+const ResultChangeResponse = z
+  .discriminatedUnion("available", [
+    ResultChange.extend(ResultChangeContext),
+    ResultChangeUnavailable.extend(ResultChangeContext),
+  ])
+  .meta({ id: "ResultChangeReport" });
 
 export function checkinRoutes({ app, svc }: RouteCtx) {
   app.openapi(
@@ -215,6 +235,36 @@ export function checkinRoutes({ app, svc }: RouteCtx) {
         )) as never,
         200,
       );
+    },
+  );
+
+  app.openapi(
+    route("simulate", {
+      method: "get",
+      path: "/api/v1/plans/{id}/result-change",
+      operationId: "explainResultChange",
+      tags: ["Check-ins"],
+      summary: "Why did my results change? The movement since a check-in, split by cause",
+      description:
+        "Compares the headline results (chance of success, financial-independence year, end-of-plan net worth in today's money) at a check-in (`from`, default the latest) with now, or with a later check-in (`to`). " +
+        "The movement is split into causes applied one at a time in a fixed, stated order: Glideworth's side (engine, tax tables, market history), the passage of time, updated balances (actual versus what the plan expected), household details, then plan edits (each edit also sized alone). " +
+        "The parts add up to the total; any remainder is reported as `unexplained`. Check-ins taken before inputs were stored with them give the total only (`available: false`). " +
+        "Read-only: recomputes in memory (Monte Carlo included, seconds) and stores nothing. Estimates, not advice.",
+      request: {
+        params: IdParam,
+        query: z.object({
+          from: z
+            .string()
+            .optional()
+            .describe("Check-in id to compare from (default: the latest)."),
+          to: z.string().optional().describe("Check-in id to compare to (default: now)."),
+        }),
+      },
+      responses: { 200: json(ResultChangeResponse, "Result change") },
+    }),
+    async (c) => {
+      const q = c.req.valid("query");
+      return c.json((await svc(c).checkins.resultChange(c.req.valid("param").id, q)) as never, 200);
     },
   );
 

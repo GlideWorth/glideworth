@@ -88,7 +88,7 @@ export const SERVER_INSTRUCTIONS = [
   'Amounts have a basis: "real" = today\'s money, "nominal" = future money. Tool outputs default to REAL (today\'s money) unless they say otherwise.',
   "START: get_plan_summary (one compact call: plan + outcome; planId defaults to the main plan, householdId to the only household). Use ids exactly as returned by list_* tools.",
   'COMMON QUESTIONS: "chance of success / why does it fail" -> run_monte_carlo (read failureAnalysis) then explain_year on the first failing year; "how much can I spend" -> solve_max_spending; "retire N years earlier" -> preview_whatif early-retirement, create_branch_from_template, compare_plans; "problems with my assumptions" -> audit_plan (each finding may carry a suggested change you can preview with preview_changes); "update balances" -> update_account_balances.',
-  "MORE ANALYSIS: strategy_matrix, income_by_tax_rate. MULTI-CURRENCY: list_fx_rates / set_fx_rate. CHECK-INS: what_changed_since_checkin, get_plan_health_history, list_notifications; create_share_link for read-only sharing.",
+  "MORE ANALYSIS: strategy_matrix, income_by_tax_rate. MULTI-CURRENCY: list_fx_rates / set_fx_rate. CHECK-INS: what_changed_since_checkin, explain_result_change (why a result moved, by cause), get_plan_health_history, list_notifications; create_share_link for read-only sharing.",
   "ANALYSE: simulate_plan (deterministic), run_monte_carlo (chance of success), explain_projection / explain_year(s) / explain_difference, audit_plan, sensitivity, compare_plans, solve_* (max spending, earliest retirement, required savings / portfolio, safe withdrawal rate), evaluate_guardrails / guyton_klinger, optimise_tax_strategy.",
   "WHAT-IF: list_whatif_templates -> preview_whatif (nothing stored) -> create_branch_from_template; survivor_scenarios for couples.",
   "ASSETS ABROAD: the household lives in one country for the whole plan; accounts, property and income in another country are taxed there as a non-resident, with treaty relief at home. tax_by_country (rows by country and basis), explain_item_taxation (how one item is taxed and why), cross_border_rules (non-resident rules, treaties, wrapper recognition).",
@@ -2320,6 +2320,29 @@ export function createMcpServer(ctx: McpContext): McpServer {
       },
       // No refresh option: taking a check-in stores it, so a read-only tool must not (run_checkin does).
       async ({ planId, since }) => services.checkins.sinceLastCheckin(planId, { since }, actor),
+    );
+  }
+
+  if (canSim) {
+    tool(
+      "explain_result_change",
+      {
+        title: "Why did my results change?",
+        description:
+          "How far the headline results moved since a check-in (chance of success, financial-independence year, end-of-plan net worth in today's money), split into causes: Glideworth's side (engine, tax tables, market history), the passage of time, updated balances versus what the plan expected, household details, and plan edits (each edit named and sized). " +
+          "Causes are applied one at a time in the fixed order given in `order`; the parts add up to the total, with any remainder as `unexplained`. from defaults to the latest check-in, to to now. Older check-ins give the total only (available=false). " +
+          "Read-only: recomputes in memory (runs Monte Carlo, seconds) and saves nothing. Estimates, not advice.",
+        input: {
+          planId,
+          from: z
+            .string()
+            .optional()
+            .describe("Check-in id to compare from (default: the latest)."),
+          to: z.string().optional().describe("Check-in id to compare to (default: now)."),
+        },
+        hint: { readOnly: true },
+      },
+      async ({ planId, from, to }) => services.checkins.resultChange(planId, { from, to }),
     );
   }
 

@@ -16,3 +16,4 @@ export * from "./sparse.js";
 export * from "./strategies.js";
 export * from "./tax.js";
 export * from "./time.js";
+export * from "./result-change.js";

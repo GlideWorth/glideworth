@@ -73,6 +73,7 @@ Report money in today's money unless the user asks otherwise, and say so.
 | "How is my flat abroad taxed?"                    | `explain_item_taxation`, `tax_by_country`, `cross_border_rules`                                                                                       |
 | "Why do these two plans differ?"                  | `explain_difference`, `diff_plans`, `compare_plans`                                                                                                   |
 | "What changed since my last check-in?"            | `what_changed_since_checkin`, `get_plan_health_history`, `list_notifications`                                                                         |
+| "Why did my chance of success change?"            | `explain_result_change` (splits the movement by cause; read-only)                                                                                     |
 | "Give me the year-by-year table"                  | `export_table`; report data with `export_report`                                                                                                      |
 | "Update my balances"                              | `list_accounts`, then `update_account_balances` (a write tool)                                                                                        |
 | "Import this CSV or spreadsheet"                  | `preview_csv_import`, then `apply_csv_import`; balance history per account with `preview_balance_history_import`, then `apply_balance_history_import` |

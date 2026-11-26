@@ -15,6 +15,8 @@ import {
   ProgressSnapshot,
   type ProgressSnapshotInput,
   ProjectionResult,
+  ResultChange,
+  ResultChangeUnavailable,
   type SimulationOptionsInput,
   UserSettings,
   type UserSettingsInput,
@@ -447,6 +449,17 @@ export function createApiClient(opts: ApiClientOptions = {}) {
         `/api/v1/plans/${encodeURIComponent(planId)}/changes-since-checkin`,
         ChangesSinceCheckin,
       ),
+    /** Why the headline results moved since a check-in, by cause (read-only; runs Monte Carlo on the server). */
+    resultChange: (planId: string, q: { from?: string; to?: string } = {}) => {
+      const qs = new URLSearchParams(
+        Object.entries(q).filter((e): e is [string, string] => e[1] !== undefined),
+      ).toString();
+      return request(
+        "GET",
+        `/api/v1/plans/${encodeURIComponent(planId)}/result-change${qs ? `?${qs}` : ""}`,
+        ResultChangeReport,
+      );
+    },
     listNotifications: (opts: { unread?: boolean; limit?: number } = {}) =>
       request(
         "GET",
@@ -811,6 +824,19 @@ export const ChangesSinceCheckin = z
   })
   .passthrough();
 export type ChangesSinceCheckin = z.infer<typeof ChangesSinceCheckin>;
+
+const ResultChangeContext = {
+  planId: z.string(),
+  planName: z.string(),
+  currency: z.string(),
+  from: z.object({ checkInId: z.string(), takenAt: z.string() }).nullable(),
+  to: z.object({ checkInId: z.string().nullable(), takenAt: z.string() }),
+};
+export const ResultChangeReport = z.discriminatedUnion("available", [
+  ResultChange.extend(ResultChangeContext),
+  ResultChangeUnavailable.extend(ResultChangeContext),
+]);
+export type ResultChangeReport = z.infer<typeof ResultChangeReport>;
 
 export const ImportResponse = z.object({
   format: z.string(),

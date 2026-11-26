@@ -8,6 +8,12 @@ listing every commit. Product news for people using the hosted service is on
 
 ## Unreleased
 
+- **Why did my results change?** Each check-in now keeps what it was computed from. `GET
+  /plans/{id}/result-change` and the read-only MCP tool `explain_result_change` show how far the chance of
+  success, the financial-independence year and end-of-plan net worth moved since a check-in, split into
+  Glideworth's side (engine, tax tables, market history), the passage of time, updated balances, household
+  details and each plan edit, in a stated order. The dashboard's check-in card shows it. Check-ins taken before
+  this release show the total only.
 - **Interactive views in ChatGPT and Claude** (MCP Apps): Monte Carlo and projections, what-if and plan
   comparisons, solver answers, change-set reviews, one year's cash flow and tax over time render as interactive
   views. The view's data travels in the tool result's `_meta["glideworth/widget"]`; the text the model reads is

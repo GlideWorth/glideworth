@@ -35,6 +35,7 @@ import { cn } from "../../lib/cn";
 import { formatMoney, relativeTime } from "../../lib/format";
 import { useFormat, useWorkspace } from "../../lib/workspace";
 import { PrivateText } from "../../components/ui/private-text";
+import { WhyResultsMoved } from "./result-change";
 
 const online = (ws: ReturnType<typeof useWorkspace>["data"]) => ws?.source === "api";
 const missingRoute = (e: unknown) =>
@@ -69,6 +70,7 @@ export function useCheckInNow(planId: string | undefined) {
     onSuccess: (r) => {
       void qc.invalidateQueries({ queryKey: ["health", planId] });
       void qc.invalidateQueries({ queryKey: ["changes-since", planId] });
+      void qc.invalidateQueries({ queryKey: ["result-change", planId] });
       void qc.invalidateQueries({ queryKey: ["notifications"] });
       toast({
         title: r.changes.length
@@ -222,6 +224,10 @@ export function ChangesSinceCheckInCard({ planId }: { planId: string | undefined
                 </ul>
               </details>
             ) : null}
+            <WhyResultsMoved
+              planId={planId}
+              auto={(d?.edits?.length ?? 0) > 0 || d?.householdChanged === true}
+            />
             <p className="text-[11.5px] text-ink-3">
               The chance of success shown is the one measured at the check-in; check in again to
               re-run it.

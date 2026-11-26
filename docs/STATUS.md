@@ -330,5 +330,6 @@ leaving is not modelled (contributions to UK pensions stop while you live abroad
 4. Optimizer depth and the Flex vs No-Flex comparison.
 5. Randomised lifespan and care shocks inside Monte Carlo.
 6. Monthly resolution.
-7. Server-side PDF and a "results changed because" report after table updates.
+7. Server-side PDF. (The "results changed because" report is built: `explain_result_change`, the dashboard's
+   check-in card; maximum spending and the earliest-retirement solver are not split yet.)
 8. Completeness score and data-quality nudges in onboarding.

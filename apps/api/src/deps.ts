@@ -29,6 +29,7 @@ export interface CoreDeps {
   explainYears: typeof core.explainYears;
   explainDifference: typeof core.explainDifference;
   attributeDifference: typeof core.attributeDifference;
+  attributeResultChange: typeof core.attributeResultChange;
   auditAssumptions: typeof core.auditAssumptions;
   survivorScenarios: typeof core.survivorScenarios;
   diffPlans: typeof core.diffPlans;
@@ -65,6 +66,7 @@ export const coreDeps: CoreDeps = {
   explainYears: core.explainYears,
   explainDifference: core.explainDifference,
   attributeDifference: core.attributeDifference,
+  attributeResultChange: core.attributeResultChange,
   auditAssumptions: core.auditAssumptions,
   survivorScenarios: core.survivorScenarios,
   diffPlans: core.diffPlans,

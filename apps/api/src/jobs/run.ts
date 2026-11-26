@@ -17,6 +17,8 @@ export const JOB_KINDS = [
   "guardrails",
   "sensitivity",
   "attribution",
+  /** Internal: "why did my number change?" between two check-ins (never submitted through the API). */
+  "result-change",
   "tax-strategy",
   "strategy-matrix",
   /** Internal: one slice of a sharded Monte Carlo run (never submitted through the API). */
@@ -96,6 +98,8 @@ export async function runJob(spec: JobSpec, hooks: JobHooks, deps: CoreDeps): Pr
         { metric: params.metric, ...(params.diff ? { diff: params.diff } : {}) },
         solverDeps,
       );
+    case "result-change":
+      return deps.attributeResultChange(params.before, params.after, params.options, solverDeps);
     case "tax-strategy":
       return params.candidates
         ? deps.compareStrategies(

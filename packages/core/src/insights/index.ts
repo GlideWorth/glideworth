@@ -33,4 +33,5 @@ export {
   reconcileYear,
   type YearReconciliation,
 } from "./reconcile.js";
+export * from "./result-change.js";
 export * from "./scenarios.js";

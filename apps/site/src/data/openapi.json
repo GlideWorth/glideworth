@@ -24709,6 +24709,482 @@
     "type": "object",
     "additionalProperties": {}
    },
+   "ResultChangeReport": {
+    "oneOf": [
+     {
+      "type": "object",
+      "properties": {
+       "available": {
+        "type": "boolean",
+        "enum": [
+         true
+        ],
+        "description": "The split is available (both points stored what the split needs)."
+       },
+       "noChange": {
+        "type": "boolean",
+        "description": "Nothing changed: same plan, household, balances, start month, engine and tables."
+       },
+       "order": {
+        "type": "array",
+        "items": {
+         "$ref": "#/components/schemas/ResultChangeCause"
+        },
+        "description": "The order the causes were applied in."
+       },
+       "method": {
+        "type": "string",
+        "description": "How the movement was split, in words."
+       },
+       "fingerprints": {
+        "type": "object",
+        "properties": {
+         "before": {
+          "$ref": "#/components/schemas/ResultFingerprints"
+         },
+         "after": {
+          "$ref": "#/components/schemas/ResultFingerprints"
+         },
+         "now": {
+          "$ref": "#/components/schemas/ResultFingerprints"
+         }
+        },
+        "required": [
+         "before",
+         "after",
+         "now"
+        ]
+       },
+       "steps": {
+        "type": "array",
+        "items": {
+         "$ref": "#/components/schemas/ResultChangeStep"
+        }
+       },
+       "metrics": {
+        "type": "array",
+        "items": {
+         "$ref": "#/components/schemas/ResultMetricChange"
+        }
+       },
+       "summary": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        },
+        "description": "One sentence per measure."
+       },
+       "notes": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       },
+       "planId": {
+        "type": "string"
+       },
+       "planName": {
+        "type": "string"
+       },
+       "currency": {
+        "type": "string"
+       },
+       "from": {
+        "type": [
+         "object",
+         "null"
+        ],
+        "properties": {
+         "checkInId": {
+          "type": "string"
+         },
+         "takenAt": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "checkInId",
+         "takenAt"
+        ],
+        "description": "The earlier point: a check-in (null when the plan has none)."
+       },
+       "to": {
+        "type": "object",
+        "properties": {
+         "checkInId": {
+          "type": [
+           "string",
+           "null"
+          ]
+         },
+         "takenAt": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "checkInId",
+         "takenAt"
+        ],
+        "description": "The later point: a check-in, or now (checkInId null)."
+       }
+      },
+      "required": [
+       "available",
+       "noChange",
+       "order",
+       "method",
+       "fingerprints",
+       "steps",
+       "metrics",
+       "summary",
+       "notes",
+       "planId",
+       "planName",
+       "currency",
+       "from",
+       "to"
+      ]
+     },
+     {
+      "type": "object",
+      "properties": {
+       "available": {
+        "type": "boolean",
+        "enum": [
+         false
+        ]
+       },
+       "reason": {
+        "type": "string"
+       },
+       "metrics": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "metric": {
+           "$ref": "#/components/schemas/ResultChangeMetric"
+          },
+          "label": {
+           "type": "string"
+          },
+          "unit": {
+           "type": "string",
+           "enum": [
+            "fraction",
+            "year",
+            "money"
+           ]
+          },
+          "basis": {
+           "type": "string",
+           "enum": [
+            "real"
+           ],
+           "description": "Money measures are in today's money."
+          },
+          "before": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "after": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "total": {
+           "type": [
+            "number",
+            "null"
+           ],
+           "description": "after - before; null when either is missing."
+          }
+         },
+         "required": [
+          "metric",
+          "label",
+          "unit",
+          "before",
+          "after",
+          "total"
+         ]
+        }
+       },
+       "summary": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       },
+       "notes": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       },
+       "planId": {
+        "type": "string"
+       },
+       "planName": {
+        "type": "string"
+       },
+       "currency": {
+        "type": "string"
+       },
+       "from": {
+        "type": [
+         "object",
+         "null"
+        ],
+        "properties": {
+         "checkInId": {
+          "type": "string"
+         },
+         "takenAt": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "checkInId",
+         "takenAt"
+        ],
+        "description": "The earlier point: a check-in (null when the plan has none)."
+       },
+       "to": {
+        "type": "object",
+        "properties": {
+         "checkInId": {
+          "type": [
+           "string",
+           "null"
+          ]
+         },
+         "takenAt": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "checkInId",
+         "takenAt"
+        ],
+        "description": "The later point: a check-in, or now (checkInId null)."
+       }
+      },
+      "required": [
+       "available",
+       "reason",
+       "metrics",
+       "summary",
+       "notes",
+       "planId",
+       "planName",
+       "currency",
+       "from",
+       "to"
+      ]
+     }
+    ]
+   },
+   "ResultChangeCause": {
+    "type": "string",
+    "enum": [
+     "glideworth",
+     "time",
+     "balances",
+     "household",
+     "plan"
+    ]
+   },
+   "ResultFingerprints": {
+    "type": [
+     "object",
+     "null"
+    ],
+    "properties": {
+     "engineVersion": {
+      "type": "string"
+     },
+     "taxTables": {
+      "type": "string",
+      "description": "Fingerprint of the bundled tax tables."
+     },
+     "marketData": {
+      "type": "string",
+      "description": "Fingerprint of the bundled market history."
+     }
+    },
+    "required": [
+     "engineVersion",
+     "taxTables",
+     "marketData"
+    ]
+   },
+   "ResultChangeStep": {
+    "type": "object",
+    "properties": {
+     "cause": {
+      "$ref": "#/components/schemas/ResultChangeCause"
+     },
+     "label": {
+      "type": "string"
+     },
+     "changed": {
+      "type": "boolean",
+      "description": "Whether anything of this kind changed between the two points."
+     },
+     "details": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      },
+      "description": "What changed, in words (the edits are named here)."
+     }
+    },
+    "required": [
+     "cause",
+     "label",
+     "changed",
+     "details"
+    ]
+   },
+   "ResultMetricChange": {
+    "type": "object",
+    "properties": {
+     "metric": {
+      "$ref": "#/components/schemas/ResultChangeMetric"
+     },
+     "label": {
+      "type": "string"
+     },
+     "unit": {
+      "type": "string",
+      "enum": [
+       "fraction",
+       "year",
+       "money"
+      ]
+     },
+     "basis": {
+      "type": "string",
+      "enum": [
+       "real"
+      ],
+      "description": "Money measures are in today's money."
+     },
+     "before": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "after": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "total": {
+      "type": [
+       "number",
+       "null"
+      ],
+      "description": "after - before; null when either is missing."
+     },
+     "parts": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/ResultChangePart"
+      },
+      "description": "One entry per cause, in the order applied."
+     },
+     "unexplained": {
+      "type": [
+       "number",
+       "null"
+      ],
+      "description": "total minus the parts: what the steps do not account for (for example a different answer from the same inputs). Null when a step could not be measured."
+     }
+    },
+    "required": [
+     "metric",
+     "label",
+     "unit",
+     "before",
+     "after",
+     "total",
+     "parts",
+     "unexplained"
+    ]
+   },
+   "ResultChangeMetric": {
+    "type": "string",
+    "enum": [
+     "successRate",
+     "fiYear",
+     "endNetWorthReal"
+    ]
+   },
+   "ResultChangePart": {
+    "type": "object",
+    "properties": {
+     "cause": {
+      "$ref": "#/components/schemas/ResultChangeCause"
+     },
+     "label": {
+      "type": "string"
+     },
+     "delta": {
+      "type": [
+       "number",
+       "null"
+      ],
+      "description": "How far this cause moved the measure. Null when it cannot be measured."
+     },
+     "edits": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "key": {
+         "type": "string",
+         "description": "The plan item or setting the edit touched."
+        },
+        "description": {
+         "type": "string"
+        },
+        "delta": {
+         "type": [
+          "number",
+          "null"
+         ],
+         "description": "This edit alone, applied on top of the earlier steps. Null for chance of success."
+        }
+       },
+       "required": [
+        "key",
+        "description",
+        "delta"
+       ]
+      },
+      "description": "Plan edits only: each edit alone (one at a time on the same base)."
+     },
+     "interaction": {
+      "type": [
+       "number",
+       "null"
+      ],
+      "description": "Plan edits only: the part of `delta` the edits taken one at a time do not explain."
+     }
+    },
+    "required": [
+     "cause",
+     "label",
+     "delta"
+    ]
+   },
    "ExplainTaxationRequest": {
     "type": "object",
     "properties": {
@@ -58543,6 +59019,146 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/ChangesSinceCheckin"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Invalid request (VALIDATION)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing or invalid API key",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "API key lacks the required scope",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Not found",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "409": {
+      "description": "Conflict (duplicate id, version mismatch, in use)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Scenario is inconsistent (dangling reference, circular milestone...) or Idempotency-Key reused",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Rate limited",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "501": {
+      "description": "The plan uses a feature that is not implemented yet (details.feature, details.workstream)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/plans/{id}/result-change": {
+   "get": {
+    "operationId": "explainResultChange",
+    "tags": [
+     "Check-ins"
+    ],
+    "summary": "Why did my results change? The movement since a check-in, split by cause",
+    "description": "Compares the headline results (chance of success, financial-independence year, end-of-plan net worth in today's money) at a check-in (`from`, default the latest) with now, or with a later check-in (`to`). The movement is split into causes applied one at a time in a fixed, stated order: Glideworth's side (engine, tax tables, market history), the passage of time, updated balances (actual versus what the plan expected), household details, then plan edits (each edit also sized alone). The parts add up to the total; any remainder is reported as `unexplained`. Check-ins taken before inputs were stored with them give the total only (`available: false`). Read-only: recomputes in memory (Monte Carlo included, seconds) and stores nothing. Estimates, not advice.\n\nScope: `simulate` (or `read`).",
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "x-required-scope": "simulate",
+    "parameters": [
+     {
+      "schema": {
+       "type": "string",
+       "minLength": 1,
+       "maxLength": 64
+      },
+      "required": true,
+      "name": "id",
+      "in": "path"
+     },
+     {
+      "schema": {
+       "type": "string",
+       "description": "Check-in id to compare from (default: the latest)."
+      },
+      "required": false,
+      "description": "Check-in id to compare from (default: the latest).",
+      "name": "from",
+      "in": "query"
+     },
+     {
+      "schema": {
+       "type": "string",
+       "description": "Check-in id to compare to (default: now)."
+      },
+      "required": false,
+      "description": "Check-in id to compare to (default: now).",
+      "name": "to",
+      "in": "query"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Result change",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ResultChangeReport"
         }
        }
       }

@@ -15,7 +15,25 @@
  * recompute, no Monte Carlo) with the last stored check-in, and lists the edits made in between and by whom.
  */
 import { log } from "../log.js";
-import type { Actor, MonteCarloResult, Plan, ProjectionResult } from "@glideworth/core";
+import {
+  type Actor,
+  type CurrentFinances,
+  DOCUMENT_APP,
+  fiYearOf,
+  type HeadlineValues,
+  type Household,
+  migrateDocument,
+  type MonteCarloResult,
+  type Plan,
+  type ProjectionResult,
+  type ResultChange,
+  type ResultChangeMetric,
+  type ResultChangeUnavailable,
+  type ResultCheckpoint,
+  type ResultFingerprints,
+  resultFingerprints,
+  SCHEMA_VERSION,
+} from "@glideworth/core";
 import { and, asc, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { notifications, planHealth, planVersions, scheduleConfig } from "../db/schema.js";
@@ -26,7 +44,7 @@ import { newId, nowIso } from "../util.js";
 import type { ServiceCtx } from "./context.js";
 import type { HouseholdsService } from "./households.js";
 import type { PlansService } from "./plans.js";
-import type { SimulationService } from "./simulation.js";
+import { DEFAULT_MC_SEED, type SimulationService } from "./simulation.js";
 
 export const ScheduleConfig = z
   .object({
@@ -101,6 +119,23 @@ export interface HealthBody {
   netWorthPath: { year: number; netWorth: number }[];
   mc: { trials: number; seed: number | null } | null;
   error?: string;
+  /**
+   * What the check-in was computed from and what it measured, so a later "why did my number change?" can
+   * recompute it under each intermediate state. Absent on check-ins taken before this was stored, and on
+   * check-ins whose projection failed.
+   */
+  snapshot?: CheckInSnapshot;
+}
+
+/** The inputs of a check-in (at `schemaVersion`; migrated on read) and its headline values. */
+export interface CheckInSnapshot {
+  schemaVersion: number;
+  household: Household;
+  finances: CurrentFinances;
+  plan: Plan;
+  fingerprints: ResultFingerprints;
+  /** Unrounded, as measured (the row's columns are rounded). */
+  values: HeadlineValues;
 }
 
 export interface HealthRecord {
@@ -144,10 +179,6 @@ export interface NotificationView {
 }
 
 const SYSTEM: Actor = { kind: "system", label: "scheduler" };
-const fiMilestone = (m: { milestoneId: string; name: string }) =>
-  /(^|[-_])fi($|[-_])|financial independence|\bFIRE?\b/i.test(`${m.milestoneId} ${m.name}`);
-
-const yearOf = (month: string | null | undefined) => (month ? Number(month.slice(0, 4)) : null);
 const monthsOf = (m: string) => Number(m.slice(0, 4)) * 12 + Number(m.slice(5, 7));
 const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
 
@@ -364,7 +395,6 @@ export class CheckinsService {
       status: m.status,
       month: m.month,
     }));
-    const fi = result?.milestones.find((m) => fiMilestone(m) && m.status === "reached");
     const findings: FindingState[] = [];
     if (result) {
       const { findings: fs } = this.sim.audit(plan.id);
@@ -386,7 +416,7 @@ export class CheckinsService {
         year: p.year,
         netWorth: Math.round(toTodaysMoney(p.totals.netWorth, p)),
       })),
-      fiYear: yearOf(fi?.month) ?? result?.summary.retirementYear ?? null,
+      fiYear: result ? fiYearOf(result) : null,
     };
   }
 
@@ -406,6 +436,7 @@ export class CheckinsService {
     const previous = this.latest(planId);
     let result: ProjectionResult | null = null;
     let error: string | undefined;
+    const { input } = this.sim.inputFor(planId, { trace: "off" });
     try {
       result = this.sim.projection(planId, { trace: "off" }).result;
     } catch (err) {
@@ -433,6 +464,22 @@ export class CheckinsService {
       netWorthPath: st.netWorthPath,
       mc: mc.rate === null ? null : { trials: mc.trials, seed: mc.seed },
       ...((error ?? mc.error) ? { error: (error ?? mc.error) as string } : {}),
+      ...(result
+        ? {
+            snapshot: {
+              schemaVersion: SCHEMA_VERSION,
+              household: input.household,
+              finances: input.finances,
+              plan: input.plan,
+              fingerprints: resultFingerprints(),
+              values: {
+                successRate: mc.rate,
+                fiYear: st.fiYear,
+                endNetWorthReal: result.summary.endNetWorthReal,
+              },
+            },
+          }
+        : {}),
     };
     const id = newId("chk");
     this.db
@@ -710,6 +757,109 @@ export class CheckinsService {
   }
 
   // ----------------------------------------------------------------------------- notifications
+  /**
+   * "Why did my number change?": the headline results at a check-in (`from`, default the latest) against
+   * now (or a later check-in `to`), split into causes by `attributeResultChange` (@glideworth/core). Read-only:
+   * it recomputes in memory and stores nothing. A check-in taken before inputs were stored with it gives the
+   * total movement only.
+   */
+  async resultChange(
+    planId: string,
+    o: { from?: string | undefined; to?: string | undefined } = {},
+  ): Promise<ResultChangeView> {
+    const plan = this.plans.get(planId);
+    const rowOf = (id: string) => {
+      const r = this.db.select().from(planHealth).where(eq(planHealth.id, id)).get();
+      if (!r || r.planId !== planId) throw notFound("check-in", id);
+      return r;
+    };
+    const fromRow =
+      o.from !== undefined
+        ? rowOf(o.from)
+        : this.db
+            .select()
+            .from(planHealth)
+            .where(eq(planHealth.planId, planId))
+            .orderBy(desc(planHealth.takenAt), desc(sql`rowid`))
+            .limit(1)
+            .get();
+    const toRow = o.to !== undefined ? rowOf(o.to) : undefined;
+    const { input, currency } = this.sim.inputFor(planId, { trace: "off" });
+    const context = {
+      planId,
+      planName: plan.name,
+      currency,
+      from: fromRow ? { checkInId: fromRow.id, takenAt: fromRow.takenAt } : null,
+      to: toRow
+        ? { checkInId: toRow.id, takenAt: toRow.takenAt }
+        : { checkInId: null, takenAt: new Date(this.now()).toISOString() },
+    };
+    if (!fromRow)
+      return {
+        ...context,
+        available: false,
+        reason: "This plan has no check-in yet, so there is nothing to compare with.",
+        metrics: [],
+        summary: [],
+        notes: [ESTIMATES_NOTE],
+      };
+    const fromBody = fromRow.body as HealthBody;
+    const mcOf = (b: HealthBody) =>
+      b.mc ? { trials: b.mc.trials, seed: b.mc.seed ?? DEFAULT_MC_SEED } : null;
+    const mc = fromRow.successRate !== null ? mcOf(fromBody) : null;
+    const before = readSnapshot(fromBody);
+    const after: ResultCheckpoint | null = toRow
+      ? readSnapshot(toRow.body as HealthBody)
+      : { household: input.household, finances: input.finances, plan: input.plan };
+    if (!before || !after) {
+      // Older check-ins stored the results only: the total movement, without the split.
+      const storedValues = (r: typeof planHealth.$inferSelect): HeadlineValues => ({
+        successRate: r.successRate,
+        fiYear: r.fiYear,
+        endNetWorthReal: (r.body as HealthBody).endNetWorthReal,
+      });
+      const start = storedValues(fromRow);
+      const end = toRow ? storedValues(toRow) : await this.valuesNow(planId, input, mc);
+      return {
+        ...context,
+        available: false,
+        reason: `The split by cause is not available for check-ins taken before this version of Glideworth: the check-in of ${(before ? toRow! : fromRow).takenAt.slice(0, 10)} did not store what it was computed from. The total movement is shown; check-ins from now on can be split.`,
+        ...totalsOnly(start, end),
+      };
+    }
+    const result = (await this.sim.jobs.compute("result-change", input, {
+      before,
+      after,
+      options: {
+        monteCarlo: mc,
+        format: { currency, locale: input.household.locale },
+      },
+    })) as ResultChange;
+    return { ...context, ...result };
+  }
+
+  /** Headline values now, for the totals-only answer (deterministic, plus Monte Carlo when asked). */
+  private async valuesNow(
+    planId: string,
+    input: ReturnType<SimulationService["inputFor"]>["input"],
+    mc: { trials: number; seed: number } | null,
+  ): Promise<HeadlineValues> {
+    const r = this.sim.projection(planId, { trace: "off" }).result;
+    let successRate: number | null = null;
+    if (mc) {
+      const out = (await this.sim.jobs.compute("monte-carlo", input, {
+        settings: { ...input.plan.monteCarlo, trials: mc.trials, seed: mc.seed },
+        keepTrials: false,
+      })) as MonteCarloResult;
+      successRate = out.successRate;
+    }
+    return {
+      successRate,
+      fiYear: fiYearOf(r),
+      endNetWorthReal: r.summary.endNetWorthReal,
+    };
+  }
+
   private notify(c: Change, h: HealthRecord): NotificationView {
     const id = newId("ntf");
     const body = { ...c.detail, planName: h.planName, checkInId: h.id };
@@ -799,4 +949,79 @@ export class CheckinsService {
   unreadCount(): number {
     return this.notifications({ unread: true, limit: 500 }).length;
   }
+}
+
+const ESTIMATES_NOTE = "These are estimates from the plan's assumptions, not financial advice.";
+
+export type ResultChangeView = {
+  planId: string;
+  planName: string;
+  currency: string;
+  from: { checkInId: string; takenAt: string } | null;
+  to: { checkInId: string | null; takenAt: string };
+} & (ResultChange | ResultChangeUnavailable);
+
+/** A check-in's stored inputs, migrated to the current schema; null when absent or unreadable. */
+function readSnapshot(body: HealthBody): ResultCheckpoint | null {
+  const s = body.snapshot;
+  if (!s) return null;
+  try {
+    const doc = migrateDocument({
+      app: DOCUMENT_APP,
+      schemaVersion: s.schemaVersion,
+      household: s.household,
+      finances: s.finances,
+      plans: [s.plan],
+    });
+    return {
+      household: doc.household,
+      finances: doc.finances,
+      plan: doc.plans[0]!,
+      stored: { values: s.values, fingerprints: s.fingerprints },
+    };
+  } catch (err) {
+    log.warn("checkin.snapshot_unreadable", { err });
+    return null;
+  }
+}
+
+const METRICS: {
+  metric: ResultChangeMetric;
+  label: string;
+  unit: "fraction" | "year" | "money";
+}[] = [
+  { metric: "successRate", label: "Chance of success", unit: "fraction" },
+  { metric: "fiYear", label: "Financial-independence year", unit: "year" },
+  { metric: "endNetWorthReal", label: "Net worth at the end of the plan", unit: "money" },
+];
+
+function totalsOnly(start: HeadlineValues, end: HeadlineValues) {
+  const metrics = METRICS.map((m) => {
+    const before = start[m.metric];
+    const after = end[m.metric];
+    return {
+      ...m,
+      ...(m.unit === "money" ? { basis: "real" as const } : {}),
+      before,
+      after,
+      total: before === null || after === null ? null : after - before,
+    };
+  });
+  const show = (unit: string, v: number | null) =>
+    v === null
+      ? unit === "year"
+        ? "not reached"
+        : "unknown"
+      : unit === "fraction"
+        ? `${Math.round(v * 1000) / 10}%`
+        : unit === "year"
+          ? String(v)
+          : String(Math.round(v));
+  return {
+    metrics,
+    summary: metrics
+      .filter((m) => m.before !== null || m.after !== null)
+      .map((m) => `${m.label}: ${show(m.unit, m.before)} → ${show(m.unit, m.after)}.`),
+    notes: [ESTIMATES_NOTE],
+  };
 }

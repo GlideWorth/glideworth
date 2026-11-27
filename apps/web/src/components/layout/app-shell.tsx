@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   ListTree,
   Menu,
+  MessageSquare,
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
@@ -31,6 +32,7 @@ import { DemoBanner } from "../../features/demo/demo-ui";
 import { useAccess } from "../../lib/access";
 import { CLOUD_PUBLIC_PATHS, modeOf, useCloudSession, useMode, useSession } from "../../lib/auth";
 import { cn } from "../../lib/cn";
+import { openFeedback, useFeedbackAvailable } from "../../lib/feedback";
 import { isDemo } from "../../lib/demo";
 import { setCompactNumbers } from "../../lib/format";
 import { useRestoreFocus } from "../../lib/restore-focus";
@@ -476,6 +478,7 @@ function TopBar() {
   const setShortcuts = useUi((s) => s.setShortcutsOpen);
   const md = useMediaQuery(MD);
   const mode = useMode();
+  const feedback = useFeedbackAvailable();
   return (
     <header
       data-app-chrome
@@ -533,6 +536,18 @@ function TopBar() {
               </button>
             </Tooltip>
             <ThemeButton />
+            {feedback ? (
+              <Tooltip content="Send feedback">
+                <button
+                  type="button"
+                  onClick={() => openFeedback()}
+                  className="flex size-8 items-center justify-center rounded-md text-ink-2 hover:bg-surface-2 hover:text-ink pointer-coarse:size-11"
+                  aria-label="Send feedback"
+                >
+                  <MessageSquare className="size-4" />
+                </button>
+              </Tooltip>
+            ) : null}
             <Tooltip content="API reference (opens a new tab)">
               <a
                 href="/docs"
@@ -557,6 +572,7 @@ function OverflowMenu() {
   const theme = useUi((s) => s.theme);
   const setTheme = useUi((s) => s.setTheme);
   const setShortcuts = useUi((s) => s.setShortcutsOpen);
+  const feedback = useFeedbackAvailable();
   const item =
     "flex cursor-default items-center gap-2 rounded-md px-2 py-2 text-[13px] text-ink outline-none select-none data-[highlighted]:bg-surface-2 pointer-coarse:min-h-11";
   return (
@@ -594,6 +610,12 @@ function OverflowMenu() {
           <M.Item className={item} onSelect={() => setShortcuts(true)}>
             <Keyboard className="size-4 text-ink-3" /> Keyboard shortcuts
           </M.Item>
+          {feedback ? (
+            // Opened after the menu has closed, so the menu's focus return does not land on the survey.
+            <M.Item className={item} onSelect={() => setTimeout(openFeedback)}>
+              <MessageSquare className="size-4 text-ink-3" /> Send feedback
+            </M.Item>
+          ) : null}
           <M.Item className={item} asChild>
             <a href="/docs" target="_blank" rel="noreferrer">
               <BookOpen className="size-4 text-ink-3" /> API reference

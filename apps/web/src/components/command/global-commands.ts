@@ -16,12 +16,14 @@ import {
   FileUp,
   Keyboard,
   type LucideIcon,
+  MessageSquare,
   SunMoon,
   Upload,
 } from "lucide-react";
 import { useMemo } from "react";
 import { sectionsForMode } from "../../features/settings/sections";
 import { useMode } from "../../lib/auth";
+import { openFeedback, useFeedbackAvailable } from "../../lib/feedback";
 import { useActivePlan } from "../../lib/workspace";
 import { usePrefs } from "../../stores/prefs";
 import { useUi } from "../../stores/ui";
@@ -56,6 +58,7 @@ export function useGlobalCommands(): PaletteCommand[] {
   const hideAmounts = useUi((s) => s.hideAmounts);
   const setShortcuts = useUi((s) => s.setShortcutsOpen);
   const mode = useMode();
+  const feedback = useFeedbackAvailable();
 
   return useMemo(() => {
     const go = (to: string, search?: Record<string, string>) => () =>
@@ -154,6 +157,16 @@ export function useGlobalCommands(): PaletteCommand[] {
         },
       },
     );
+    if (feedback)
+      out.push({
+        id: "g:feedback",
+        group: "Actions",
+        label: "Send feedback",
+        icon: MessageSquare,
+        keywords: "bug report problem feature request idea suggestion contact support",
+        // After the palette has closed, so its focus return does not land on the survey.
+        run: () => setTimeout(openFeedback),
+      });
     for (const g of NAV)
       for (const item of g.items) {
         if (ALREADY.has(item.to) || item.to.includes("active")) continue;
@@ -193,5 +206,5 @@ export function useGlobalCommands(): PaletteCommand[] {
         run: () => void navigate({ to: "/settings/$section", params: { section: s.id } }),
       });
     return out;
-  }, [navigate, qc, plan, workspace, basis, hideAmounts, setShortcuts, mode]);
+  }, [navigate, qc, plan, workspace, basis, hideAmounts, setShortcuts, mode, feedback]);
 }

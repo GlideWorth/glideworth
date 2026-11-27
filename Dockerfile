@@ -50,10 +50,13 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
 FROM deps AS build
 # Hosted-service analytics (apps/web/src/lib/analytics.tsx). Only the production image workflow
 # (deploy.yml, image-artifact.yml) passes these; self-host images leave them empty and ship no analytics.
+# VITE_PUBLIC_POSTHOG_FEEDBACK_SURVEY_ID is the PostHog survey the "Send feedback" button opens (lib/feedback.ts).
 ARG VITE_PUBLIC_POSTHOG_PROJECT_TOKEN=""
 ARG VITE_PUBLIC_POSTHOG_HOST=""
+ARG VITE_PUBLIC_POSTHOG_FEEDBACK_SURVEY_ID=""
 ENV VITE_PUBLIC_POSTHOG_PROJECT_TOKEN=$VITE_PUBLIC_POSTHOG_PROJECT_TOKEN \
-    VITE_PUBLIC_POSTHOG_HOST=$VITE_PUBLIC_POSTHOG_HOST
+    VITE_PUBLIC_POSTHOG_HOST=$VITE_PUBLIC_POSTHOG_HOST \
+    VITE_PUBLIC_POSTHOG_FEEDBACK_SURVEY_ID=$VITE_PUBLIC_POSTHOG_FEEDBACK_SURVEY_ID
 COPY tsconfig.base.json ./
 # apps/web imports brand/logo.svg?raw (the build failed without it).
 COPY brand brand

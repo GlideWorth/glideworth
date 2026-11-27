@@ -117,6 +117,11 @@ export {
 } from "./http/tenant-auth.js";
 export { fairThreadGate } from "./jobs/fair-gate.js";
 export type { ErrorReporter, Logger, LogValue } from "./log/index.js";
+export {
+  createPostHogMcpAnalytics,
+  MCP_CONTENT_PROPERTIES,
+  type McpAnalytics,
+} from "./log/mcp-analytics.js";
 export { createOpsApp, type OpsAppOptions } from "./ops/app.js";
 export { OperatorService } from "./ops/operators.js";
 export {

@@ -399,6 +399,7 @@ function createCloudApp(
     securityTxt: securityTxt(`${publicUrl.replace(/\/+$/, "")}/.well-known/security.txt`),
     openaiAppsChallenge:
       o.openaiAppsChallenge ?? (process.env.GLIDEWORTH_OPENAI_APPS_CHALLENGE?.trim() || undefined),
+    ...(rt.mcpAnalytics ? { instrumentMcp: (server) => rt.mcpAnalytics!.instrument(server) } : {}),
   };
 
   const here = dirname(fileURLToPath(import.meta.url));

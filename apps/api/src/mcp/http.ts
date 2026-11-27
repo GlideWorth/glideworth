@@ -1,3 +1,4 @@
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { actorOf, type Principal } from "../auth.js";
 import type { Services } from "../services.js";
@@ -15,6 +16,8 @@ export async function handleMcpHttp(
     allowWrites: boolean;
     /** Public origin of the web app, for links from the chat widgets (null = unknown). */
     webUrl?: string | null;
+    /** Cloud only: MCP analytics, applied to this request's server before it handles the request. */
+    instrument?: (server: McpServer) => void;
   },
 ): Promise<Response> {
   // Stateless, so there is no stream for server-initiated messages (GET) and no session to end
@@ -42,6 +45,7 @@ export async function handleMcpHttp(
     principal: opts.principal,
     webUrl: opts.webUrl ?? null,
   });
+  opts.instrument?.(server);
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,

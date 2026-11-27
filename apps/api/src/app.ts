@@ -7,6 +7,7 @@ import { ENGINE_VERSION, SCHEMA_VERSION } from "@glideworth/core";
 import { getConnInfo } from "@hono/node-server/conninfo";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { Scalar } from "@scalar/hono-api-reference";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Context, MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
@@ -66,6 +67,8 @@ export interface CloudSurface {
   securityTxt?: string;
   /** The ChatGPT plugin directory's domain-verification token (`/.well-known/openai-apps-challenge`). Cloud only. */
   openaiAppsChallenge?: string;
+  /** MCP analytics (`@glideworth/cloud` mcp-analytics.ts): instruments each request's MCP server. Cloud only. */
+  instrumentMcp?: (server: McpServer) => void;
 }
 
 export interface AppOptions {
@@ -470,6 +473,7 @@ export function createApp(opts: AppOptions) {
       allowWrites: cloud ? cloud.mcpAllowWrites(c) : !!opts.mcpAllowWrites,
       // The web app is at the public URL, or at this origin when this process serves it.
       webUrl: opts.publicUrl || opts.webDist ? publicOrigin(c) : null,
+      ...(cloud?.instrumentMcp ? { instrument: cloud.instrumentMcp } : {}),
     }),
   );
 

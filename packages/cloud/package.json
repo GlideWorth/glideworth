@@ -52,10 +52,12 @@
     "@glideworth/email": "workspace:*",
     "@hono/node-server": "2.1.8",
     "@hono/zod-openapi": "1.6.3",
+    "@posthog/mcp": "1.8.2",
     "better-sqlite3": "13.2.0",
     "disposable-email-domains": "1.0.62",
     "drizzle-orm": "0.45.4",
     "hono": "4.13.19",
+    "posthog-node": "6.2.0",
     "zod": "4.6.7"
   },
   "devDependencies": {

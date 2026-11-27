@@ -52,6 +52,7 @@ import type { CloudHttpDeps, SupportView } from "./http/kit.js";
 import { fairThreadGate } from "./jobs/fair-gate.js";
 import { createPostHogErrorReporter, reportingLogger } from "./log/error-reporter.js";
 import { createLogger, type ErrorReporter, type Logger, type LogLevel } from "./log/index.js";
+import { createPostHogMcpAnalytics, type McpAnalytics } from "./log/mcp-analytics.js";
 import { createPostHogProductEvents, type ProductEvents } from "./log/product-events.js";
 import { CalculatorEmailService } from "./marketing/service.js";
 import { createTenantPolicy, type TenantPolicy } from "./policy.js";
@@ -98,6 +99,8 @@ export interface CloudRuntimeOptions<R extends TenantRuntimeBase> {
     errorReportFetch?: typeof fetch;
     /** The HTTP client server-side product events use (tests: a capturing fake PostHog). */
     productEventFetch?: typeof fetch;
+    /** The HTTP client MCP analytics uses (tests: a capturing fake PostHog). */
+    mcpAnalyticsFetch?: typeof fetch;
   };
 }
 
@@ -110,6 +113,8 @@ export interface CloudRuntime<R extends TenantRuntimeBase> {
   errorReporter: ErrorReporter | null;
   /** Server-side product events (billing changes, PostHog), or null when `config.errorReports` is not set. */
   productEvents: ProductEvents | null;
+  /** MCP tool-call analytics (PostHog, metadata only), or null when `config.errorReports` is not set. */
+  mcpAnalytics: McpAnalytics | null;
   db: ControlDb;
   closeDb(): void;
   keys: Keyring;
@@ -203,6 +208,13 @@ export async function createCloudRuntime<R extends TenantRuntimeBase>(
         host: config.errorReports.host,
         log: baseLog,
         ...(o.overrides?.productEventFetch ? { fetch: o.overrides.productEventFetch } : {}),
+      })
+    : null;
+  const mcpAnalytics = config.errorReports
+    ? createPostHogMcpAnalytics({
+        ...config.errorReports,
+        log: baseLog,
+        ...(o.overrides?.mcpAnalyticsFetch ? { fetch: o.overrides.mcpAnalyticsFetch } : {}),
       })
     : null;
   const pricing = loadPricingConfig(config.pricingFile);
@@ -453,6 +465,7 @@ export async function createCloudRuntime<R extends TenantRuntimeBase>(
     log,
     errorReporter,
     productEvents,
+    mcpAnalytics,
     db,
     closeDb: control.close,
     keys,

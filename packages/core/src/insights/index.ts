@@ -9,7 +9,13 @@ export * from "./contracts.js";
 export * from "./crossborder.js";
 export * from "./crossborder-explain.js";
 export { describeChange, fmtCriterion } from "./describe.js";
-export { type DiffOptions, diffJson, diffPlans, type PlanDiffOptions } from "./diff.js";
+export {
+  type DiffOptions,
+  diffJson,
+  diffPlans,
+  financeNames,
+  type PlanDiffOptions,
+} from "./diff.js";
 export * from "./difference.js";
 export * from "./explain.js";
 export {

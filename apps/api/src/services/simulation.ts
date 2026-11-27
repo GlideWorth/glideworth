@@ -316,7 +316,11 @@ export class SimulationService {
   ) {
     const base = this.projection(basePlanId, { trace: "summary" });
     const other = this.projection(otherPlanId, { trace: "summary" });
-    const diff = this.deps.diffPlans(base.plan, other.plan);
+    const diff = this.deps.diffPlans(
+      base.plan,
+      other.plan,
+      this.households.diffNames(base.plan.householdId),
+    );
     let attribution: DifferenceAttribution | undefined;
     if (o.attribute) {
       const { input } = this.inputFor(basePlanId, { trace: "off" });
@@ -579,7 +583,11 @@ export class SimulationService {
         cached: r.cached,
       })),
       differences: runs.slice(1).map((r) => {
-        const diff = this.deps.diffPlans(base.plan, r.plan);
+        const diff = this.deps.diffPlans(
+          base.plan,
+          r.plan,
+          this.households.diffNames(base.plan.householdId),
+        );
         return {
           planId: r.id,
           changes: diff.changes.map((c) => c.description),
@@ -699,7 +707,11 @@ export class SimulationService {
   preview(planId: string, ops: PatchOp[], withOutcome = true) {
     const plan = this.plans.get(planId);
     const patched = this.deps.applyPlanPatch(plan, ops);
-    const diff: PlanDiff = this.deps.diffPlans(plan, patched);
+    const diff: PlanDiff = this.deps.diffPlans(
+      plan,
+      patched,
+      this.households.diffNames(plan.householdId),
+    );
     if (!withOutcome) return { plan, patched, diff, preview: undefined, results: undefined };
     const beforeResult = this.projection(planId, { trace: "off" }).result;
     const { input } = this.inputFor(planId, { trace: "off" }, patched);

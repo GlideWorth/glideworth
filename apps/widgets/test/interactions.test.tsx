@@ -132,6 +132,29 @@ describe("worse outcomes", () => {
     );
   });
 
+  it("names the plan's retirement milestone and warns when a change moves it later", () => {
+    // A real what-if moved "Financial Independence" from 2034 to 2041 with a green end net worth and no warning,
+    // and labelled the year "Retirement".
+    const base = compareFor(2030, 96_000);
+    const later = {
+      ...base,
+      plan: { ...base.plan, retirementLabel: "Financial Independence" },
+      before: { ...base.before, depletionYear: null, retirementYear: 2034 },
+      after: {
+        ...base.after,
+        depletionYear: null,
+        successRate: base.before.successRate,
+        retirementYear: 2041,
+      },
+    };
+    renderApp(resultOf(later));
+    expect(
+      screen.getByText("This change moves Financial Independence later, from 2034 to 2041."),
+    ).toBeTruthy();
+    expect(screen.getAllByText("Financial Independence").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Retirement")).toBeNull();
+  });
+
   it("warns in review on a success-rate drop of 5 points, and keeps Apply available", () => {
     renderApp(
       resultOf({

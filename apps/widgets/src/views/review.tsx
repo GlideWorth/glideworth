@@ -21,9 +21,13 @@ export function ReviewView({ data }: { data: ReviewViewData }) {
   const [version, setVersion] = useState(data.appliedVersion);
   const [settled, setSettled] = useState(false);
   const action = useAction();
-  const warning = data.before && data.after ? worseWarning(data.before, data.after, fmt) : null;
+  const retireLabel = data.plan.retirementLabel ?? "Retirement";
+  const warning =
+    data.before && data.after ? worseWarning(data.before, data.after, fmt, retireLabel) : null;
   const deltas =
-    data.before && data.after ? outcomeDeltas(data.before, data.after, fmt).slice(0, 3) : [];
+    data.before && data.after
+      ? outcomeDeltas(data.before, data.after, fmt, retireLabel).slice(0, 3)
+      : [];
 
   const apply = () =>
     action.run("apply", async () => {

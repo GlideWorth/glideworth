@@ -481,7 +481,7 @@ export class PlansService {
   diffVersions(id: string, from: number, to: number | "current"): PlanDiff {
     const base = this.versionBody(id, from);
     const other = to === "current" ? this.get(id) : this.versionBody(id, to);
-    return this.ctx.deps.diffPlans(base, other);
+    return this.ctx.deps.diffPlans(base, other, this.households.diffNames(base.householdId));
   }
 
   // ----------------------------------------------------------------------------- branches
@@ -513,7 +513,11 @@ export class PlansService {
   diffAgainstParent(branchId: string): { parent: Plan; branch: Plan; diff: PlanDiff } {
     const branch = this.get(branchId);
     const parent = this.parentSource(branch);
-    const diff = this.ctx.deps.diffPlans(parent, branch);
+    const diff = this.ctx.deps.diffPlans(
+      parent,
+      branch,
+      this.households.diffNames(parent.householdId),
+    );
     return { parent, branch, diff: { ...diff, basePlanId: parent.id, otherPlanId: branch.id } };
   }
 

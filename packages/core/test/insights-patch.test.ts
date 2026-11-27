@@ -10,6 +10,7 @@ import {
   detachBranch,
   diffJson,
   diffPlans,
+  financeNames,
   formatPointer,
   invertPatch,
   materializePlan,
@@ -381,5 +382,43 @@ describe("branching", () => {
     });
     const parent2 = applyPlanPatch(main, [{ op: "remove", path: "/expenses/[id=exp-car]" }]);
     expect(() => materializePlan(branch, lookupFrom([parent2]))).toThrow(PatchConflictError);
+  });
+});
+
+describe("describing account settings in a plan diff", () => {
+  // A real report: a what-if read "c2883250-… withdrawals changed from from to always" and "Plan overrides added for
+  // account 78ec00a3-…": ids instead of names, and a withdrawal rule shown by its internal kind.
+  const names = financeNames(doc.finances);
+  const base = Plan.parse({
+    ...main,
+    accountSettings: {
+      "acc-brokerage": {
+        withdrawals: { kind: "from", ref: { kind: "milestone", milestoneId: "ms-retire" } },
+      },
+    },
+  });
+  const other = Plan.parse({
+    ...base,
+    accountSettings: {
+      "acc-brokerage": { withdrawals: { kind: "always" } },
+      "acc-cash": { withdrawals: { kind: "never" } },
+    },
+  });
+
+  it("names accounts and says when withdrawals are allowed, once", () => {
+    const d = diffPlans(base, other, { entities: names });
+    const lines = d.changes.map((c) => c.description);
+    expect(lines).toContain("Joint brokerage: withdrawals allowed any time (was from Retirement)");
+    expect(lines).toContain(
+      "Plan overrides added for account High-yield savings: withdrawals never",
+    );
+    expect(lines.filter((l) => l.startsWith("Joint brokerage"))).toHaveLength(1);
+    expect(lines.join("\n")).not.toMatch(/acc-|from from/);
+  });
+
+  it("financeNames maps accounts, real assets and debts by id", () => {
+    expect(names["acc-brokerage"]).toBe("Joint brokerage");
+    for (const e of [...doc.finances.realAssets, ...doc.finances.debts])
+      expect(names[e.id]).toBe(e.name);
   });
 });

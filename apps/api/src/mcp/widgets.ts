@@ -181,7 +181,14 @@ function appUrl(env: WidgetEnv, plan: { id: string; isMain: boolean }, route: st
 
 function planRef(env: WidgetEnv, planId: string, route: string): PlanRef {
   const plan = env.services.plans.get(planId);
-  const currency = env.services.households.get(plan.householdId).household.currency;
+  const household = env.services.households.get(plan.householdId).household;
+  const currency = household.currency;
+  // The milestone the engine's retirementYear comes from: kind retirement, for the primary person or nobody.
+  const retirement = plan.milestones.find(
+    (m) =>
+      m.kind === "retirement" &&
+      (!m.personId || household.people.find((p) => p.id === m.personId)?.role === "primary"),
+  );
   return {
     planId: plan.id,
     planName: plan.name,
@@ -189,6 +196,7 @@ function planRef(env: WidgetEnv, planId: string, route: string): PlanRef {
     currency,
     appUrl: appUrl(env, plan, route),
     canWrite: env.canWrite,
+    ...(retirement ? { retirementLabel: retirement.name } : {}),
   };
 }
 

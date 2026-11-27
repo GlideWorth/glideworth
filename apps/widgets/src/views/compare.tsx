@@ -144,7 +144,8 @@ export function CompareView({ data: initial }: { data: CompareViewData }) {
     }, timing.debounceMs);
   };
 
-  const deltas = outcomeDeltas(data.before, data.after, fmt).slice(0, 3);
+  const retireLabel = data.plan.retirementLabel ?? "Retirement";
+  const deltas = outcomeDeltas(data.before, data.after, fmt, retireLabel).slice(0, 3);
   const n = data.years.length;
   const read = selected !== null && selected < n ? selected : null;
   const lastYear = data.years[n - 1];
@@ -153,11 +154,23 @@ export function CompareView({ data: initial }: { data: CompareViewData }) {
   )} against ${fmt.compact(data.after.endNetWorth)}.`;
   const guides: Guide[] = [
     ...(data.before.retirementYear !== null
-      ? [{ year: data.before.retirementYear, label: "Retire", tone: "neutral" as const }]
+      ? [
+          {
+            year: data.before.retirementYear,
+            label: clip(retireLabel, 24),
+            tone: "neutral" as const,
+          },
+        ]
       : []),
     ...(data.after.retirementYear !== null &&
     data.after.retirementYear !== data.before.retirementYear
-      ? [{ year: data.after.retirementYear, label: "Retire (what-if)", tone: "neutral" as const }]
+      ? [
+          {
+            year: data.after.retirementYear,
+            label: `${clip(retireLabel, 24)} (what-if)`,
+            tone: "neutral" as const,
+          },
+        ]
       : []),
     ...(data.after.depletionYear !== null
       ? [
@@ -178,7 +191,7 @@ export function CompareView({ data: initial }: { data: CompareViewData }) {
         ]
       : []),
   ];
-  const warning = worseWarning(data.before, data.after, fmt);
+  const warning = worseWarning(data.before, data.after, fmt, retireLabel);
   const tweakable = template?.tweakable ?? [];
   const valueOf = (p: TemplateParam) => {
     const v = params[p.name];

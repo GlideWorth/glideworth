@@ -24,6 +24,11 @@ export const PlanRef = z.object({
   appUrl: z.string().nullable(),
   /** The connection may call write tools (apply, discard, create branch). Buttons that need it hide otherwise. */
   canWrite: z.boolean(),
+  /**
+   * The name of the plan's retirement milestone ("Financial Independence", "Retire"), which `retirementYear` is the
+   * year of. Views label that year with it; "Retirement" when absent.
+   */
+  retirementLabel: z.string().optional(),
 });
 export type PlanRef = z.infer<typeof PlanRef>;
 

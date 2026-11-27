@@ -132,7 +132,10 @@ export function OutcomeView({ data }: { data: OutcomeViewData }) {
           />
         ) : null}
         {outcome.retirementYear !== null ? (
-          <Chip label="Retirement" value={fmt.year(outcome.retirementYear)} />
+          <Chip
+            label={data.plan.retirementLabel ?? "Retirement"}
+            value={fmt.year(outcome.retirementYear)}
+          />
         ) : !isMc ? (
           <Chip label="Lifetime tax" value={fmt.compact(outcome.lifetimeTaxes)} />
         ) : null}

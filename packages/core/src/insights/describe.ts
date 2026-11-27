@@ -224,7 +224,10 @@ export function describeChange(op: PatchOp, input: DescribeInput): PlanChange | 
   }
   if (SETTINGS_MAPS[top] && segs.length === 2) {
     const name = label ?? "item";
-    if (op.op === "add") return mk("added", `Plan overrides added for ${noun} ${name}`);
+    if (op.op === "add") {
+      const what = overrideSummary(op.value, f);
+      return mk("added", `Plan overrides added for ${noun} ${name}${what ? `: ${what}` : ""}`);
+    }
     if (op.op === "remove") return mk("removed", `Plan overrides removed for ${noun} ${name}`);
   }
 
@@ -356,6 +359,19 @@ export function describeChange(op: PatchOp, input: DescribeInput): PlanChange | 
   if (top === "description" || top === "notes")
     return mk(kind, `Plan ${top} ${kind === "removed" ? "removed" : "updated"}`);
 
+  // --- an account's withdrawal rule: "Joint ISA: withdrawals allowed any time (was from 2034)". The rule is one
+  // object ({ kind, ref }), so it is described whole whichever of its fields the op touched.
+  const wi = segs.findIndex((s) => s.kind === "key" && s.key === "withdrawals");
+  if (SETTINGS_MAPS[top] && wi === 2) {
+    const was = lookup(input.base, segs.slice(0, wi + 1));
+    const now = lookup(input.other, segs.slice(0, wi + 1));
+    const nowText = now === undefined ? "as the account sets them" : fmtWithdrawalRule(now, f);
+    return mk(
+      kind,
+      `${who}: withdrawals allowed ${nowText}${was === undefined ? "" : ` (was ${fmtWithdrawalRule(was, f)})`}`,
+    );
+  }
+
   // --- generic fallback
   // Flat tax rates (tax.flat.ordinary, .capitalGains, ...) are rates even where the key does not say so.
   const valueKey =
@@ -376,4 +392,37 @@ export function describeChange(op: PatchOp, input: DescribeInput): PlanChange | 
     kind,
     `${subject} changed from ${fmtValue(before, valueKey, f)} to ${fmtValue(after, valueKey, f)}`,
   );
+}
+
+/** When withdrawals are allowed, in words: "any time", "from 2034", "after the qualifying age". */
+function fmtWithdrawalRule(rule: unknown, f: FormatContext): string {
+  if (!isPlainObject(rule) || typeof rule.kind !== "string")
+    return fmtValue(rule, "withdrawals", f);
+  switch (rule.kind) {
+    case "always":
+      return "any time";
+    case "never":
+      return "never";
+    case "afterQualifiedAge":
+      return "after the qualifying age";
+    case "from":
+    case "until":
+      return isPlainObject(rule.ref)
+        ? `${rule.kind} ${fmtDateRef(rule.ref as DateRef, f)}`
+        : rule.kind;
+    default:
+      return rule.kind;
+  }
+}
+
+/** What a new set of plan overrides for an account, asset or debt sets: "withdrawals any time, growth 5%". */
+function overrideSummary(value: unknown, f: FormatContext): string {
+  if (!isPlainObject(value)) return "";
+  return Object.entries(value)
+    .map(([k, v]) =>
+      k === "withdrawals"
+        ? `withdrawals ${fmtWithdrawalRule(v, f)}`
+        : `${humanKey(k)} ${fmtValue(v, k, f)}`,
+    )
+    .join(", ");
 }

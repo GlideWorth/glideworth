@@ -513,3 +513,52 @@ describe("failures", () => {
     expect(bad.text).toBe(good.text);
   });
 });
+
+describe("what-if wording: account names and the plan's own milestone name", () => {
+  it("names accounts in the changes and labels the retirement year with the milestone's name", async () => {
+    // A real report: "c2883250-… withdrawals changed from from to always", "Plan overrides added for account
+    // 78ec00a3-…", and a Financial Independence milestone shown as "Retirement".
+    const own = setup({ realEngine: true });
+    try {
+      own.services.plans.write(
+        "plan-main",
+        (p) => ({
+          ...p,
+          milestones: p.milestones.map((m) =>
+            m.kind === "retirement" ? { ...m, name: "Financial Independence" } : m,
+          ),
+        }),
+        { actor: { kind: "mcp", label: "mcp-test" } },
+      );
+      const [a, b] = InMemoryTransport.createLinkedPair();
+      const server = createMcpServer({
+        services: own.services,
+        scopes: ["read", "simulate"],
+        canWrite: false,
+        actor: { kind: "mcp", label: "mcp-test" },
+      });
+      await server.connect(b);
+      const client = new Client({ name: "widgets-test", version: "0.0.0" });
+      await client.connect(a);
+      const { widget } = await call(client, "preview_changes", {
+        planId: "plan-main",
+        ops: [
+          {
+            op: "add",
+            path: "/accountSettings/acc-brokerage",
+            value: { withdrawals: { kind: "never" } },
+          },
+        ],
+      });
+      await client.close();
+      expect(widget.plan.retirementLabel).toBe("Financial Independence");
+      const labels = widget.changes.map((ch: Json) => ch.label as string);
+      expect(labels).toContain(
+        "Plan overrides added for account Joint brokerage: withdrawals never",
+      );
+      expect(labels.join("\n")).not.toContain("acc-brokerage");
+    } finally {
+      own.close();
+    }
+  });
+});

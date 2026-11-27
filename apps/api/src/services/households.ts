@@ -8,12 +8,14 @@ import {
   Dependent,
   FxRate,
   type FxRateInput,
+  financeNames,
   fxPairKey,
   fxRateIssues,
   type GlideworthDocument,
   Household,
   type HouseholdInput,
   migrateDocument,
+  type PlanDiffOptions,
   Person,
   ProgressSnapshot,
   type ProgressSnapshotInput,
@@ -241,6 +243,12 @@ export class HouseholdsService {
 
   version(id: string): number {
     return this.get(id).version;
+  }
+
+  /** What a plan diff needs to describe changes in plain words: the currency and the finances' names by id. */
+  diffNames(id: string): PlanDiffOptions {
+    const rec = this.get(id);
+    return { currency: rec.household.currency, entities: financeNames(rec.finances) };
   }
 
   /**

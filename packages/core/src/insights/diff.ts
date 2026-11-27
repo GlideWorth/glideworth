@@ -127,6 +127,26 @@ export interface PlanDiffOptions extends FormatContext {
  * `applyPlanPatch(base, diff.patch)` equals `other` except for those fields. This is exactly the
  * patch a branch stores over its parent.
  */
+/**
+ * Names of a household's accounts, real assets and debts by id, for `PlanDiffOptions.entities`. Plans refer to
+ * them by id only (account settings, drawdown order), so without this a change reads "Plan overrides added for
+ * account 78ec00a3-…".
+ */
+export function financeNames(finances: {
+  accounts?: ReadonlyArray<{ id: string; name: string }>;
+  realAssets?: ReadonlyArray<{ id: string; name: string }>;
+  debts?: ReadonlyArray<{ id: string; name: string }>;
+}): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const e of [
+    ...(finances.accounts ?? []),
+    ...(finances.realAssets ?? []),
+    ...(finances.debts ?? []),
+  ])
+    if (e.name) out[e.id] = e.name;
+  return out;
+}
+
 export function diffPlans(base: Plan, other: Plan, opts: PlanDiffOptions = {}): PlanDiff {
   if (base.householdId !== other.householdId)
     throw new ScenarioError("the two plans belong to different households and cannot be compared", {
@@ -157,6 +177,8 @@ export function diffPlans(base: Plan, other: Plan, opts: PlanDiffOptions = {}): 
       !c.path.startsWith("/drawdown")
     )
       continue;
+    // One readable change can take several ops (a withdrawal rule's kind and its date): list it once.
+    if (changes.some((d) => d.description === c.description)) continue;
     changes.push(c);
   }
   return { basePlanId: base.id, otherPlanId: other.id, changes, patch };

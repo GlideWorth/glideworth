@@ -66,6 +66,7 @@ export function outcomeDeltas(
   before: OutcomeNumbers,
   after: OutcomeNumbers,
   fmt: Formatter,
+  retirementLabel = "Retirement",
 ): Delta[] {
   const out: Delta[] = [];
   if (
@@ -111,10 +112,16 @@ export function outcomeDeltas(
   if (before.retirementYear !== after.retirementYear)
     out.push({
       key: "retire",
-      label: "Retirement",
+      label: retirementLabel,
       before: before.retirementYear === null ? "—" : fmt.year(before.retirementYear),
       after: after.retirementYear === null ? "—" : fmt.year(after.retirementYear),
-      tone: "neutral",
+      // Later is worse for someone aiming to stop work early; earlier is better.
+      tone:
+        before.retirementYear === null || after.retirementYear === null
+          ? "neutral"
+          : after.retirementYear > before.retirementYear
+            ? "bad"
+            : "good",
     });
   return out;
 }
@@ -145,6 +152,7 @@ export function worseWarning(
   before: OutcomeNumbers,
   after: OutcomeNumbers,
   fmt: Formatter,
+  retirementLabel = "Retirement",
 ): string | null {
   if (after.depletionYear !== null && before.depletionYear === null)
     return `This change makes your plan run short in ${fmt.year(after.depletionYear)}.`;
@@ -160,5 +168,11 @@ export function worseWarning(
     before.successRate - after.successRate >= 0.05 - 1e-9
   )
     return `This change lowers your chance of success from ${fmt.percent(before.successRate, 0)} to ${fmt.percent(after.successRate, 0)}.`;
+  if (
+    before.retirementYear !== null &&
+    after.retirementYear !== null &&
+    after.retirementYear > before.retirementYear
+  )
+    return `This change moves ${retirementLabel} later, from ${fmt.year(before.retirementYear)} to ${fmt.year(after.retirementYear)}.`;
   return null;
 }

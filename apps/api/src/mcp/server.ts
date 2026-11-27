@@ -698,9 +698,11 @@ export function createMcpServer(ctx: McpContext): McpServer {
       },
       ({ basePlanId, otherPlanId }) => {
         assertSameHousehold(basePlanId, otherPlanId);
+        const base = services.plans.get(basePlanId);
         const diff = services.ctx.deps.diffPlans(
-          services.plans.get(basePlanId),
+          base,
           services.plans.get(otherPlanId),
+          services.households.diffNames(base.householdId),
         );
         return {
           count: diff.changes.length,

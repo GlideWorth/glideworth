@@ -12,8 +12,8 @@
  * visitors are not our users. URLs lose their query string and fragment (one-time tokens travel there) and
  * share-link tokens are replaced, in events, heatmaps, web vitals and recordings, before anything leaves the
  * browser. Signed-in people are identified by their user id, email address and name; each event carries the
- * workspace's plan status and the person's role. Answers to the feedback survey (lib/feedback.ts) are sent only
- * when someone opens it and presses submit. Storage: local storage only, no cookie.
+ * workspace's plan status and the person's role. Answers to the feedback form (lib/feedback.ts) are sent only
+ * when someone opens it and presses Send. Storage: local storage only, no cookie.
  *
  * Production bundles send to `/relay` on the app's own origin, which Caddy forwards to PostHog (the snippet
  * infra/scripts/gen-csp.sh writes from the image's /app/posthog-host); development sends to the host directly.
@@ -28,7 +28,7 @@ import { useRouterState } from "@tanstack/react-router";
 import posthog, { type CaptureResult, type CapturedNetworkRequest } from "posthog-js";
 import { type ComponentType, type ReactNode, useEffect, useRef } from "react";
 import { useSession } from "./auth";
-import { watchFeedbackSurvey } from "./feedback";
+import { enableFeedback } from "./feedback";
 
 const token = import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN as string | undefined;
 const host = import.meta.env.VITE_PUBLIC_POSTHOG_HOST as string | undefined;
@@ -210,7 +210,9 @@ export function Analytics({
         mask_all_element_attributes: true,
         before_send: scrubEvent,
         // The provider initialises the default instance, the one imported here.
-        loaded: () => watchFeedbackSurvey(posthog),
+        // The feedback form is the app's own (lib/feedback.ts), so PostHog never loads or draws a survey.
+        disable_surveys: true,
+        loaded: () => enableFeedback(posthog),
         debug: import.meta.env.DEV,
       }}
     >

@@ -42,6 +42,7 @@ import { LG, MD, useMediaQuery } from "../../lib/use-media";
 import { useServerUnreachable, useWorkspace } from "../../lib/workspace";
 import { usePrefs } from "../../stores/prefs";
 import { useUi } from "../../stores/ui";
+import { FeedbackDialog } from "../feedback-dialog";
 import { ConfirmHost } from "../ui/confirm-dialog";
 import { Kbd, modKey } from "../ui/kbd";
 import { Segmented } from "../ui/segmented";
@@ -611,7 +612,7 @@ function OverflowMenu() {
             <Keyboard className="size-4 text-ink-3" /> Keyboard shortcuts
           </M.Item>
           {feedback ? (
-            // Opened after the menu has closed, so the menu's focus return does not land on the survey.
+            // Opened after the menu has closed, so the menu's focus return does not land on the form.
             <M.Item className={item} onSelect={() => setTimeout(openFeedback)}>
               <MessageSquare className="size-4 text-ink-3" /> Send feedback
             </M.Item>
@@ -831,6 +832,7 @@ function GlobalHosts() {
       <ShortcutsOverlay />
       <Toaster />
       <ConfirmHost />
+      <FeedbackDialog />
       <ApiProblemHost />
       <Tour />
     </>

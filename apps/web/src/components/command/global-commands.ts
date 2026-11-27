@@ -164,7 +164,7 @@ export function useGlobalCommands(): PaletteCommand[] {
         label: "Send feedback",
         icon: MessageSquare,
         keywords: "bug report problem feature request idea suggestion contact support",
-        // After the palette has closed, so its focus return does not land on the survey.
+        // After the palette has closed, so its focus return does not land on the form.
         run: () => setTimeout(openFeedback),
       });
     for (const g of NAV)

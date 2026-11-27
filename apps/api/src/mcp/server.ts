@@ -258,12 +258,11 @@ export function createMcpServer(ctx: McpContext): McpServer {
     audit?: boolean;
   };
   /**
-   * Tools that start a calculation (Monte Carlo, solvers, sensitivity, Roth conversions...). Each call stores a job record and counts
-   * against the workspace's job quota, so they are not read-only (the OpenAI tool scan holds them to that). They
-   * change nothing in the plan or household and repeat the same result, so they are idempotent, not destructive,
-   * and kept out of the audit log, which records changes to data.
+   * Tools that start a calculation (Monte Carlo, solvers, sensitivity, Roth conversions...). Each call stores a
+   * job record, but it changes no plan or household data and repeats the same result, so a read-scope key may
+   * call it and the hint is read-only. The audit log records changes to data, and these stay out of it.
    */
-  const CALCULATION: Hint = { readOnly: false, idempotent: true, audit: false };
+  const CALCULATION: Hint = { readOnly: true, idempotent: true };
   function tool<S extends z.ZodRawShape>(
     name: string,
     cfg: { title: string; description: string; input: S; hint: Hint },

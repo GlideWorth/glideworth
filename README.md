@@ -10,6 +10,7 @@
 <p align="center"><strong>Know when you can retire, how much you can safely spend, and why your plan would fail.</strong></p>
 
 <p align="center">
+  <a href="https://glama.ai/mcp/connectors/io.github.GlideWorth/glideworth"><img alt="Glideworth MCP server" src="https://glama.ai/mcp/connectors/io.github.GlideWorth/glideworth/badges/score.svg"></a>
   <a href="https://github.com/GlideWorth/glideworth/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/GlideWorth/glideworth?sort=semver"></a>
   <a href="LICENSING.md"><img alt="Licence: AGPL-3.0" src="https://img.shields.io/badge/licence-AGPL--3.0-blue"></a>
   <a href="https://github.com/GlideWorth/glideworth/pkgs/container/glideworth"><img alt="Docker image on GHCR" src="https://img.shields.io/badge/docker-ghcr.io%2Fglideworth%2Fglideworth-2496ED?logo=docker&logoColor=white"></a>

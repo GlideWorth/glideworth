@@ -15,7 +15,7 @@ it("registers the documented number of tools (docs/MCP.md)", async () => {
     await c.close();
     return { total: t.length, readOnly: t.filter((x) => x.annotations?.readOnlyHint).length };
   };
-  expect(await count(["read", "simulate", "write"], true)).toEqual({ total: 72, readOnly: 40 });
+  expect(await count(["read", "simulate", "write"], true)).toEqual({ total: 72, readOnly: 54 });
   expect((await count(["read", "simulate"], false)).total).toBe(53);
   h.close();
 });

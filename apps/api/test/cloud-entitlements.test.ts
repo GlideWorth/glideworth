@@ -180,28 +180,12 @@ describe("a read-only workspace (trial ended, never paid)", () => {
       annotations?: { readOnlyHint?: boolean };
     }>;
     expect(tools.length).toBeGreaterThan(40);
-    // No write tools: the only tools that are not read-only are calculations, which store a job record and change
-    // no data (they end in ACCOUNT_READ_ONLY below).
-    const notReadOnly = tools.filter((t) => !t.annotations?.readOnlyHint).map((t) => t.name);
-    expect(notReadOnly.sort()).toEqual(
-      [
-        "run_monte_carlo",
-        "run_historical_backtest",
-        "sensitivity",
-        "solve_max_spending",
-        "solve_retirement_date",
-        "solve_required_savings",
-        "solve_required_portfolio",
-        "solve_safe_withdrawal_rate",
-        "goal_seek",
-        "evaluate_guardrails",
-        "explain_difference",
-        "optimise_tax_strategy",
-        "strategy_matrix",
-        "plan_roth_conversions",
-      ].sort(),
+    // Write tools are gone. Every tool a lapsed workspace still sees is read-only, including calculations.
+    // A fresh calculation still refuses below: it would store a job, and the workspace is read-only.
+    expect(tools.filter((t) => t.annotations?.readOnlyHint !== true).map((t) => t.name)).toEqual(
+      [],
     );
-    expect(notReadOnly).not.toContain("apply_change_set");
+    expect(tools.map((t) => t.name)).not.toContain("apply_change_set");
     const mc = await mcp("tools/call", {
       name: "run_monte_carlo",
       arguments: { planId: "plan-main", trials: 333, wait: 0 },
@@ -231,6 +215,36 @@ describe("a read-only workspace (trial ended, never paid)", () => {
       await r.services.webhooks.flush();
     });
     expect(deliveries).toEqual([]);
+  });
+
+  it("a Read-scope API key can initialize, list tools and call a read tool", async () => {
+    const mcp = (method: string, params: Record<string, unknown> = {}) =>
+      new Client(cloud)
+        .withBearer(W.viewerKey)
+        .post(
+          "/mcp",
+          { jsonrpc: "2.0", id: 1, method, params },
+          { headers: { accept: "application/json, text/event-stream" } },
+        );
+    const init = await mcp("initialize", {
+      protocolVersion: "2025-06-18",
+      capabilities: {},
+      clientInfo: { name: "trial-read", version: "0" },
+    });
+    expect(init.status, init.text.slice(0, 300)).toBe(200);
+    expect(init.json.result.serverInfo.name).toBe("glideworth");
+    const tools = (await mcp("tools/list")).json.result.tools as Array<{
+      name: string;
+      annotations?: { readOnlyHint?: boolean };
+    }>;
+    expect(tools.length).toBe(53);
+    expect(tools.every((t) => t.annotations?.readOnlyHint === true)).toBe(true);
+    expect(tools.map((t) => t.name)).toContain("list_households");
+    expect(tools.map((t) => t.name)).not.toContain("apply_change_set");
+    const listed = await mcp("tools/call", { name: "list_households", arguments: {} });
+    expect(listed.status, listed.text.slice(0, 300)).toBe(200);
+    expect(listed.text).toContain("hh-sample");
+    expect(listed.text).not.toContain("ACCOUNT_READ_ONLY");
   });
 
   it("reads and exports still work", async () => {

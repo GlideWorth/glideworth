@@ -75,9 +75,9 @@ describe("Roth conversion plan", () => {
     const c = new Client({ name: "t", version: "1" });
     await Promise.all([server.connect(a), c.connect(b)]);
     const tool = (await c.listTools()).tools.find((t) => t.name === "plan_roth_conversions");
-    // A calculation: it stores a job record (not read-only) but changes no plan data and repeats its result.
+    // A calculation: it stores a job record but changes no plan data, so it is read-only and repeats its result.
     expect(tool?.annotations).toMatchObject({
-      readOnlyHint: false,
+      readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
     });

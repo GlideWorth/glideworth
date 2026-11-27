@@ -16,6 +16,7 @@ grant any right to use them; read that policy before using the files outside thi
 | `logo.svg`            | Horizontal lockup, mark plus wordmark, for light backgrounds.                            |
 | `logo-light.svg`      | The same lockup for dark backgrounds.                                                    |
 | `icon-tile.svg`       | Rounded green tile with the off-white bird (512 x 512). App and PWA icons.               |
+| `icon-400.png`        | `icon-tile.svg` rendered at 400 x 400. Directory listings (Cline and others).            |
 | `icon-maskable.svg`   | Full-bleed green square, bird inside the maskable safe zone (the central 80 % circle).   |
 | `icon-tile-small.svg` | Small-size variant of the tile: wider facet gaps, larger bird.                           |
 | `icon-tile-solid.svg` | Smallest-size variant: the facet gaps are closed, so the bird is a silhouette.           |

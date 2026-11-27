@@ -50,8 +50,8 @@ listing every commit. Product news for people using the hosted service is on
   `list_share_links` is `readOnlyHint: true`; `create_share_link` is `openWorldHint: true` (it publishes a public
   URL). The 14 tools that start a calculation (`run_monte_carlo`, `run_historical_backtest`, `sensitivity`, the
   `solve_*` tools, `goal_seek`, `evaluate_guardrails`, `explain_difference`, `optimise_tax_strategy`,
-  `strategy_matrix`, `plan_roth_conversions`) are `readOnlyHint: false` (idempotent, not destructive): each stores a job record. They change
-  no plan or household data and stay out of the audit log. `what_changed_since_checkin` no longer takes
+  `strategy_matrix`, `plan_roth_conversions`) are `readOnlyHint: true` (idempotent, not destructive): each stores a job record, but changes
+  no plan or household data, so a read-scope key may call it, and they stay out of the audit log. `what_changed_since_checkin` no longer takes
   `refresh`, which stored a check-in; use `run_checkin`. Every tool also carries its title in
   `annotations.title` (Claude's directory reads it there), and no tool input uses a JSON Schema `$ref`
   (`options` of the balance-history import tools is inlined). The server instructions now say results are

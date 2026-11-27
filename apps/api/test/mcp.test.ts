@@ -53,7 +53,7 @@ async function call<T = Json>(
   return Object.assign(Array.isArray(parsed) ? ([...parsed] as never) : parsed, { __raw: res });
 }
 const names = async (c: Client) => (await c.listTools()).tools.map((t) => t.name).sort();
-/** Tools that start a calculation: each stores a job record, so they are not read-only, but they change no data. */
+/** Tools that start a calculation: each stores a job record, changes no plan data, and is read-only. */
 const CALCULATION_TOOLS = [
   "run_monte_carlo",
   "run_historical_backtest",
@@ -103,17 +103,16 @@ const finding = {
 };
 
 describe("tool registration follows scope and the writes flag", () => {
-  it("read key: only read-only tools; no write tools even when the server allows writes is off", async () => {
+  it("read key: every tool has a title and readOnlyHint true; no write tools", async () => {
     h = setup();
     const c = await httpClient(READ_KEY);
     const tools = (await c.listTools()).tools;
     expect(tools.length).toBeGreaterThan(20);
-    // Read-only apart from the calculation tools, which store only a job record.
-    const notReadOnly = tools.filter((t) => t.annotations?.readOnlyHint !== true);
-    expect(notReadOnly.map((t) => t.name).sort()).toEqual([...CALCULATION_TOOLS].sort());
-    for (const t of notReadOnly) {
-      expect(t.annotations?.destructiveHint, t.name).toBe(false);
-      expect(t.annotations?.idempotentHint, t.name).toBe(true);
+    for (const t of tools) {
+      expect(t.title, t.name).toEqual(expect.any(String));
+      expect((t.title ?? "").length, t.name).toBeGreaterThan(0);
+      expect(t.annotations?.readOnlyHint, t.name).toBe(true);
+      expect(t.annotations?.openWorldHint, t.name).toBe(false);
     }
     const n = tools.map((t) => t.name);
     expect(n).toEqual(
@@ -206,8 +205,6 @@ describe("tool registration follows scope and the writes flag", () => {
         .map((t) => [t.name, [t.annotations!.destructiveHint, t.annotations!.openWorldHint]]),
     );
     expect(hints).toEqual({
-      // Calculations store a job record (the OpenAI tool scan: not read-only) and change no plan or household data.
-      ...Object.fromEntries(CALCULATION_TOOLS.map((n) => [n, [false, false]])),
       cancel_job: [true, false],
       propose_change_set: [false, false],
       apply_change_set: [true, false],
@@ -228,7 +225,9 @@ describe("tool registration follows scope and the writes flag", () => {
       revoke_share_link: [true, false],
     });
     for (const t of tools) {
-      expect(t.title, t.name).toBeTruthy();
+      expect(t.title, t.name).toEqual(expect.any(String));
+      expect(t.title!.length, t.name).toBeGreaterThan(0);
+      expect(typeof t.annotations!.readOnlyHint, t.name).toBe("boolean");
       if (t.annotations!.readOnlyHint) expect(t.annotations!.openWorldHint, t.name).toBe(false);
     }
     // Claude's directory check: the title in the annotations too, and every parameter with a type (no $ref).

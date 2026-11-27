@@ -18,9 +18,10 @@ import { organization, softwareApplication, website } from '../lib/jsonld';
 import { externalLinkProps } from '../lib/links';
 
 const n = facts.taxCountryCount;
-// The official hosted build loads Google Tag Manager on marketing pages (not the calculators or the app).
+// The official hosted build loads Google Tag Manager on marketing pages (not the calculators or the app), and
+// PostHog on every marketing page, calculators included, without what a visitor types (lib/posthog-scrub.ts).
 const trackerNote = googleTagManagerId(PUBLIC_GTM_ID)
-  ? 'The free calculators load no trackers. This website measures visits with PostHog without cookies, and the hosted app uses PostHog for product analytics.'
+  ? 'This website measures visits with PostHog without cookies, on the free calculators too, never with what you type into them. The hosted app uses PostHog for product analytics.'
   : 'This website and the free calculators load no trackers. The hosted app uses PostHog for product analytics.';
 
 // The questions people ask of a retirement planner, each answered by a part of the product.

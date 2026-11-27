@@ -1,9 +1,9 @@
 /**
  * Server-side product events for the hosted service: the billing moments no browser sees, because they happen
  * in Stripe (a trial ending in a first payment, a renewal, a cancellation that takes effect), and the free
- * calculators' "Email me this result" form (the calculator pages load no analytics of their own). Sent to the same
- * PostHog project as the web app and the server error reports (`config.errorReports`), so a self-host copy,
- * which has no token, sends nothing.
+ * calculators' "Email me this result" form (the pages' own analytics see only that the form came into view and
+ * was sent). Sent to the same PostHog project as the web app and the server error reports
+ * (`config.errorReports`), so a self-host copy, which has no token, sends nothing.
  *
  * What is sent is fixed by `ServerProductEvent`: an event name and a few allowlisted string or boolean
  * properties (subscription statuses and the kind of change). Never an amount, a price, a plan figure, a name or

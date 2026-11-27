@@ -15,12 +15,13 @@ interface Props {
 
 const { part } = Astro.props;
 const hosted = googleTagManagerId(PUBLIC_GTM_ID) !== undefined;
-// The official hosted build also measures marketing pages with PostHog, cookieless (src/lib/posthog.ts).
+// The official hosted build also measures marketing pages, calculators included, with PostHog, cookieless and
+// without calculator inputs or results (src/lib/posthog.ts, src/lib/posthog-scrub.ts).
 const posthogSite = sitePostHog(PUBLIC_POSTHOG_PROJECT_TOKEN, PUBLIC_POSTHOG_HOST) !== undefined;
 const siteAnalytics =
-  "The marketing pages (not the calculators) also send page views, page leaves, clicks and where on the page they land, scroll depth, page load timings, the referring site and campaign tags, browser and device details, and your IP address to PostHog, through this website's own address. PostHog runs here without cookies or any browser storage: it tells visits apart with a daily hash of your IP address and browser details, computed on PostHog's servers. It records no session recordings on these pages.";
+  "The marketing pages, the free calculators included, also send page views, page leaves, clicks and where on the page they land, scroll depth, page load timings, the referring site and campaign tags, browser and device details, and your IP address to PostHog, through this website's own address. Page addresses and the referring address lose any query string or fragment first. Calculator inputs and results are not included: a calculator keeps your inputs in its page address, which loses them, and on calculator pages the text of what you click is left out too. PostHog runs here without cookies or any browser storage: it tells visits apart with a daily hash of your IP address and browser details, computed on PostHog's servers. It records no session recordings on these pages.";
 const appAnalytics =
-  "The hosted app (app.glideworth.com) uses PostHog for product analytics, session recordings and error reports: which pages and features are used, recordings of what the app shows and how it is used (form fields masked), and errors in the app. It keeps a random identifier in local storage under a key starting with ph_ and sets no cookie. Signed-in users are linked to their account id, email address and name. The free calculators and a self-hosted copy load no analytics, advertising or session-recording tools.";
+  "The hosted app (app.glideworth.com) uses PostHog for product analytics, session recordings and error reports: which pages and features are used, recordings of what the app shows and how it is used (form fields masked), and errors in the app. It keeps a random identifier in local storage under a key starting with ph_ and sets no cookie. Signed-in users are linked to their account id, email address and name. The free calculators load no advertising or session-recording tools, and a self-hosted copy loads no analytics, advertising or session-recording tools.";
 ---
 
 {

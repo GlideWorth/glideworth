@@ -1,12 +1,16 @@
 /**
- * Nothing a visitor types leaves the browser, except what they ask to have emailed to them. Three checks:
- *  1. The calculators' source (modules, worker, components, pages) uses no network or storage API. The one
- *     exception, the optional "Email me this result" form (components/CalculatorEmail.astro and
- *     lib/calculator-email.ts, outside these folders), posts its own form to this origin when submitted, and
- *     nothing else: checked separately.
- *  2. After a build, every script a calculator page can load (page script, the chunks it imports, the
- *     engine worker and the main-thread fallback) contains none either, engine included. When dist/
- *     is missing (tests run before a build), the second check is skipped with a note.
+ * Nothing a visitor types leaves the browser, except what they ask to have emailed to them. Calculator pages
+ * run the site's PostHog in the official hosted build, like every marketing page; what it may send is the
+ * business of lib/posthog-scrub.ts and its tests, which strip inputs and figures from every event. Here:
+ *  1. The calculators' source (modules, worker, components, pages) uses no network or storage API and never
+ *     imports the PostHog SDK or the script that starts it. The one exception, the optional "Email me this result" form
+ *     (components/CalculatorEmail.astro and lib/calculator-email.ts, outside these folders), posts its own form
+ *     to this origin when submitted, and nothing else: checked separately.
+ *  2. After a build, every script the calculator itself loads (page script, the chunks it imports, the engine
+ *     worker and the main-thread fallback) contains none either, engine included, and does not reach the
+ *     PostHog SDK. If the build has PostHog on calculator pages, it is the site's own same-origin script, and
+ *     it starts PostHog with the scrubbing `before_send`, text masking and no session recording. When dist/ is
+ *     missing (tests run before a build), the second check is skipped with a note.
  * The browser check (network log during real use) is part of the manual verification in README.md.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
@@ -46,6 +50,8 @@ describe("no data leaves the browser", () => {
     for (const f of files) {
       const text = readFileSync(f, "utf8");
       for (const [name, re] of FORBIDDEN) expect(re.test(text), `${name} in ${f}`).toBe(false);
+      // The SDK and the script that starts it (lib/posthog.ts, the build-time config check, may be read).
+      expect(text, f).not.toMatch(/posthog-js|posthog-client|posthog-scrub/);
     }
   });
 
@@ -73,14 +79,25 @@ describe("no data leaves the browser", () => {
       const astro = join(dist, "_astro");
       const names = new Set(readdirSync(astro).filter((n) => n.endsWith(".js")));
       const queue: string[] = [];
+      const postHogScripts = new Set<string>();
       for (const page of walk(join(dist, "tools")).filter((f) => f.endsWith("index.html"))) {
         const html = readFileSync(page, "utf8");
-        // The calculator's own script (the site shell's theme toggle, which remembers only the theme, is not ours).
         for (const m of html.matchAll(/<script[^>]+src="\/_astro\/(ToolPage[^"]+\.js)"/g))
           queue.push(m[1]!);
+        for (const m of html.matchAll(/<script[^>]+src="\/_astro\/(PostHog\.astro[^"]+\.js)"/g))
+          postHogScripts.add(m[1]!);
         expect(html, page).not.toMatch(/<script[^>]+src="https?:/);
         expect(html, page).not.toMatch(/googletagmanager|google-analytics|gtag\(/);
-        expect(html, page).not.toMatch(/glideworth-posthog|PostHog\.astro/);
+        // PostHog comes with its meta tag or not at all (a self-hosted build has neither).
+        expect(html.includes('name="glideworth-posthog"'), page).toBe(/PostHog\.astro/.test(html));
+      }
+      for (const n of postHogScripts) {
+        const text = readFileSync(join(astro, n), "utf8");
+        expect(text, n).toMatch(/before_send:/);
+        expect(text, n).toMatch(/mask_all_text:/);
+        expect(text, n).toMatch(/mask_all_element_attributes:!0/);
+        expect(text, n).toMatch(/disable_session_recording:!0/);
+        expect(text, n).not.toMatch(/capture_value_css_selector_allowlist/);
       }
       const seen = new Set<string>();
       while (queue.length) {
@@ -91,6 +108,7 @@ describe("no data leaves the browser", () => {
         // Follow every chunk this one names: static and dynamic imports and the worker URL.
         for (const m of text.matchAll(/([\w.-]+\.js)/g)) if (names.has(m[1]!)) queue.push(m[1]!);
         for (const [name, re] of FORBIDDEN) expect(re.test(text), `${name} in ${n}`).toBe(false);
+        expect(text, n).not.toMatch(/posthog/i);
       }
       expect([...seen].some((n) => n.startsWith("ToolPage"))).toBe(true);
       expect([...seen].some((n) => n.startsWith("engine.worker"))).toBe(true);

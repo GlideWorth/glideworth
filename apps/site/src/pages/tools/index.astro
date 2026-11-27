@@ -1,10 +1,16 @@
 ---
+import { PUBLIC_POSTHOG_HOST, PUBLIC_POSTHOG_PROJECT_TOKEN } from 'astro:env/server';
 import Callout from '../../components/Callout.astro';
 import { page } from '../../config/pages';
 import { site } from '../../config/site';
 import PageLayout from '../../layouts/PageLayout.astro';
 import { TAX_COUNTRIES } from '../../tools/engine/model';
+import { sitePostHog } from '../../lib/posthog';
 import { TOOLS } from '../../tools/registry';
+
+// The official hosted build measures these pages with PostHog, never with what a visitor types (see lib/posthog.ts).
+const postHogOnSite = sitePostHog(PUBLIC_POSTHOG_PROJECT_TOKEN, PUBLIC_POSTHOG_HOST) !== undefined;
+const emailNote = site.calculatorEmail ? ' unless you ask us to email you a result' : '';
 
 const groups = [
   { id: 'fire', title: 'Financial independence', intro: 'How much is enough, and when you get there.' },
@@ -61,7 +67,11 @@ const groups = [
         </li>
         <li>
           <strong>Private by design.</strong> Your inputs are kept in the page address so you can share or bookmark a result.
-          Nothing is sent to a server, and there are no analytics.
+          {
+            postHogOnSite
+              ? `Nothing you type is sent to a server${emailNote}. Visits are measured as on the rest of this website, without your inputs or results.`
+              : `Nothing is sent to a server${emailNote}, and there are no analytics.`
+          }
         </li>
         <li>
           <strong>Today’s money.</strong> Amounts and returns are after inflation unless a page says otherwise. Currency is

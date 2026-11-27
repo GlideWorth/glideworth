@@ -1,19 +1,15 @@
 ---
 /**
- * PostHog on marketing pages: official hosted build only (PUBLIC_POSTHOG_PROJECT_TOKEN and
- * PUBLIC_POSTHOG_HOST set), never on the calculators under /tools/. Cookieless, through /relay on this
- * origin (src/lib/posthog.ts, src/lib/posthog-client.ts). A self-hosted build renders nothing, so its
- * pages carry neither the meta tag nor the script.
+ * PostHog on every marketing page, the calculators under /tools/ included: official hosted build only
+ * (PUBLIC_POSTHOG_PROJECT_TOKEN and PUBLIC_POSTHOG_HOST set). Cookieless, through /relay on this origin, with
+ * query strings and calculator text removed before sending (src/lib/posthog.ts, posthog-client.ts,
+ * posthog-scrub.ts). A self-hosted build renders nothing, so its pages carry neither the meta tag nor the script.
  */
 import { PUBLIC_POSTHOG_HOST, PUBLIC_POSTHOG_PROJECT_TOKEN } from "astro:env/server";
-import { sitePostHogOnPath } from "../lib/posthog";
+import { sitePostHog } from "../lib/posthog";
 import { SITE_POSTHOG_META } from "../lib/posthog-client";
 
-const config = sitePostHogOnPath(
-  Astro.url.pathname,
-  PUBLIC_POSTHOG_PROJECT_TOKEN,
-  PUBLIC_POSTHOG_HOST,
-);
+const config = sitePostHog(PUBLIC_POSTHOG_PROJECT_TOKEN, PUBLIC_POSTHOG_HOST);
 ---
 
 {

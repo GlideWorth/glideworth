@@ -1,10 +1,14 @@
 # Free calculators (`/tools/`)
 
 No-sign-up calculators that run the real planning engine (`@glideworth/core`) in the visitor's browser.
-Nothing a visitor types leaves the browser: no network requests, no storage, no analytics
-(`privacy.test.ts` checks the source and, after a build, every script a calculator page can load). The one
-exception is the visitor's own request: "Email me this result" (below), shown only while `site.calculatorEmail` is
-true.
+Nothing a visitor types leaves the browser. The calculator code makes no network requests and uses no storage
+(`privacy.test.ts` checks the source and, after a build, every script the calculator loads). The one exception is
+the visitor's own request: "Email me this result" (below), shown only while `site.calculatorEmail` is true.
+
+The official hosted build runs the site's cookieless PostHog on these pages, as on every marketing page
+(`src/lib/posthog-client.ts`). It never sends what a visitor types or the results: every URL loses its query string
+(where `ui/mount.ts` keeps the inputs) and fragment, and on calculator pages element text is masked and dropped
+(`src/lib/posthog-scrub.ts`, tested in `posthog-scrub.test.ts`). A self-hosted build loads no analytics.
 
 ## How it fits together
 
@@ -137,8 +141,10 @@ only after they click the confirmation link in that email (double opt-in); its w
 - **Trying it locally.** Run the API in cloud mode with `GLIDEWORTH_CALCULATOR_EMAIL_ORIGIN` set to the site's
   local origin (and the `file` email transport), build the site with `calculatorEmail: true`, and serve `dist/`
   behind a web server that forwards `POST /email/calculator` to the API, as `infra/compose/Caddyfile` does.
-- **No analytics on the page.** The server records the form's use (calculator, box ticked, confirmed,
-  unsubscribed) as anonymous server-side events, never with the address.
+- **Analytics.** The server records the form's use (calculator, box ticked, confirmed, unsubscribed) as anonymous
+  server-side events, never with the address. In the hosted build the page also sends
+  `calculator_email_form_viewed` (once per page load, when the form is half in view) and
+  `calculator_email_form_submitted`, with the calculator id as the only property (`src/lib/posthog-client.ts`).
 
 ## Hand-off into the planner (for the app team)
 

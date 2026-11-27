@@ -12,7 +12,14 @@ export { describeChange, fmtCriterion } from "./describe.js";
 export { type DiffOptions, diffJson, diffPlans, type PlanDiffOptions } from "./diff.js";
 export * from "./difference.js";
 export * from "./explain.js";
-export { type FormatContext, fmtAmount, fmtDateRef, fmtMoney, fmtPercent } from "./format.js";
+export {
+  type FormatContext,
+  fmtAmount,
+  fmtDateRef,
+  fmtMoney,
+  fmtPercent,
+  pluralDuration,
+} from "./format.js";
 export { deepEqual } from "./json.js";
 export {
   type ApplyPatchResult,

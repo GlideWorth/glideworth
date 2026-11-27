@@ -172,6 +172,44 @@ describe("specific solvers (deterministic known answers)", () => {
     });
     expect(oneEarlier.status).toBe("infeasible");
     expect(r.explanation).toMatch(/Sep 2038/);
+    expect(r.explanation).toContain("76 months earlier than planned");
+  });
+
+  it("solveEarliestRetirement: a one-month delay is '1 month later', not '1 months'", async () => {
+    const input = makeInput({
+      accounts: [{ id: "c", name: "Cash", type: "cash", owner: "me", balance: 0 }],
+      plan: {
+        milestones: [
+          {
+            id: "ret",
+            name: "Retirement",
+            kind: "retirement",
+            personId: "me",
+            criteria: [{ kind: "age", personId: "me", age: 58 + 7 / 12 }],
+          },
+        ],
+        income: [
+          {
+            id: "sal",
+            type: "salary",
+            name: "Salary",
+            owner: "me",
+            amount: { value: 50_000 },
+            frequency: "yearly",
+            range: { start: { kind: "planStart" }, end: { kind: "milestone", milestoneId: "ret" } },
+          },
+        ],
+        expenses: [expense("liv", 29_000)],
+      },
+      years: 20,
+    });
+    const r = await solveEarliestRetirement(input, {
+      milestoneId: "ret",
+      objective: { kind: "noShortfall" },
+    });
+    expect(r.value).toBe(140);
+    expect(r.explanation).toContain("1 month later than planned");
+    expect(r.explanation).not.toContain("1 months");
   });
 
   it("solveRequiredSavings: contribution must quadruple (5k -> 20k for 10 years funds 20k x 10)", async () => {

@@ -39,7 +39,7 @@ import { simulate as coreSimulate } from "../engine/simulate.js";
 import type { ProjectionResult, SimulationInput } from "../engine/types.js";
 import { ScenarioError } from "../errors.js";
 import { netLegacyAtEnd } from "../insights/analytics.js";
-import { fmtMoney } from "../insights/format.js";
+import { fmtMoney, pluralDuration } from "../insights/format.js";
 import { applyPlanPatch } from "../insights/patch.js";
 import { ACCOUNT_TYPE_INFO } from "../schema/account-types.js";
 import type { PatchOp } from "../schema/changes.js";
@@ -1060,7 +1060,7 @@ export async function planRothConversions(
   } else {
     const dWealth = proposed.afterTaxEndWealthReal - none.afterTaxEndWealthReal;
     const dTax = proposed.lifetimeTaxReal - none.lifetimeTaxReal;
-    const head = `Estimate: converting ${m(proposed.totalConvertedReal)} in total (today's money) over ${new Set(schedule.filter((s) => s.amount > 0).map((s) => s.year)).size} years`;
+    const head = `Estimate: converting ${m(proposed.totalConvertedReal)} in total (today's money) over ${pluralDuration(new Set(schedule.filter((s) => s.amount > 0).map((s) => s.year)).size, "year")}`;
     const effect = `${dWealth >= 0 ? "raises" : "lowers"} after-tax wealth at the end by ${m(Math.abs(dWealth))} and ${dTax <= 0 ? "lowers" : "raises"} lifetime tax by ${m(Math.abs(dTax))}, compared with no conversions`;
     summary = better
       ? `${head} ${effect}.`

@@ -7,7 +7,7 @@ import type { SimulationInput } from "../engine/types.js";
 import { ScenarioError } from "../errors.js";
 import type { PatchOp } from "../schema/changes.js";
 import type { MonthDate } from "../schema/primitives.js";
-import { fmtMoney, fmtMonth, fmtPercent } from "./format.js";
+import { fmtMoney, fmtMonth, fmtPercent, pluralDuration } from "./format.js";
 
 export interface ScenarioTemplate {
   id: string;
@@ -129,8 +129,8 @@ export function jobLossScenario(
     throw new ScenarioError(`unknown income '${opts.incomeId}'`, { incomeId: opts.incomeId });
   return {
     id: slug(`job-loss-${opts.incomeId}-${opts.start}`),
-    title: `${inc.name} stops for ${opts.months} months`,
-    description: `No ${inc.name} from ${fmtMonth(opts.start)} for ${opts.months} months.`,
+    title: `${inc.name} stops for ${pluralDuration(opts.months, "month")}`,
+    description: `No ${inc.name} from ${fmtMonth(opts.start)} for ${pluralDuration(opts.months, "month")}.`,
     patch: pausePatch(input, [inc.id], parseMonth(opts.start), opts.months, 0),
     notes: ["Redundancy pay or benefits are not added; add them as one-off income if relevant."],
   };
@@ -159,8 +159,8 @@ export function careerBreakScenario(
     title:
       share === 0
         ? `${p.name} takes a ${opts.months}-month break`
-        : `${p.name} works ${fmtPercent(share)} for ${opts.months} months`,
-    description: `${p.name}'s earnings ${share === 0 ? "stop" : `fall to ${fmtPercent(share)}`} from ${fmtMonth(opts.start)} for ${opts.months} months.`,
+        : `${p.name} works ${fmtPercent(share)} for ${pluralDuration(opts.months, "month")}`,
+    description: `${p.name}'s earnings ${share === 0 ? "stop" : `fall to ${fmtPercent(share)}`} from ${fmtMonth(opts.start)} for ${pluralDuration(opts.months, "month")}.`,
     patch: pausePatch(input, ids, parseMonth(opts.start), opts.months, share),
     notes: ["Pension contributions tied to these earnings keep their own settings."],
   };
@@ -200,8 +200,8 @@ export function earlyRetirementScenario(
   const verb = opts.years >= 0 ? "earlier" : "later";
   return {
     id: slug(`retire-${verb}-${Math.abs(opts.years)}`),
-    title: `${ms.name} ${Math.abs(opts.years)} year${Math.abs(opts.years) === 1 ? "" : "s"} ${verb}`,
-    description: `Move ${ms.name} ${Math.abs(opts.years)} years ${verb}; everything tied to it moves too.`,
+    title: `${ms.name} ${pluralDuration(Math.abs(opts.years), "year")} ${verb}`,
+    description: `Move ${ms.name} ${pluralDuration(Math.abs(opts.years), "year")} ${verb}; everything tied to it moves too.`,
     patch,
     notes: [],
   };
@@ -363,7 +363,7 @@ export function longTermCareScenario(
   return {
     id: slug(`ltc-${p.id}-${opts.fromAge}`),
     title: `${p.name} needs care from ${opts.fromAge}`,
-    description: `Care costs of ${money(input, opts.annualCost)} a year (today's money, rising ${pct} above inflation) for ${p.name} from age ${opts.fromAge}${opts.years ? ` for ${opts.years} years` : ""}.`,
+    description: `Care costs of ${money(input, opts.annualCost)} a year (today's money, rising ${pct} above inflation) for ${p.name} from age ${opts.fromAge}${opts.years ? ` for ${pluralDuration(opts.years, "year")}` : ""}.`,
     patch: [
       {
         op: "add",

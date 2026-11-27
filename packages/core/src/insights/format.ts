@@ -75,13 +75,21 @@ export function fmtMonth(month: string): string {
   return name ? `${name} ${y}` : month;
 }
 
+const durationPlural = new Intl.PluralRules("en");
+
+/**
+ * "0 months", "1 month", "2 years". One is singular; every other count, including zero, is plural.
+ * The count is printed as given, so a negative gap stays negative ("-1 month").
+ */
+export function pluralDuration(count: number, unit: "month" | "year"): string {
+  const word = durationPlural.select(Math.abs(count)) === "one" ? unit : `${unit}s`;
+  return `${count} ${word}`;
+}
+
 function offset(n: number | undefined): string {
   if (!n) return "";
   const abs = Math.abs(n);
-  const unit =
-    abs % 12 === 0
-      ? `${abs / 12} year${abs === 12 ? "" : "s"}`
-      : `${abs} month${abs === 1 ? "" : "s"}`;
+  const unit = abs % 12 === 0 ? pluralDuration(abs / 12, "year") : pluralDuration(abs, "month");
   return n > 0 ? ` + ${unit}` : ` - ${unit}`;
 }
 

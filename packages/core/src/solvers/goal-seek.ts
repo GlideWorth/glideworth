@@ -2,7 +2,7 @@
 import { formatMonth, parseMonth } from "../engine/dates.js";
 import type { SimulationInput } from "../engine/types.js";
 import { ScenarioError } from "../errors.js";
-import { fmtMoney, fmtMonth, fmtPercent } from "../insights/format.js";
+import { fmtMoney, fmtMonth, fmtPercent, pluralDuration } from "../insights/format.js";
 import type { MonteCarloSettings } from "../schema/montecarlo.js";
 import { FREQUENCY_PER_YEAR } from "../schema/primitives.js";
 import {
@@ -280,14 +280,13 @@ export async function solveEarliestRetirement(
       currentMonth: current?.month ?? null,
       monthsEarlier: currentMonth === null ? null : currentMonth - month,
     };
+    const gap = currentMonth === null ? null : month - currentMonth;
     const delta =
-      currentMonth === null
+      gap === null
         ? ""
-        : currentMonth > month
-          ? ` (${currentMonth - month} months earlier than planned)`
-          : currentMonth < month
-            ? ` (${month - currentMonth} months later than planned)`
-            : " (as planned)";
+        : gap === 0
+          ? " (as planned)"
+          : ` (${pluralDuration(Math.abs(gap), "month")} ${gap > 0 ? "later" : "earlier"} than planned)`;
     r.explanation = `${m.name} can happen as early as ${fmtMonth(formatMonth(month))}, at ${person.name}'s age ${age.toFixed(1)}${delta}, while keeping ${goal}.`;
   } else {
     r.explanation = `${m.name} cannot be placed anywhere in the plan and still reach ${goal}.`;
@@ -485,9 +484,10 @@ export async function solveSafeWithdrawalRate(
   delete r.patch;
   r.details = { rate, annualWithdrawal: r.value, portfolio, years };
   r.value = rate;
+  const span = pluralDuration(years, "year");
   r.explanation =
     rate === null
-      ? `No withdrawal rate lasts ${years} years under these assumptions.`
-      : `A ${fmtPercent(rate)} initial withdrawal (${fmtMoney(rate * portfolio, { currency: cur })} a year in today's money from ${fmtMoney(portfolio, { currency: cur })}) lasts ${years} years under this plan's assumptions.`;
+      ? `No withdrawal rate lasts ${span} under these assumptions.`
+      : `A ${fmtPercent(rate)} initial withdrawal (${fmtMoney(rate * portfolio, { currency: cur })} a year in today's money from ${fmtMoney(portfolio, { currency: cur })}) lasts ${span} under this plan's assumptions.`;
   return r;
 }

@@ -46,7 +46,7 @@ import { runMonteCarloAsync } from "../stochastic/index.js";
 import * as taxData from "../tax/data/index.js";
 import { groupPatch } from "./difference.js";
 import { diffJson, diffPlans } from "./diff.js";
-import { type FormatContext, fmtMoney, fmtPercent } from "./format.js";
+import { type FormatContext, fmtMoney, fmtPercent, pluralDuration } from "./format.js";
 import { deepEqual } from "./json.js";
 import { applyPlanPatch } from "./patch.js";
 
@@ -402,7 +402,7 @@ export async function attributeResultChange(
       details:
         months !== 0
           ? [
-              `Start moved from ${before.finances.asOf} to ${after.finances.asOf} (${months} ${Math.abs(months) === 1 ? "month" : "months"})`,
+              `Start moved from ${before.finances.asOf} to ${after.finances.asOf} (${pluralDuration(months, "month")})`,
             ]
           : [],
     },
@@ -490,7 +490,7 @@ function fmtDelta(m: ResultMetricChange, d: number, fmt: FormatContext): string 
   if (m.unit === "fraction") return `${sign}${Math.round(Math.abs(d) * 1000) / 10} points`;
   if (m.unit === "year") {
     const n = Math.round(Math.abs(d) * 10) / 10;
-    return `${sign}${n} ${n === 1 ? "year" : "years"}`;
+    return `${sign}${pluralDuration(n, "year")}`;
   }
   return `${sign}${fmtMoney(Math.abs(d), fmt)}`;
 }

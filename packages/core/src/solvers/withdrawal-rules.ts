@@ -4,6 +4,7 @@
  * field says otherwise; `priceIndex` converts the plan's real amounts (floors, ceilings, fixed
  * amounts) into this period's nominal money.
  */
+import { pluralDuration } from "../insights/format.js";
 import type { FlexSpending, WithdrawalStrategy } from "../schema/strategies.js";
 
 export interface WithdrawalState {
@@ -108,7 +109,7 @@ export function computeWithdrawal(
     case "one-over-n":
       amount = s.portfolio / Math.max(1, s.remainingYears);
       action = "recalculate";
-      why = `Portfolio divided by the ${Math.max(1, s.remainingYears)} years remaining.`;
+      why = `Portfolio divided by the ${pluralDuration(Math.max(1, s.remainingYears), "year")} remaining.`;
       break;
     case "vpw": {
       const share = rule.stockShare ?? s.stockShare ?? 0.6;
@@ -121,7 +122,7 @@ export function computeWithdrawal(
         amortisedPayment(s.portfolio, r, Math.max(1, s.remainingYears)),
       );
       action = "recalculate";
-      why = `Variable percentage withdrawal: amortise the portfolio over ${Math.max(1, s.remainingYears)} years at ${(r * 100).toFixed(2)}% real.`;
+      why = `Variable percentage withdrawal: amortise the portfolio over ${pluralDuration(Math.max(1, s.remainingYears), "year")} at ${(r * 100).toFixed(2)}% real.`;
       break;
     }
     case "ratcheting": {

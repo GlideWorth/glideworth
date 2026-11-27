@@ -7,6 +7,7 @@
 import {
   type GlideworthDocument,
   type Plan,
+  pluralDuration,
   type ProjectionResult,
   type SimulationInput,
   SimulationOptions,
@@ -345,7 +346,7 @@ export function WhatIfPanel({ plan }: { plan: Plan }) {
               }
               hint={
                 s.retireShift
-                  ? `${Math.abs(s.retireShift)} years ${s.retireShift < 0 ? "earlier" : "later"}`
+                  ? `${pluralDuration(Math.abs(s.retireShift), "year")} ${s.retireShift < 0 ? "earlier" : "later"}`
                   : "As planned"
               }
               onChange={(v) => setS({ ...s, retireShift: v })}

@@ -4,7 +4,7 @@
  */
 import { parseMonth } from "../engine/dates.js";
 import { type ProjectionResult, type SimulationInput, toBasis } from "../engine/types.js";
-import { fmtPercent } from "../insights/format.js";
+import { fmtPercent, pluralDuration } from "../insights/format.js";
 import { applyPlanPatch } from "../insights/patch.js";
 import type { PatchOp } from "../schema/changes.js";
 import type { MonteCarloSettings } from "../schema/montecarlo.js";
@@ -124,6 +124,7 @@ export function defaultSensitivityVariables(
     });
   }
   const months = o.retirementMonths ?? 24;
+  const shift = pluralDuration(months / 12, "year");
   const primary = input.household.people.find((p) => p.role === "primary")?.id;
   const ret =
     input.plan.milestones.find(
@@ -136,11 +137,11 @@ export function defaultSensitivityVariables(
       id: "retirement",
       label: ret.name,
       low: {
-        label: `${months / 12} years earlier`,
+        label: `${shift} earlier`,
         patch: milestoneAtMonthPatch(input, ret.id, m - months),
       },
       high: {
-        label: `${months / 12} years later`,
+        label: `${shift} later`,
         patch: milestoneAtMonthPatch(input, ret.id, m + months),
       },
     });

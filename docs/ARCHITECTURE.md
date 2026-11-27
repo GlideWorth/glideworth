@@ -167,6 +167,11 @@ household rows drop the removed person fields when parsed. No SQL migration was 
   An account, real asset, debt or income event also has a **country** (`Account.jurisdiction`, `country`
   elsewhere): absent means the type's country (uk-isa -> GB), else the household's country; pay without a
   country is sourced where the household lives.
+  Which account and income types belong to a household in a country is decided in one place, core
+  `defaults/country-scope.ts` (`accountTypesForCountry`, `incomeTypesForCountry` and their `is...`
+  checks): the country's own types plus the generic ones. Pickers offer only those, plus an item's
+  current type and the types of its own country when it is abroad; other countries' types stay
+  reachable through the "Other countries" submenus of the add menus.
   `planDefaultsForHousehold(household)` returns the plan fields to spread into a new plan;
   `monthOf(now)` / `emptyFinances(now)` date a new household (core has no clock).
 

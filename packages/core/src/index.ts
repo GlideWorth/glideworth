@@ -9,6 +9,7 @@
  */
 
 export * from "./defaults/country.js";
+export * from "./defaults/country-scope.js";
 export * from "./engine/index.js";
 export * from "./errors.js";
 export * from "./insights/index.js";

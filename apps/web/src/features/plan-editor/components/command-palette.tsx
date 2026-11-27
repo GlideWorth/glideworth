@@ -37,7 +37,7 @@ import {
   accountTypeGroups,
   DEBT_TYPES_LABEL,
   EXPENSE_TYPES,
-  INCOME_TYPES,
+  incomeTypeMenu,
   REAL_ASSET_TYPES_LABEL,
 } from "../state/labels";
 import { usePalette } from "./palette-store";
@@ -173,9 +173,7 @@ export function CommandPalette() {
         keywords: "go section edit",
         run: () => toPlan({ kind: "section", section: s.id }),
       });
-    const relevant = <T extends { countries?: string[] }>(x: T) =>
-      !x.countries || x.countries.includes(country);
-    for (const t of INCOME_TYPES.filter(relevant))
+    for (const t of incomeTypeMenu(country).home)
       out.push({
         id: `inc:${t.value}`,
         group: "Add to plan",

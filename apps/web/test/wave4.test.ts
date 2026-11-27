@@ -86,11 +86,15 @@ describe("countries come from core", () => {
     });
     expect(resolveStack({ mode: "estimate", jurisdictions: [] }, { country: "XX" }).ok).toBe(false);
   });
-  it("groups account types by country with the household first, then any-country types", () => {
-    const g = groupedAccountTypes("FR");
-    expect(g[0]!.country).toBe("FR");
-    expect(g[0]!.types).toEqual(expect.arrayContaining(["fr-pea", "fr-assurance-vie", "fr-per"]));
-    expect(g.at(-1)!.country).toBeNull();
+  it("groups the household's account types first, then any-country types, then other countries", () => {
+    const { home, foreign } = groupedAccountTypes("FR");
+    expect(home[0]!.country).toBe("FR");
+    expect(home[0]!.types).toEqual(
+      expect.arrayContaining(["fr-pea", "fr-assurance-vie", "fr-per"]),
+    );
+    expect(home.at(-1)!.country).toBeNull();
+    expect(foreign.some((x) => x.country === "FR" || x.country === null)).toBe(false);
+    const g = [...home, ...foreign];
     const all = g.flatMap((x) => x.types);
     for (const t of [
       "de-bav",
@@ -105,6 +109,7 @@ describe("countries come from core", () => {
     ])
       expect(all).toContain(t);
     expect(new Set(all).size).toBe(Object.keys(ACCOUNT_TYPE_INFO).length);
+    expect(all.length).toBe(new Set(all).size);
   });
 });
 

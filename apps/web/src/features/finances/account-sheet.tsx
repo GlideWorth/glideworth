@@ -1,10 +1,4 @@
-import {
-  ACCOUNT_TYPE_INFO,
-  ACCOUNT_TYPES,
-  Account,
-  AccountBehaviour,
-  type AccountType,
-} from "@glideworth/core";
+import { ACCOUNT_TYPE_INFO, Account, AccountBehaviour, type AccountType } from "@glideworth/core";
 import { Link } from "@tanstack/react-router";
 import { Archive, Copy, Plus, Trash2 } from "lucide-react";
 import { AppearancePicker } from "../../components/ui/appearance-picker";
@@ -26,7 +20,7 @@ import { FormField, OwnerSelect } from "../plan-editor/components/form";
 import { newAccount, newFlow, newId } from "../plan-editor/state/defaults";
 import { editPlan } from "../plan-editor/state/doc-store";
 import { setIntent } from "../plan-editor/state/intent";
-import { ACCOUNT_TYPE_HINT, accountTypeGroups, HELP } from "../plan-editor/state/labels";
+import { ACCOUNT_TYPE_HINT, accountTypeOptions, HELP } from "../plan-editor/state/labels";
 import { useIssues } from "../plan-editor/state/validation";
 import { AccountBehaviourEditor } from "./account-behaviour";
 import {
@@ -64,9 +58,7 @@ function AccountSheetBody({ id, onClose }: { id: string; onClose: () => void }) 
       coalesce ? `${id}:${coalesce}` : undefined,
     );
   const country = doc.household.location.country;
-  const typeOptions = accountTypeGroups(country).flatMap((g) =>
-    g.types.map((t) => ({ value: t, label: ACCOUNT_TYPE_INFO[t].label, group: g.label })),
-  );
+  const typeOptions = accountTypeOptions(country, account);
 
   const changeType = (type: AccountType) => {
     const fresh = newAccount(type, { household: doc.household, finances: doc.finances });
@@ -190,9 +182,7 @@ function AccountSheetBody({ id, onClose }: { id: string; onClose: () => void }) 
                 id={fid}
                 value={account.type}
                 onValueChange={changeType}
-                options={typeOptions.filter((o) =>
-                  (ACCOUNT_TYPES as readonly string[]).includes(o.value),
-                )}
+                options={typeOptions}
               />
             )}
           </FormField>

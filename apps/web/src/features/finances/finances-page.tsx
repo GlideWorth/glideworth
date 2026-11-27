@@ -79,6 +79,7 @@ import {
   accountTypeGroups,
   DEBT_TYPES_LABEL,
   DRAWDOWN_LABEL,
+  otherCountryAccountTypeGroups,
   REAL_ASSET_TYPES_LABEL,
 } from "../plan-editor/state/labels";
 import { AccountSheet } from "./account-sheet";
@@ -428,6 +429,8 @@ function AddAccountMenu({
 }) {
   const country = useDraftDoc()?.household.location.country ?? "US";
   const groups = accountTypeGroups(country);
+  // An account abroad: the explicit path to other countries' types.
+  const foreign = otherCountryAccountTypeGroups(country);
   return (
     <ActionMenu>
       <ActionMenuTrigger asChild>
@@ -436,7 +439,7 @@ function AddAccountMenu({
         </Button>
       </ActionMenuTrigger>
       <ActionMenuContent>
-        {groups.slice(0, 2).map((g, gi) => (
+        {groups.map((g, gi) => (
           <div key={g.label}>
             {gi ? <ActionMenuSeparator /> : null}
             <ActionMenuLabel>{g.label}</ActionMenuLabel>
@@ -448,7 +451,8 @@ function AddAccountMenu({
           </div>
         ))}
         <ActionMenuSeparator />
-        {groups.slice(2).map((g) => (
+        <ActionMenuLabel>Other countries</ActionMenuLabel>
+        {foreign.map((g) => (
           <ActionSubMenu key={g.label} label={g.label}>
             {g.types.map((t) => (
               <ActionMenuItem key={t} onSelect={() => onAdd(t)}>

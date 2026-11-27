@@ -5,9 +5,10 @@
  * market history or currency. This module only adds labels and region lists for pickers.
  */
 import {
-  ACCOUNT_TYPE_INFO,
   ACCOUNT_TYPES,
   type AccountType,
+  accountTypeCountry,
+  accountTypesForCountry,
   CA_PROVINCES_2026,
   COUNTRY_TAX_CURRENCY,
   type CountryDefaults,
@@ -156,34 +157,56 @@ export function planSettingsFor(h: Pick<Household, "location" | "people">) {
 
 // ------------------------------------------------------------------------------- account types
 
-/** Countries that own account types, in label order (types without a country are generic). */
+/** Labels for the countries that own account types (types without a country are generic). */
 const TYPE_COUNTRY_LABEL: Record<string, string> = Object.fromEntries(
   COUNTRY_LIST.map((c) => [c.code, c.label]),
 );
 
+export interface AccountTypeGroup {
+  group: string;
+  /** The country whose own types these are; null for the generic types that work anywhere. */
+  country: string | null;
+  types: AccountType[];
+}
+
+const groupLabel = (country: string | null) =>
+  country === null ? "Any country" : (TYPE_COUNTRY_LABEL[country] ?? country);
+
+/** One country's own account types (null: the generic ones), in `ACCOUNT_TYPES` order. */
+export function accountTypeGroupOf(country: string | null): AccountTypeGroup {
+  return {
+    group: groupLabel(country),
+    country,
+    types: ACCOUNT_TYPES.filter((t) => accountTypeCountry(t) === country),
+  };
+}
+
 /**
- * Account types grouped for a picker: the household's country first, then every other country,
- * then the generic types that work anywhere.
+ * Account types grouped for pickers. `home` is what a household in `householdCountry` is offered
+ * (core's `accountTypesForCountry`): its own country's types, then the generic types. `foreign` is
+ * every other country's types, by country name: the explicit "other countries" path to an account
+ * abroad, shown only in the add-account menus.
  */
-export function groupedAccountTypes(
-  householdCountry: string,
-): { group: string; country: string | null; types: AccountType[] }[] {
-  const groups = new Map<string, AccountType[]>();
+export function groupedAccountTypes(householdCountry: string): {
+  home: AccountTypeGroup[];
+  foreign: AccountTypeGroup[];
+} {
+  const offered = accountTypesForCountry(householdCountry);
+  const home = [
+    { country: householdCountry, types: offered.filter((t) => accountTypeCountry(t) !== null) },
+    { country: null, types: offered.filter((t) => accountTypeCountry(t) === null) },
+  ]
+    .filter((g) => g.types.length > 0)
+    .map((g) => ({ group: groupLabel(g.country), ...g }));
+  const others = new Set<string>();
   for (const t of ACCOUNT_TYPES) {
-    const c = ACCOUNT_TYPE_INFO[t].country ?? "";
-    groups.set(c, [...(groups.get(c) ?? []), t]);
+    const c = accountTypeCountry(t);
+    if (c !== null && !offered.includes(t)) others.add(c);
   }
-  const generic = groups.get("") ?? [];
-  groups.delete("");
-  const order = [...groups.keys()].sort((a, b) => {
-    if (a === householdCountry) return -1;
-    if (b === householdCountry) return 1;
-    return (TYPE_COUNTRY_LABEL[a] ?? a).localeCompare(TYPE_COUNTRY_LABEL[b] ?? b);
-  });
-  return [
-    ...order.map((c) => ({ group: TYPE_COUNTRY_LABEL[c] ?? c, country: c, types: groups.get(c)! })),
-    { group: "Any country", country: null, types: generic },
-  ];
+  const foreign = [...others]
+    .map(accountTypeGroupOf)
+    .sort((a, b) => a.group.localeCompare(b.group));
+  return { home, foreign };
 }
 
 // ------------------------------------------------------------------------------ simplifications

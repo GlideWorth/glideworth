@@ -39,7 +39,11 @@ import { DateRefField, EnumField, FormField, OwnerSelect } from "../components/f
 import { usePlan, useUpdatePlan } from "../components/plan-context";
 import { newAccount } from "../state/defaults";
 import { useEditorStore } from "../state/doc-store";
-import { accountTypeGroups } from "../state/labels";
+import {
+  accountTypeGroups,
+  accountTypeOptions,
+  otherCountryAccountTypeGroups,
+} from "../state/labels";
 import { deepEqual } from "../state/merge";
 import { useIssues } from "../state/validation";
 
@@ -81,6 +85,8 @@ export function AccountsSection() {
     setOpen({ kind: "planned", id: pa.id });
   };
   const groups = accountTypeGroups(household.location.country);
+  // An account abroad: the explicit path to other countries' types.
+  const foreign = otherCountryAccountTypeGroups(household.location.country);
   return (
     <>
       <Card>
@@ -174,6 +180,16 @@ export function AccountsSection() {
                 ))}
                 <ActionMenuSeparator />
                 {groups.slice(1).map((g) => (
+                  <ActionSubMenu key={g.label} label={g.label}>
+                    {g.types.map((t) => (
+                      <ActionMenuItem key={t} onSelect={() => addPlanned(t)}>
+                        {ACCOUNT_TYPE_INFO[t].label}
+                      </ActionMenuItem>
+                    ))}
+                  </ActionSubMenu>
+                ))}
+                <ActionMenuLabel>Other countries</ActionMenuLabel>
+                {foreign.map((g) => (
                   <ActionSubMenu key={g.label} label={g.label}>
                     {g.types.map((t) => (
                       <ActionMenuItem key={t} onSelect={() => addPlanned(t)}>
@@ -315,6 +331,7 @@ function PlannedAccountSheet({ id, onClose }: { id: string | null; onClose: () =
   const pa = plan?.plannedAccounts.find((a) => a.id === id);
   const issues = useIssues(PlannedAccount, pa);
   const inherit = useInherit(pa ? ACCOUNT_TYPE_INFO[pa.type].assetClass : "portfolio");
+  const country = useEditorStore((s) => s.draft?.household.location.country ?? "US");
   const content =
     plan && pa ? (
       <SheetContent
@@ -403,10 +420,7 @@ function PlannedAccountSheet({ id, onClose }: { id: string | null; onClose: () =
                   "Change type",
                 )
               }
-              options={Object.entries(ACCOUNT_TYPE_INFO).map(([value, i]) => ({
-                value: value as AccountType,
-                label: i.label,
-              }))}
+              options={accountTypeOptions(country, pa)}
             />
           </FieldGrid>
           <DateRefField

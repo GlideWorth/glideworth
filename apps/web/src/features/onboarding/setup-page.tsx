@@ -30,7 +30,7 @@ import { HandoffApplied } from "../cloud/handoff-notice";
 import { persistWorkspace } from "../import/persist";
 import { countryFromLocale } from "../import/starter";
 import { countryDefaults } from "../plan-editor/state/defaults";
-import { accountTypeGroups } from "../plan-editor/state/labels";
+import { accountTypeOptions } from "../plan-editor/state/labels";
 import {
   buildSetupDocument,
   COUNTRIES,
@@ -433,13 +433,7 @@ export function SetupPage() {
                                 ),
                               })
                             }
-                            options={accountTypeGroups(a.country).flatMap((g) =>
-                              g.types.map((t) => ({
-                                value: t,
-                                label: ACCOUNT_TYPE_INFO[t].label,
-                                group: g.label,
-                              })),
-                            )}
+                            options={accountTypeOptions(a.country)}
                           />
                         )}
                       </Field>

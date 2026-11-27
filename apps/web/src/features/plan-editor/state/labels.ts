@@ -7,13 +7,16 @@ import {
   ACCOUNT_TYPE_INFO,
   type AccountCategory,
   type AccountType,
+  accountTypeCountry,
   type DrawdownCategory,
   type ExpenseType,
   type Frequency,
   type IncomeType,
+  incomeTypeCountries,
+  isIncomeTypeForCountry,
   type MilestoneMetric,
 } from "@glideworth/core";
-import { groupedAccountTypes } from "../../../lib/countries";
+import { accountTypeGroupOf, groupedAccountTypes } from "../../../lib/countries";
 
 export const FREQUENCY_LABEL: Record<Frequency, string> = {
   once: "Once",
@@ -48,9 +51,12 @@ export interface TypeMeta<T extends string> {
   value: T;
   label: string;
   hint: string;
-  countries?: string[];
 }
 
+/**
+ * Income types in menu order. Which countries each belongs to comes from core
+ * (`incomeTypeCountries`), so the web, the API and MCP share one mapping.
+ */
 export const INCOME_TYPES: TypeMeta<IncomeType>[] = [
   {
     value: "salary",
@@ -67,7 +73,6 @@ export const INCOME_TYPES: TypeMeta<IncomeType>[] = [
     value: "state-pension",
     label: "State Pension",
     hint: "Government retirement pension (e.g. UK new State Pension).",
-    countries: ["GB", "IE", "AU", "NZ", "DE", "NL", "FR", "ES", "IL", "AE", "XX"],
   },
   {
     value: "pension",
@@ -87,16 +92,14 @@ export const INCOME_TYPES: TypeMeta<IncomeType>[] = [
     value: "social-security",
     label: "Social Security",
     hint: "US retirement benefit (amount or PIA estimate).",
-    countries: ["US"],
   },
-  { value: "ca-cpp", label: "CPP / QPP", hint: "Canada Pension Plan.", countries: ["CA"] },
+  { value: "ca-cpp", label: "CPP / QPP", hint: "Canada Pension Plan." },
   {
     value: "ca-oas",
     label: "Old Age Security",
     hint: "Canadian OAS, subject to clawback.",
-    countries: ["CA"],
   },
-  { value: "ca-gis", label: "GIS", hint: "Guaranteed Income Supplement.", countries: ["CA"] },
+  { value: "ca-gis", label: "GIS", hint: "Guaranteed Income Supplement." },
   {
     value: "other",
     label: "Other income",
@@ -188,20 +191,99 @@ export function accountTypeLabel(t: AccountType): string {
   return ACCOUNT_TYPE_INFO[t].label;
 }
 
+export interface AccountTypeMenuGroup {
+  label: string;
+  types: AccountType[];
+}
+
+const toMenuGroup = (g: { group: string; types: AccountType[] }): AccountTypeMenuGroup => ({
+  label: g.group,
+  types: g.types,
+});
+
 /**
- * Account types grouped for pickers: the household's country first, then every other supported
- * country, then the types that work anywhere (lib/countries).
+ * Account types a household in `country` is offered (core's `accountTypesForCountry`): its own
+ * country's types, then the types that work anywhere. Other countries' types are not included; see
+ * `otherCountryAccountTypeGroups`.
  */
-export function accountTypeGroups(country: string): { label: string; types: AccountType[] }[] {
-  const groups = groupedAccountTypes(country).map((g) => ({
-    label: g.group,
-    types: g.types,
-    country: g.country,
-  }));
-  const home = groups.filter((g) => g.country === country);
-  const anywhere = groups.filter((g) => g.country === null);
-  const rest = groups.filter((g) => g.country !== country && g.country !== null);
-  return [...home, ...anywhere, ...rest].map(({ label, types }) => ({ label, types }));
+export function accountTypeGroups(country: string): AccountTypeMenuGroup[] {
+  return groupedAccountTypes(country).home.map(toMenuGroup);
+}
+
+/**
+ * Every other country's account types, by country name: the "other countries" submenus of the
+ * add-account menus, the one explicit path to an account abroad.
+ */
+export function otherCountryAccountTypeGroups(country: string): AccountTypeMenuGroup[] {
+  return groupedAccountTypes(country).foreign.map(toMenuGroup);
+}
+
+/**
+ * Options for an existing account's type select: the household's types and the generic ones, plus
+ * the types of the account's own country when it differs from the household's (`jurisdiction`, else
+ * the type's country), so an account abroad can switch between that country's wrappers. The
+ * account's current type is always offered, so a stored value never disappears from its select.
+ */
+export function accountTypeOptions(
+  householdCountry: string,
+  account?: { type: AccountType; jurisdiction?: string | undefined },
+): { value: AccountType; label: string; group: string }[] {
+  const groups = [...groupedAccountTypes(householdCountry).home];
+  if (account) {
+    const typeCountry = accountTypeCountry(account.type);
+    const effective = account.jurisdiction ?? typeCountry ?? householdCountry;
+    for (const c of [effective, typeCountry])
+      if (c !== null && c !== householdCountry && !groups.some((g) => g.country === c)) {
+        const g = accountTypeGroupOf(c);
+        if (g.types.length) groups.push(g);
+      }
+  }
+  const options = groups.flatMap((g) =>
+    g.types.map((t) => ({ value: t, label: ACCOUNT_TYPE_INFO[t].label, group: g.group })),
+  );
+  if (account && !options.some((o) => o.value === account.type))
+    options.push({
+      value: account.type,
+      label: ACCOUNT_TYPE_INFO[account.type].label,
+      group: accountTypeGroupOf(accountTypeCountry(account.type)).group,
+    });
+  return options;
+}
+
+/**
+ * The add-income menu: the types a household in `country` is offered (core's
+ * `isIncomeTypeForCountry`) and, for the "Other countries" submenu, the rest.
+ */
+export function incomeTypeMenu(country: string): {
+  home: TypeMeta<IncomeType>[];
+  other: TypeMeta<IncomeType>[];
+} {
+  return {
+    home: INCOME_TYPES.filter((t) => isIncomeTypeForCountry(t.value, country)),
+    other: INCOME_TYPES.filter((t) => !isIncomeTypeForCountry(t.value, country)),
+  };
+}
+
+/**
+ * Options for an existing income's type select: the household's types, plus the types of the
+ * income's own `country` when it is set to another country, plus the income's current type.
+ * Country-specific types carry their countries as the hint.
+ */
+export function incomeTypeOptions(
+  householdCountry: string,
+  income?: { type: IncomeType; country?: string | undefined },
+): { value: IncomeType; label: string; hint?: string }[] {
+  return INCOME_TYPES.filter(
+    (t) =>
+      isIncomeTypeForCountry(t.value, householdCountry) ||
+      t.value === income?.type ||
+      (income?.country !== undefined &&
+        income.country !== householdCountry &&
+        isIncomeTypeForCountry(t.value, income.country)),
+  ).map((t) => {
+    const countries = incomeTypeCountries(t.value);
+    return { value: t.value, label: t.label, ...(countries ? { hint: countries.join(", ") } : {}) };
+  });
 }
 
 export const ACCOUNT_TYPE_HINT: Partial<Record<AccountType, string>> = {

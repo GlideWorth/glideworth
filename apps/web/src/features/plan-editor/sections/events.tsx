@@ -80,7 +80,15 @@ import {
   sourceOptionLabel,
   uniqueEventName,
 } from "../state/event-edit";
-import { amountUnit, EXPENSE_TYPES, HELP, INCOME_TYPES, type TypeMeta } from "../state/labels";
+import {
+  amountUnit,
+  EXPENSE_TYPES,
+  HELP,
+  INCOME_TYPES,
+  incomeTypeMenu,
+  incomeTypeOptions,
+  type TypeMeta,
+} from "../state/labels";
 import { describeMonth, formatMonthIndex, resolveRef } from "../state/resolve";
 import { type Issues, useIssues, validate } from "../state/validation";
 import { InflationCategorySelect } from "./assumption-extras";
@@ -157,12 +165,6 @@ export function useAddEvent() {
   };
 }
 
-function relevant<T extends string>(types: TypeMeta<T>[], country: string) {
-  const home = types.filter((t) => !t.countries || t.countries.includes(country));
-  const other = types.filter((t) => t.countries && !t.countries.includes(country));
-  return { home, other };
-}
-
 export function AddEventMenu({
   kind,
   onAdded,
@@ -174,10 +176,9 @@ export function AddEventMenu({
 }) {
   const add = useAddEvent();
   const country = useEditorStore((s) => s.draft?.household.location.country ?? "US");
-  const { home, other } = relevant<string>(
-    (kind === "income" ? INCOME_TYPES : EXPENSE_TYPES) as TypeMeta<string>[],
-    country,
-  );
+  // Income types follow the household's country (core's country scope); expense types are generic.
+  const { home, other }: { home: TypeMeta<string>[]; other: TypeMeta<string>[] } =
+    kind === "income" ? incomeTypeMenu(country) : { home: EXPENSE_TYPES, other: [] };
   return (
     <ActionMenu>
       <ActionMenuTrigger asChild>
@@ -642,7 +643,10 @@ function EventSheetBody({ kind, id, onClose }: { kind: Kind; id: string; onClose
   const once = event.frequency === "once";
   const start = tctx ? resolveRef(event.range.start, tctx) : null;
   const end = tctx ? resolveRef(event.range.end, tctx) : null;
-  const types = kind === "income" ? INCOME_TYPES : EXPENSE_TYPES;
+  const typeOptions: { value: string; label: string; hint?: string }[] =
+    kind === "income"
+      ? incomeTypeOptions(ctx.household.location.country, event as IncomeEvent)
+      : EXPENSE_TYPES.map((t) => ({ value: t.value, label: t.label }));
   const rangeEnd = end === null ? "never ends" : formatMonthIndex(end, f.locale);
   const figure = rejected ? " · Invalid" : yr ? ` · ${f.money(yr)} a year` : "";
   const timing =
@@ -714,16 +718,7 @@ function EventSheetBody({ kind, id, onClose }: { kind: Kind; id: string; onClose
               />
             )}
           </FormField>
-          <EnumField
-            label="Type"
-            value={event.type}
-            onChange={changeType}
-            options={types.map((t) => ({
-              value: t.value,
-              label: t.label,
-              hint: t.countries?.join(", "),
-            }))}
-          />
+          <EnumField label="Type" value={event.type} onChange={changeType} options={typeOptions} />
           <FormField
             label="Owner"
             help="Who earns or pays it. Affects tax and what happens if one of you dies."

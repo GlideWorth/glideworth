@@ -11,7 +11,13 @@ import {
   type Plan,
   SCHEMA_VERSION,
 } from "@glideworth/core";
-import { COUNTRY_LIST, CURRENCY_CODES, countryDefaultsFor } from "../../lib/countries";
+import {
+  COUNTRY_LIST,
+  CURRENCY_CODES,
+  countryDefaultsFor,
+  countryInfo,
+  regionRequired,
+} from "../../lib/countries";
 import { countryDefaults, newAccount, newExpense } from "../plan-editor/state/defaults";
 import { buildPlanFromTemplate } from "../plans/templates";
 
@@ -163,7 +169,7 @@ export function suggestedAccounts(country: string): { type: AccountType; name: s
   }
 }
 
-export function defaultAnswers(country = "GB", now = new Date()): SetupAnswers {
+export function defaultAnswers(country = "US", now = new Date()): SetupAnswers {
   const cd = countryDefaults(country);
   const year = now.getUTCFullYear();
   const sugg = suggestedAccounts(country);
@@ -203,6 +209,8 @@ export function validateAnswers(a: SetupAnswers, now = new Date()): Record<strin
   const e: Record<string, string> = {};
   const year = now.getUTCFullYear();
   const age = (p: SetupPerson) => year - Number(p.birthMonth.slice(0, 4));
+  if (regionRequired(a.country) && !a.region)
+    e.region = `Choose your ${(countryInfo(a.country)?.regionLabel ?? "region").toLowerCase()}: tax depends on it.`;
   if (!a.you.name.trim()) e["you.name"] = "Add your first name (only used for labels).";
   if (!/^\d{4}-\d{2}$/.test(a.you.birthMonth) || age(a.you) < 16 || age(a.you) > 100)
     e["you.birthMonth"] = "Enter a birth year between 16 and 100 years ago.";

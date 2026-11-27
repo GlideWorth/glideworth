@@ -26,11 +26,11 @@ import { builtInMilestones } from "../plan-editor/state/defaults";
 const PLAN_ID = "plan-main";
 const PERSON_ID = "p-me";
 
-/** Country implied by a locale tag ("en-GB" → GB). Unknown tags use the UK, as guided setup does. */
+/** Country implied by a locale tag ("en-GB" → GB). Unknown or unsupported tags use the US. */
 export function countryFromLocale(locale: string): string {
   const region = locale.split("-")[1]?.toUpperCase();
   if (region && countryInfo(region)) return region;
-  return "GB";
+  return "US";
 }
 
 function clip(s: string, max: number): string {
@@ -42,7 +42,7 @@ export function createStarterDocument(
   opts: { personName?: string; locale?: string; now?: Date } = {},
 ): GlideworthDocument {
   const now = opts.now ?? new Date();
-  const locale = opts.locale ?? (typeof navigator !== "undefined" ? navigator.language : "en-GB");
+  const locale = opts.locale ?? (typeof navigator !== "undefined" ? navigator.language : "en-US");
   const country = countryFromLocale(locale);
   const preset = defaultsForCountry(country);
   const region = preset.defaultRegion ?? undefined;

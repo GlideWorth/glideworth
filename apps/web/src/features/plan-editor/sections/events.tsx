@@ -173,7 +173,7 @@ export function AddEventMenu({
   trigger?: ReactNode;
 }) {
   const add = useAddEvent();
-  const country = useEditorStore((s) => s.draft?.household.location.country ?? "GB");
+  const country = useEditorStore((s) => s.draft?.household.location.country ?? "US");
   const { home, other } = relevant<string>(
     (kind === "income" ? INCOME_TYPES : EXPENSE_TYPES) as TypeMeta<string>[],
     country,
@@ -2032,7 +2032,7 @@ function ExpenseSpecific({
   set: (fn: (e: AnyEvent) => AnyEvent, l: string, k?: string) => void;
 }) {
   const { people, accounts } = useScope();
-  const country = useEditorStore((s) => s.draft?.household.location.country ?? "GB");
+  const country = useEditorStore((s) => s.draft?.household.location.country ?? "US");
   const s = (v: Record<string, unknown>, label: string, key?: string) =>
     set((e) => ({ ...e, ...v }) as AnyEvent, label, key);
   if (event.type === "healthcare") {

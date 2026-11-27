@@ -347,6 +347,14 @@ describe("cloud", () => {
     for (const title of steps) {
       expect(await screen.findByRole("heading", { name: title })).toBeTruthy();
       await waitFor(() => expect(document.title).toBe(`${title} · Glideworth`));
+      if (title === "Where you live") {
+        // jsdom's locale is en-US: setup starts in the US, which needs a state before continuing.
+        fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+        expect(await screen.findByText(/Choose your state/)).toBeTruthy();
+        expect(screen.getByRole("heading", { name: "Where you live" })).toBeTruthy();
+        fireEvent.keyDown(screen.getByRole("combobox", { name: "State" }), { key: "Enter" });
+        fireEvent.click(await screen.findByRole("option", { name: "Texas" }));
+      }
       if (title === "Who is in the plan") {
         fireEvent.change(screen.getByRole("textbox", { name: "First name" }), {
           target: { value: "Robin" },

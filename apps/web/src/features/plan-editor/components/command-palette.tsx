@@ -113,7 +113,7 @@ export function CommandPalette() {
   // Mounted globally by the app shell: outside the editors, fall back to the loaded workspace.
   const ws = useWorkspace().data;
   const plans = draftPlans ?? ws?.doc.plans;
-  const country = draftCountry ?? ws?.doc.household.location.country ?? "GB";
+  const country = draftCountry ?? ws?.doc.household.location.country ?? "US";
   const globalCommands = useGlobalCommands();
   const activeId = useUi((s) => s.activePlanId);
   const setActive = useUi((s) => s.setActivePlan);

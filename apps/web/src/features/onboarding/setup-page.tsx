@@ -28,6 +28,7 @@ import { usePrefs } from "../../stores/prefs";
 import { clearHandoff, applyHandoff, readHandoff } from "../cloud/handoff";
 import { HandoffApplied } from "../cloud/handoff-notice";
 import { persistWorkspace } from "../import/persist";
+import { countryFromLocale } from "../import/starter";
 import { countryDefaults } from "../plan-editor/state/defaults";
 import { accountTypeGroups } from "../plan-editor/state/labels";
 import {
@@ -78,7 +79,9 @@ export function SetupPage() {
   const cloud = useMode() === "cloud";
   const [handoff, setHandoff] = useState(() => (cloud ? readHandoff() : null));
   const [a, setA] = useState<SetupAnswers>(() =>
-    handoff ? applyHandoff(handoff, now).answers : defaultAnswers("GB", now),
+    handoff
+      ? applyHandoff(handoff, now).answers
+      : defaultAnswers(countryFromLocale(navigator.language), now),
   );
   const [step, setStep] = useState(0);
   const [touched, setTouched] = useState<Record<number, boolean>>({});
@@ -97,6 +100,7 @@ export function SetupPage() {
 
   const stepErrors = (i: number): string[] => {
     const keys: Record<number, string[]> = {
+      0: ["region"],
       1: ["you.name", "you.birthMonth", "partner.name", "partner.birthMonth"],
       2: ["accounts"],
       5: ["lifeExpectancy", "planName"],
@@ -268,7 +272,7 @@ export function SetupPage() {
               onReset={() => {
                 clearHandoff();
                 setHandoff(null);
-                setA(defaultAnswers("GB", now));
+                setA(defaultAnswers(countryFromLocale(navigator.language), now));
               }}
             />
           ) : null}
@@ -305,6 +309,7 @@ export function SetupPage() {
                 {COUNTRIES.find((c) => c.code === a.country)?.regions ? (
                   <Field
                     label={COUNTRIES.find((c) => c.code === a.country)?.regionLabel ?? "Region"}
+                    error={err("region", 0)}
                     hint={
                       a.country === "GB"
                         ? "Scotland has its own income-tax bands."

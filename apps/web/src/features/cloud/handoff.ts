@@ -159,7 +159,7 @@ export function applyHandoff(
   const used: string[] = [];
   const skipped: string[] = [];
   const cur = v.cur && CURRENCY_CODES.includes(v.cur) ? v.cur : undefined;
-  const country = (cur && COUNTRY_FOR_CURRENCY[cur]) || "GB";
+  const country = (cur && COUNTRY_FOR_CURRENCY[cur]) || "US";
   const a = defaultAnswers(country, now);
   if (cur) {
     a.currency = cur;
@@ -202,6 +202,7 @@ export function applyHandoff(
 }
 
 const MONEY_LOCALE: Record<string, string> = {
+  GBP: "en-GB",
   USD: "en-US",
   CAD: "en-CA",
   AUD: "en-AU",
@@ -218,7 +219,7 @@ export function handoffHighlights(h: Handoff, now: Date = new Date()): string[] 
   const { answers, used } = applyHandoff(h, now);
   const cur = answers.currency;
   const money = (n: number) =>
-    formatMoney(n, { locale: MONEY_LOCALE[cur] ?? "en-GB", currency: cur });
+    formatMoney(n, { locale: MONEY_LOCALE[cur] ?? "en-US", currency: cur });
   const out: string[] = [];
   const age = used.find((u) => u.startsWith("age "));
   if (age) out.push(age);

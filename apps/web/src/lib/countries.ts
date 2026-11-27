@@ -124,6 +124,31 @@ export function countryDefaultsFor(code: string, region?: string): CountryDefaul
   return defaultsForCountry(code, region ? { region } : {});
 }
 
+/**
+ * Whether a new household in this country must pick a region: the tax estimate depends on it and
+ * there is no default, so without one the plan would quietly use flat rates (a US state).
+ */
+export function regionRequired(code: string): boolean {
+  const info = countryInfo(code);
+  const core = countryDefaultsFor(code);
+  return (
+    !!info?.regions?.length &&
+    info.regionAffectsTax === true &&
+    !core.defaultRegion &&
+    core.tax.mode !== "estimate"
+  );
+}
+
+/**
+ * Account types for the empty accounts list's quick-add buttons: cash, then the country's own
+ * typical type for each role (core's `accountTypes`), without gaps or repeats.
+ */
+export function quickAccountTypes(code: string): AccountType[] {
+  const t = countryDefaultsFor(code).accountTypes;
+  const types = ["cash", t.cash, t.taxFree, t.personalPension, t.workplacePension, t.taxable];
+  return [...new Set(types.filter((x): x is AccountType => x !== null))];
+}
+
 /** Plan fields to spread into a new plan for this household (tax, tax-year alignment, inflation, dataset). */
 export function planSettingsFor(h: Pick<Household, "location" | "people">) {
   return planDefaultsForHousehold(h);

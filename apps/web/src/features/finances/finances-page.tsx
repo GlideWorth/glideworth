@@ -50,7 +50,7 @@ import { moveItem, SortableList } from "../../components/ui/sortable-list";
 import { toast } from "../../components/ui/toaster";
 import { Tooltip } from "../../components/ui/tooltip";
 import { cn } from "../../lib/cn";
-import { countryLabel } from "../../lib/countries";
+import { countryLabel, quickAccountTypes } from "../../lib/countries";
 import { formatMonth } from "../../lib/format";
 import {
   financesInBase,
@@ -426,7 +426,7 @@ function AddAccountMenu({
   label?: string;
   variant?: "secondary" | "primary";
 }) {
-  const country = useDraftDoc()?.household.location.country ?? "GB";
+  const country = useDraftDoc()?.household.location.country ?? "US";
   const groups = accountTypeGroups(country);
   return (
     <ActionMenu>
@@ -481,9 +481,7 @@ function AccountsCard({
   const total = accounts.filter((a) => !a.archived).reduce((s, a) => s + inBase(a), 0);
   const archivedCount = accounts.filter((a) => a.archived).length;
   const gb = doc.household.location.country === "GB";
-  const quick: AccountType[] = gb
-    ? ["cash", "savings", "uk-isa", "uk-sipp", "uk-workplace-pension"]
-    : ["cash", "savings", "taxable", "401k", "roth-ira"];
+  const quick = quickAccountTypes(doc.household.location.country);
 
   const reorderWithin = (cat: AccountCategory, from: number, to: number) => {
     updateFinances((fin) => {

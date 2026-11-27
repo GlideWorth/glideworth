@@ -16,6 +16,7 @@ import {
   type TemplateData,
   type TemplateId,
   type UnsubscribeSigner,
+  UNSUBSCRIBABLE_CATEGORIES,
 } from "./types.js";
 import {
   assertAddress,
@@ -49,7 +50,7 @@ export function createMailer(o: {
   const reasonOf = (email: string, category: EmailCategory): SuppressionReason => {
     const lookup = (o.suppressions as Partial<SuppressionReasonLookup>).reasonFor;
     const r = typeof lookup === "function" ? lookup.call(o.suppressions, email, category) : null;
-    return r ?? (category === "checkin" ? "unsubscribe" : "bounce");
+    return r ?? (UNSUBSCRIBABLE_CATEGORIES.has(category) ? "unsubscribe" : "bounce");
   };
 
   return {
@@ -106,7 +107,7 @@ export function createMailer(o: {
       try {
         const headers: Record<string, string> = { "Auto-Submitted": "auto-generated" };
         const ctx: RenderContext = { ...o.context };
-        if (category !== "essential") {
+        if (UNSUBSCRIBABLE_CATEGORIES.has(category)) {
           const unsubscribeUrl = o.unsubscribe.url(email, category);
           ctx.unsubscribeUrl = unsubscribeUrl;
           headers["List-Unsubscribe"] = `<${unsubscribeUrl}>`;

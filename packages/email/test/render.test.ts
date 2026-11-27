@@ -7,21 +7,23 @@ import {
   TEMPLATE_CATEGORY,
   TEMPLATE_IDS,
 } from "../src/index.js";
-import { CHECKIN_CTX, CTX, FIXTURES } from "./fixtures.js";
+import { CHECKIN_CTX, CTX, FIXTURES, FIXTURES_ALT } from "./fixtures.js";
 
 const ctxFor = (id: (typeof TEMPLATE_IDS)[number]) =>
   TEMPLATE_CATEGORY[id] === "checkin" ? CHECKIN_CTX : CTX;
 
 describe("templates", () => {
   it("covers every template in the spec (17), the account deletion, email change request and removal notices, the two-step guessing alert and the first-password link", () => {
-    expect(TEMPLATE_IDS).toHaveLength(22);
+    expect(TEMPLATE_IDS).toHaveLength(23);
     expect(Object.keys(FIXTURES).sort()).toEqual([...TEMPLATE_IDS].sort());
   });
 
-  it("only checkin-summary is non-essential", () => {
+  it("only checkin-summary and the requested calculator result are non-essential", () => {
     expect(TEMPLATE_IDS.filter((i) => TEMPLATE_CATEGORY[i] !== "essential")).toEqual([
       "checkin-summary",
+      "calculator-result",
     ]);
+    expect(TEMPLATE_CATEGORY["calculator-result"]).toBe("requested");
   });
 
   describe.each(TEMPLATE_IDS)("%s", (id) => {
@@ -68,7 +70,7 @@ describe("templates", () => {
       expect(r.text).not.toMatch(/<[a-z/][^>]*>/i);
     });
 
-    it("unsubscribe footer only on non-essential mail", () => {
+    it("unsubscribe footer only on mail a person can unsubscribe from", () => {
       if (TEMPLATE_CATEGORY[id] === "checkin") {
         expect(r.text).toContain("Unsubscribe: https://app.example.test/email/unsubscribe");
         expect(r.html).toContain(">Unsubscribe</a>");
@@ -79,7 +81,11 @@ describe("templates", () => {
         });
         expect(withUnsub.text).not.toContain("unsubscribe?t=");
         expect(withUnsub.html).not.toContain("unsubscribe?t=");
-        expect(r.text).toContain("cannot unsubscribe");
+        expect(r.text).toContain(
+          TEMPLATE_CATEGORY[id] === "requested"
+            ? "you will not hear from us again unless you ask"
+            : "cannot unsubscribe",
+        );
       }
     });
   });
@@ -319,5 +325,52 @@ describe("trial-ending", () => {
     expect(r.text).toContain("we will charge $90.00 USD a year");
     expect(r.text).toContain("Cancel subscription");
     expect(r.text).not.toContain("read-only");
+  });
+});
+
+describe("calculator-result", () => {
+  it("shows the result, the inputs, the reopen link and, when asked for, the double opt-in link", () => {
+    const r = render("calculator-result", FIXTURES["calculator-result"], CTX);
+    expect(r.subject).toBe("Your Glideworth calculator result");
+    expect(r.category).toBe("requested");
+    expect(r.text).toContain("Your Coast FIRE calculator result");
+    expect(r.text).toContain("FIRE number: $1,000,000");
+    expect(r.text).toContain("Invested today: $100,000");
+    expect(r.text).toContain(FIXTURES["calculator-result"].reopenUrl);
+    expect(r.text).toContain("Yes, send me the reminder:");
+    expect(r.text).toContain("https://app.example.test/email/calculator/confirm?t=sample-token");
+    expect(r.text).toContain("The link works for 7 days.");
+    expect(r.text).toContain("Try the demo, no sign-up:");
+    expect(r.text).toContain("not financial advice");
+    expect(r.text).not.toContain("\u2014");
+  });
+
+  it("without the box ticked there is no confirmation link; an existing subscriber is told so", () => {
+    const r = render("calculator-result", FIXTURES_ALT["calculator-result"], CTX);
+    expect(r.text).not.toContain("confirm");
+    expect(r.text).not.toContain("Your result:");
+    expect(r.text).toContain("You are already on the list");
+    expect(r.text).not.toContain("demo");
+  });
+
+  it("flattens hostile rows and refuses oversized or malformed lists", () => {
+    const base = FIXTURES["calculator-result"];
+    const r = render(
+      "calculator-result",
+      { ...base, figures: [["Coast age\r\nBcc: x@example.test", "<b>51</b>"]] },
+      CTX,
+    );
+    expect(r.text).not.toContain("\r\nBcc");
+    expect(r.html).not.toContain("<b>51</b>");
+    const many = Array.from({ length: 9 }, (_, i) => [`Figure ${i}`, "1"] as [string, string]);
+    expect(() => render("calculator-result", { ...base, figures: many }, CTX)).toThrow(
+      EmailValidationError,
+    );
+    expect(() =>
+      render("calculator-result", { ...base, inputs: [["only a label"]] as never }, CTX),
+    ).toThrow(EmailValidationError);
+    expect(() =>
+      render("calculator-result", { ...base, reopenUrl: "javascript:alert(1)" }, CTX),
+    ).toThrow(EmailValidationError);
   });
 });

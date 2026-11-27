@@ -32,6 +32,12 @@ export interface CloudConfig {
     /** `GLIDEWORTH_RELEASE` (compose sets the image tag), so a report maps to a deploy. */
     release: string | null;
   } | null;
+  /**
+   * Not in spec 1: "Email me this result" on the marketing site's free calculators (marketing/). Null, and no route
+   * is registered, unless `GLIDEWORTH_CALCULATOR_EMAIL_ORIGIN` names the site's origin (`https://glideworth.com`):
+   * the only origin whose form posts are accepted, and the base of the links in the result email.
+   */
+  calculatorEmail: { siteOrigin: string; dailyLimit: number } | null;
 }
 
 export interface GoogleConfig {
@@ -150,6 +156,7 @@ export function loadCloudConfig(env: NodeJS.ProcessEnv): CloudConfig {
   const google = loadGoogle(env, publicUrl, production, problems);
   const heartbeats = loadHeartbeats(env, problems);
   const errorReports = loadErrorReports(env, production, problems);
+  const calculatorEmail = loadCalculatorEmail(env, production, problems, int);
 
   if (problems.length) throw new CloudConfigError(problems);
   return {
@@ -165,7 +172,46 @@ export function loadCloudConfig(env: NodeJS.ProcessEnv): CloudConfig {
     google,
     heartbeats,
     errorReports,
+    calculatorEmail,
   };
+}
+
+/**
+ * The marketing site's origin, exactly (no path), https in production. Unset or empty: the feature is off.
+ * `GLIDEWORTH_CALCULATOR_EMAIL_DAILY_LIMIT`: result emails a day in total (default 50).
+ */
+function loadCalculatorEmail(
+  env: NodeJS.ProcessEnv,
+  production: boolean,
+  problems: string[],
+  int: (name: string, fallback: number, min: number, max: number) => number,
+): CloudConfig["calculatorEmail"] {
+  const raw = env.GLIDEWORTH_CALCULATOR_EMAIL_ORIGIN?.trim() ?? "";
+  if (!raw) return null;
+  try {
+    const u = new URL(raw);
+    const loopback = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(u.hostname);
+    if (u.protocol !== "https:" && !(u.protocol === "http:" && loopback && !production))
+      problems.push("GLIDEWORTH_CALCULATOR_EMAIL_ORIGIN must be an https origin");
+    else if (
+      u.username ||
+      u.password ||
+      u.search ||
+      u.hash ||
+      (u.pathname !== "/" && u.pathname !== "")
+    )
+      problems.push("GLIDEWORTH_CALCULATOR_EMAIL_ORIGIN must be an origin only (no path)");
+    // Calculator emails share the provider's sending quota with account email (Resend's free plan: 100 a day), so
+    // the default total is low enough that the form can never use up the day's password resets.
+    else
+      return {
+        siteOrigin: u.origin,
+        dailyLimit: int("GLIDEWORTH_CALCULATOR_EMAIL_DAILY_LIMIT", 50, 1, 100_000),
+      };
+  } catch {
+    problems.push("GLIDEWORTH_CALCULATOR_EMAIL_ORIGIN must be an absolute URL");
+  }
+  return null;
 }
 
 /**

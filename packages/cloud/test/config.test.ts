@@ -135,4 +135,34 @@ describe("loadCloudConfig", () => {
     expect(parseKey32(randomBytes(33).toString("base64"))).toBeNull();
     expect(parseKey32(undefined)).toBeNull();
   });
+
+  it("the calculator email form is off unless the site origin is set, and only an origin is accepted", () => {
+    expect(loadCloudConfig({ ...base }).calculatorEmail).toBeNull();
+    expect(
+      loadCloudConfig({ ...base, GLIDEWORTH_CALCULATOR_EMAIL_ORIGIN: "https://site.example.test/" })
+        .calculatorEmail,
+    ).toEqual({ siteOrigin: "https://site.example.test", dailyLimit: 50 });
+    expect(
+      loadCloudConfig({
+        ...base,
+        GLIDEWORTH_CALCULATOR_EMAIL_ORIGIN: "http://localhost:4321",
+        GLIDEWORTH_CALCULATOR_EMAIL_DAILY_LIMIT: "20",
+      }).calculatorEmail,
+    ).toEqual({ siteOrigin: "http://localhost:4321", dailyLimit: 20 });
+    for (const bad of [
+      "https://site.example.test/tools",
+      "http://site.example.test",
+      "site.example",
+    ])
+      expect(() => loadCloudConfig({ ...base, GLIDEWORTH_CALCULATOR_EMAIL_ORIGIN: bad })).toThrow(
+        /GLIDEWORTH_CALCULATOR_EMAIL_ORIGIN/,
+      );
+    expect(() =>
+      loadCloudConfig({
+        ...base,
+        GLIDEWORTH_CALCULATOR_EMAIL_ORIGIN: "https://site.example.test",
+        GLIDEWORTH_CALCULATOR_EMAIL_DAILY_LIMIT: "0",
+      }),
+    ).toThrow(/GLIDEWORTH_CALCULATOR_EMAIL_DAILY_LIMIT/);
+  });
 });

@@ -18,6 +18,12 @@ describe("hmacUnsubscribeSigner", () => {
     expect(signer.verify(t)).toEqual({ email: "sam@example.test", category: "checkin" });
   });
 
+  it("signs and verifies marketing (list) mail, and refuses the one-off requested category", () => {
+    const t = tokenOf(signer.url("sam@example.test", "marketing"));
+    expect(signer.verify(t)).toEqual({ email: "sam@example.test", category: "marketing" });
+    expect(() => signer.url("sam@example.test", "requested")).toThrow();
+  });
+
   it("is deterministic for the same input and time", () => {
     const s = hmacUnsubscribeSigner({ key, baseUrl: base, now: () => 1_000_000 });
     expect(s.url("a@example.test", "checkin")).toBe(s.url("a@example.test", "checkin"));

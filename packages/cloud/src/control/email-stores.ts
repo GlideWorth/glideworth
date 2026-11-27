@@ -19,6 +19,11 @@ export function controlEmailStores(
 ): {
   suppressions: SuppressionStore & {
     reasonFor(emailNormalized: string, category: EmailCategory): SuppressionReason | null;
+    /**
+     * Removes one category's suppression, only when it has this reason (a confirmed new opt-in lifts an earlier
+     * list unsubscribe; a bounce or complaint, stored under `all`, is never lifted here).
+     */
+    lift(emailNormalized: string, category: EmailCategory, reason: SuppressionReason): void;
   };
   log: EmailLogStore;
 } {
@@ -46,6 +51,17 @@ export function controlEmailStores(
             target: [emailSuppressions.emailNormalized, emailSuppressions.category],
             set: { reason },
           })
+          .run();
+      },
+      lift(emailNormalized, category, reason) {
+        db.delete(emailSuppressions)
+          .where(
+            and(
+              eq(emailSuppressions.emailNormalized, emailNormalized),
+              eq(emailSuppressions.category, category),
+              eq(emailSuppressions.reason, reason),
+            ),
+          )
           .run();
       },
     },

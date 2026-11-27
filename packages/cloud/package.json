@@ -33,6 +33,11 @@
       "@glideworth/source": "./src/security-txt.ts",
       "types": "./dist/security-txt.d.ts",
       "default": "./dist/security-txt.js"
+    },
+    "./calculator-email": {
+      "@glideworth/source": "./src/marketing/calculator-email.ts",
+      "types": "./dist/marketing/calculator-email.d.ts",
+      "default": "./dist/marketing/calculator-email.js"
     }
   },
   "scripts": {

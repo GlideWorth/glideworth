@@ -1,0 +1,176 @@
+---
+/**
+ * "Email me this result", under every calculator's results (Calculator.astro). One email with the inputs, the
+ * result and a link that reopens the calculator, sent because the visitor asked; an unticked box adds them to the
+ * reminder list only after they confirm by the link in that email (double opt-in). The consent wording is the
+ * server's constant, so the record stores exactly what was shown.
+ *
+ * A plain form: it works without JavaScript (the hidden fields hold the build-time default result, and the app
+ * answers with a page). The script (lib/calculator-email.ts) keeps the hidden fields in step with the calculator
+ * and shows the answer in place. If the app is down, the form says so and the calculator is untouched.
+ */
+import { CONSENT_TEXT, CONSENT_VERSION } from '@glideworth/cloud/calculator-email';
+import { site } from '../config/site';
+import { defaults, toQuery } from '../tools/state';
+import type { ToolSpec, ViewModel } from '../tools/types';
+
+interface Props {
+  spec: ToolSpec;
+  vm: ViewModel;
+}
+const { spec, vm } = Astro.props;
+const id = `calc-email-${spec.id}`;
+---
+
+<section class="calc-email" aria-labelledby={`${id}-title`}>
+  <h2 id={`${id}-title`} class="calc-email-title">Email me this result</h2>
+  <p class="calc-email-lede">
+    Get your inputs, the result and a link that reopens this calculator with them. One email, sent because you ask.
+  </p>
+  <form class="calc-email-form" method="post" action={site.calculatorEmailPath} data-calc-email>
+    <input type="hidden" name="tool" value={spec.id} />
+    <input type="hidden" name="q" value={toQuery(spec, defaults(spec))} />
+    <div hidden data-calc-email-figures>
+      {
+        vm.figures.slice(0, 8).map((f) => (
+          <>
+            <input type="hidden" name="fl" value={f.label} />
+            <input type="hidden" name="fv" value={f.value} />
+          </>
+        ))
+      }
+    </div>
+    <label class="calc-email-label" for={`${id}-address`}>Your email</label>
+    <div class="calc-email-row">
+      <input
+        id={`${id}-address`}
+        class="calc-email-input"
+        type="email"
+        name="email"
+        required
+        maxlength="254"
+        autocomplete="email"
+        inputmode="email"
+        spellcheck="false"
+        placeholder="you@example.com"
+      />
+      <button type="submit" class="tool-btn tool-btn-primary">Email me this result</button>
+    </div>
+    <label class="calc-email-check">
+      <input type="checkbox" name="updates" value={CONSENT_VERSION} />
+      <span>{CONSENT_TEXT}</span>
+    </label>
+    <div class="calc-email-hp" aria-hidden="true">
+      <label>Leave this empty <input type="text" name="website" tabindex="-1" autocomplete="off" /></label>
+    </div>
+    <p class="calc-email-fine">
+      The result email is sent whether or not you tick the box. Ticking it adds you only after you click the link in
+      that email. <a href="/legal/privacy/">How we use your address</a>.
+    </p>
+    <p class="calc-email-status" role="status" aria-live="polite" data-calc-email-status></p>
+  </form>
+</section>
+
+<script>
+  import { mountCalculatorEmail } from '../lib/calculator-email';
+
+  for (const form of document.querySelectorAll<HTMLFormElement>('[data-calc-email]')) mountCalculatorEmail(form);
+</script>
+
+<style>
+  .calc-email {
+    display: grid;
+    gap: var(--space-xs);
+    padding: var(--space-m);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-l);
+    min-width: 0;
+  }
+  .calc-email-title {
+    font-size: var(--text-lg);
+  }
+  .calc-email-lede,
+  .calc-email-fine {
+    font-size: var(--text-sm);
+    color: var(--ink-2);
+  }
+  .calc-email-fine {
+    font-size: var(--text-xs);
+    color: var(--ink-3);
+  }
+  .calc-email-form {
+    display: grid;
+    gap: var(--space-xs);
+    min-width: 0;
+  }
+  .calc-email-label {
+    font-weight: 600;
+    font-size: var(--text-sm);
+  }
+  .calc-email-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+  .calc-email-input {
+    flex: 1 1 14rem;
+    min-width: 0;
+    font: inherit;
+    color: var(--ink);
+    background: var(--bg);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-s);
+    padding: 0.55rem 0.7rem;
+    min-height: 2.5rem;
+  }
+  .calc-email-input:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  .calc-email-check {
+    display: flex;
+    gap: 0.55rem;
+    align-items: flex-start;
+    font-size: var(--text-sm);
+    line-height: 1.45;
+    cursor: pointer;
+  }
+  .calc-email-check input {
+    margin-top: 0.2rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    flex: none;
+    accent-color: var(--accent);
+  }
+  .calc-email-hp {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+  .calc-email-status:empty {
+    display: none;
+  }
+  .calc-email-status {
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+  .calc-email-status[data-tone='ok'] {
+    color: var(--accent-text);
+  }
+  .calc-email-status[data-tone='error'] {
+    color: var(--risk);
+  }
+  @media (pointer: coarse) {
+    .calc-email-input {
+      min-height: 2.75rem;
+    }
+    .calc-email-check input {
+      width: 1.35rem;
+      height: 1.35rem;
+    }
+  }
+</style>

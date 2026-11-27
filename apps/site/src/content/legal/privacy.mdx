@@ -1,7 +1,7 @@
 ---
 title: Privacy policy
 description: What personal data the Glideworth hosted service collects, why, where it is stored, who processes it, how long it is kept, and your rights wherever you live.
-lastUpdated: 2026-11-19
+lastUpdated: 2026-11-26
 draft: false
 order: 1
 ---
@@ -42,6 +42,9 @@ or the United Kingdom. Write to the address above, or complain to your local dat
   plans. That is what lets scheduled check-ins and AI assistants you connect work.
 - Glideworth runs no AI on your data. If you connect your own AI assistant, that assistant's provider receives
   what its tools return (see section 9).
+- If you ask a free calculator to email you its result, we send that one email and keep your address only as
+  long as section 7 says. We add you to our reminder and updates list only if you tick the box and then confirm
+  by the link in that email, and every list email lets you unsubscribe in one click.
 - We give everyone the data protection rights described in section 11, wherever you live.
 - We do not keep data forever. Section 7 gives every retention period.
 - You can export everything and delete your workspace yourself, in the app.
@@ -55,13 +58,15 @@ or the United Kingdom. Write to the address above, or complain to your local dat
 | Planning data | Everything you enter or import: households, people, ages, accounts and balances, income, spending, assumptions, plans, scenarios, results, notes, share-link snapshots, check-in settings, API keys (stored as hashes) | You, or files you import |
 | Billing data | Name, billing address, tax number if you give one, the card or payment method, invoices and payment status. **Our payment provider holds this**, not us. We keep your plan, subscription status, billing dates and a payment provider customer reference. We give the payment provider your account id so its records can be matched to your account. A copy of the payment provider's customer, subscription, invoice, charge, refund and price records (amounts included, never card details) is synced to our PostHog project so that we can report revenue and churn (section 5) | You, through the payment provider |
 | Technical logs and server error reports | IP address, time, route and status code of each request, error names and codes. Server errors are also reported to PostHog (section 5) with the error's name, code, code location, route and your workspace's account id, without your IP address. Never financial values or error messages (see section 3.1) | Your browser and our servers |
-| Product analytics | Pages you open and leave (without query strings or fragments), actions such as "plan created" or "checkout started", what you click (its text, with element attributes masked) and where on the page, clicks that do nothing, page load and network timings, browser and device details, IP address, and browser errors, linked to your account id, email address and name once you sign in, together with your workspace's plan status and your role in it. When your workspace's subscription changes (a trial starts, it becomes paid or renews, a payment fails, it is cancelled), our servers record that change, as statuses only and never amounts, against the workspace owner's account id | Your browser, and our servers from our payment provider's notifications, through PostHog (section 5) |
+| Product analytics | Pages you open and leave (without query strings or fragments), actions such as "plan created" or "checkout started", what you click (its text, with element attributes masked) and where on the page, clicks that do nothing, page load and network timings, browser and device details, IP address, and browser errors, linked to your account id, email address and name once you sign in, together with your workspace's plan status and your role in it. When someone uses a calculator's email form, our servers record that it was used, which calculator, whether the reminder box was ticked, and a later confirmation or unsubscribe, under a random identifier and never with the email address. When your workspace's subscription changes (a trial starts, it becomes paid or renews, a payment fails, it is cancelled), our servers record that change, as statuses only and never amounts, against the workspace owner's account id | Your browser, and our servers from our payment provider's notifications, through PostHog (section 5) |
 | Website visits | On the marketing website (not the calculators): pages you view and leave, clicks and where they land, scroll depth, page load timings, the referring site and campaign tags, browser and device details, and IP address. No cookies or browser storage: PostHog tells visits apart with a daily hash of your IP address and browser details, computed on its servers. Not linked to an account | Your browser, through PostHog (section 5) |
 | Session recordings | A recording of what the hosted app shows and how you use it (pages, clicks, scrolling, network timings), including the planning figures on screen. Everything you type into form fields is masked before it leaves your browser, and page addresses lose their query strings, fragments and share-link tokens. Not recorded on shared-plan pages | Your browser, through PostHog (section 5) |
 | Email events | That we sent you a message, which kind, and whether it was delivered or bounced. We do not store the body | Our email provider |
 | Sign-up checks | Your IP address and browser signals, checked by a bot-protection service when you sign up, reset a password, or fail several sign-ins | Your browser |
 | Anti-abuse record | A keyed hash of your email address, kept so that one address cannot start a free trial again and again | Derived from your email |
 | Age confirmation | That you confirmed you are 18 or over when you signed up. We do not ask for your date of birth for this | You |
+| Calculator result emails | If you use "Email me this result" on a free calculator: your email address, which calculator, the inputs and results shown (numbers and the calculator's own choices only), and the email we send you with them. Your IP address is used, in memory only, to limit how many emails can be asked for | You, on the calculator page |
+| Reminder and updates list, only if you join | If you also tick the reminder box and confirm by the link in the email: your email address, the exact wording you agreed to and its version, the calculator and its inputs (for the yearly reminder), when you asked and when you confirmed, and, if you leave, when you unsubscribed | You |
 
 We do not collect your bank logins, card numbers (the payment provider does), or any special category data on
 purpose. You decide what to type in notes and names. Please do not put health, religion or similar information
@@ -87,13 +92,16 @@ reason for each use and the legal basis for it under those laws.
 | Take payment, issue invoices, handle refunds and failed payments | Billing, account | Contract |
 | Send service emails you need: verification, password reset, trial, payment, renewal, export and deletion notices, and warnings before an account is deleted | Account, email events | Contract |
 | Send optional check-in summary emails (never with figures) | Account | Contract. You can turn them off in settings or with the link in the email |
+| Send the calculator result you ask for by email, once | Calculator result emails | Steps you ask us to take (Article 6(1)(b)): you ask for the email |
+| Send the yearly re-check reminder and occasional Glideworth updates to people who joined the list | Reminder and updates list | Consent (Article 6(1)(a)), given by ticking the box and confirming by email. You can withdraw it at any time with the unsubscribe link in every list email or by writing to us; that does not affect what was sent before |
+| Limit how many calculator emails can be asked for, so the form cannot be used to flood someone's inbox | Calculator result emails (IP address, in memory only) | Legitimate interests (Article 6(1)(f)): preventing abuse of the form |
 | Run the service: backups, monitoring, error reports, fixing faults | Logs, planning (in encrypted backups only) | Contract |
 | Answer your support requests, including through a support grant you create | Account, what you tell us, planning (only if you create a grant) | Contract |
 | Understand which pages and features are used, find where people get stuck, and fix errors in the app | Product analytics, session recordings | Legitimate interests (Article 6(1)(f)). Our interest is improving the service. You can object (section 11) |
 | Keep tax and accounting records, and respond to legal requests we are bound by | Billing, tombstone record | Legal obligation (Article 6(1)(c)) |
 | Keep the service secure and stop abuse: sign-in throttling and alerts, bot checks, audit trail of security events, sign-up limits, one trial per person | Account, logs, sign-up checks, anti-abuse record | Legitimate interests (Article 6(1)(f)), only for security and abuse prevention. Our interest is protecting the service and its users. You can object (section 11) |
 
-We do not rely on consent for anything at launch. We do not take automated decisions about you with legal or similar effects. We do not profile you for
+We rely on consent only for the calculator reminder and updates list. We do not take automated decisions about you with legal or similar effects. We do not profile you for
 marketing.
 
 ## 5. Who we share it with
@@ -174,6 +182,10 @@ for a description of the safeguards at the contact address above.
 | Email delivery records (no message body) | 90 days |
 | Essential emails we must make sure reach you (billing, export and deletion notices): your address and the details the message contains, kept so a failed send can be retried | Deleted 30 days after the email is sent |
 | Anti-abuse record (keyed hash of your email) | 12 months after the end of the trial it relates to |
+| A calculator result email (your address, the inputs and results in it), kept so a failed send can be retried | Deleted 30 days after the email is sent |
+| A request to join the reminder list that you never confirmed | Deleted 30 days after the request. The link in the email stops working after 7 days |
+| Your place on the reminder and updates list | Until you unsubscribe |
+| After you unsubscribe | The calculator inputs are deleted at once. The record of what you agreed to and when you left is kept for 12 months, as evidence of your consent and its withdrawal, then deleted. Your address stays on our do-not-email list for that kind of email, so we never send it again; tell us if you want it removed from that list too |
 | Billing and tax records (held by the payment provider, plus a small record of ours: workspace identifier, deletion date and payment provider customer reference) | As long as tax and accounting law requires: up to 7 years. UAE corporate tax law requires records for 7 years. If the tax law of another country in which we have to account for tax on a sale requires a longer period for that sale, we keep only what that law requires, for that period |
 
 The 12-month deletion happens whether or not you sign in. Signing in does not extend it. Subscribing before
@@ -218,7 +230,8 @@ scopes you set. Writes through MCP are **off by default** for new workspaces; yo
 Wherever you live, you can ask us to: give you access to your data; correct it; delete it; restrict how we use
 it; give you a portable copy; and stop using it where we rely on legitimate interests. These are the rights in
 the UK GDPR and EU GDPR, and we give them to everyone. You also keep any rights your own country's law gives you.
-You can withdraw consent at any time, if we ever rely on it.
+You can withdraw consent at any time: for the calculator reminder and updates list, with the one-click unsubscribe
+link in every list email, or by writing to us.
 
 You can do most of this yourself:
 

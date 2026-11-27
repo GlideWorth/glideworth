@@ -4,10 +4,12 @@
  * at build time by the same engine code the browser runs (src/tools/engine), so the static page shows
  * real numbers without JavaScript. The page script (ToolPage) brings it to life.
  */
+import { site } from '../../config/site';
 import { currencySymbol } from '../../tools/format';
 import { renderResults } from '../../tools/render';
 import { defaults, isActive } from '../../tools/state';
 import type { ToolSpec, ViewModel } from '../../tools/types';
+import CalculatorEmail from '../CalculatorEmail.astro';
 import FieldInput from './Field.astro';
 
 interface Props {
@@ -25,7 +27,11 @@ const simulation = spec.mode === 'simulation';
 
 <section class="tool" data-tool={spec.id} data-mode={spec.mode} aria-label={name}>
   <form class="tool-form" data-tool-form novalidate>
-    <p class="tool-form-intro">Amounts are in today’s money. Your inputs stay in this browser.</p>
+    <p class="tool-form-intro">
+      Amounts are in today’s money. Your inputs stay in this browser{
+        site.calculatorEmail ? ' unless you email the result to yourself' : ''
+      }.
+    </p>
     <div class="tool-fields">
       {main.map((f) => <FieldInput field={f} hidden={!isActive(f, values)} symbol={symbol} />)}
     </div>
@@ -67,6 +73,7 @@ const simulation = spec.mode === 'simulation';
       Results update as you type{simulation ? ' (simulations run in the background and can be cancelled)' : ''}. The first
       result shown is for the default inputs, calculated when this page was built.
     </p>
+    {site.calculatorEmail && <CalculatorEmail spec={spec} vm={vm} />}
   </div>
 </section>
 

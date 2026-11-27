@@ -469,7 +469,7 @@ export const emailSuppressions = sqliteTable(
   "email_suppressions",
   {
     emailNormalized: text("email_normalized").notNull(),
-    /** `essential`, `checkin` or `all`. */
+    /** `essential`, `checkin`, `requested`, `marketing` or `all`. */
     category: text("category").notNull(),
     reason: text("reason", { enum: ["unsubscribe", "bounce", "complaint"] }).notNull(),
     createdAt: text("created_at").notNull().default(now),
@@ -645,6 +645,48 @@ export const webhookNonces = sqliteTable("webhook_nonces", {
   expiresAt: text("expires_at").notNull(),
 });
 
+/**
+ * Marketing-list consent from the free calculators on the marketing site (marketing/service.ts): one row per
+ * address. `pending` until the person clicks the double opt-in link; only `confirmed` rows may be sent list mail
+ * (and every list email still checks the `marketing` suppression). The exact wording agreed to is stored with its
+ * version. `inputs` is the calculator's checked inputs, kept for the yearly re-check reminder and cleared on
+ * unsubscribe. Unconfirmed rows are deleted 30 days after the request, unsubscribed rows 12 months after the
+ * unsubscribe (retention.ts); the `marketing` suppression stays so the address is never mailed again.
+ */
+export const marketingConsents = sqliteTable(
+  "marketing_consents",
+  {
+    /** `mc_` + 20 base32 characters. */
+    id: text("id").primaryKey(),
+    /** As typed (trimmed). Mail goes here. */
+    email: text("email").notNull(),
+    emailNormalized: text("email_normalized").notNull(),
+    status: text("status", { enum: ["pending", "confirmed", "unsubscribed"] }).notNull(),
+    /** `calc-updates-1`: the version of the wording (calculator-email.ts `CONSENT_TEXTS`). */
+    consentVersion: text("consent_version").notNull(),
+    /** The exact words shown next to the box when it was ticked. */
+    consentText: text("consent_text").notNull(),
+    /** Where it was given: `calculator:<id>`. */
+    source: text("source").notNull(),
+    /** The calculator id (the reminder reopens it). */
+    tool: text("tool").notNull(),
+    /** The calculator's checked inputs `{ key: value }`; `{}` after an unsubscribe. */
+    inputs: text("inputs", { mode: "json" }).$type<Record<string, number | string>>().notNull(),
+    requestedAt: text("requested_at").notNull(),
+    /** SHA-256 of the double opt-in token; null once used. */
+    confirmTokenHash: text("confirm_token_hash"),
+    confirmExpiresAt: text("confirm_expires_at"),
+    confirmedAt: text("confirmed_at"),
+    unsubscribedAt: text("unsubscribed_at"),
+    updatedAt: text("updated_at").notNull().default(now),
+  },
+  (t) => [
+    uniqueIndex("marketing_consents_email_ux").on(t.emailNormalized),
+    uniqueIndex("marketing_consents_token_ux").on(t.confirmTokenHash),
+    index("marketing_consents_status_ix").on(t.status),
+  ],
+);
+
 /** Commands the CLI hands to the running server (restore, backup, migrate) and their results. */
 export const opsCommands = sqliteTable(
   "ops_commands",
@@ -716,6 +758,7 @@ export const schema = {
   writerLocks,
   checkoutSessions,
   webhookNonces,
+  marketingConsents,
   opsCommands,
   cellHeartbeat,
   jobRuns,

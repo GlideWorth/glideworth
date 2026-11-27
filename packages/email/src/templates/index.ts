@@ -1,5 +1,6 @@
 import type { RenderContext, Rendered, TemplateData, TemplateId } from "../types.js";
 import { accountDeleted } from "./account-deleted.js";
+import { calculatorResult } from "./calculator-result.js";
 import { checkinSummary } from "./checkin-summary.js";
 import { deletionWarning } from "./deletion-warning.js";
 import { emailChangeConfirm } from "./email-change-confirm.js";
@@ -50,4 +51,5 @@ export const TEMPLATES: { readonly [K in TemplateId]: TemplateFn<K> } = {
   "deletion-warning": deletionWarning,
   "account-deleted": accountDeleted,
   "user-account-deleted": userAccountDeleted,
+  "calculator-result": calculatorResult,
 };

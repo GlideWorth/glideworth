@@ -53,6 +53,7 @@ import { fairThreadGate } from "./jobs/fair-gate.js";
 import { createPostHogErrorReporter, reportingLogger } from "./log/error-reporter.js";
 import { createLogger, type ErrorReporter, type Logger, type LogLevel } from "./log/index.js";
 import { createPostHogProductEvents, type ProductEvents } from "./log/product-events.js";
+import { CalculatorEmailService } from "./marketing/service.js";
 import { createTenantPolicy, type TenantPolicy } from "./policy.js";
 import { QuotaService } from "./quotas.js";
 import { CloudScheduler } from "./scheduler.js";
@@ -385,6 +386,26 @@ export async function createCloudRuntime<R extends TenantRuntimeBase>(
       })
     : undefined;
 
+  // "Email me this result" on the marketing site's calculators: only when the operator names the site's origin.
+  const calculatorEmail = config.calculatorEmail
+    ? {
+        siteOrigin: config.calculatorEmail.siteOrigin,
+        service: new CalculatorEmailService({
+          db,
+          outbox,
+          limiter,
+          keys,
+          log,
+          unsubscribe,
+          siteOrigin: config.calculatorEmail.siteOrigin,
+          publicUrl: config.publicUrl,
+          dailyLimit: config.calculatorEmail.dailyLimit,
+          events: productEvents,
+          kick: () => void outbox.drain().catch(() => {}),
+        }),
+      }
+    : undefined;
+
   const http: CloudHttpDeps = {
     config,
     accounts,
@@ -407,6 +428,8 @@ export async function createCloudRuntime<R extends TenantRuntimeBase>(
       ? { captchaSiteKey: env.GLIDEWORTH_TURNSTILE_SITE_KEY.trim() }
       : {}),
     ...(federation ? { federation } : {}),
+    ...(calculatorEmail ? { calculatorEmail } : {}),
+    ...(productEvents ? { productEvents } : {}),
     registry: registry as unknown as TenantRegistry<TenantRuntimeBase>,
     ...(env.GLIDEWORTH_MAILGUN_WEBHOOK_SIGNING_KEY
       ? { mailgunWebhookSigningKey: env.GLIDEWORTH_MAILGUN_WEBHOOK_SIGNING_KEY }

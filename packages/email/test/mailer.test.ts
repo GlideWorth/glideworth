@@ -95,6 +95,30 @@ describe("Mailer.send", () => {
   });
 });
 
+describe("requested mail (calculator result)", () => {
+  it("carries no unsubscribe headers or link: it is one email the person asked for", async () => {
+    const { mailer, transport } = setup();
+    await mailer.send(sam, "calculator-result", FIXTURES["calculator-result"]);
+    const m = (transport as ReturnType<typeof memoryTransport>).sent[0] as OutgoingEmail;
+    expect(m.category).toBe("requested");
+    expect(m.headers["List-Unsubscribe"]).toBeUndefined();
+    expect(m.text).not.toContain("unsubscribe?t=");
+  });
+
+  it("is still sent after a marketing unsubscribe, and blocked by a bounce or complaint", async () => {
+    const { mailer, suppressions } = setup();
+    suppressions.suppress("sam@example.test", "marketing", "unsubscribe");
+    expect(
+      (await mailer.send(sam, "calculator-result", FIXTURES["calculator-result"])).status,
+    ).toBe("sent");
+    suppressions.suppress("sam@example.test", "all", "complaint");
+    expect(await mailer.send(sam, "calculator-result", FIXTURES["calculator-result"])).toEqual({
+      status: "suppressed",
+      reason: "complaint",
+    });
+  });
+});
+
 describe("suppression", () => {
   it("honours a check-in unsubscribe for check-in mail, case-insensitively", async () => {
     const { mailer, transport, suppressions, log } = setup();

@@ -24,6 +24,53 @@ This is a service email about your account, so you cannot unsubscribe from it.
 "
 `;
 
+exports[`templates > calculator-result > text snapshot 1`] = `
+"Subject: Your Glideworth calculator result
+
+Glideworth
+
+Your Coast FIRE calculator result
+
+Here is the result you asked for from the Coast FIRE calculator on our website.
+
+Your result:
+
+FIRE number: $1,000,000
+Coast age: 51
+
+Open the calculator with these inputs:
+https://site.example.test/tools/coast-fire-calculator/?age=30&balance=100000&v=1
+
+Your inputs:
+
+Age now: 30
+Invested today: $100,000
+Return after inflation: 5%
+
+You also asked for a yearly reminder to re-check this, and occasional Glideworth updates. Confirm that here, or ignore it and you will not be added:
+
+Yes, send me the reminder:
+https://app.example.test/email/calculator/confirm?t=sample-token
+
+The link works for 7 days. Every reminder and update has a one-click unsubscribe.
+
+A calculator answers one question. Glideworth plans the whole picture: every account, tax and income, year by year, and shows why a plan falls short.
+
+Try the demo, no sign-up:
+https://app.example.test/demo
+
+Start a 14-day free trial:
+https://app.example.test/signup
+
+This is an estimate from the numbers entered and the assumptions on the calculator page, not financial advice.
+
+--
+Glideworth
+Questions? Write to support@example.test.
+You get this one email because this address was entered on our website to receive it. If that was not you, ignore it: you will not hear from us again unless you ask.
+"
+`;
+
 exports[`templates > checkin-summary > text snapshot 1`] = `
 "Subject: Your scheduled Glideworth check-in is ready
 

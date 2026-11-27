@@ -1,7 +1,8 @@
 /**
  * `registerCloudRoutes(app, deps)` (spec 8.3): every cloud-only HTTP route, declared with `@hono/zod-openapi`
  * so it appears in the API's OpenAPI document (cloud mode only). Request bodies are limited per route group
- * (64 KiB JSON; the Stripe webhook 1 MiB; Mailgun 256 KiB) before any handler reads them.
+ * (64 KiB JSON; the Stripe webhook 1 MiB; Mailgun 256 KiB; the calculator email form 16 KiB) before any handler
+ * reads them.
  */
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import type { MiddlewareHandler } from "hono";
@@ -12,6 +13,7 @@ import { type CloudHttpDeps, RouteKit } from "../kit.js";
 import { accountRoutes } from "./account.js";
 import { authRoutes } from "./auth.js";
 import { billingRoutes } from "./billing.js";
+import { calculatorEmailRoutes } from "./calculator-email.js";
 import { emailRoutes } from "./email.js";
 import { workspaceRoutes } from "./workspace.js";
 
@@ -40,6 +42,10 @@ export function registerCloudRoutes(app: OpenAPIHono<any>, d: CloudHttpDeps): vo
     app.use(p, limit(JSON_LIMIT));
   app.use("/stripe/webhook", limit(1024 * 1024));
   app.use("/email/webhooks/*", limit(256 * 1024));
+  if (d.calculatorEmail) {
+    app.use("/email/calculator", limit(16 * 1024));
+    app.use("/email/calculator/*", limit(4 * 1024));
+  }
   app.openAPIRegistry.registerComponent("securitySchemes", "cloudSession", {
     type: "apiKey",
     in: "cookie",
@@ -53,4 +59,6 @@ export function registerCloudRoutes(app: OpenAPIHono<any>, d: CloudHttpDeps): vo
   workspaceRoutes(k);
   billingRoutes(k);
   emailRoutes(k);
+  if (d.calculatorEmail)
+    calculatorEmailRoutes(k, d.calculatorEmail.service, d.calculatorEmail.siteOrigin);
 }

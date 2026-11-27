@@ -51,6 +51,8 @@ import { type CloudHttpDeps, isCloudRoute } from "../src/http/kit.js";
 import { registerCloudRoutes } from "../src/http/routes/index.js";
 import { type CredentialVerifiers, type TenantVars, tenantAuth } from "../src/http/tenant-auth.js";
 import { fairThreadGate } from "../src/jobs/fair-gate.js";
+import type { ProductEvents } from "../src/log/product-events.js";
+import { CalculatorEmailService } from "../src/marketing/service.js";
 import { createTenantPolicy } from "../src/policy.js";
 import { QuotaService } from "../src/quotas.js";
 import { CloudScheduler } from "../src/scheduler.js";
@@ -294,6 +296,7 @@ export function testPricing(): PricingConfig {
 }
 
 export const PUBLIC_URL = "https://app.example.test";
+export const SITE_ORIGIN = "https://site.example.test";
 export const WEBHOOK_SECRET = "whsec_test_cloud_fixture_secret";
 
 // ------------------------------------------------------------------------------------------- the stack
@@ -314,6 +317,8 @@ export async function makeCloud(
     google?: GoogleTestClient;
     /** Billing product analytics (`billingAnalytics`). Off when absent, as on a self-host copy. */
     track?: BillingTrack;
+    /** The calculators' "Email me this result" form (site origin `SITE_ORIGIN`). Off when absent, as by default. */
+    calculatorEmail?: { events?: ProductEvents; dailyLimit?: number };
   } = {},
 ) {
   const dataDir = o.dataDir ?? tempDir();
@@ -432,6 +437,7 @@ export async function makeCloud(
       : null,
     heartbeats: { backup: null, restoreTest: null, liveness: null },
     errorReports: null,
+    calculatorEmail: o.calculatorEmail ? { siteOrigin: SITE_ORIGIN, dailyLimit: 50 } : null,
   };
   const federation = o.google
     ? new FederationService({
@@ -455,6 +461,24 @@ export async function makeCloud(
         }),
       })
     : undefined;
+  const calculatorEmail = o.calculatorEmail
+    ? {
+        siteOrigin: SITE_ORIGIN,
+        service: new CalculatorEmailService({
+          db,
+          outbox,
+          limiter,
+          keys,
+          log: testLog,
+          unsubscribe,
+          siteOrigin: SITE_ORIGIN,
+          publicUrl: PUBLIC_URL,
+          events: o.calculatorEmail.events ?? null,
+          ...(o.calculatorEmail.dailyLimit ? { dailyLimit: o.calculatorEmail.dailyLimit } : {}),
+          now,
+        }),
+      }
+    : undefined;
   const http: CloudHttpDeps = {
     config,
     accounts,
@@ -477,6 +501,8 @@ export async function makeCloud(
     mailgunWebhookSigningKey: "mailgun-signing-key-for-tests",
     now,
     ...(federation ? { federation } : {}),
+    ...(calculatorEmail ? { calculatorEmail } : {}),
+    ...(o.calculatorEmail?.events ? { productEvents: o.calculatorEmail.events } : {}),
   };
   const scheduled: string[] = [];
   const scheduler = new CloudScheduler<FakeRuntime>({

@@ -64,6 +64,13 @@
       "when": 1795022313492,
       "tag": "0008_start_no_card_trials",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1795717865455,
+      "tag": "0009_marketing_consents",
+      "breakpoints": true
     }
   ]
 }

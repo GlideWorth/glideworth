@@ -9,16 +9,27 @@
  *                                                          sent: 30 days after it was given up, or queued)
  *   trial_grants   anti-abuse record (hash of the address) 12 months after the end of the trial it relates to
  *   known_devices  keyed hash of the device cookie         400 days after last use (the cookie's own lifetime)
+ *   marketing_consents  calculator list consent (address)  never confirmed: 30 days after the request;
+ *                                                          unsubscribed: 12 months after the unsubscribe
+ *                                                          (inputs cleared at once); confirmed: kept while
+ *                                                          subscribed
  *
  * Rows a person deletes earlier (their user account) go with that deletion; this is only the time limit.
  * Deletes run in batches of `batchSize` rows, each its own short statement, with a yield to the event loop in
  * between, and at most `maxBatches` per table per run: a large backlog is cleared over several hourly runs
  * instead of holding the database in one long write.
  */
-import { and, isNull, lt, lte, ne, or, type SQL, sql } from "drizzle-orm";
+import { and, eq, isNull, lt, lte, ne, or, type SQL, sql } from "drizzle-orm";
 import type { SQLiteTable } from "drizzle-orm/sqlite-core";
 import type { ControlDb } from "./db.js";
-import { auditEvents, emailLog, knownDevices, mailOutbox, trialGrants } from "./schema.js";
+import {
+  auditEvents,
+  emailLog,
+  knownDevices,
+  mailOutbox,
+  marketingConsents,
+  trialGrants,
+} from "./schema.js";
 
 const DAY = 86_400_000;
 
@@ -29,6 +40,8 @@ export const CONTROL_RETENTION = {
   mailOutboxDaysAfterSend: 30,
   trialGrantMonthsAfterTrial: 12,
   knownDeviceDays: 400,
+  marketingPendingDays: 30,
+  marketingUnsubscribedMonths: 12,
 } as const;
 
 export interface RetentionCounts {
@@ -37,6 +50,7 @@ export interface RetentionCounts {
   mailOutbox: number;
   trialGrants: number;
   knownDevices: number;
+  marketingConsents: number;
 }
 
 /** `months` calendar months before `at` (UTC). */
@@ -91,6 +105,8 @@ export async function pruneControlData(
     ),
   );
   const deviceCut = iso(new Date(now.getTime() - C.knownDeviceDays * DAY));
+  const pendingCut = iso(new Date(now.getTime() - C.marketingPendingDays * DAY));
+  const unsubscribedCut = iso(monthsBefore(now, C.marketingUnsubscribedMonths));
 
   const counts: RetentionCounts = {
     auditEvents: await drain(auditEvents, lt(auditEvents.at, auditCut)),
@@ -109,6 +125,16 @@ export async function pruneControlData(
     ),
     trialGrants: await drain(trialGrants, lt(trialGrants.grantedAt, grantCut)),
     knownDevices: await drain(knownDevices, lt(knownDevices.lastSeenAt, deviceCut)),
+    marketingConsents: await drain(
+      marketingConsents,
+      or(
+        and(eq(marketingConsents.status, "pending"), lt(marketingConsents.requestedAt, pendingCut)),
+        and(
+          eq(marketingConsents.status, "unsubscribed"),
+          lt(marketingConsents.unsubscribedAt, unsubscribedCut),
+        ),
+      ),
+    ),
   };
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
   return { counts, total, more };

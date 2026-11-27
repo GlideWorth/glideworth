@@ -47,6 +47,15 @@ export const site = {
    */
   demoLive: true,
   demoUrl: "https://app.glideworth.com/demo",
+  /**
+   * "Email me this result" on every calculator (components/CalculatorEmail.astro). True since 2026-11-27. The form
+   * posts to `calculatorEmailPath` on this origin, which the web server forwards to the app
+   * (infra/compose/Caddyfile); the app answers only when it runs with GLIDEWORTH_CALCULATOR_EMAIL_ORIGIN set
+   * (docs/ops/PRODUCTION.md, "Calculator result emails"). While false no form is shown, and the calculators send
+   * nothing anywhere.
+   */
+  calculatorEmail: true,
+  calculatorEmailPath: "/email/calculator",
 } as const;
 
 /** The "try the demo" call to action, or undefined while the demo is not live. */

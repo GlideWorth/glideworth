@@ -15,8 +15,9 @@ export function webApplication(t: {
     description: t.description,
     applicationCategory: "FinanceApplication",
     operatingSystem: "Any; runs in a web browser",
-    browserRequirements:
-      "Requires JavaScript. Calculations run in your browser; nothing you enter is sent anywhere.",
+    browserRequirements: site.calculatorEmail
+      ? "Requires JavaScript. Calculations run in your browser; nothing you enter is sent anywhere unless you ask for the result by email."
+      : "Requires JavaScript. Calculations run in your browser; nothing you enter is sent anywhere.",
     isAccessibleForFree: true,
     inLanguage: site.locale,
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },

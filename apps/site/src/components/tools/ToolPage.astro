@@ -12,6 +12,7 @@ import Callout from '../Callout.astro';
 import FAQ from '../FAQ.astro';
 import Prose from '../Prose.astro';
 import { page, type PagePath } from '../../config/pages';
+import { site } from '../../config/site';
 import PageLayout from '../../layouts/PageLayout.astro';
 import type { FaqItem } from '../../lib/jsonld';
 import { runTool } from '../../tools/engine';
@@ -35,7 +36,14 @@ interface Props {
   /** Show the box into the full planner (default true). Off where the planner does not model the topic. */
   planner?: boolean;
 }
-const { id, heading, lede, faq, adds, related, planner = true } = Astro.props;
+const { id, heading, lede: rawLede, faq, adds, related, planner = true } = Astro.props;
+// Every calculator's lede promises that nothing typed is sent; with the email form on, say when something is.
+const lede = site.calculatorEmail
+  ? rawLede.replace(
+      'nothing you type is sent anywhere.',
+      'nothing you type is sent anywhere unless you ask for the result by email.',
+    )
+  : rawLede;
 const meta = toolMeta(id);
 const spec = SPECS[id];
 const pm = page(meta.path as PagePath);

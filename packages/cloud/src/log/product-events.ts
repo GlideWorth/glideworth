@@ -1,6 +1,7 @@
 /**
  * Server-side product events for the hosted service: the billing moments no browser sees, because they happen
- * in Stripe (a trial ending in a first payment, a renewal, a cancellation that takes effect). Sent to the same
+ * in Stripe (a trial ending in a first payment, a renewal, a cancellation that takes effect), and the free
+ * calculators' "Email me this result" form (the calculator pages load no analytics of their own). Sent to the same
  * PostHog project as the web app and the server error reports (`config.errorReports`), so a self-host copy,
  * which has no token, sends nothing.
  *
@@ -43,7 +44,21 @@ export type ServerProductEvent =
         cancel_at_period_end: boolean;
       };
     }
-  | { event: "subscription_payment_succeeded"; properties?: undefined };
+  | { event: "subscription_payment_succeeded"; properties?: undefined }
+  /**
+   * "Email me this result" on a free calculator (marketing/service.ts). Anonymous: the distinct id is the consent
+   * record's id when the reminder box was ticked (so a later confirmation joins it), otherwise a random id, and no
+   * person profile is made. Never the address.
+   */
+  | {
+      event: "calculator_email_requested";
+      properties: { tool: string; updates_opt_in: boolean; $process_person_profile: false };
+    }
+  | {
+      event: "calculator_email_confirmed";
+      properties: { tool: string; $process_person_profile: false };
+    }
+  | { event: "calculator_email_unsubscribed"; properties: { $process_person_profile: false } };
 
 export interface ProductEvents {
   capture(distinctId: string, e: ServerProductEvent): void;

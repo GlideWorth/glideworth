@@ -1,4 +1,15 @@
-export type EmailCategory = "essential" | "checkin";
+/**
+ * `essential`: needed to run an account, no unsubscribe. `checkin`: scheduled check-in summaries. `requested`: a
+ * one-off message a person asked for on a public form (a calculator result); nothing to unsubscribe from, and it is
+ * still blocked by a bounce or complaint. `marketing`: list mail to people who opted in and confirmed (double
+ * opt-in); always carries a one-click unsubscribe.
+ */
+export type EmailCategory = "essential" | "checkin" | "requested" | "marketing";
+/** The categories a person can unsubscribe from (signed one-click links, `List-Unsubscribe`). */
+export const UNSUBSCRIBABLE_CATEGORIES: ReadonlySet<EmailCategory> = new Set<EmailCategory>([
+  "checkin",
+  "marketing",
+]);
 export interface Address {
   email: string;
   name?: string;
@@ -25,7 +36,8 @@ export type TemplateId =
   | "export-ready"
   | "deletion-warning"
   | "account-deleted"
-  | "user-account-deleted";
+  | "user-account-deleted"
+  | "calculator-result";
 export type SecurityChange =
   | "password-changed"
   | "password-reset"
@@ -122,6 +134,27 @@ export interface TemplateData {
   };
   /** The person deleted their own account (sign-in, sessions, security settings). Sent to its address. */
   "user-account-deleted": { name: string; deletedAt: string };
+  /**
+   * A free calculator's result, sent because the visitor asked for it on the marketing site. Every string comes
+   * from the server's own calculator catalog or is a number the server formatted or checked against the shapes
+   * the calculator can produce (packages/cloud/src/marketing): nothing typed by the visitor is echoed.
+   */
+  "calculator-result": {
+    toolName: string;
+    /** Label and formatted value of each input the result used. */
+    inputs: [string, string][];
+    /** Label and value of each headline figure (may be empty). */
+    figures: [string, string][];
+    /** Reopens the calculator with the same inputs. */
+    reopenUrl: string;
+    demoUrl: string | null;
+    trialUrl: string | null;
+    /** Present when the visitor ticked the reminder box and has not confirmed yet: the double opt-in link. */
+    confirmUrl: string | null;
+    confirmExpiresInDays: number;
+    /** The visitor ticked the box but this address already confirmed: say so instead of a link. */
+    alreadySubscribed: boolean;
+  };
 }
 export const TEMPLATE_CATEGORY: Readonly<Record<TemplateId, EmailCategory>> = Object.freeze({
   "verify-email": "essential",
@@ -146,6 +179,7 @@ export const TEMPLATE_CATEGORY: Readonly<Record<TemplateId, EmailCategory>> = Ob
   "deletion-warning": "essential",
   "account-deleted": "essential",
   "user-account-deleted": "essential",
+  "calculator-result": "requested",
 });
 export const TEMPLATE_IDS = Object.freeze(Object.keys(TEMPLATE_CATEGORY) as TemplateId[]);
 

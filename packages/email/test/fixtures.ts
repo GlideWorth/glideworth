@@ -112,6 +112,24 @@ export const FIXTURES: { [K in TemplateId]: TemplateData[K] } = {
     backupsPurgedBy: "16 December 2026",
   },
   "user-account-deleted": { name: "Sam Example", deletedAt: "16 November 2026" },
+  "calculator-result": {
+    toolName: "Coast FIRE calculator",
+    inputs: [
+      ["Age now", "30"],
+      ["Invested today", "$100,000"],
+      ["Return after inflation", "5%"],
+    ],
+    figures: [
+      ["FIRE number", "$1,000,000"],
+      ["Coast age", "51"],
+    ],
+    reopenUrl: "https://site.example.test/tools/coast-fire-calculator/?age=30&balance=100000&v=1",
+    demoUrl: "https://app.example.test/demo",
+    trialUrl: "https://app.example.test/signup",
+    confirmUrl: U("email/calculator/confirm"),
+    confirmExpiresInDays: 7,
+    alreadySubscribed: false,
+  },
 };
 
 /** Same shape, every free-text and numeric field changed to something loaded with figures. */
@@ -216,4 +234,15 @@ export const FIXTURES_ALT: { [K in TemplateId]: TemplateData[K] } = {
     backupsPurgedBy: "£2 next week",
   },
   "user-account-deleted": { name: "Alex £48,000 (7.5%)", deletedAt: "£1 yesterday" },
+  "calculator-result": {
+    toolName: "How long will my money last calculator",
+    inputs: [["Portfolio", "£48,000"]],
+    figures: [],
+    reopenUrl: "https://site.example.test/tools/how-long-will-my-money-last/?balance=48000&v=1",
+    demoUrl: null,
+    trialUrl: null,
+    confirmUrl: null,
+    confirmExpiresInDays: 1,
+    alreadySubscribed: true,
+  },
 };

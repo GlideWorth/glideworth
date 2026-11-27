@@ -51,6 +51,8 @@ const SECOND_PACKAGE_TABLES = [
   "oidc_flows",
   // Durable schedules of the long-interval periodic jobs (durable-jobs.ts, migration 0005).
   "job_runs",
+  // Calculator "Email me this result" list consent (marketing/service.ts, migration 0009).
+  "marketing_consents",
 ];
 
 const dirs: string[] = [];

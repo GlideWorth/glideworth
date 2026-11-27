@@ -2,7 +2,9 @@
 
 No-sign-up calculators that run the real planning engine (`@glideworth/core`) in the visitor's browser.
 Nothing a visitor types leaves the browser: no network requests, no storage, no analytics
-(`privacy.test.ts` checks the source and, after a build, every script a calculator page can load).
+(`privacy.test.ts` checks the source and, after a build, every script a calculator page can load). The one
+exception is the visitor's own request: "Email me this result" (below), shown only while `site.calculatorEmail` is
+true.
 
 ## How it fits together
 
@@ -109,6 +111,34 @@ balance and required portfolios came out slightly low: 825,413 instead of 825,73
 example). One difference remains: in a year with a negative return a `start` or `mid` withdrawal is
 not allowed to exceed the account's current (already reduced) balance, so with negative returns the
 years-the-money-lasts figure can differ from the formula by up to about 0.03 years.
+
+## "Email me this result"
+
+`components/CalculatorEmail.astro`, under every calculator's results (Calculator.astro), while `site.calculatorEmail`
+is true. A plain HTML form that posts to `/email/calculator` on the site's own origin; the web server forwards it to
+the app (`infra/compose/Caddyfile`), which sends one email with the inputs, the result figures and a link that
+reopens the calculator (`packages/cloud/src/marketing/`). An unticked box adds the visitor to the reminder list
+only after they click the confirmation link in that email (double opt-in); its wording is
+`CONSENT_TEXT` from `@glideworth/cloud/calculator-email`, stored with each consent record.
+
+- **Without JavaScript** the form still works: its hidden fields hold the build-time default result, and the app
+  answers with a page. With JavaScript, `lib/calculator-email.ts` posts with `fetch` and shows the answer in place;
+  `ui/mount.ts` sends a `glideworth:calculator-result` DOM event (`ui/result-event.ts`) after each completed run,
+  so the hidden fields hold the inputs and figures on screen. If the app is down the form says so; the
+  calculator is untouched.
+- **What the server accepts.** The address, the calculator id, the query string (read field by field against the
+  catalog: numbers in range, choices from the options) and the figures. A figure is kept only when its label and
+  value, with digits masked, match a shape the calculator is known to produce, so the email holds no words the
+  visitor chose. The catalog is `packages/cloud/src/marketing/catalog.generated.ts`, built from these specs and
+  this engine by `email-catalog.test.ts`. That test fails when a spec's inputs change or a default result shows a
+  figure shape the catalog lacks; regenerate it with
+  `UPDATE_EMAIL_CATALOG=1 pnpm --filter @glideworth/site exec vitest run src/tools/email-catalog.test.ts`, then
+  `pnpm format`.
+- **Trying it locally.** Run the API in cloud mode with `GLIDEWORTH_CALCULATOR_EMAIL_ORIGIN` set to the site's
+  local origin (and the `file` email transport), build the site with `calculatorEmail: true`, and serve `dist/`
+  behind a web server that forwards `POST /email/calculator` to the API, as `infra/compose/Caddyfile` does.
+- **No analytics on the page.** The server records the form's use (calculator, box ticked, confirmed,
+  unsubscribed) as anonymous server-side events, never with the address.
 
 ## Hand-off into the planner (for the app team)
 

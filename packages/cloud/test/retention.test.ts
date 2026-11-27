@@ -87,6 +87,8 @@ describe("control-database retention (privacy policy section 7)", () => {
       mailOutboxDaysAfterSend: 30,
       trialGrantMonthsAfterTrial: 12,
       knownDeviceDays: 400,
+      marketingPendingDays: 30,
+      marketingUnsubscribedMonths: 12,
     });
   });
 

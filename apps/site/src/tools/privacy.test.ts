@@ -1,6 +1,9 @@
 /**
- * Nothing a visitor types leaves the browser. Two checks:
- *  1. The calculators' source (modules, worker, components, pages) uses no network or storage API.
+ * Nothing a visitor types leaves the browser, except what they ask to have emailed to them. Three checks:
+ *  1. The calculators' source (modules, worker, components, pages) uses no network or storage API. The one
+ *     exception, the optional "Email me this result" form (components/CalculatorEmail.astro and
+ *     lib/calculator-email.ts, outside these folders), posts its own form to this origin when submitted, and
+ *     nothing else: checked separately.
  *  2. After a build, every script a calculator page can load (page script, the chunks it imports, the
  *     engine worker and the main-thread fallback) contains none either, engine included. When dist/
  *     is missing (tests run before a build), the second check is skipped with a note.
@@ -9,6 +12,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { site } from "../config/site";
 
 const siteRoot = join(import.meta.dirname, "../..");
 const FORBIDDEN: [string, RegExp][] = [
@@ -43,6 +47,22 @@ describe("no data leaves the browser", () => {
       const text = readFileSync(f, "utf8");
       for (const [name, re] of FORBIDDEN) expect(re.test(text), `${name} in ${f}`).toBe(false);
     }
+  });
+
+  it("the email form posts only its own form, to this origin, only when submitted, and stores nothing", () => {
+    const client = readFileSync(join(siteRoot, "src/lib/calculator-email.ts"), "utf8");
+    const fetches = [...client.matchAll(/\bfetch\s*\(/g)];
+    expect(fetches).toHaveLength(1);
+    expect(client).toMatch(/\.fetch\(form\.action, \{/);
+    expect(client).toMatch(/form\.addEventListener\("submit"/);
+    for (const [name, re] of FORBIDDEN.filter(([n]) => n !== "fetch()"))
+      expect(re.test(client), `${name} in lib/calculator-email.ts`).toBe(false);
+    const component = readFileSync(join(siteRoot, "src/components/CalculatorEmail.astro"), "utf8");
+    expect(component).toContain("action={site.calculatorEmailPath}");
+    for (const [name, re] of FORBIDDEN)
+      expect(re.test(component), `${name} in CalculatorEmail.astro`).toBe(false);
+    // A path on this origin, never another site.
+    expect(site.calculatorEmailPath).toMatch(/^\/[a-z]/);
   });
 
   const dist = join(siteRoot, "dist");

@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import type { EmailCategory, UnsubscribeSigner } from "./types.js";
+import { type EmailCategory, UNSUBSCRIBABLE_CATEGORIES, type UnsubscribeSigner } from "./types.js";
 
 const DOMAIN = "glideworth-unsubscribe-v1";
 const TOKEN_RE = /^[A-Za-z0-9_-]{1,1024}\.[A-Za-z0-9_-]{43}$/;
@@ -16,7 +16,8 @@ export interface HmacUnsubscribeSignerOptions {
 /**
  * Stateless signed one-click unsubscribe tokens: `<base64url(json)>.<base64url(hmac-sha256)>`.
  * The payload carries the (normalised) address and category and the issue time; the MAC covers a fixed
- * domain-separation prefix plus the payload. Only non-essential categories can be signed.
+ * domain-separation prefix plus the payload. Only the unsubscribable categories (`checkin`, `marketing`) can be
+ * signed.
  */
 export function hmacUnsubscribeSigner(o: HmacUnsubscribeSignerOptions): UnsubscribeSigner {
   if (!(o.key instanceof Uint8Array) || o.key.length < 16) {
@@ -29,7 +30,8 @@ export function hmacUnsubscribeSigner(o: HmacUnsubscribeSignerOptions): Unsubscr
 
   return {
     url(emailNormalized, category) {
-      if (category === "essential") throw new Error("essential mail cannot be unsubscribed from");
+      if (!UNSUBSCRIBABLE_CATEGORIES.has(category))
+        throw new Error(`${category} mail cannot be unsubscribed from`);
       const payload = Buffer.from(
         JSON.stringify({ e: emailNormalized, c: category, t: Math.floor(now() / 1000) }),
         "utf8",
@@ -55,7 +57,7 @@ export function hmacUnsubscribeSigner(o: HmacUnsubscribeSignerOptions): Unsubscr
       if (typeof parsed !== "object" || parsed === null) return null;
       const { e, c, t } = parsed as { e?: unknown; c?: unknown; t?: unknown };
       if (typeof e !== "string" || typeof t !== "number") return null;
-      if (c !== "checkin") return null;
+      if (typeof c !== "string" || !UNSUBSCRIBABLE_CATEGORIES.has(c as EmailCategory)) return null;
       if (o.ttlMs !== undefined && now() - t * 1000 > o.ttlMs) return null;
       return { email: e, category: c as EmailCategory };
     },

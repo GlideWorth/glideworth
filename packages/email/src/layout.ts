@@ -1,5 +1,12 @@
 import { SUBJECTS } from "./subjects.js";
-import { type RenderContext, type Rendered, TEMPLATE_CATEGORY, type TemplateId } from "./types.js";
+import {
+  type EmailCategory,
+  type RenderContext,
+  type Rendered,
+  TEMPLATE_CATEGORY,
+  type TemplateId,
+  UNSUBSCRIBABLE_CATEGORIES,
+} from "./types.js";
 import { assertEmail, assertUrl, escapeHtml, freeText } from "./validate.js";
 
 /**
@@ -38,28 +45,36 @@ function line(s: string): string {
   return freeText(s, "text", 1000);
 }
 
-function footerLines(category: "essential" | "checkin", ctx: RenderContext, unsub: string | null) {
+function footerLines(category: EmailCategory, ctx: RenderContext, unsub: string | null) {
   const out: { text: string; html: string }[] = [];
   const support = assertEmail(ctx.supportEmail, "supportEmail");
   out.push({
     text: `Questions? Write to ${support}.`,
     html: `Questions? Write to <a href="mailto:${escapeHtml(support)}" style="color:${LINK}">${escapeHtml(support)}</a>.`,
   });
+  const plain = (t: string) => out.push({ text: t, html: escapeHtml(t) });
   if (category === "essential") {
-    out.push({
-      text: "This is a service email about your account, so you cannot unsubscribe from it.",
-      html: "This is a service email about your account, so you cannot unsubscribe from it.",
-    });
-  } else if (unsub) {
-    out.push({
-      text: `You get this because check-in emails are switched on. Unsubscribe: ${unsub}`,
-      html: `You get this because check-in emails are switched on. <a href="${escapeHtml(unsub)}" style="color:${LINK}">Unsubscribe</a>.`,
-    });
+    plain("This is a service email about your account, so you cannot unsubscribe from it.");
+  } else if (category === "requested") {
+    plain(
+      "You get this one email because this address was entered on our website to receive it. If that was not you, ignore it: you will not hear from us again unless you ask.",
+    );
   } else {
-    out.push({
-      text: "You get this because check-in emails are switched on. You can switch them off in your settings.",
-      html: "You get this because check-in emails are switched on. You can switch them off in your settings.",
-    });
+    const why =
+      category === "marketing"
+        ? "You get this because you asked for Glideworth reminders and updates."
+        : "You get this because check-in emails are switched on.";
+    if (unsub)
+      out.push({
+        text: `${why} Unsubscribe: ${unsub}`,
+        html: `${escapeHtml(why)} <a href="${escapeHtml(unsub)}" style="color:${LINK}">Unsubscribe</a>.`,
+      });
+    else
+      plain(
+        category === "marketing"
+          ? `${why} Reply to this email to stop them.`
+          : `${why} You can switch them off in your settings.`,
+      );
   }
   return out;
 }
@@ -74,7 +89,7 @@ export function compose(
   const category = TEMPLATE_CATEGORY[id];
   const product = freeText(ctx.productName, "productName", 60) || "Glideworth";
   const unsub =
-    ctx.unsubscribeUrl && category !== "essential"
+    ctx.unsubscribeUrl && UNSUBSCRIBABLE_CATEGORIES.has(category)
       ? assertUrl(ctx.unsubscribeUrl, ctx, "unsubscribeUrl")
       : null;
 

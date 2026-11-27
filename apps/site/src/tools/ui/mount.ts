@@ -2,12 +2,14 @@
  * The calculator page controller: plain DOM code, no framework. It reads the form, validates inline,
  * keeps the inputs in the URL, and asks the engine worker for results, which it renders with the same
  * code the build used for the static page. The engine itself loads on the first interaction or when the
- * browser is idle. Nothing typed into the page leaves the browser: no network requests, no storage.
+ * browser is idle. Nothing typed into the page leaves the browser: no network requests, no storage. After each
+ * completed run it sends a DOM event (`result-event.ts`) that the optional "Email me this result" form listens to.
  */
 import { plannerUrl } from "../carry";
 import { applyResultVisibility } from "./result-visibility";
 import { currencySymbol, inputText } from "../format";
 import { renderResults } from "../render";
+import { RESULT_EVENT, type ResultDetail } from "./result-event";
 import { defaults, fromQuery, isActive, parseNumber, toQuery, validate } from "../state";
 import type { ToolSpec, Values } from "../types";
 import { type RunHandle, runInEngine, warm } from "../worker/client";
@@ -21,8 +23,9 @@ const idle = (fn: () => void, timeout: number) => {
 };
 
 export function mountCalculator(spec: ToolSpec): void {
-  const root = document.querySelector<HTMLElement>(`[data-tool="${spec.id}"]`);
-  if (!root) return;
+  const found = document.querySelector<HTMLElement>(`[data-tool="${spec.id}"]`);
+  if (!found) return;
+  const root: HTMLElement = found;
   const form = root.querySelector<HTMLFormElement>("[data-tool-form]")!;
   const results = root.querySelector<HTMLElement>("[data-results]")!;
   const announce = root.querySelector<HTMLElement>("[data-announce]")!;
@@ -88,6 +91,12 @@ export function mountCalculator(spec: ToolSpec): void {
     }
   }
 
+  /** Tells the email form which inputs and figures are on screen (null query: inputs invalid; null figures: defaults). */
+  function publish(query: string | null, figures: ResultDetail["figures"]) {
+    const detail: ResultDetail = { tool: spec.id, query, figures };
+    root.dispatchEvent(new CustomEvent(RESULT_EVENT, { bubbles: true, detail }));
+  }
+
   /** The planner box sits beside the calculator, not inside it, so look in the whole page. */
   function updateLinks() {
     const href = plannerUrl(spec, values);
@@ -134,6 +143,7 @@ export function mountCalculator(spec: ToolSpec): void {
     setStatus(simulation ? "Starting the simulation…" : "Calculating…", true);
     if (simulation && cancelBtn) cancelBtn.hidden = false;
     if (runBtn) runBtn.hidden = true;
+    const used = values;
     const handle = runInEngine(spec.id, values, simulation ? showProgress : undefined);
     current = handle;
     handle.result
@@ -147,6 +157,10 @@ export function mountCalculator(spec: ToolSpec): void {
           return;
         }
         results.innerHTML = renderResults(out.vm);
+        publish(
+          toQuery(spec, used),
+          out.vm.figures.map((f) => [f.label, f.value]),
+        );
         setStatus(notice);
         notice = "";
         // Announce after the DOM update so screen readers read the new summary once.
@@ -184,6 +198,7 @@ export function mountCalculator(spec: ToolSpec): void {
       hideProgress();
       invalid = true;
       setStatus("Correct the highlighted input to update the results.", false);
+      publish(null, null);
       return;
     }
     invalid = false;
@@ -234,6 +249,7 @@ export function mountCalculator(spec: ToolSpec): void {
     history.replaceState(null, "", `${location.pathname}${location.hash}`);
     // The default results were rendered at build time: put them back without running anything.
     results.innerHTML = staticHtml;
+    publish(toQuery(spec, values), null);
     setStatus("");
     if (runBtn) runBtn.hidden = true;
     announce.textContent = "Inputs reset to the defaults.";
@@ -265,6 +281,7 @@ export function mountCalculator(spec: ToolSpec): void {
       notice = `Some values in the link could not be read and were reset to the defaults (${fromUrl.invalid.join(", ")}).`;
     if (Object.keys(errors).length > 0) {
       invalid = true;
+      publish(null, null);
       setStatus(
         notice
           ? `${notice} Correct the highlighted input to update the results.`

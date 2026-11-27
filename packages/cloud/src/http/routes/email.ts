@@ -3,7 +3,8 @@
  *
  * `GET /email/unsubscribe?t=` shows a confirmation page and changes nothing (link scanners follow GETs);
  * `POST /email/unsubscribe` (the page's form, or a mail client's RFC 8058 one-click POST) records the
- * suppression and turns the person's check-in emails off. The signed token is the authorisation, so no session
+ * suppression and turns the person's check-in emails off, or, for a `marketing` (list) token, marks the
+ * calculator consent record unsubscribed. The signed token is the authorisation, so no session
  * or CSRF token is involved (one-click POSTs come from mail providers, cross-site by design).
  *
  * `POST /email/webhooks/mailgun` (review finding 4, spec 5.4 "provider bounce and complaint webhooks"):
@@ -19,6 +20,7 @@ import { normalizeEmail } from "../../accounts/email.js";
 import { controlEmailStores } from "../../control/email-stores.js";
 import { users, webhookNonces } from "../../control/schema.js";
 import { CloudError } from "../../errors.js";
+import { recordListUnsubscribe } from "../../marketing/service.js";
 import { html, page, securityHeaders } from "../html.js";
 import type { RouteKit } from "../kit.js";
 
@@ -95,14 +97,18 @@ export function emailRoutes(k: RouteKit): void {
           html`<h1>This link is not valid</h1>
             <p>You can change email settings in your account.</p>`,
         );
+      const list = v.category === "marketing";
       return htmlPage(
         c,
         200,
         "Unsubscribe",
-        html`<h1>Stop check-in emails?</h1>
+        html`<h1>${list ? "Stop Glideworth reminders and updates?" : "Stop check-in emails?"}</h1>
           <p>
-            You will no longer get scheduled check-in summaries. Account and security emails still
-            arrive.
+            ${
+              list
+                ? "You will no longer get the yearly re-check reminder or Glideworth updates."
+                : "You will no longer get scheduled check-in summaries. Account and security emails still arrive."
+            }
           </p>
           <form method="post" action="/email/unsubscribe">
             <input type="hidden" name="t" value="${query.t}" /><button type="submit">
@@ -146,13 +152,21 @@ export function emailRoutes(k: RouteKit): void {
           .set({ checkinEmails: false })
           .where(eq(users.emailNormalized, v.email))
           .run();
+      if (v.category === "marketing")
+        recordListUnsubscribe(d.db, v.email, k.now(), d.productEvents ?? null);
       d.log.info("email.unsubscribed", { category: v.category });
       return htmlPage(
         c,
         200,
         "Unsubscribed",
         html`<h1>You are unsubscribed</h1>
-          <p>No more check-in emails will be sent.</p>`,
+          <p>
+            ${
+              v.category === "marketing"
+                ? "No more reminders or updates will be sent."
+                : "No more check-in emails will be sent."
+            }
+          </p>`,
       );
     },
   );

@@ -1,6 +1,7 @@
 ---
 import Callout from '../../components/Callout.astro';
 import { page } from '../../config/pages';
+import { site } from '../../config/site';
 import PageLayout from '../../layouts/PageLayout.astro';
 import { TAX_COUNTRIES } from '../../tools/engine/model';
 import { TOOLS } from '../../tools/registry';
@@ -17,7 +18,7 @@ const groups = [
   {...page('/tools/')}
   heading="Free retirement and FIRE calculators"
   eyebrow="Free tools"
-  lede="Calculators that run the same planning engine as Glideworth, in your browser, with no sign-up. Nothing you type is sent anywhere, and every result links to the method behind it."
+  lede={`Calculators that run the same planning engine as Glideworth, in your browser, with no sign-up. Nothing you type is sent anywhere${site.calculatorEmail ? ' unless you ask us to email you a result' : ''}, and every result links to the method behind it.`}
   crumbs={[{ label: 'Free tools', href: '/tools/' }]}
 >
   <div class="container tools-index">

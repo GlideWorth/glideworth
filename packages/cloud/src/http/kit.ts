@@ -20,6 +20,8 @@ import type { Keyring } from "../crypto/keyring.js";
 import { CloudError } from "../errors.js";
 import type { UnsubscribeSigner } from "../external-types.js";
 import type { Logger } from "../log/index.js";
+import type { ProductEvents } from "../log/product-events.js";
+import type { CalculatorEmailService } from "../marketing/service.js";
 import type { QuotaService } from "../quotas.js";
 import type { TenantRegistry } from "../tenancy/registry.js";
 import type {
@@ -73,6 +75,13 @@ export interface CloudHttpDeps {
   now?: () => Date;
   /** Not in spec 8.3: "Sign in with Google". Absent when not configured: no Google route is registered. */
   federation?: FederationService;
+  /**
+   * Not in spec 8.3: the free calculators' "Email me this result" form. Absent unless
+   * `GLIDEWORTH_CALCULATOR_EMAIL_ORIGIN` is set: then no route is registered.
+   */
+  calculatorEmail?: { service: CalculatorEmailService; siteOrigin: string };
+  /** Server-side product events (PostHog); absent when not configured. */
+  productEvents?: ProductEvents;
 }
 
 /** What the host's support view renders: headings with plain-text rows (escaped by the console). */

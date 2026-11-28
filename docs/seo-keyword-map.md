@@ -50,6 +50,7 @@ primary keyword. `—` means the URL has no secondary.
 | /                                                     | retirement and fire planner                   | open source financial independence planner                             | Glideworth: retirement and FIRE planner (39)                               | Know when you can retire, and how much you can spend.                                   |
 | /about/                                               | about glideworth                              | —                                                                      | About · Glideworth (18)                                                    | A planner you can see inside                                                            |
 | /api/                                                 | retirement planner api                        | ai agent retirement planner                                            | API and MCP for AI agents · Glideworth (38)                                | Your plan, open to your AI assistant                                                    |
+| /au/                                                  | retirement planner australia                  | retirement planning software australia                                 | Retirement planner Australia: super, tax, FIRE · Glideworth (59)           | Know when you can retire in Australia, and how much you can spend.                      |
 | /authors/glideworth-team/                             | glideworth team                               | —                                                                      | The Glideworth team · Glideworth (32)                                      | The Glideworth team                                                                     |
 | /blog/                                                | retirement planning articles                  | —                                                                      | Blog · Glideworth (17)                                                     | Notes on planning, tax and building in the open                                         |
 | /blog/ai-assistant-access-to-your-financial-plan/     | ai assistant financial plan                   | chatgpt access to a financial plan                                     | AI assistant access to your financial plan · Glideworth (55)               | AI assistant access to your financial plan                                              |
@@ -268,6 +269,22 @@ as its secondary. It is for readers who have already decided to leave, so it doe
 **projectionlab alternative** (owned by `/compare/projectionlab/`) or **import projectionlab json** (owned by
 `/docs/importing/projectionlab/`). It links to both with those keywords as the anchors, and both link back
 with the anchor "switch from ProjectionLab".
+
+### Retirement planner Australia
+
+`/au/` is the Australian version of the home page. It owns **retirement planner australia**, with
+**retirement planning software australia** as its secondary. `/planning/au/` keeps its own row (the tax rules
+in detail) and links to `/au/` with the anchor "Retirement planner Australia"; `/au/` links back to it. `/au/`
+does not target calculator queries (**super calculator**, **retirement calculator australia**, **super
+drawdown calculator**): the site has no Australian calculator, and `/au/` links to the country-neutral ones.
+
+The choice was checked with keyword data for Australia (OpenSEO, Google Australia, English, read
+2026-11-28): **retirement planner australia** 480 searches a month, keyword difficulty 9, commercial intent
+(its close variant **retirement planning australia** shares the figure, informational); **retirement planning
+software australia** 30, commercial. Larger Australian queries were left alone: **super calculator** (33,100)
+and **retirement calculator australia** (2,400) are calculator queries, **retirement planner** (2,900) is the
+root page's territory, **fire australia** (1,300, difficulty 47) is a broad topic, and **when can i retire
+australia** (390, difficulty 15) is unowned, like its UK twin.
 
 ## Unowned searches
 

@@ -7,13 +7,14 @@
  * (code, path, label) from the page's HTML instead (see components/landing/CountryBanner.astro).
  */
 import { absoluteUrl } from "../config/site";
+import { au } from "./countries/au";
 import { ca } from "./countries/ca";
 import { uk } from "./countries/uk";
 import { us } from "./countries/us";
 import type { VersionLink } from "./guess";
 import type { LandingEntry } from "./types";
 
-export const LANDINGS: readonly LandingEntry[] = [us, uk, ca];
+export const LANDINGS: readonly LandingEntry[] = [us, uk, ca, au];
 
 /** The entry `/` uses; also the `x-default`. */
 export const DEFAULT_LANDING: LandingEntry = us;

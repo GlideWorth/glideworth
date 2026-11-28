@@ -224,6 +224,29 @@ describe.skipIf(!built)("the built country versions", () => {
     expect(text).toContain("£");
   });
 
+  it("leave US and UK terms off the Australian page", () => {
+    const au = LANDINGS.find((e) => e.code === "AU");
+    if (!au) return;
+    const main = html(au).split("<main")[1]!.split("</main>")[0]!;
+    const text = main
+      .replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, "")
+      .replace(/<[^>]+>/g, " ");
+    for (const term of [
+      "401(k)",
+      "IRA",
+      "Roth",
+      "Social Security",
+      "IRS",
+      "ISA",
+      "SIPP",
+      "State Pension",
+      "HMRC",
+      "£",
+    ])
+      expect(text, term).not.toContain(term);
+    expect(text).toContain("A$");
+  });
+
   it("keep the hreflang set off every other page", () => {
     for (const path of [
       "pricing/index.html",

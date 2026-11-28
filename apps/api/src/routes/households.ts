@@ -19,6 +19,7 @@ import {
   SnapshotCreate,
 } from "../services/households.js";
 import { BalanceHistoryImportBody, BalanceHistoryImportResult } from "../services/history.js";
+import { HouseholdChangeOp } from "../services/household-changes.js";
 import { CsvAnalyzeBody, CsvImportBody, ImportBody } from "../services/imports.js";
 import { type Page, PageQuery, pageOf, paginate } from "../util.js";
 import {
@@ -49,6 +50,12 @@ const CurrentFinancesDocument = z
     finances: CurrentFinances,
   })
   .meta({ id: "CurrentFinancesDocument" });
+const HouseholdChangesBody = z
+  .object({
+    operations: z.array(HouseholdChangeOp).min(1).max(50),
+    dryRun: z.boolean().default(false),
+  })
+  .meta({ id: "HouseholdChanges" });
 const CurrentFinancesSaved = HouseholdRecord.extend({
   snapshot: ProgressSnapshot.nullable().describe(
     "Today's automatic progress snapshot, when this save created or updated it.",
@@ -662,6 +669,62 @@ export function householdRoutes({ app, svc }: RouteCtx) {
       );
       c.header("ETag", `"${out.version}"`);
       return c.json(out, 200);
+    },
+  );
+
+  app.openapi(
+    route("write", {
+      method: "post",
+      path: `${H}/{id}/changes`,
+      operationId: "applyHouseholdChanges",
+      tags: ["Households"],
+      summary:
+        "Add, update or remove accounts, real assets, debts, people and dependents, or change the household's name, location or locale, in one atomic write (dryRun previews)",
+      description:
+        "Operations apply in order, all or nothing. `update` takes a JSON merge patch of the item. With `dryRun: true` nothing is stored and the response describes each change. " +
+        "Removing an item a plan still uses is `409 IN_USE` naming the plans and items (archive it with `update` `{archived: true}` instead). The currency cannot be changed here. " +
+        "Pass the household version you read in `If-Match`.",
+      request: {
+        params: IdParam,
+        headers: IfMatch,
+        body: {
+          content: { "application/json": { schema: HouseholdChangesBody } },
+          required: true,
+        },
+      },
+      responses: {
+        200: json(
+          z.object({
+            applied: z.boolean(),
+            version: z
+              .number()
+              .int()
+              .describe("Household version after the write (the current one for a dry run)."),
+            changes: z.array(z.string()).describe("Each change in words."),
+            snapshot: ProgressSnapshot.nullable(),
+          }),
+          "Applied or previewed",
+        ),
+      },
+    }),
+    (c) => {
+      const body = c.req.valid("json");
+      const out = svc(c).households.applyChanges(
+        c.req.valid("param").id,
+        body.operations,
+        { expected: parseIfMatch(c), dryRun: body.dryRun },
+        actorOf(c),
+      );
+      c.header("ETag", `"${out.version}"`);
+      return c.json(
+        {
+          applied: out.applied,
+          version: out.version,
+          changes: out.changes,
+          snapshot: out.snapshot,
+        },
+        200,
+      );
     },
   );
 

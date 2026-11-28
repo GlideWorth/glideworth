@@ -37,6 +37,11 @@ import { baseConverter } from "../fx.js";
 import { clone, mergePatch, newId, nowIso } from "../util.js";
 import type { ServiceCtx } from "./context.js";
 import type { BalanceHistoryImportResult } from "./history.js";
+import {
+  type HouseholdChangeOp,
+  type HouseholdChangeResult,
+  planHouseholdChanges,
+} from "./household-changes.js";
 import type { PlansService } from "./plans.js";
 import type { SettingsService } from "./settings.js";
 
@@ -573,6 +578,42 @@ export class HouseholdsService {
         ? this.upsertDailyAutoSnapshot(id, record.finances, undefined, false)
         : null;
     return { record, snapshot };
+  }
+
+  /**
+   * A list of household edits (add / update / remove accounts, real assets, debts, people, dependents;
+   * household name, location, locale), all or nothing. `dryRun` checks and describes them without storing
+   * anything; otherwise they are saved in one write through `replaceCurrent` (the same checks and daily
+   * progress snapshot as the web app's save). A removal that plans still depend on is refused, naming them.
+   */
+  applyChanges(
+    id: string,
+    ops: HouseholdChangeOp[],
+    opts: { expected?: number | undefined; dryRun: boolean },
+    actor: Actor,
+  ): HouseholdChangeResult & {
+    version: number;
+    applied: boolean;
+    snapshot: ProgressSnapshot | null;
+  } {
+    const cur = this.get(id);
+    this.checkVersion(cur, opts.expected);
+    const next = planHouseholdChanges(cur, ops, this.plans.list({ householdId: id }));
+    if (opts.dryRun) return { ...next, version: cur.version, applied: false, snapshot: null };
+    const out = this.replaceCurrent(
+      id,
+      { household: next.household, finances: next.finances },
+      opts.expected ?? cur.version,
+      actor,
+    );
+    return {
+      household: out.record.household,
+      finances: out.record.finances,
+      changes: next.changes,
+      version: out.record.version,
+      applied: true,
+      snapshot: out.snapshot,
+    };
   }
 
   /**

@@ -8,6 +8,20 @@ listing every commit. Product news for people using the hosted service is on
 
 ## Unreleased
 
+- **MCP: flows you can read, plans you can manage, household edits and a plan optimiser.** `get_plan` (summary)
+  now shows each flow's amount (`40000 real/yearly`, `50% of remaining surplus`, `max`), its dates with fixed
+  dates resolved (`2027-12` plus one month reads `2028-01`) and the number of months, the account or debt it
+  goes to by name and id, its priority and whether it is mandatory; income and expenses resolve their dates the
+  same way. New write tools: `duplicate_plan`, `rename_plan`, `set_main_plan`, `set_plan_archived`, and
+  `preview_household_change` (stores nothing) then `apply_household_change` for adding, updating or removing
+  accounts, property, debts, people and dependents in one atomic write, checked against the household version;
+  removing something a plan still uses is refused with the plans and items that use it. REST twin: `POST
+  /households/{id}/changes` (`dryRun` previews). New calculation tool `optimise_plan` (REST `POST
+  /plans/{id}/solve/optimise`): which settings of the flow levers you list (switch off, scale, redirect a debt
+  paydown into an account or back) give the earliest retirement, the earliest financial independence or the
+  most net worth at the end without a shortfall in the deterministic projection; a heuristic search over those
+  levers, exhaustive for small spaces and coordinate descent otherwise, returning ops for a change set. 79 MCP
+  tools.
 - **Today's totals follow the plan's exchange rates.** Current finances and the dashboard convert foreign
   balances with the same table as the projection: the household's rates, with the plan's pairs replacing them.
   A balance whose rate lives only on the plan is included, and the "no exchange rate, cannot be simulated"

@@ -55,36 +55,39 @@ Report money in today's money unless the user asks otherwise, and say so.
 
 ## Which tool answers which question
 
-| The user asks                                     | Call                                                                                                                                                  |
-| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| "Summarise my finances and plan"                  | `get_plan_summary`; `get_household` for account detail                                                                                                |
-| "What is my chance of success? Why does it fail?" | `run_monte_carlo` (read `headline` and `failureAnalysis`), then `explain_year` on the first failing year                                              |
-| "How much can I spend?"                           | `solve_max_spending` with a `targetSuccessRate` such as `0.9`                                                                                         |
-| "When can I retire?"                              | `solve_retirement_date`                                                                                                                               |
-| "How much do I need to save?"                     | `solve_required_savings`, `solve_required_portfolio`                                                                                                  |
-| "What withdrawal rate is safe?"                   | `solve_safe_withdrawal_rate`; guardrails with `evaluate_guardrails` or `guyton_klinger`                                                               |
-| "What if I retire three years earlier?"           | `preview_whatif` with template `early-retirement`, then `compare_plans`                                                                               |
-| "What if markets crash the year I retire?"        | `list_whatif_templates`, then `preview_whatif`                                                                                                        |
-| "What if one of us dies early?"                   | `survivor_scenarios`                                                                                                                                  |
-| "Where did the money go in 2041?"                 | `explain_year`; a range with `explain_years`                                                                                                          |
-| "Why did the plan end up here?"                   | `explain_projection`; `sensitivity` for the assumptions that matter most                                                                              |
-| "What is wrong with my assumptions?"              | `audit_plan`; preview a finding's fix with `preview_changes`                                                                                          |
-| "How much tax will I pay? How do I pay less?"     | `tax_breakdown`, `income_by_tax_rate`, `optimise_tax_strategy`, `strategy_matrix`                                                                     |
-| "Should I convert to Roth? How much each year?"   | `plan_roth_conversions` (US; omit `targets` to let it choose), then `propose_change_set` with its `patch` if the user agrees                          |
-| "How is my flat abroad taxed?"                    | `explain_item_taxation`, `tax_by_country`, `cross_border_rules`                                                                                       |
-| "Why do these two plans differ?"                  | `explain_difference`, `diff_plans`, `compare_plans`                                                                                                   |
-| "What changed since my last check-in?"            | `what_changed_since_checkin`, `get_plan_health_history`, `list_notifications`                                                                         |
-| "Why did my chance of success change?"            | `explain_result_change` (splits the movement by cause; read-only)                                                                                     |
-| "Give me the year-by-year table"                  | `export_table`; report data with `export_report`                                                                                                      |
-| "Update my balances"                              | `list_accounts`, then `update_account_balances` (a write tool)                                                                                        |
-| "Import this CSV or spreadsheet"                  | `preview_csv_import`, then `apply_csv_import`; balance history per account with `preview_balance_history_import`, then `apply_balance_history_import` |
-| "Which exchange rates does the plan use?"         | `list_fx_rates`; change one with `set_fx_rate` (a write tool)                                                                                         |
-| "Share my results with my partner"                | `create_share_link` (a write tool): an expiring, read-only link                                                                                       |
+| The user asks                                                                   | Call                                                                                                                                                  |
+| ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Summarise my finances and plan"                                                | `get_plan_summary`; `get_household` for account detail                                                                                                |
+| "What is my chance of success? Why does it fail?"                               | `run_monte_carlo` (read `headline` and `failureAnalysis`), then `explain_year` on the first failing year                                              |
+| "How much can I spend?"                                                         | `solve_max_spending` with a `targetSuccessRate` such as `0.9`                                                                                         |
+| "When can I retire?"                                                            | `solve_retirement_date`                                                                                                                               |
+| "How much do I need to save?"                                                   | `solve_required_savings`, `solve_required_portfolio`                                                                                                  |
+| "What withdrawal rate is safe?"                                                 | `solve_safe_withdrawal_rate`; guardrails with `evaluate_guardrails` or `guyton_klinger`                                                               |
+| "What if I retire three years earlier?"                                         | `preview_whatif` with template `early-retirement`, then `compare_plans`                                                                               |
+| "What if markets crash the year I retire?"                                      | `list_whatif_templates`, then `preview_whatif`                                                                                                        |
+| "What if one of us dies early?"                                                 | `survivor_scenarios`                                                                                                                                  |
+| "Where did the money go in 2041?"                                               | `explain_year`; a range with `explain_years`                                                                                                          |
+| "Why did the plan end up here?"                                                 | `explain_projection`; `sensitivity` for the assumptions that matter most                                                                              |
+| "What is wrong with my assumptions?"                                            | `audit_plan`; preview a finding's fix with `preview_changes`                                                                                          |
+| "How much tax will I pay? How do I pay less?"                                   | `tax_breakdown`, `income_by_tax_rate`, `optimise_tax_strategy`, `strategy_matrix`                                                                     |
+| "Should I convert to Roth? How much each year?"                                 | `plan_roth_conversions` (US; omit `targets` to let it choose), then `propose_change_set` with its `patch` if the user agrees                          |
+| "How is my flat abroad taxed?"                                                  | `explain_item_taxation`, `tax_by_country`, `cross_border_rules`                                                                                       |
+| "Why do these two plans differ?"                                                | `explain_difference`, `diff_plans`, `compare_plans`                                                                                                   |
+| "What changed since my last check-in?"                                          | `what_changed_since_checkin`, `get_plan_health_history`, `list_notifications`                                                                         |
+| "Why did my chance of success change?"                                          | `explain_result_change` (splits the movement by cause; read-only)                                                                                     |
+| "Give me the year-by-year table"                                                | `export_table`; report data with `export_report`                                                                                                      |
+| "Update my balances"                                                            | `list_accounts`, then `update_account_balances` (a write tool)                                                                                        |
+| "I opened an ISA / sold the car / my rate changed"                              | `preview_household_change`, then `apply_household_change` with its `householdVersion` (a write tool)                                                  |
+| "Overpay the mortgage or invest? Which savings changes let me retire earliest?" | `optimise_plan` with the flows as levers (`toggle`, `scale`, `redirect`), then `preview_changes` with `best.ops`                                      |
+| "Copy, rename, archive this plan; make it the main one"                         | `duplicate_plan`, `rename_plan`, `set_plan_archived`, `set_main_plan` (write tools)                                                                   |
+| "Import this CSV or spreadsheet"                                                | `preview_csv_import`, then `apply_csv_import`; balance history per account with `preview_balance_history_import`, then `apply_balance_history_import` |
+| "Which exchange rates does the plan use?"                                       | `list_fx_rates`; change one with `set_fx_rate` (a write tool)                                                                                         |
+| "Share my results with my partner"                                              | `create_share_link` (a write tool): an expiring, read-only link                                                                                       |
 
 The deterministic projection itself is `simulate_plan`. Monte Carlo uses a fixed default seed, so repeated
 runs agree and are cached.
 
-**Long jobs.** Monte Carlo, the solvers, guardrails, tax strategy and sensitivity wait up to `wait` seconds
+**Long jobs.** Monte Carlo, the solvers, `optimise_plan`, guardrails, tax strategy and sensitivity wait up to `wait` seconds
 (default 30). If the result is not ready they return a `jobId`; call `get_job` with that id and `wait: 60`.
 Fewer `trials` make a run faster and noisier.
 
@@ -120,7 +123,15 @@ An operation whose target does not exist is `PATCH_CONFLICT`; check ids with `ge
 
 Household data is different: `update_account_balances`, `record_progress_snapshot` and `apply_csv_import`
 write directly, because they record what happened rather than assumptions. Read the figures back to the user
-and get their confirmation before you call them.
+and get their confirmation before you call them. Other household edits (a new account, a property sold, a new
+mortgage rate, a partner) go through `preview_household_change`, which stores nothing and lists each change
+with the main plan before and after; after the user agrees, `apply_household_change` with the same operations
+and the `householdVersion` the preview returned. Something a plan still uses cannot be removed: archive it
+(`update` with `{"archived": true}`) or change the plan first.
+
+`optimise_plan` only searches the levers you give it, with the deterministic projection (no Monte Carlo):
+say so when you report its answer, and check the chance of success of the result with `run_monte_carlo` on a
+branch before the user acts on it.
 
 **Write tools are missing?** They exist only when writes are on and the key or connection has the `write`
 scope. On a self-hosted server the owner sets `GLIDEWORTH_MCP_ALLOW_WRITES=true` and uses a key with `write`;

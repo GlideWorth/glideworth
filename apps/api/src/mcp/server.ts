@@ -21,11 +21,13 @@ import {
   HistoryParseOptions,
   HistoryRowBody,
 } from "../services/history.js";
+import { HouseholdChangeOp } from "../services/household-changes.js";
 import type { JobView } from "../services/jobs.js";
 import type { Services } from "../services.js";
 import {
   compactAttribution,
   compactMonteCarlo,
+  compactOptimise,
   compactPlan,
   compactProjection,
   compactSolver,
@@ -33,6 +35,7 @@ import {
   compactStrategies,
   compactYearNarrative,
   outcomeOf,
+  planViewContext,
   roundMoney,
 } from "../views.js";
 import { registerPrompts } from "./prompts.js";
@@ -88,14 +91,14 @@ export const SERVER_INSTRUCTIONS = [
   "UNITS: money is in MAJOR currency units of the household currency (1234.56). Rates are decimal fractions (0.07 = 7%/yr).",
   'Amounts have a basis: "real" = today\'s money, "nominal" = future money. Tool outputs default to REAL (today\'s money) unless they say otherwise.',
   "START: get_plan_summary (one compact call: plan + outcome; planId defaults to the main plan, householdId to the only household). Use ids exactly as returned by list_* tools.",
-  'COMMON QUESTIONS: "chance of success / why does it fail" -> run_monte_carlo (read failureAnalysis) then explain_year on the first failing year; "how much can I spend" -> solve_max_spending; "retire N years earlier" -> preview_whatif early-retirement, create_branch_from_template, compare_plans; "problems with my assumptions" -> audit_plan (each finding may carry a suggested change you can preview with preview_changes); "update balances" -> update_account_balances.',
+  'COMMON QUESTIONS: "chance of success / why does it fail" -> run_monte_carlo (read failureAnalysis) then explain_year on the first failing year; "how much can I spend" -> solve_max_spending; "retire N years earlier" -> preview_whatif early-retirement, create_branch_from_template, compare_plans; "problems with my assumptions" -> audit_plan (each finding may carry a suggested change you can preview with preview_changes); "update balances" -> update_account_balances; "I opened an account / sold the car / my mortgage rate changed" -> preview_household_change then apply_household_change; "overpay the mortgage or invest / which savings changes let me retire earliest" -> optimise_plan, then preview_changes with its ops.',
   "MORE ANALYSIS: strategy_matrix, income_by_tax_rate. MULTI-CURRENCY: list_fx_rates / set_fx_rate. CHECK-INS: what_changed_since_checkin, explain_result_change (why a result moved, by cause), get_plan_health_history, list_notifications; create_share_link for read-only sharing.",
-  "ANALYSE: simulate_plan (deterministic), run_monte_carlo (chance of success), explain_projection / explain_year(s) / explain_difference, audit_plan, sensitivity, compare_plans, solve_* (max spending, earliest retirement, required savings / portfolio, safe withdrawal rate), evaluate_guardrails / guyton_klinger, optimise_tax_strategy, plan_roth_conversions (US: a conversion amount per year with the reason).",
+  "ANALYSE: simulate_plan (deterministic), run_monte_carlo (chance of success), explain_projection / explain_year(s) / explain_difference, audit_plan, sensitivity, compare_plans, solve_* (max spending, earliest retirement, required savings / portfolio, safe withdrawal rate), optimise_plan (which flow levers best meet a goal), evaluate_guardrails / guyton_klinger, optimise_tax_strategy, plan_roth_conversions (US: a conversion amount per year with the reason).",
   "WHAT-IF: list_whatif_templates -> preview_whatif (nothing stored) -> create_branch_from_template; survivor_scenarios for couples.",
   "ASSETS ABROAD: the household lives in one country for the whole plan; accounts, property and income in another country are taxed there as a non-resident, with treaty relief at home. tax_by_country (rows by country and basis), explain_item_taxation (how one item is taxed and why), cross_border_rules (non-resident rules, treaties, wrapper recognition).",
   "DATA: export_table / export_report for tables and report data; preview_csv_import (dry run) before apply_csv_import; balance history per account (a spreadsheet of dates x accounts): preview_balance_history_import before apply_balance_history_import.",
-  "EDITS: plan changes are never overwrites. Use preview_changes for what-ifs, then propose_change_set -> show the user the diff + before/after -> apply_change_set only after they agree. Edits are RFC 6902 ops; address list items by id: /income/[id=salary]/amount/value.",
-  "Household data (balances, snapshots, CSV imports) is written directly by update_account_balances / record_progress_snapshot / apply_csv_import; plan edits always go through change sets or branches.",
+  "EDITS: plan changes are never overwrites. Use preview_changes for what-ifs, then propose_change_set -> show the user the diff + before/after -> apply_change_set only after they agree. Edits are RFC 6902 ops; address list items by id: /income/[id=salary]/amount/value. Plans themselves: duplicate_plan, rename_plan, set_main_plan, set_plan_archived.",
+  "Household data (balances, snapshots, CSV imports) is written directly by update_account_balances / record_progress_snapshot / apply_csv_import; other household edits (accounts, property, debts, people) by preview_household_change -> apply_household_change; plan edits always go through change sets or branches.",
   "Read-only unless the server enables writes; write tools are absent otherwise.",
   'Tools return compact JSON; pass detail="full" only when you need everything.',
   "INTERACTIVE VIEW: in hosts that show Glideworth's interactive view, it already shows the chart and the numbers: answer in a few sentences and do not restate every figure.",
@@ -112,7 +115,7 @@ const HINTS: Record<string, string> = {
   VALIDATION:
     "Fix the arguments named in details/message and retry. Money is in major units, rates are fractions, dates are YYYY-MM or YYYY-MM-DD.",
   VERSION_CONFLICT:
-    "The plan changed since you read it. Call get_plan_summary for the current version and propose again.",
+    "It changed since you read it. For a plan, call get_plan_summary for the current version and try again; for a household, run preview_household_change again for the current householdVersion.",
   CHANGESET_CONFLICT:
     "The plan changed after this proposal. Call get_plan_summary, then propose_change_set again against the new version.",
   CHANGESET_NOT_PROPOSED:
@@ -652,7 +655,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
       {
         title: "Get plan",
         description:
-          "A plan. 'summary' (default) lists milestones, income, expenses and flows with ids, amounts (value basis/frequency) and date ranges. 'full' is the complete plan JSON (very large).",
+          "A plan. 'summary' (default) lists milestones, income, expenses and flows with ids, amounts (value basis/frequency or a share), date ranges (fixed dates resolved, with the number of months when both ends are fixed) and, for flows, priority order, target account or debt by name and id, and whether it is mandatory (always funded). 'full' is the complete plan JSON (very large).",
         input: { planId, detail },
         hint: { readOnly: true },
       },
@@ -660,9 +663,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
         const plan = services.plans.get(planId);
         return detail === "full"
           ? plan
-          : compactPlan(plan, {
-              currency: services.households.get(plan.householdId).household.currency,
-            });
+          : compactPlan(plan, planViewContext(services.households.get(plan.householdId)));
       },
     );
 
@@ -961,7 +962,7 @@ export function createMcpServer(ctx: McpContext): McpServer {
           f.debts.filter((d) => !d.archived).reduce((t, d) => t + d.balance, 0) +
           f.realAssets.filter((r) => !r.archived).reduce((t, r) => t + (r.loan?.balance ?? 0), 0);
         return {
-          plan: compactPlan(plan, { currency: hh.household.currency }),
+          plan: compactPlan(plan, planViewContext(hh)),
           finances: {
             householdId: hh.household.id,
             asOf: f.asOf,
@@ -1696,6 +1697,80 @@ export function createMcpServer(ctx: McpContext): McpServer {
       },
     );
 
+    // A fresh object per lever (no registry id): directory checks read a $ref'd parameter as untyped.
+    const flowRef = z.string().describe("Flow id from get_plan.");
+    tool(
+      "optimise_plan",
+      {
+        title: "Optimise plan levers",
+        description:
+          "Search the flow levers you list for the setting that best meets a goal while the deterministic projection never runs short: earliest-retirement (earliest retirement month), earliest-fi (earliest month the financial-independence milestone, or the milestone you name, is reached) or max-end-net-worth (today's money). Levers per flow: toggle (keep it or switch it the other way), scale (multiply its amount or share by factors between min and max), redirect (a debt paydown becomes a contribution to accountId with the same amount and dates, or a contribution becomes a paydown of targetId: 'overpay the mortgage or invest?'). Small spaces are searched exhaustively, larger ones one lever at a time (coordinate descent), up to maxEvaluations engine runs. A heuristic search over the given levers only, deterministic projections only (no Monte Carlo); not a global optimiser. Returns the best candidate with its RFC 6902 ops (for preview_changes or propose_change_set), the baseline, alternatives as a table and, for earliest-retirement, milestoneOps that also move the retirement milestone. A job; changes nothing in the plan. Estimates, not advice.",
+        input: {
+          planId,
+          goal: z.enum(["earliest-retirement", "earliest-fi", "max-end-net-worth"]),
+          milestoneId: z
+            .string()
+            .optional()
+            .describe(
+              "Milestone id from get_plan (default: the retirement or financial-independence milestone).",
+            ),
+          levers: z
+            .array(
+              z.discriminatedUnion("kind", [
+                z.object({ kind: z.literal("toggle"), flowId: flowRef }),
+                z.object({
+                  kind: z.literal("scale"),
+                  flowId: flowRef,
+                  min: z.number().min(0).max(10).default(0.5),
+                  max: z.number().min(0).max(10).default(2),
+                  steps: z
+                    .number()
+                    .int()
+                    .min(2)
+                    .max(21)
+                    .default(5)
+                    .describe("Evenly spaced factors from min to max (1 is always tried)."),
+                }),
+                z.object({
+                  kind: z.literal("redirect"),
+                  flowId: flowRef,
+                  accountId: z
+                    .string()
+                    .optional()
+                    .describe("For a debt paydown: the account to contribute to instead."),
+                  targetId: z
+                    .string()
+                    .optional()
+                    .describe(
+                      "For a contribution: the debt or real asset (its loan) to pay instead.",
+                    ),
+                }),
+              ]),
+            )
+            .min(1)
+            .max(12)
+            .describe(
+              'e.g. [{"kind":"redirect","flowId":"fl-overpay","accountId":"acc-isa"},{"kind":"scale","flowId":"fl-pension","min":0.5,"max":1.5,"steps":3}]',
+            ),
+          maxEvaluations: z
+            .number()
+            .int()
+            .min(1)
+            .max(1000)
+            .default(200)
+            .describe("Engine runs allowed (default 200)."),
+          alternatives: z.number().int().min(0).max(10).default(5),
+          detail,
+          wait: waitSeconds,
+        },
+        hint: CALCULATION,
+      },
+      async ({ planId, detail, wait, ...request }, extra) => {
+        const job = services.sim.startOptimisePlan(planId, request, actor);
+        return jobOut(await awaitJob(job, wait, extra), (r) => compactOptimise(r as never, detail));
+      },
+    );
+
     tool(
       "strategy_matrix",
       {
@@ -1852,11 +1927,13 @@ export function createMcpServer(ctx: McpContext): McpServer {
               ? compactStrategies(r as never)
               : job.kind === "roth-conversion-plan"
                 ? compactRothPlan(r as never)
-                : job.kind === "attribution"
-                  ? { attribution: compactAttribution(r as never) }
-                  : SOLVER_KINDS.has(job.kind)
-                    ? compactSolver(r as never)
-                    : r,
+                : job.kind === "optimise-plan"
+                  ? compactOptimise(r as never)
+                  : job.kind === "attribution"
+                    ? { attribution: compactAttribution(r as never) }
+                    : SOLVER_KINDS.has(job.kind)
+                      ? compactSolver(r as never)
+                      : r,
         );
         // No template of its own, but a finished Monte Carlo or solver job completes a pending widget.
         return job.status === "succeeded" ? jobWidget(job, text) : text;
@@ -2216,6 +2293,249 @@ export function createMcpServer(ctx: McpContext): McpServer {
         hint: { readOnly: false, idempotent: true, destructive: true },
       },
       async (args) => compactHistory(await runHistory(args, false)),
+    );
+
+    // ----------------------------------------------------------------------------- plan lifecycle
+    const expectedVersion = z
+      .number()
+      .int()
+      .optional()
+      .describe("Plan version you read (list_plans); if the plan has moved on, nothing changes.");
+    const planRow = (p: ReturnType<Services["plans"]["get"]>) => ({
+      id: p.id,
+      name: p.name,
+      version: p.version,
+      isMain: p.isMain,
+      status: p.status,
+    });
+
+    tool(
+      "duplicate_plan",
+      {
+        title: "Duplicate plan",
+        description:
+          "Copy a plan into a new, independent plan (not a branch: later edits to either plan do not reach the other). The copy is active and not the main plan; the original is untouched.",
+        input: {
+          planId,
+          name: z
+            .string()
+            .min(1)
+            .max(120)
+            .optional()
+            .describe('Name of the copy (default: "<name> (copy)").'),
+        },
+        hint: { readOnly: false },
+      },
+      ({ planId, name }) => ({
+        ...planRow(services.plans.duplicate(planId, { name }, actor)),
+        copiedFrom: planId,
+      }),
+    );
+
+    tool(
+      "rename_plan",
+      {
+        title: "Rename plan",
+        description:
+          "Change a plan's name (and optionally its description). Recorded in the plan history.",
+        input: {
+          planId,
+          name: z.string().min(1).max(120),
+          description: z.string().max(2000).optional(),
+          expectedVersion,
+        },
+        hint: { readOnly: false, idempotent: true, destructive: true },
+      },
+      ({ planId, name, description, expectedVersion }) => {
+        const before = services.plans.get(planId);
+        const ops: PatchOp[] = [{ op: "replace", path: "/name", value: name }];
+        if (description !== undefined)
+          ops.push({
+            op: before.description === undefined ? "add" : "replace",
+            path: "/description",
+            value: description,
+          });
+        const p = services.plans.patch(
+          planId,
+          ops,
+          expectedVersion,
+          actor,
+          `renamed from '${before.name}' to '${name}'`,
+        );
+        return { ...planRow(p), previousName: before.name };
+      },
+    );
+
+    tool(
+      "set_main_plan",
+      {
+        title: "Set main plan",
+        description:
+          "Make a plan the household's main plan (the default for every tool). The previous main plan stays, as an ordinary plan; an archived plan is made active again.",
+        input: { planId, expectedVersion },
+        hint: { readOnly: false, idempotent: true, destructive: true },
+      },
+      ({ planId, expectedVersion }) => {
+        const householdId = services.plans.get(planId).householdId;
+        const previous = services.plans
+          .list({ householdId })
+          .find((p) => p.isMain && p.id !== planId);
+        const p = services.plans.setMain(planId, expectedVersion, actor);
+        return { ...planRow(p), previousMain: previous?.id ?? null };
+      },
+    );
+
+    tool(
+      "set_plan_archived",
+      {
+        title: "Archive or unarchive plan",
+        description:
+          "Archive a plan (kept with its history, hidden from active lists; an archived main plan stops being main) or, with archived=false, make it active again. Nothing is deleted.",
+        input: { planId, archived: z.boolean(), expectedVersion },
+        hint: { readOnly: false, idempotent: true, destructive: true },
+      },
+      ({ planId, archived, expectedVersion }) => {
+        const wasMain = services.plans.get(planId).isMain;
+        const p = services.plans.setArchived(planId, archived, expectedVersion, actor);
+        return {
+          ...planRow(p),
+          ...(archived && wasMain
+            ? { note: "This was the main plan; no plan is main now. set_main_plan picks one." }
+            : {}),
+        };
+      },
+    );
+
+    // ----------------------------------------------------------------------------- household edits
+    const itemKind = z.enum(["account", "realAsset", "debt", "person", "dependent"]);
+    const householdOps = z
+      .array(
+        z.discriminatedUnion("action", [
+          z.object({
+            action: z.literal("add"),
+            kind: itemKind,
+            item: z
+              .record(z.string(), z.unknown())
+              .describe(
+                'The new item as in get_household detail="full", e.g. {"name":"Stocks ISA","type":"isa","owner":"p-1","balance":20000}. id optional.',
+              ),
+          }),
+          z.object({
+            action: z.literal("update"),
+            kind: itemKind,
+            id: z.string(),
+            changes: z
+              .record(z.string(), z.unknown())
+              .describe(
+                'JSON merge patch: only the fields to change, e.g. {"interest":{"apr":0.045}} or {"archived":true}; null removes an optional field.',
+              ),
+          }),
+          z.object({ action: z.literal("remove"), kind: itemKind, id: z.string() }),
+          z.object({
+            action: z.literal("updateHousehold"),
+            changes: z
+              .object({
+                name: z.string().min(1).max(120).optional(),
+                location: z
+                  .object({
+                    country: z.string(),
+                    region: z.string().optional(),
+                    locality: z.string().optional(),
+                  })
+                  .optional(),
+                locale: z.string().optional(),
+              })
+              .strict()
+              .describe(
+                "Household name, location (tax residence) or locale. The currency cannot be changed here.",
+              ),
+          }),
+        ]),
+      )
+      .min(1)
+      .max(50)
+      .describe(
+        "Applied in order, all or nothing. kind realAsset holds a property and its mortgage (loan).",
+      );
+    const parseHouseholdOps = (ops: unknown) => z.array(HouseholdChangeOp).parse(ops);
+
+    tool(
+      "preview_household_change",
+      {
+        title: "Preview household change",
+        description:
+          "Check and describe household edits without storing anything: add, update or remove accounts, real assets (a property with its mortgage), debts, people and dependents, or change the household's name, location or locale. Returns each change in words, the household version to pass to apply_household_change and, when the household has a main plan, its outcome before and after. Removing something a plan still uses is refused with the plans and items that use it. Currency cannot be changed here.",
+        input: { householdId, operations: householdOps },
+        hint: { readOnly: true },
+      },
+      ({ householdId, operations }) => {
+        const out = services.households.applyChanges(
+          householdId,
+          parseHouseholdOps(operations),
+          { dryRun: true },
+          actor,
+        );
+        const main = services.plans.list({ householdId, status: "active" }).find((p) => p.isMain);
+        let mainPlan: Record<string, unknown> | null = null;
+        if (main)
+          try {
+            const before = services.sim.projection(main.id, { trace: "off" }).result;
+            const { input } = services.sim.inputFor(main.id, { trace: "off" });
+            const after = services.ctx.deps.simulate({
+              ...input,
+              household: out.household,
+              finances: out.finances,
+            });
+            mainPlan = {
+              planId: main.id,
+              name: main.name,
+              before: outcomeOf(before),
+              after: outcomeOf(after),
+            };
+          } catch (err) {
+            mainPlan = { planId: main.id, name: main.name, error: describeError(err).message };
+          }
+        return {
+          householdId,
+          householdVersion: out.version,
+          changes: out.changes,
+          ...(mainPlan ? { mainPlan } : {}),
+          next: "Show the user the changes, then call apply_household_change with the same operations and this householdVersion.",
+        };
+      },
+    );
+
+    tool(
+      "apply_household_change",
+      {
+        title: "Apply household change",
+        description:
+          "Store household edits: the same operations as preview_household_change, which checks and describes them without storing anything. All or nothing, in one write; fails with VERSION_CONFLICT if the household changed since householdVersion. Accounts, assets and debts that plans use cannot be removed (archive them instead). Balance changes also update today's automatic progress snapshot when those are on.",
+        input: {
+          householdId,
+          operations: householdOps,
+          householdVersion: z
+            .number()
+            .int()
+            .describe("householdVersion from preview_household_change (or get_household)."),
+        },
+        hint: { readOnly: false, destructive: true },
+      },
+      ({ householdId, operations, householdVersion }) => {
+        const out = services.households.applyChanges(
+          householdId,
+          parseHouseholdOps(operations),
+          { expected: householdVersion, dryRun: false },
+          actor,
+        );
+        return {
+          applied: true,
+          householdId,
+          householdVersion: out.version,
+          changes: out.changes,
+          snapshotId: out.snapshot?.id ?? null,
+        };
+      },
     );
   }
 

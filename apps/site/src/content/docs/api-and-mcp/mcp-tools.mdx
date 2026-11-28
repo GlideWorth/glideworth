@@ -3,7 +3,7 @@ title: MCP tools reference
 description: "All {{mcpTools}} Glideworth MCP tools by purpose, with one line each: {{mcpReadTools}} that read and compute, and {{mcpWriteTools}} write tools that exist only when writes are enabled."
 section: API and MCP
 order: 22
-lastChecked: 2026-11-19
+lastChecked: 2026-11-27
 ---
 
 import { facts } from '../../../lib/facts';
@@ -25,7 +25,7 @@ names the candidates.
 | `get_household` | Accounts, real assets, debts and totals (`detail: full` gives the raw documents). |
 | `list_accounts` | Account id, name, type, owner and balance. |
 | `list_plans` | Plans: id, name, version, whether main, status, parent if a branch, in your display order. |
-| `get_plan` | Compact plan (milestones, income, expenses, flows with ids) or `detail: full`. |
+| `get_plan` | Compact plan (milestones, income, expenses, flows with ids) or `detail: full`. Each flow shows its amount (`40000 real/yearly`, `50% of remaining surplus`, `max`), its dates with fixed dates resolved and the number of months, the account or debt it goes to by name and id, its priority and whether it is mandatory. |
 | `list_plan_versions` | Edit history: version, time, actor, message. |
 | `diff_plans` | Readable differences between two plans. |
 | `list_progress_snapshots` | Recorded actuals over time. |
@@ -107,6 +107,7 @@ that apply it. `trials` and `maxEvaluations` trade accuracy for speed.
 | `guyton_klinger` | Guyton-Klinger guardrails in money terms: when to cut or raise, and the action now. |
 | `optimise_tax_strategy` | Compare tax strategies or your own candidates; the highest-scoring comes back as operations. |
 | `plan_roth_conversions` | US: a Roth conversion amount for each year and person, with what bound it, the room left and the tax, compared with no conversions. A job; apply its operations through a change set. |
+| `optimise_plan` | Which settings of the flow levers you list (switch a flow off or on, scale its amount, redirect a mortgage overpayment into an account or the other way round) give the earliest retirement, the earliest financial independence or the most money at the end, with no shortfall in the deterministic projection. A heuristic search over those levers only, not a global optimiser, and without Monte Carlo. A job; returns the best candidate's operations, the plan as it is and the alternatives. |
 | `tax_breakdown` | Taxes by year, jurisdiction and kind. |
 | `tax_by_country` | Tax by country and basis, with the simplifications that apply. |
 | `explain_item_taxation` | How one account, property, debt or income is taxed in a year, and why. |
@@ -122,7 +123,7 @@ that apply it. `trials` and `maxEvaluations` trade accuracy for speed.
 | `survivor_scenarios` | For couples: what if each partner dies at 70, 80 and 90 (or your ages). |
 | `preview_changes` | Apply operations in memory and return the diff and before and after. Stores nothing. |
 
-Long-running tools (`run_monte_carlo`, solvers, guardrails, tax strategy, and success-rate attribution and sensitivity)
+Long-running tools (`run_monte_carlo`, solvers, `optimise_plan`, guardrails, tax strategy, and success-rate attribution and sensitivity)
 wait up to `wait` seconds (default 30). If the job is not ready they return `{ jobId, status, progress, hint }` and the
 assistant calls `get_job`. Clients that send a `progressToken` receive progress notifications.
 
@@ -138,6 +139,10 @@ assistant calls `get_job`. Clients that send a `progressToken` receive progress 
 | `propose_revert` | Propose a change set that turns the plan back into version N. |
 | `create_branch` | Create a what-if branch, optionally with initial operations. The parent is untouched. |
 | `create_branch_from_template` | Store a what-if template as a branch. The parent is untouched. |
+| `duplicate_plan` | Copy a plan into a new, independent plan (not a branch). |
+| `rename_plan` | Rename a plan, optionally with a new description. |
+| `set_main_plan` | Make a plan the main plan; the previous main plan stays as an ordinary plan. |
+| `set_plan_archived` | Archive a plan (kept with its history) or make it active again. Plans are never deleted here. |
 | `cancel_job` | Cancel a running job. |
 
 ### Household data
@@ -146,6 +151,8 @@ assistant calls `get_job`. Clients that send a `progressToken` receive progress 
 | --- | --- |
 | `update_account_balances` | Set many balances at once, all or nothing, including mortgage and loan balances. Updates today's automatic snapshot. |
 | `record_progress_snapshot` | Snapshot today's net worth from current balances. |
+| `preview_household_change` | Check and describe household edits without storing anything: add, update or remove accounts, property (with its mortgage), debts, people and dependents, or change the household's name or location. Shows the main plan before and after. Marked read-only. |
+| `apply_household_change` | Store those edits in one atomic write, with the household version from the preview. Anything a plan still uses cannot be removed; archive it instead. |
 | `apply_csv_import` | Apply a CSV import atomically (preview first). |
 | `apply_balance_history_import` | Write a balance-history import atomically (preview first; repeating it changes nothing). |
 | `set_fx_rate`, `unset_fx_rate` | Add, update or remove an exchange-rate pair. |

@@ -6,6 +6,7 @@ import {
   MonteCarloResult,
   Plan,
   ProjectionResult,
+  OptimisePlanRequest,
   RothConversionPlanRequest,
   SimulationInput,
 } from "@glideworth/core";
@@ -187,6 +188,14 @@ export function simulationRoutes({ app, svc }: RouteCtx) {
         "Roth conversion plan (US): an amount per year and person, filling the room under a bracket, IRMAA tier or the ACA limit after all other income, with the reason, the tax, and a comparison with no conversions (async job; estimates, not advice)",
       schema: RothConversionPlanRequest,
       start: (s, id, b, a) => s.sim.startRothConversionPlan(id, b, a),
+    },
+    {
+      seg: "solve/optimise",
+      op: "optimisePlan",
+      summary:
+        "Plan optimiser: which settings of the flow levers you list (keep or disable, scale, redirect a debt paydown to an account or back) best meet a goal (earliest retirement, earliest financial independence, most net worth at the end) without a shortfall in the deterministic projection; a heuristic search, not a global optimiser (async job)",
+      schema: OptimisePlanRequest,
+      start: (s, id, b, a) => s.sim.startOptimisePlan(id, b, a),
     },
     {
       seg: "insights/strategy-matrix",

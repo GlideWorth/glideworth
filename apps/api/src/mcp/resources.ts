@@ -2,7 +2,7 @@ import { GlideworthDocument, Plan } from "@glideworth/core";
 import { type McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { allows } from "../auth.js";
-import { compactPlan } from "../views.js";
+import { compactPlan, planViewContext } from "../views.js";
 import type { McpContext } from "./server.js";
 
 export const GLOSSARY = `# Glideworth glossary
@@ -100,9 +100,7 @@ export function registerResources(server: McpServer, ctx: McpContext): void {
   const readPlan = (planId: string) => json(services.plans.get(planId));
   const readPlanSummary = (planId: string) => {
     const plan = services.plans.get(planId);
-    return json(
-      compactPlan(plan, { currency: services.households.get(plan.householdId).household.currency }),
-    );
+    return json(compactPlan(plan, planViewContext(services.households.get(plan.householdId))));
   };
   const readHouseholdDocument = (householdId: string) =>
     json(services.households.getDocument(householdId));

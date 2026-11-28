@@ -237,7 +237,7 @@ describe("a read-only workspace (trial ended, never paid)", () => {
       name: string;
       annotations?: { readOnlyHint?: boolean };
     }>;
-    expect(tools.length).toBe(53);
+    expect(tools.length).toBe(54);
     expect(tools.every((t) => t.annotations?.readOnlyHint === true)).toBe(true);
     expect(tools.map((t) => t.name)).toContain("list_households");
     expect(tools.map((t) => t.name)).not.toContain("apply_change_set");

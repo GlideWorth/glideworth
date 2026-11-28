@@ -25,6 +25,7 @@ export interface CoreDeps {
   optimiseTaxStrategy: typeof core.optimiseTaxStrategy;
   compareStrategies: typeof core.compareStrategies;
   planRothConversions: typeof core.planRothConversions;
+  optimisePlan: typeof core.optimisePlan;
   explainProjection: typeof core.explainProjection;
   explainYear: typeof core.explainYear;
   explainYears: typeof core.explainYears;
@@ -63,6 +64,7 @@ export const coreDeps: CoreDeps = {
   optimiseTaxStrategy: core.optimiseTaxStrategy,
   compareStrategies: core.compareStrategies,
   planRothConversions: core.planRothConversions,
+  optimisePlan: core.optimisePlan,
   explainProjection: core.explainProjection,
   explainYear: core.explainYear,
   explainYears: core.explainYears,

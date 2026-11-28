@@ -1,10 +1,15 @@
 /** Compact, agent- and client-friendly projections of engine/stochastic results. Pure functions. */
 import {
   type DifferenceAttribution,
+  financeNames,
   fmtMoney,
+  formatMonth,
   type GoalSeekResult,
+  monthAtAge,
   type MonteCarloResult,
+  type OptimisePlanResult,
   type OutcomeSummary,
+  parseMonth,
   type Plan,
   type ProjectionResult,
   type RothConversionPlan,
@@ -258,13 +263,54 @@ function failureAnalysis(r: MonteCarloResult) {
   };
 }
 
-/** Plain-text description of a DateRef for compact plan summaries. */
-export function describeDate(d: { kind: string; [k: string]: unknown } | undefined): string {
+type DateLike = { kind: string; [k: string]: unknown };
+
+/** What a summary needs to name things and resolve dates: people's birth months, finance names by id. */
+export interface PlanViewContext {
+  currency?: string;
+  people?: readonly { id: string; birthMonth: string }[];
+  /** Account / real asset / debt names by id (core `financeNames`). */
+  names?: Readonly<Record<string, string>>;
+}
+
+/** The summary context of a household record: its currency, people and finance names. */
+export function planViewContext(rec: {
+  household: { currency: string; people: readonly { id: string; birthMonth: string }[] };
+  finances: Parameters<typeof financeNames>[0];
+}): PlanViewContext {
+  return {
+    currency: rec.household.currency,
+    people: rec.household.people,
+    names: financeNames(rec.finances),
+  };
+}
+
+/**
+ * The calendar month a DateRef resolves to without running the plan (fixed dates and ages, with their
+ * offsets), or null when it depends on the projection (plan start/end, milestones).
+ */
+function fixedMonth(d: DateLike | undefined, ctx: PlanViewContext = {}): number | null {
+  if (!d) return null;
+  const off = typeof d.offsetMonths === "number" ? d.offsetMonths : 0;
+  if (d.kind === "date" && typeof d.date === "string") return parseMonth(d.date) + off;
+  if (d.kind === "age" && typeof d.age === "number") {
+    const p = ctx.people?.find((x) => x.id === d.personId);
+    return p ? monthAtAge(parseMonth(p.birthMonth), d.age) + off : null;
+  }
+  return null;
+}
+
+/**
+ * Plain-text description of a DateRef for compact plan summaries. Fixed dates are resolved with their offset
+ * ("2027-12" +1 month reads "2028-01"); an age also gives its month when the person is known.
+ */
+export function describeDate(d: DateLike | undefined, ctx: PlanViewContext = {}): string {
   if (!d) return "?";
   const off =
     typeof d.offsetMonths === "number" && d.offsetMonths
       ? ` ${d.offsetMonths > 0 ? "+" : ""}${d.offsetMonths}mo`
       : "";
+  const at = fixedMonth(d, ctx);
   switch (d.kind) {
     case "planStart":
       return `plan start${off}`;
@@ -273,9 +319,9 @@ export function describeDate(d: { kind: string; [k: string]: unknown } | undefin
     case "never":
       return "never";
     case "date":
-      return `${d.date}${off}`;
+      return at === null ? `${d.date}${off}` : formatMonth(at);
     case "age":
-      return `${d.personId} age ${d.age}${off}`;
+      return `${d.personId} age ${d.age}${off}${at === null ? "" : ` (${formatMonth(at)})`}`;
     case "dependentAge":
       return `dependent ${d.dependentId} age ${d.age}${off}`;
     case "milestone":
@@ -285,6 +331,21 @@ export function describeDate(d: { kind: string; [k: string]: unknown } | undefin
   }
 }
 
+type Range = { start: DateLike; end: DateLike; endInclusive?: boolean };
+
+/** `from` / `to` of a range, and how many months it runs when both ends are fixed months. */
+function describeRange(r: Range | undefined, ctx: PlanViewContext) {
+  const to = describeDate(r?.end, ctx);
+  const a = fixedMonth(r?.start, ctx);
+  const b = fixedMonth(r?.end, ctx);
+  const months = a !== null && b !== null ? b - a + (r?.endInclusive ? 1 : 0) : null;
+  return {
+    from: describeDate(r?.start, ctx),
+    to: r?.endInclusive ? `${to} (inclusive)` : to,
+    ...(months !== null ? { months: Math.max(0, months) } : {}),
+  };
+}
+
 type Evt = {
   id: string;
   name: string;
@@ -292,23 +353,98 @@ type Evt = {
   owner?: string;
   amount?: { value: number; basis: string };
   frequency?: string;
-  range?: { start: { kind: string }; end: { kind: string } };
+  range?: Range;
   enabled?: boolean;
 };
 
-const evt = (e: Evt) => ({
+const evt = (ctx: PlanViewContext) => (e: Evt) => ({
   id: e.id,
   name: e.name,
   ...(e.type ? { type: e.type } : {}),
   owner: e.owner,
   amount: e.amount ? `${e.amount.value} ${e.amount.basis}/${e.frequency}` : undefined,
-  from: describeDate(e.range?.start),
-  to: describeDate(e.range?.end),
+  ...describeRange(e.range, ctx),
   ...(e.enabled === false ? { disabled: true } : {}),
 });
 
+const pct = (share: number) => `${Math.round(share * 10_000) / 100}%`;
+
+/** A flow's amount in words: "40000 real/yearly", "50% of remaining surplus", "max"... */
+function flowAmount(f: Plan["flows"][number]): string {
+  const m = f.kind === "transfer" ? f.amount : f.method;
+  switch (m.kind) {
+    case "amount":
+      return `${m.amount.value} ${m.amount.basis}/${m.frequency}`;
+    case "percentOfRemaining":
+      return `${pct(m.share)} of remaining surplus`;
+    case "percentOfIncome":
+      return `${pct(m.share)} of income ${m.incomeId}`;
+    case "percentOfBalance":
+      return `${pct(m.share)} of ${f.kind === "transfer" ? "the account" : "the debt"} balance per year`;
+    case "max":
+      return f.kind === "debtPaydown" ? "max (all remaining surplus)" : "max (up to the limit)";
+    case "all":
+      return "the whole balance";
+    default:
+      return (m as { kind: string }).kind;
+  }
+}
+
+/** One flow of the savings waterfall, compact but complete enough to spot a wrong amount or date. */
+function flowView(f: Plan["flows"][number], priority: number, ctx: PlanViewContext) {
+  const name = (id: string) => ctx.names?.[id] ?? id;
+  const target =
+    f.kind === "contribution"
+      ? { target: name(f.accountId), targetId: f.accountId }
+      : f.kind === "debtPaydown"
+        ? {
+            target: name(f.targetId),
+            targetId: f.targetId,
+            ...(f.allocation ? { allocation: f.allocation.strategy } : {}),
+          }
+        : {
+            source: name(f.fromAccountId),
+            sourceId: f.fromAccountId,
+            ...(f.to.kind === "account"
+              ? { target: name(f.to.accountId), targetId: f.to.accountId }
+              : { target: `external: ${f.to.label}` }),
+          };
+  return {
+    id: f.id,
+    name: f.name,
+    kind: f.kind,
+    priority,
+    amount: flowAmount(f),
+    ...target,
+    ...describeRange(f.range as Range, ctx),
+    mandatory: f.mandatory,
+    ...(f.kind === "contribution" && f.strategy.kind === "target"
+      ? { fillTo: `${f.strategy.target.value} ${f.strategy.target.basis}` }
+      : {}),
+    ...(f.kind === "contribution" && f.limit.kind !== "none"
+      ? {
+          limit:
+            f.limit.kind === "custom"
+              ? `${f.limit.amount.value} ${f.limit.amount.basis}`
+              : "jurisdiction",
+        }
+      : {}),
+    ...(f.enabled ? {} : { disabled: true }),
+  };
+}
+
 /** Agent-friendly one-screen plan description (ids included so follow-up edits can address them). */
-export function compactPlan(plan: Plan, extra?: { currency?: string }) {
+export function compactPlan(plan: Plan, ctx: PlanViewContext = {}) {
+  // Accounts and assets the plan opens later are named too.
+  const extra: PlanViewContext = {
+    ...ctx,
+    names: {
+      ...Object.fromEntries(
+        [...plan.plannedAccounts, ...plan.plannedRealAssets].map((x) => [x.id, x.name]),
+      ),
+      ...ctx.names,
+    },
+  };
   return {
     id: plan.id,
     name: plan.name,
@@ -319,7 +455,7 @@ export function compactPlan(plan: Plan, extra?: { currency?: string }) {
     ...(plan.lineage
       ? { branchOf: plan.lineage.parentPlanId, parentVersion: plan.lineage.parentVersion }
       : {}),
-    ...(extra?.currency ? { currency: extra.currency } : {}),
+    ...(extra.currency ? { currency: extra.currency } : {}),
     startingConditions: plan.startingConditions.kind,
     milestones: plan.milestones.map((m) => ({
       id: m.id,
@@ -328,9 +464,14 @@ export function compactPlan(plan: Plan, extra?: { currency?: string }) {
       ...(m.personId ? { personId: m.personId } : {}),
       criteria: m.criteria.length,
     })),
-    income: (plan.income as unknown as Evt[]).map(evt),
-    expenses: (plan.expenses as unknown as Evt[]).map(evt),
-    flows: plan.flows.map((f) => ({ id: f.id, name: f.name, kind: f.kind, enabled: f.enabled })),
+    income: (plan.income as unknown as Evt[]).map(evt(extra)),
+    expenses: (plan.expenses as unknown as Evt[]).map(evt(extra)),
+    // In waterfall order: priority 1 is funded first.
+    flows: plan.flows.map((f, i) => flowView(f, i + 1, extra)),
+    leftover:
+      plan.leftover.kind === "spend"
+        ? "spend"
+        : `save to ${plan.leftover.accountId ? (extra.names?.[plan.leftover.accountId] ?? plan.leftover.accountId) : "the first cash account"}`,
     assumptions: {
       inflation: plan.assumptions.inflation,
       end: plan.assumptions.end,
@@ -423,6 +564,49 @@ export function compactStrategies(c: StrategyComparison, detail: Detail = "summa
     ranked: c.ranked.slice(0, 6).map(row),
     ...(c.ranked.length > 6 ? { rankedTruncated: c.ranked.length } : {}),
     best: c.best ? { ...row(c.best), description: c.best.description, patch: c.best.patch } : null,
+  };
+}
+
+/**
+ * A plan-optimiser result an agent can relay: the best candidate with its ops, the baseline, and the
+ * alternatives as a compact table (columns + rows). `full` adds every candidate's ops.
+ */
+export function compactOptimise(r: OptimisePlanResult, detail: Detail = "summary") {
+  if (detail === "full") return r;
+  const date = r.goal !== "max-end-net-worth";
+  const row = (c: OptimisePlanResult["best"]) => [
+    c.changes.length ? c.changes.join("; ") : "(plan as it is)",
+    ...(date ? [c.month] : []),
+    c.endNetWorthReal,
+    c.feasible,
+  ];
+  const one = (c: OptimisePlanResult["best"]) => ({
+    changes: c.changes,
+    noShortfall: c.feasible,
+    ...(date ? { month: c.month } : {}),
+    endNetWorthReal: c.endNetWorthReal,
+    lifetimeTaxesReal: c.lifetimeTaxesReal,
+    firstShortfallYear: c.firstShortfallYear,
+    ...(c.error ? { error: c.error } : {}),
+  });
+  return {
+    goal: r.goal,
+    ...(r.milestoneId ? { milestoneId: r.milestoneId, plannedMonth: r.plannedMonth } : {}),
+    explanation: r.explanation,
+    best: { ...one(r.best), ops: r.best.ops },
+    baseline: one(r.baseline),
+    alternatives: {
+      columns: ["changes", ...(date ? ["month"] : []), "endNetWorthReal", "noShortfall"],
+      rows: r.alternatives.map(row),
+    },
+    ...(r.milestoneOps.length ? { milestoneOps: r.milestoneOps } : {}),
+    search: {
+      method: r.method,
+      status: r.status,
+      evaluations: r.evaluations,
+      candidates: r.candidatesEvaluated,
+      spaceSize: r.spaceSize,
+    },
   };
 }
 

@@ -69,6 +69,7 @@ const CALCULATION_TOOLS = [
   "optimise_tax_strategy",
   "strategy_matrix",
   "plan_roth_conversions",
+  "optimise_plan",
 ];
 
 const fakeMc = {
@@ -216,6 +217,11 @@ describe("tool registration follows scope and the writes flag", () => {
       create_branch_from_template: [false, false],
       apply_csv_import: [true, false],
       apply_balance_history_import: [true, false],
+      duplicate_plan: [false, false],
+      rename_plan: [true, false],
+      set_main_plan: [true, false],
+      set_plan_archived: [true, false],
+      apply_household_change: [true, false],
       set_fx_rate: [true, false],
       unset_fx_rate: [true, false],
       run_checkin: [false, false],

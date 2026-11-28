@@ -8,6 +8,9 @@ import {
   type MonteCarloResult,
   MonteCarloSettings,
   withReplacedDataset,
+  checkOptimisePlanRequest,
+  OptimisePlanRequest,
+  type OptimisePlanRequestInput,
   type OutcomeSummary,
   type PatchOp,
   type Plan,
@@ -435,6 +438,29 @@ export class SimulationService {
       cache: {
         kind: "solver",
         hash: hashOf({ kind: "roth-conversion-plan", request, hv: householdVersion, mc }),
+      },
+      actor,
+    });
+  }
+
+  /**
+   * Plan optimiser: a heuristic search over the flow levers the caller lists (keep/disable, scale, redirect),
+   * scored by deterministic projections. A job; its `ops` are applied only through a change set.
+   */
+  startOptimisePlan(planId: string, raw: OptimisePlanRequestInput, actor: Actor): JobView {
+    const request = OptimisePlanRequest.parse(raw);
+    const { input, plan: stored, householdVersion } = this.inputFor(planId, { trace: "off" });
+    // Bad levers fail here, before a job is stored.
+    checkOptimisePlanRequest(input, request);
+    return this.jobs.submit({
+      kind: "optimise-plan",
+      planId,
+      planVersion: stored.version,
+      input,
+      params: { request, maxEvaluations: request.maxEvaluations },
+      cache: {
+        kind: "solver",
+        hash: hashOf({ kind: "optimise-plan", request, hv: householdVersion }),
       },
       actor,
     });

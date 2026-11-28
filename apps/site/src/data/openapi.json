@@ -11491,6 +11491,154 @@
      }
     ]
    },
+   "HouseholdChanges": {
+    "type": "object",
+    "properties": {
+     "operations": {
+      "type": "array",
+      "items": {
+       "oneOf": [
+        {
+         "type": "object",
+         "properties": {
+          "action": {
+           "type": "string",
+           "enum": [
+            "add"
+           ]
+          },
+          "kind": {
+           "type": "string",
+           "enum": [
+            "account",
+            "realAsset",
+            "debt",
+            "person",
+            "dependent"
+           ]
+          },
+          "item": {
+           "type": "object",
+           "additionalProperties": {}
+          }
+         },
+         "required": [
+          "action",
+          "kind",
+          "item"
+         ]
+        },
+        {
+         "type": "object",
+         "properties": {
+          "action": {
+           "type": "string",
+           "enum": [
+            "update"
+           ]
+          },
+          "kind": {
+           "type": "string",
+           "enum": [
+            "account",
+            "realAsset",
+            "debt",
+            "person",
+            "dependent"
+           ]
+          },
+          "id": {
+           "type": "string",
+           "minLength": 1
+          },
+          "changes": {
+           "type": "object",
+           "additionalProperties": {}
+          }
+         },
+         "required": [
+          "action",
+          "kind",
+          "id",
+          "changes"
+         ]
+        },
+        {
+         "type": "object",
+         "properties": {
+          "action": {
+           "type": "string",
+           "enum": [
+            "remove"
+           ]
+          },
+          "kind": {
+           "type": "string",
+           "enum": [
+            "account",
+            "realAsset",
+            "debt",
+            "person",
+            "dependent"
+           ]
+          },
+          "id": {
+           "type": "string",
+           "minLength": 1
+          }
+         },
+         "required": [
+          "action",
+          "kind",
+          "id"
+         ]
+        },
+        {
+         "type": "object",
+         "properties": {
+          "action": {
+           "type": "string",
+           "enum": [
+            "updateHousehold"
+           ]
+          },
+          "changes": {
+           "type": "object",
+           "properties": {
+            "name": {
+             "type": "string",
+             "minLength": 1,
+             "maxLength": 120
+            },
+            "location": {
+             "$ref": "#/components/schemas/Location"
+            },
+            "locale": {
+             "$ref": "#/components/schemas/LocaleTag"
+            }
+           },
+           "additionalProperties": false
+          }
+         },
+         "required": [
+          "action",
+          "changes"
+         ]
+        }
+       ]
+      },
+      "minItems": 1,
+      "maxItems": 50
+     },
+     "dryRun": {
+      "type": "boolean",
+      "default": false
+     }
+    },
+    "required": [
+     "operations"
+    ]
+   },
    "SnapshotCreate": {
     "type": "object",
     "properties": {
@@ -32467,6 +32615,192 @@
     }
    }
   },
+  "/api/v1/households/{id}/changes": {
+   "post": {
+    "operationId": "applyHouseholdChanges",
+    "tags": [
+     "Households"
+    ],
+    "summary": "Add, update or remove accounts, real assets, debts, people and dependents, or change the household's name, location or locale, in one atomic write (dryRun previews)",
+    "description": "Operations apply in order, all or nothing. `update` takes a JSON merge patch of the item. With `dryRun: true` nothing is stored and the response describes each change. Removing an item a plan still uses is `409 IN_USE` naming the plans and items (archive it with `update` `{archived: true}` instead). The currency cannot be changed here. Pass the household version you read in `If-Match`.\n\nScope: `write` (role owner or editor).",
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "x-required-scope": "write",
+    "parameters": [
+     {
+      "schema": {
+       "type": "string",
+       "minLength": 1,
+       "maxLength": 64
+      },
+      "required": true,
+      "name": "id",
+      "in": "path"
+     },
+     {
+      "schema": {
+       "type": "string",
+       "description": "Optimistic concurrency: the resource version you last read, e.g. \"3\". 409 VERSION_CONFLICT if stale."
+      },
+      "required": false,
+      "description": "Optimistic concurrency: the resource version you last read, e.g. \"3\". 409 VERSION_CONFLICT if stale.",
+      "name": "if-match",
+      "in": "header"
+     },
+     {
+      "schema": {
+       "type": "string",
+       "maxLength": 255,
+       "description": "Makes this write safe to retry: the first successful response is replayed for 24h."
+      },
+      "required": false,
+      "description": "Makes this write safe to retry: the first successful response is replayed for 24h.",
+      "name": "idempotency-key",
+      "in": "header"
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/HouseholdChanges"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Applied or previewed",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "applied": {
+           "type": "boolean"
+          },
+          "version": {
+           "type": "integer",
+           "description": "Household version after the write (the current one for a dry run)."
+          },
+          "changes": {
+           "type": "array",
+           "items": {
+            "type": "string"
+           },
+           "description": "Each change in words."
+          },
+          "snapshot": {
+           "allOf": [
+            {
+             "$ref": "#/components/schemas/ProgressSnapshot"
+            },
+            {
+             "type": [
+              "object",
+              "null"
+             ]
+            }
+           ]
+          }
+         },
+         "required": [
+          "applied",
+          "version",
+          "changes",
+          "snapshot"
+         ]
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Invalid request (VALIDATION)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing or invalid API key",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "API key lacks the required scope",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Not found",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "409": {
+      "description": "Conflict (duplicate id, version mismatch, in use)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Scenario is inconsistent (dangling reference, circular milestone...) or Idempotency-Key reused",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Rate limited",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "501": {
+      "description": "The plan uses a feature that is not implemented yet (details.feature, details.workstream)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/households/{id}/snapshots": {
    "get": {
     "operationId": "listSnapshots",
@@ -50970,6 +51304,289 @@
       "application/json": {
        "schema": {
         "$ref": "#/components/schemas/RothConversionPlanRequest"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Finished job (cached or waited)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Job"
+        }
+       }
+      }
+     },
+     "202": {
+      "description": "Accepted: job queued or running",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Job"
+        }
+       }
+      }
+     },
+     "400": {
+      "description": "Invalid request (VALIDATION)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing or invalid API key",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "403": {
+      "description": "API key lacks the required scope",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Not found",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "409": {
+      "description": "Conflict (duplicate id, version mismatch, in use)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Scenario is inconsistent (dangling reference, circular milestone...) or Idempotency-Key reused",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Rate limited",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     },
+     "501": {
+      "description": "The plan uses a feature that is not implemented yet (details.feature, details.workstream)",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/plans/{id}/solve/optimise": {
+   "post": {
+    "operationId": "optimisePlan",
+    "tags": [
+     "Solvers"
+    ],
+    "summary": "Plan optimiser: which settings of the flow levers you list (keep or disable, scale, redirect a debt paydown to an account or back) best meet a goal (earliest retirement, earliest financial independence, most net worth at the end) without a shortfall in the deterministic projection; a heuristic search, not a global optimiser (async job)",
+    "description": "Returns **202** with a Job. Poll `GET /jobs/{id}`, stream `GET /jobs/{id}/events` (SSE) and fetch `GET /jobs/{id}/result`. Pass `?wait=<seconds>` to block until it finishes (200 with the finished Job). Identical requests on an unchanged plan are served from the result cache.\n\nScope: `simulate` (or `read`).",
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "x-required-scope": "simulate",
+    "parameters": [
+     {
+      "schema": {
+       "type": "string",
+       "minLength": 1,
+       "maxLength": 64
+      },
+      "required": true,
+      "name": "id",
+      "in": "path"
+     },
+     {
+      "schema": {
+       "type": [
+        "number",
+        "null"
+       ],
+       "minimum": 0,
+       "maximum": 120,
+       "default": 0,
+       "description": "Seconds to wait for the job to finish before responding (0 = return immediately with 202)."
+      },
+      "required": false,
+      "description": "Seconds to wait for the job to finish before responding (0 = return immediately with 202).",
+      "name": "wait",
+      "in": "query"
+     },
+     {
+      "schema": {
+       "type": "string",
+       "maxLength": 255,
+       "description": "Makes this write safe to retry: the first successful response is replayed for 24h."
+      },
+      "required": false,
+      "description": "Makes this write safe to retry: the first successful response is replayed for 24h.",
+      "name": "idempotency-key",
+      "in": "header"
+     }
+    ],
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "goal": {
+          "type": "string",
+          "enum": [
+           "earliest-retirement",
+           "earliest-fi",
+           "max-end-net-worth"
+          ]
+         },
+         "milestoneId": {
+          "$ref": "#/components/schemas/Id"
+         },
+         "levers": {
+          "type": "array",
+          "items": {
+           "oneOf": [
+            {
+             "type": "object",
+             "properties": {
+              "kind": {
+               "type": "string",
+               "enum": [
+                "toggle"
+               ]
+              },
+              "flowId": {
+               "$ref": "#/components/schemas/Id"
+              }
+             },
+             "required": [
+              "kind",
+              "flowId"
+             ]
+            },
+            {
+             "type": "object",
+             "properties": {
+              "kind": {
+               "type": "string",
+               "enum": [
+                "scale"
+               ]
+              },
+              "flowId": {
+               "$ref": "#/components/schemas/Id"
+              },
+              "min": {
+               "type": "number",
+               "minimum": 0,
+               "maximum": 10,
+               "default": 0.5
+              },
+              "max": {
+               "type": "number",
+               "minimum": 0,
+               "maximum": 10,
+               "default": 2
+              },
+              "steps": {
+               "type": "integer",
+               "minimum": 2,
+               "maximum": 21,
+               "default": 5
+              }
+             },
+             "required": [
+              "kind",
+              "flowId"
+             ]
+            },
+            {
+             "type": "object",
+             "properties": {
+              "kind": {
+               "type": "string",
+               "enum": [
+                "redirect"
+               ]
+              },
+              "flowId": {
+               "$ref": "#/components/schemas/Id"
+              },
+              "accountId": {
+               "$ref": "#/components/schemas/Id"
+              },
+              "targetId": {
+               "$ref": "#/components/schemas/Id"
+              }
+             },
+             "required": [
+              "kind",
+              "flowId"
+             ]
+            }
+           ]
+          },
+          "minItems": 1,
+          "maxItems": 12
+         },
+         "maxEvaluations": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 200
+         },
+         "alternatives": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 5
+         }
+        },
+        "required": [
+         "goal",
+         "levers"
+        ]
        }
       }
      }

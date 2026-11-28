@@ -77,7 +77,7 @@ describe("a cloud viewer", () => {
         "create_share_link",
       ]),
     );
-    expect(lacking).toHaveLength(19);
+    expect(lacking).toHaveLength(25);
     const r = await mcp(viewerOAuth, "tools/call", {
       name: "apply_change_set",
       arguments: { changeSetId: W.ids.changeSet },

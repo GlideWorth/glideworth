@@ -50,7 +50,7 @@ primary keyword. `—` means the URL has no secondary.
 | /                                                     | retirement and fire planner                   | open source financial independence planner                             | Glideworth: retirement and FIRE planner (39)                               | Know when you can retire, and how much you can spend.                                   |
 | /about/                                               | about glideworth                              | —                                                                      | About · Glideworth (18)                                                    | A planner you can see inside                                                            |
 | /api/                                                 | retirement planner api                        | ai agent retirement planner                                            | API and MCP for AI agents · Glideworth (38)                                | Your plan, open to your AI assistant                                                    |
-| /au/                                                  | retirement planner australia                  | retirement planning software australia                                 | Retirement planner Australia: super, tax, FIRE · Glideworth (59)           | Know when you can retire in Australia, and how much you can spend.                      |
+| /au/                                                  | retirement planner australia                  | retirement planning software australia                                 | Retirement planner Australia: plan it yourself · Glideworth (59)           | Know when you can retire, and how you bridge the gap to super at 60.                    |
 | /authors/glideworth-team/                             | glideworth team                               | —                                                                      | The Glideworth team · Glideworth (32)                                      | The Glideworth team                                                                     |
 | /blog/                                                | retirement planning articles                  | —                                                                      | Blog · Glideworth (17)                                                     | Notes on planning, tax and building in the open                                         |
 | /blog/ai-assistant-access-to-your-financial-plan/     | ai assistant financial plan                   | chatgpt access to a financial plan                                     | AI assistant access to your financial plan · Glideworth (55)               | AI assistant access to your financial plan                                              |
@@ -285,6 +285,16 @@ software australia** 30, commercial. Larger Australian queries were left alone: 
 and **retirement calculator australia** (2,400) are calculator queries, **retirement planner** (2,900) is the
 root page's territory, **fire australia** (1,300, difficulty 47) is a broad topic, and **when can i retire
 australia** (390, difficulty 15) is unowned, like its UK twin.
+
+The first page of Google Australia for **retirement planner australia** (OpenSEO, read 2026-11-28) is almost
+all financial advisers' service pages (Retirewise, TradeDraft, Netplan, local practices), with Moneysmart the
+only planning tool: in Australia a "retirement planner" is often a person. The title therefore says "plan it
+yourself", and the page calls itself retirement planning software. **retirement planning software australia**
+shows fund tools (CSC), a property calculator and an Australian Monte Carlo calculator, with no clear owner.
+Nearby Australian demand the page answers in its copy but does not target: **preservation age** (2,900),
+**how much super do i need to retire** (1,300), **fire calculator australia** (320, difficulty 0),
+**early retirement australia** (260, difficulty 0). **age pension calculator** (5,400) is a calculator the
+product does not have.
 
 ## Unowned searches
 

@@ -60,6 +60,7 @@ primary keyword. `—` means the URL has no secondary.
 | /blog/what-a-tax-estimate-leaves-out/                 | what a tax estimate leaves out                | retirement tax estimate limits                                         | What a tax estimate leaves out · Glideworth (43)                           | What a tax estimate leaves out                                                          |
 | /blog/what-is-your-fire-number/                       | fire number                                   | 25x rule                                                               | FIRE number: the 25x rule and its limits · Glideworth (53)                 | FIRE number: the 25x rule and its limits                                                |
 | /blog/withdrawal-strategies-compared/                 | four withdrawal rules compared                | variable percentage withdrawal                                         | Withdrawal strategies: four rules compared · Glideworth (55)               | Withdrawal strategies: four rules compared                                              |
+| /ca/                                                  | canada retirement planner                     | retirement planning software canada                                    | Canada retirement planner: RRSP, TFSA and tax · Glideworth (58)            | Know when you can retire in Canada, and how much you can spend.                         |
 | /changelog/                                           | glideworth changelog                          | —                                                                      | Changelog · Glideworth (22)                                                | Changelog                                                                               |
 | /compare/                                             | retirement planner comparisons                | —                                                                      | Comparisons · Glideworth (24)                                              | Comparisons                                                                             |
 | /compare/boldin/                                      | boldin alternative                            | boldin mcp                                                             | Glideworth and Boldin compared · Glideworth (43)                           | Glideworth and Boldin compared                                                          |
@@ -247,6 +248,18 @@ page's territory, and **when can i retire uk** (2,400, difficulty 19) is unowned
 
 The same pattern applies to the next country versions (`/ca/`, `/au/`): a "<country> retirement planner"
 primary on the version, the tax keyword staying on `/planning/<slug>/`.
+
+### Canada retirement planner and Canada retirement tax
+
+`/ca/` owns **canada retirement planner**, with **retirement planning software canada** as its secondary;
+`/planning/ca/` keeps **canada retirement tax**, and each links to the other with the other's keyword as the
+anchor. Keyword data for Canada (OpenSEO, Google Canada, English, read 2026-11-28): **canada retirement planner**
+880 searches a month, keyword difficulty 11 (its close variants **canadian retirement planner** and **retirement
+planning canada** share the figure); **retirement planning software canada** 480, difficulty 16, commercial intent,
+with a first page of planning software (Optiml, Adviice, ProjectionLab); **retirement planner canada** 210,
+difficulty 26. Left alone: **retirement calculator canada** (6,600) and **retirement income calculator canada**
+(4,400) are calculator queries, and **cpp calculator** (12,100), **rrsp calculator** (9,900), **oas clawback**
+(6,600) and **rrif minimum withdrawal** (5,400) are single-topic queries for a calculator or an article.
 
 ### Switching from ProjectionLab
 

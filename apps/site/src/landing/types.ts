@@ -120,4 +120,6 @@ export interface LandingEntry {
 
   /** Added under the price comparison (currency of the prices, for example). */
   priceNote?: string;
+  /** Added after the price sentence of the closing call to action. */
+  closingPriceNote?: string;
 }

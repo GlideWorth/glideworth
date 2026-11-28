@@ -13,6 +13,8 @@ import Button from './Button.astro';
 interface Props {
   title?: string;
   body?: string;
+  /** Added after the body (the currency of the prices on a country page, for example). */
+  note?: string;
   primary?: { label: string; href: string };
   secondary?: { label: string; href: string };
 }
@@ -22,6 +24,7 @@ const {
     ? priceSentence()
     : `Free to self-host today, with every feature. The hosted service opens later, at ${formatPrice(pricing.monthly)} a month or ${formatPrice(pricing.yearly)} a year.`,
   primary = { ...trialCta },
+  note,
   secondary = site.cloudLaunched
     ? { label: 'Or self-host it free', href: '/self-hosting/' }
     : { label: 'See the hosted plan', href: '/pricing/' },
@@ -36,7 +39,7 @@ const {
     </svg>
     <div class="cta-copy">
       <h2 id="cta-band-title">{title}</h2>
-      <p>{body}</p>
+      <p>{body}{note && ` ${note}`}</p>
     </div>
     <div class="cta-actions">
       <Button href={primary.href} variant="inverse" size="lg" arrow>{primary.label}</Button>

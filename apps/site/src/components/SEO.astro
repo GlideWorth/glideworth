@@ -25,6 +25,10 @@ export interface SeoProps {
   imageAlt?: string;
   /** JSON-LD nodes for this page; they are combined into one @graph. */
   jsonLd?: JsonLdObject[];
+  /** Language versions of this page (hreflang, absolute URL). Only the country landing pages have them. */
+  alternates?: { hreflang: string; href: string }[];
+  /** Open Graph locale; en_US by default. */
+  ogLocale?: string;
 }
 
 const {
@@ -39,6 +43,8 @@ const {
   image,
   imageAlt,
   jsonLd = [],
+  alternates = [],
+  ogLocale = 'en_US',
 } = Astro.props as SeoProps;
 
 const fullTitleText = fullTitle ? title : `${title} · ${site.name}`;
@@ -56,10 +62,11 @@ if (import.meta.env.DEV && description.length > 170) {
 <meta name="description" content={description} />
 <link rel="canonical" href={canonical} />
 {noindex && <meta name="robots" content="noindex, follow" />}
+{alternates.map((a) => <link rel="alternate" hreflang={a.hreflang} href={a.href} />)}
 
 <meta property="og:type" content={type} />
 <meta property="og:site_name" content={site.name} />
-<meta property="og:locale" content="en_US" />
+<meta property="og:locale" content={ogLocale} />
 <meta property="og:url" content={canonical} />
 <meta property="og:title" content={fullTitleText} />
 <meta property="og:description" content={description} />

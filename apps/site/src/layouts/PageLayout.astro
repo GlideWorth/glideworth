@@ -7,6 +7,7 @@
  */
 import Breadcrumbs from '../components/Breadcrumbs.astro';
 import Callout from '../components/Callout.astro';
+import type { VersionSwitch } from '../components/Footer.astro';
 import type { SeoProps } from '../components/SEO.astro';
 import type { Crumb } from '../lib/jsonld';
 import BaseLayout from './BaseLayout.astro';
@@ -21,6 +22,8 @@ interface Props extends Omit<SeoProps, 'canonicalPath'> {
   eyebrow?: string;
   lede?: string;
   crumbs?: Crumb[];
+  lang?: string;
+  versions?: VersionSwitch[];
 }
 const { heading, eyebrow, lede, crumbs, ...rest } = Astro.props;
 const showHeader = !Astro.slots.has('hero');

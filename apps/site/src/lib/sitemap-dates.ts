@@ -109,6 +109,8 @@ export function sourceCandidates(pathname: string): string[] {
     content("features", rel.slice(9));
   else if (rel.startsWith("legal/")) content("legal", rel.slice(6));
   else if (rel.startsWith("authors/")) candidates.push("src/content/authors/authors.json");
+  // A country version of the home page (/uk/) is dated by its entry, not by the shared route.
+  else if (/^[a-z]{2}$/.test(rel)) candidates.push(`src/landing/countries/${rel}.ts`);
   candidates.push(`src/pages/${rel}.astro`, `src/pages/${rel}/index.astro`);
   return candidates;
 }

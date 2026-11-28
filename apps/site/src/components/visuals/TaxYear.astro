@@ -1,44 +1,36 @@
 ---
 /**
  * One plan year's tax, as the product lays it out: lines by kind and level, plus the model's own
- * list of what it leaves out. The amounts are the 2034 year (future dollars) of the synthetic US
- * sample household (createSampleDocument in packages/core: a married couple filing jointly in
- * Colorado) with its tax switched from flat rates to the full estimate, rounded to the dollar.
- * They move when the engine or the tax tables change, so the visual calls them illustrative.
- * The "leaves out" lines are real entries from the US simplifications (packages/core/src/tax/data/anglo.ts).
+ * list of what it leaves out. With no props it shows the United States example of the home page
+ * (src/landing/countries/us.ts says where its amounts come from); a country landing page passes its own
+ * example (worked out by the engine at build time) and its currency.
+ *   <TaxYear />  or  <TaxYear example={entry.working.taxYear} money={entry.money} />
  */
-import { facts } from '../../lib/facts';
+import { us } from '../../landing/countries/us';
+import { formatMoney } from '../../landing/tax-example';
+import type { Money, TaxYearExample } from '../../landing/types';
 
-const lines = [
-  { label: 'Federal income tax', level: 'Federal', amount: 24_539 },
-  { label: 'Qualified dividends tax', level: 'Federal', amount: 740 },
-  { label: 'Child tax credit', level: 'Federal', amount: -2_734 },
-  { label: 'Social Security tax', level: 'Payroll', amount: 14_433 },
-  { label: 'Medicare tax', level: 'Payroll', amount: 3_376 },
-  { label: 'Colorado income tax', level: 'State', amount: 7_720 },
-];
+interface Props {
+  example?: TaxYearExample;
+  money?: Money;
+}
+const { example = us.working.taxYear!, money = us.money } = Astro.props;
+const lines = example.lines;
 const total = lines.reduce((s, l) => s + l.amount, 0);
-const usd = (n: number) => `${n < 0 ? '−' : ''}$${Math.abs(n).toLocaleString('en-US')}`;
-const leavesOut = [
-  'The SALT cap and limits on itemised deductions are not applied automatically',
-  'No earned income, education or child and dependent care credits',
-  'Employer payroll taxes are not modelled',
-];
-const listed =
-  facts.simplificationCount('us-federal') +
-  facts.simplificationCount('us-payroll') +
-  facts.simplificationCount('us-state');
+const fmt = (n: number) => formatMoney(n, money);
+const leavesOut = example.leavesOut;
+const listed = example.listed;
 ---
 
 <div class="taxyear">
   <div class="ty-head">
-    <p class="ty-title">Tax in 2034 <span class="ty-sub">United States, married filing jointly in Colorado</span></p>
+    <p class="ty-title">{example.title} <span class="ty-sub">{example.subtitle}</span></p>
     <p class="ty-flag">Illustrative amounts</p>
   </div>
   <table>
     <caption class="visually-hidden">Illustrative tax lines for one plan year</caption>
     <thead>
-      <tr><th scope="col">Line</th><th scope="col">Level</th><th scope="col" class="r">Amount</th></tr>
+      <tr><th scope="col">Line</th><th scope="col">{example.levelHeading}</th><th scope="col" class="r">Amount</th></tr>
     </thead>
     <tbody>
       {
@@ -46,17 +38,17 @@ const listed =
           <tr>
             <td>{l.label}</td>
             <td>{l.level}</td>
-            <td class="r num">{usd(l.amount)}</td>
+            <td class="r num">{fmt(l.amount)}</td>
           </tr>
         ))
       }
     </tbody>
     <tfoot>
-      <tr><th scope="row" colspan="2">Total</th><td class="r num">{usd(total)}</td></tr>
+      <tr><th scope="row" colspan="2">Total</th><td class="r num">{fmt(total)}</td></tr>
     </tfoot>
   </table>
   <div class="leaves">
-    <p class="leaves-title">What this estimate leaves out <span class="muted">(3 of {listed} shown)</span></p>
+    <p class="leaves-title">What this estimate leaves out <span class="muted">({leavesOut.length} of {listed} shown)</span></p>
     <ul>
       {leavesOut.map((t) => <li>{t}</li>)}
     </ul>

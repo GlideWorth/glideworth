@@ -47,6 +47,7 @@ scripts/                 check-dist, check-contrast, generate-icons, snapshot-op
 src/data/openapi.json    snapshot of the API's OpenAPI document; the API reference page is built from it
 src/data/source-dates.json  last commit date of each page source (sitemap lastmod when git history is shallow)
 src/config/related.ts    clusters of related pages (every page in a cluster links to the others)
+src/landing/             the country versions of the home page (see "Country landing pages" below)
 public/                  favicons, app icons (generated from /brand) and the IndexNow key file
 /llms.txt                short catalog of the site for language models, generated at build time
 /llms-full.txt           the same catalog plus country tax limits and the legal pages
@@ -105,6 +106,48 @@ cannot drift from the code. The API and MCP counts are counted from the code, no
 
 When the API or the tools change, take a new snapshot (below) and update the typed numbers in `facts.ts`. In frontmatter, use
 `{{apiOperations}}`-style tokens (see CONTENT-GUIDE.md); the content schemas replace them.
+
+## Country landing pages
+
+The home page has one version per country: `/` is the United States version and the default, and the
+others live at `/<slug>/` (`/uk/`). The slug is the one of the country's `/planning/<slug>/` page. Nobody is
+redirected, and no URL changes its content by location.
+
+- **One entry per country**: `src/landing/countries/<slug>.ts` exports a `LandingEntry`
+  (`src/landing/types.ts`). `src/landing/registry.ts` lists the entries; the first, the United States, is
+  `/` and the `x-default`.
+- **One template**: `src/components/landing/LandingPage.astro` renders every version with the home page's
+  sections. `src/pages/index.astro` passes the US entry; `src/pages/[country].astro` the others.
+- **Generated from the registry**: the route, the `hreflang` set on every version (each version plus
+  `x-default`, absolute and reciprocal), the footer switcher, the banner, the sitemap, the social image and
+  the `llms.txt` line.
+- **The banner** (`src/components/landing/CountryBanner.astro`) is sent hidden and empty to everyone. In the
+  browser, `src/landing/guess.ts` guesses the country from the time zone (it wins when it lies in one
+  country) and then the first language region (`en-GB`), with no network call. When the guess, or a
+  version the visitor picked, has another version, the banner offers it with one link. Following a version
+  link or closing the banner writes `localStorage.country` (a country code or `closed`); nothing else is
+  stored or sent. None of this may reach `src/tools`: `src/tools/privacy.test.ts` checks the calculator
+  bundles.
+
+### Adding a country (`/ca/`, `/au/`)
+
+1. Copy `src/landing/countries/uk.ts` to `src/landing/countries/<slug>.ts` and rewrite it for that country:
+   `code`, `slug`, `hreflang` (`en-CA`), `countryName`, `label` (`Canada` reads well in "Looking for the
+   Canada version?"), `lang`, `ogLocale`, `seo` (title, description, OG title and eyebrow, the primary
+   keyword), `money`, `hero`, `proof`, `questions`, `working`, `taxSection`, and `local` (accounts,
+   calculators from `src/tools/registry.ts`, notes the product makes about the country, further reading).
+2. Add it to `LANDINGS` in `src/landing/registry.ts`. Nothing else in the template, layout or route changes.
+3. Add a row for `/<slug>/` to `docs/seo-keyword-map.md` with a primary keyword no other URL owns (not the
+   country's tax keyword, which `/planning/<slug>/`'s row owns), and link `/planning/<slug>/` to the new page
+   with that keyword as the anchor.
+4. **Figures**: type no tax rate, threshold, allowance or pension amount. Read each from `@glideworth/core` at
+   build time (the country's tax tables, `defaultsForCountry`, `TAX_SIMPLIFICATIONS`), as `uk.ts` does. The tax
+   visual (`working.taxYear`) comes from `richestTaxYear()` (`src/landing/tax-example.ts`) on a synthetic
+   document from `@glideworth/core/samples`; if there is no sample for the country, leave `taxYear` out and
+   the figure is not drawn. Leave out anything you cannot get this way.
+5. `pnpm --filter @glideworth/site test` (`src/landing/landing.test.ts` checks the title length, the keyword
+   map and, after a build, the hreflang set), then commit and run `pnpm snapshot:dates` (it reads git log, so
+   after the commit) and commit `src/data/source-dates.json`.
 
 ## API reference
 

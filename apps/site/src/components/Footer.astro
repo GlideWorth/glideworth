@@ -1,7 +1,8 @@
 ---
 /**
  * Site footer: the full site map (src/config/nav.ts plus every published legal document), the
- * "not financial advice" line, licence and contact.
+ * "not financial advice" line, licence and contact. On the country versions of the home page it also
+ * lists those versions (plain links; the country banner's script remembers a click on one).
  */
 import { PUBLIC_GTM_ID } from 'astro:env/server';
 import { getCollection } from 'astro:content';
@@ -10,6 +11,21 @@ import { site } from '../config/site';
 import { googleTagManagerOnPath } from '../lib/gtm';
 import { externalLinkProps } from '../lib/links';
 import Logo from './Logo.astro';
+
+export interface VersionSwitch {
+  /** ISO code of the country ("GB"). */
+  code: string;
+  /** "/" or "/uk/". */
+  path: string;
+  /** "United Kingdom". */
+  name: string;
+  hreflang: string;
+  current: boolean;
+}
+interface Props {
+  versions?: VersionSwitch[] | undefined;
+}
+const { versions = [] } = Astro.props;
 
 const legal = (await getCollection('legal'))
   .sort((a, b) => (a.data.order ?? 99) - (b.data.order ?? 99))
@@ -61,6 +77,27 @@ const consentSettings = googleTagManagerOnPath(Astro.url.pathname, PUBLIC_GTM_ID
     </div>
 
     <div class="footer-bottom">
+      {
+        versions.length > 1 && (
+          <nav class="versions" aria-label="Country versions of this page">
+            <h2 class="versions-label">Country version</h2>
+            <ul role="list">
+              {versions.map((v) => (
+                <li>
+                  <a
+                    href={v.path}
+                    hreflang={v.hreflang}
+                    data-country-choice={v.code}
+                    aria-current={v.current ? 'page' : undefined}
+                  >
+                    {v.name}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )
+      }
       <p class="disclaimer">
         <strong>Not financial advice.</strong> Glideworth is planning software. Its projections and tax figures are
         estimates from the assumptions you enter, not financial, tax, legal or investment advice.
@@ -166,6 +203,38 @@ const consentSettings = googleTagManagerOnPath(Astro.url.pathname, PUBLIC_GTM_ID
     color: var(--ink-3);
     font-size: var(--text-xs);
     line-height: 1.6;
+  }
+  .versions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2xs) var(--space-s);
+  }
+  .versions-label {
+    font-family: var(--font-sans);
+    font-size: inherit;
+    font-weight: 650;
+    color: var(--ink-2);
+  }
+  .versions ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2xs) var(--space-s);
+  }
+  .versions a {
+    color: var(--ink-2);
+  }
+  .versions a[aria-current='page'] {
+    color: var(--ink);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  @media (pointer: coarse) {
+    .versions a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 2.75rem;
+    }
   }
   .disclaimer {
     color: var(--ink-2);

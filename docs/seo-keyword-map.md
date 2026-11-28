@@ -27,7 +27,7 @@ The number in parentheses is the length of that rendered string. The H1 is the v
 collection page the H1 is the frontmatter title, without ` · Glideworth`. Where the H1 and the SEO title
 differ, both are the current source, not a target to rewrite in this file.
 
-110 indexable URLs.
+111 indexable URLs.
 
 ## Rules
 
@@ -159,6 +159,7 @@ primary keyword. `—` means the URL has no secondary.
 | /tools/retirement-withdrawal-calculator/              | safe withdrawal rate calculator               | 4% rule; retirement withdrawal calculator; guyton klinger / guardrails | Retirement withdrawal calculator: SWR, 4% rule · Glideworth (59)           | Retirement withdrawal calculator: safe withdrawal rate, the 4% rule and four strategies |
 | /tools/rule-of-55/                                    | rule of 55                                    | rule of 55 calculator; 401(k) withdrawal at 55                         | Rule of 55: 401(k) withdrawals before 59½ · Glideworth (54)                | Rule of 55: take money from your 401(k) before 59½                                      |
 | /tools/social-security-break-even-calculator/         | social security break even calculator         | social security 62 vs 67; social security spousal benefits calculator  | Social Security break-even calculator · Glideworth (50)                    | Social Security break-even calculator                                                   |
+| /uk/                                                  | uk retirement planner                         | retirement planning software uk                                        | UK retirement planner: pensions, ISAs and tax · Glideworth (58)            | Know when you can retire in the UK, and how much you can spend.                         |
 
 ## Overlaps to watch
 
@@ -229,6 +230,24 @@ for. It is listed against both comparison pages and it has no owner. It is not a
 on either page in the table. Do not add it to both. Giving it an owner means choosing one URL (one of
 these two, or a new page) and pointing the other at that URL with the anchor "projectionlab vs boldin".
 
+### UK retirement planner and UK retirement tax
+
+`/uk/` is the United Kingdom version of the home page. It owns **uk retirement planner**, with
+**retirement planning software uk** as its secondary. `/planning/uk/` keeps **uk retirement tax**: the
+tax rules in detail. Each links to the other with the other's keyword as the anchor ("UK retirement
+planner" on `/planning/uk/`, "UK retirement tax" on `/uk/`). `/uk/` does not target the UK calculator
+queries (**uk fire calculator**, **isa vs pension calculator** and the others); it links to those tools.
+
+The choice was checked with keyword data for the United Kingdom (OpenSEO, Google UK, English, read
+2026-11-27): **uk retirement planner** 390 searches a month, commercial intent (its close variant
+**retirement planning uk** shares the figure); **retirement planner uk** 70, keyword difficulty
+40; **retirement planning software uk** 30, difficulty 7. Larger UK queries were left alone:
+**pension calculator uk** (14,800) is a calculator query, **retirement planner** (6,600) is the root
+page's territory, and **when can i retire uk** (2,400, difficulty 19) is unowned (below).
+
+The same pattern applies to the next country versions (`/ca/`, `/au/`): a "<country> retirement planner"
+primary on the version, the tax keyword staying on `/planning/<slug>/`.
+
 ### Switching from ProjectionLab
 
 `/compare/switch-from-projectionlab/` owns **switch from projectionlab**, with **migrate from projectionlab**
@@ -246,6 +265,9 @@ No indexable URL targets these. A nearby page is not the owner.
 - **capped drawdown calculator.** `/planning/uk/` owns **uk retirement tax**, and the withdrawal
   calculator owns **safe withdrawal rate calculator**. Neither owns a capped drawdown calculator.
 - **projectionlab vs boldin.** See the overlap above. Neither compare page owns it.
+- **when can i retire uk.** `/uk/` answers it in its H1 but owns **uk retirement planner**, and
+  `/tools/uk-pension-age-calculator/` (not yet in this table) answers the pension-age half. Pick one owner
+  before targeting it.
 
 ## Title over the limit
 

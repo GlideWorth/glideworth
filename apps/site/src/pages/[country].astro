@@ -1,0 +1,19 @@
+---
+/**
+ * The country versions of the home page other than the default: /uk/ and any entry added to
+ * src/landing/registry.ts. Same template as `/`; see "Country landing pages" in apps/site/README.md.
+ */
+import LandingPage from '../components/landing/LandingPage.astro';
+import { countryLandings } from '../landing/registry';
+import type { LandingEntry } from '../landing/types';
+
+export function getStaticPaths() {
+  return countryLandings().map((entry) => ({ params: { country: entry.slug }, props: { entry } }));
+}
+interface Props {
+  entry: LandingEntry;
+}
+const { entry } = Astro.props;
+---
+
+<LandingPage entry={entry} />

@@ -6,6 +6,7 @@
 import { getCollection } from "astro:content";
 import { type PageMeta, pages } from "../config/pages";
 import { absoluteUrl, site } from "../config/site";
+import { countryLandings, landingPath } from "../landing/registry";
 import { TOOLS } from "../tools/registry";
 import { publishedPosts } from "./content";
 import { docHref, docsSidebar } from "./docs";
@@ -89,7 +90,19 @@ async function document(full: boolean): Promise<LlmsDoc> {
         : `The longer catalog is ${absoluteUrl("/llms-full.txt")}.`,
     ],
     sections: [
-      { heading: "Product", links: links(PRODUCT) },
+      {
+        heading: "Product",
+        links: [
+          ...links(["/"]),
+          // The other country versions of the home page, right after the default one.
+          ...countryLandings().map((e) => ({
+            name: `${e.seo.title} (${e.countryName} version of the home page)`,
+            url: absoluteUrl(landingPath(e)),
+            note: e.seo.description,
+          })),
+          ...links(PRODUCT.filter((p) => p !== "/")),
+        ],
+      },
       {
         heading: "Calculators",
         links: [

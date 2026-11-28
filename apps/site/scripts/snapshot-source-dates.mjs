@@ -1,7 +1,8 @@
 /**
  * Writes src/data/source-dates.json: the last commit date (YYYY-MM-DD) of every file under
- * src/pages and src/content. The sitemap uses this when `git log` cannot see the file, which is
- * what a shallow checkout (one commit) does for anything the tip did not touch.
+ * src/pages, src/content and src/landing (the country versions of the home page). The sitemap uses
+ * this when `git log` cannot see the file, which is what a shallow checkout (one commit) does for
+ * anything the tip did not touch.
  *
  *   pnpm --filter @glideworth/site snapshot:dates
  *
@@ -17,7 +18,7 @@ import { fileURLToPath } from "node:url";
 const siteRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = join(siteRoot, "..", "..");
 const out = join(siteRoot, "src", "data", "source-dates.json");
-const roots = ["apps/site/src/pages/", "apps/site/src/content/"];
+const roots = ["apps/site/src/pages/", "apps/site/src/content/", "apps/site/src/landing/"];
 
 function isoDay(value) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);

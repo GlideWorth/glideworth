@@ -1,0 +1,146 @@
+---
+/**
+ * "Looking for the UK version?": a small suggestion, shown in the browser only, on the country versions
+ * of the home page. The server sends the same hidden, empty element to everyone; the script below
+ * guesses the visitor's country from the browser's language and time zone settings (src/landing/guess.ts),
+ * and fills and shows the element only when that guess, or a version the visitor picked earlier, has a
+ * version of its own that is not this page. It never redirects.
+ *
+ * Storage: one localStorage key, `country` (COUNTRY_KEY), written only when the visitor follows a version
+ * link (this banner's or the footer switcher's: `data-country-choice`) or closes the suggestion
+ * ("closed"). The guess itself is never stored and never sent anywhere. Keep this out of the calculators.
+ *
+ * The element is fixed to the bottom of the window, so showing it moves nothing on the page.
+ */
+import type { VersionLink } from '../../landing/guess';
+
+interface Props {
+  /** ISO code of the version this page is. */
+  current: string;
+  versions: VersionLink[];
+}
+const { current, versions } = Astro.props;
+---
+
+<aside
+  class="country-banner"
+  data-country-banner
+  data-current={current}
+  data-versions={JSON.stringify(versions)}
+  aria-label="Country version"
+  hidden
+>
+  <p class="cb-text" data-country-text></p>
+  <button type="button" class="cb-close" data-country-close aria-label="Close the country suggestion">
+    <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+      <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+    </svg>
+  </button>
+</aside>
+
+<script>
+  import { COUNTRY_CLOSED, COUNTRY_KEY, guessCountry, suggestedVersion, type VersionLink } from '../../landing/guess';
+
+  function read(): string | null {
+    try {
+      return localStorage.getItem(COUNTRY_KEY);
+    } catch {
+      return null;
+    }
+  }
+  function remember(value: string) {
+    try {
+      localStorage.setItem(COUNTRY_KEY, value);
+    } catch {
+      // Storage can be blocked; the choice then lasts for this page only.
+    }
+  }
+
+  // A click on any version link (the footer switcher or the banner) is a choice to remember.
+  document.addEventListener('click', (event) => {
+    const link = (event.target as Element | null)?.closest?.<HTMLAnchorElement>('a[data-country-choice]');
+    const code = link?.dataset.countryChoice;
+    if (code) remember(code);
+  });
+
+  const banner = document.querySelector<HTMLElement>('[data-country-banner]');
+  if (banner) {
+    let versions: VersionLink[] = [];
+    try {
+      versions = JSON.parse(banner.dataset.versions ?? '[]') as VersionLink[];
+    } catch {
+      versions = [];
+    }
+    let timeZone: string | undefined;
+    try {
+      timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    } catch {
+      timeZone = undefined;
+    }
+    const target = suggestedVersion({
+      current: banner.dataset.current ?? '',
+      versions,
+      guess: guessCountry({ languages: navigator.languages ?? [navigator.language], timeZone }),
+      stored: read(),
+    });
+    const text = banner.querySelector<HTMLElement>('[data-country-text]');
+    if (target && text) {
+      const link = document.createElement('a');
+      link.href = target.path;
+      link.dataset.countryChoice = target.code;
+      link.textContent = `${target.label} version`;
+      text.append('Looking for the ', link, ' of this site?');
+      banner.hidden = false;
+      banner.querySelector('[data-country-close]')?.addEventListener('click', () => {
+        remember(COUNTRY_CLOSED);
+        banner.hidden = true;
+      });
+    }
+  }
+</script>
+
+<style>
+  .country-banner {
+    position: fixed;
+    inset-inline: var(--gutter) var(--gutter);
+    inset-block-end: calc(var(--consent-space, 0px) + var(--space-s));
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    width: fit-content;
+    max-width: calc(100% - 2 * var(--gutter));
+    margin-inline: auto;
+    padding: 0.5rem 0.5rem 0.5rem 1rem;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-l);
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: var(--shadow-2);
+    font-size: var(--text-sm);
+    line-height: 1.4;
+  }
+  .country-banner[hidden] {
+    display: none;
+  }
+  .cb-text :global(a) {
+    color: var(--accent-text);
+    font-weight: 600;
+  }
+  .cb-close {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink-2);
+    cursor: pointer;
+  }
+  .cb-close:hover {
+    color: var(--ink);
+    border-color: var(--line);
+  }
+</style>

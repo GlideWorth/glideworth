@@ -11,6 +11,7 @@ import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { pages } from "../config/pages";
+import { countryLandings, landingPath } from "../landing/registry";
 import { site } from "../config/site";
 import { aspect, brandColors as c, LOGO_SVG, MARK_SVG, svgDataUri } from "./brand";
 import { publishedPosts, tagSlug } from "./content";
@@ -39,6 +40,14 @@ export async function ogEntries(): Promise<OgEntry[]> {
     eyebrow: "ogEyebrow" in m ? m.ogEyebrow : undefined,
     description: m.description,
   }));
+  for (const e of countryLandings()) {
+    entries.push({
+      path: landingPath(e),
+      title: e.seo.ogTitle,
+      eyebrow: e.seo.ogEyebrow,
+      description: e.seo.description,
+    });
+  }
 
   const posts = await publishedPosts();
   for (const p of posts) {

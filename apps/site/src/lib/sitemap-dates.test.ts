@@ -69,6 +69,7 @@ describe("sourceCandidates", () => {
       "src/content/authors/authors.json",
     );
     expect(sourceCandidates("/")[0]).toBe("src/pages/index.astro");
+    expect(sourceCandidates("/uk/")[0]).toBe("src/landing/countries/uk.ts");
   });
 });
 
@@ -172,7 +173,7 @@ describe("the built site's dates", () => {
 
     const git = gitCommitDates(repoRoot);
     const snapshot = readSourceDates(siteRoot);
-    const roots = ["apps/site/src/pages/", "apps/site/src/content/"];
+    const roots = ["apps/site/src/pages/", "apps/site/src/content/", "apps/site/src/landing/"];
     for (const [file, date] of git) {
       if (!roots.some((root) => file.startsWith(root))) continue;
       if (!existsSync(join(repoRoot, file))) continue;

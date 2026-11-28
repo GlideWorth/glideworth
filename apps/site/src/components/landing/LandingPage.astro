@@ -22,7 +22,7 @@ import { facts } from '../../lib/facts';
 import { googleTagManagerId } from '../../lib/gtm';
 import { organization, softwareApplication, website } from '../../lib/jsonld';
 import { externalLinkProps } from '../../lib/links';
-import { hreflangAlternates, LANDINGS, landingPath, versionLinks } from '../../landing/registry';
+import { hreflangAlternates, landingPath, versionLinks } from '../../landing/registry';
 import type { LandingEntry } from '../../landing/types';
 import { toolMeta } from '../../tools/registry';
 
@@ -31,13 +31,6 @@ interface Props {
 }
 const { entry } = Astro.props;
 const path = landingPath(entry);
-const versions = LANDINGS.map((e) => ({
-  code: e.code,
-  path: landingPath(e),
-  name: e.countryName,
-  hreflang: e.hreflang,
-  current: e === entry,
-}));
 
 const trackerNote = googleTagManagerId(PUBLIC_GTM_ID)
   ? 'This website measures visits with PostHog without cookies, on the free calculators too, never with what you type into them. The hosted app uses PostHog for product analytics.'
@@ -66,7 +59,6 @@ const accounts: FeatureItem[] = (local?.accounts.items ?? []).map((a) => ({
   ogLocale={entry.ogLocale}
   lang={entry.lang}
   alternates={hreflangAlternates()}
-  versions={versions}
   jsonLd={[organization(), website(), softwareApplication()]}
 >
   <Fragment slot="hero">

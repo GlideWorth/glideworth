@@ -1,8 +1,9 @@
 ---
 /**
  * Site footer: the full site map (src/config/nav.ts plus every published legal document), the
- * "not financial advice" line, licence and contact. On the country versions of the home page it also
- * lists those versions (plain links; the country banner's script remembers a click on one).
+ * "not financial advice" line, licence and contact. Every page also lists the country versions of the
+ * home page (plain links; on those versions the country banner's script remembers a click on one), and
+ * the logo of a country version links to that version.
  */
 import { PUBLIC_GTM_ID } from 'astro:env/server';
 import { getCollection } from 'astro:content';
@@ -10,22 +11,18 @@ import { footerNav } from '../config/nav';
 import { site } from '../config/site';
 import { googleTagManagerOnPath } from '../lib/gtm';
 import { externalLinkProps } from '../lib/links';
+import { homePathFor, LANDINGS, landingForPath, landingPath } from '../landing/registry';
 import Logo from './Logo.astro';
 
-export interface VersionSwitch {
-  /** ISO code of the country ("GB"). */
-  code: string;
-  /** "/" or "/uk/". */
-  path: string;
-  /** "United Kingdom". */
-  name: string;
-  hreflang: string;
-  current: boolean;
-}
-interface Props {
-  versions?: VersionSwitch[] | undefined;
-}
-const { versions = [] } = Astro.props;
+const currentVersion = landingForPath(Astro.url.pathname);
+const homePath = homePathFor(Astro.url.pathname);
+const versions = LANDINGS.map((e) => ({
+  code: e.code,
+  path: landingPath(e),
+  name: e.countryName,
+  hreflang: e.hreflang,
+  current: e === currentVersion,
+}));
 
 const legal = (await getCollection('legal'))
   .sort((a, b) => (a.data.order ?? 99) - (b.data.order ?? 99))
@@ -39,7 +36,7 @@ const consentSettings = googleTagManagerOnPath(Astro.url.pathname, PUBLIC_GTM_ID
   <div class="container">
     <div class="footer-top">
       <div class="footer-brand">
-        <a href="/" aria-label="Glideworth, home" class="footer-logo"><Logo /></a>
+        <a href={homePath} aria-label="Glideworth, home" class="footer-logo"><Logo /></a>
         <p>{site.tagline}</p>
       </div>
       <nav class="footer-nav" aria-label="Site map">
@@ -79,7 +76,7 @@ const consentSettings = googleTagManagerOnPath(Astro.url.pathname, PUBLIC_GTM_ID
     <div class="footer-bottom">
       {
         versions.length > 1 && (
-          <nav class="versions" aria-label="Country versions of this page">
+          <nav class="versions" aria-label="Country versions">
             <h2 class="versions-label">Country version</h2>
             <ul role="list">
               {versions.map((v) => (

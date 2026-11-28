@@ -16,7 +16,7 @@ import '../styles/global.css';
 import frauncesUrl from '@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2?url';
 import interUrl from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
 import ConsentBanner from '../components/ConsentBanner.astro';
-import Footer, { type VersionSwitch } from '../components/Footer.astro';
+import Footer from '../components/Footer.astro';
 import GoogleTagManager from '../components/GoogleTagManager.astro';
 import Header from '../components/Header.astro';
 import PostHog from '../components/PostHog.astro';
@@ -35,8 +35,6 @@ interface Props extends Omit<SeoProps, 'canonicalPath'> {
   ogEyebrow?: string;
   /** `<html lang>`; the site default when left out. */
   lang?: string;
-  /** The country versions of the home page, for the footer switcher (country landing pages only). */
-  versions?: VersionSwitch[];
 }
 
 const {
@@ -46,7 +44,6 @@ const {
   ogTitle: _ogTitle,
   ogEyebrow: _ogEyebrow,
   lang = site.locale,
-  versions,
   ...seo
 } = Astro.props;
 // The consent banner only where the tag loads: a build with PUBLIC_GTM_ID, outside /tools/.
@@ -89,7 +86,7 @@ const showConsent = googleTagManagerOnPath(Astro.url.pathname, PUBLIC_GTM_ID) !=
     <main id="main" tabindex="-1">
       <slot />
     </main>
-    <Footer versions={versions} />
+    <Footer />
     {showConsent && <ConsentBanner />}
   </body>
 </html>

@@ -1,11 +1,13 @@
 ---
 /**
- * Site header: logo, primary navigation (src/config/nav.ts), theme switch, sign-in and trial links.
+ * Site header: logo (on a country version of the home page it links to that version), primary
+ * navigation (src/config/nav.ts), theme switch, sign-in and trial links.
  * Below 60rem the navigation folds into a menu button; the panel closes on Escape, on a link click,
  * and when the viewport grows past the breakpoint.
  */
 import { primaryNav } from '../config/nav';
 import { site, trialCta } from '../config/site';
+import { homePathFor } from '../landing/registry';
 import { externalLinkProps } from '../lib/links';
 import Button from './Button.astro';
 import Logo from './Logo.astro';
@@ -17,7 +19,7 @@ const isCurrent = (href: string) => (href === '/' ? path === '/' : path.startsWi
 
 <header class="site-header" data-site-header>
   <div class="container header-inner">
-    <a href="/" class="brand" aria-label="Glideworth, home">
+    <a href={homePathFor(path)} class="brand" aria-label="Glideworth, home">
       <Logo />
     </a>
 

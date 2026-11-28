@@ -17,8 +17,10 @@ import {
 } from "./guess";
 import {
   DEFAULT_LANDING,
+  homePathFor,
   hreflangAlternates,
   LANDINGS,
+  landingForPath,
   landingPath,
   versionLinks,
 } from "./registry";
@@ -253,7 +255,54 @@ describe.skipIf(!built)("the built country versions", () => {
       "planning/uk/index.html",
       "tools/uk-fire-calculator/index.html",
     ]) {
-      expect(readFileSync(join(dist, path), "utf8"), path).not.toMatch(/hreflang="en-GB"/);
+      // The alternate links in <head> are the set; the footer's country links (on every page) also
+      // carry an hreflang attribute, which is not part of it.
+      expect(readFileSync(join(dist, path), "utf8"), path).not.toMatch(
+        /<link[^>]*rel="alternate"[^>]*hreflang=/,
+      );
     }
   });
+});
+
+describe("the logo's destination and the footer's country links", () => {
+  it("sends the logo of a country version to that version, and of any other page to the default", () => {
+    for (const e of LANDINGS) expect(homePathFor(landingPath(e)), e.code).toBe(landingPath(e));
+    expect(homePathFor("/uk")).toBe("/uk/");
+    for (const path of ["/pricing/", "/tools/", "/planning/uk/", "/uk/extra/", "/blog/"])
+      expect(homePathFor(path), path).toBe("/");
+    expect(landingForPath("/planning/uk/")).toBeUndefined();
+  });
+
+  const others = ["pricing", "tools", "planning/uk", "tools/fire-calculator"]
+    .map((p) => join(dist, p, "index.html"))
+    .filter((f) => existsSync(f));
+
+  it.skipIf(!built || others.length === 0)(
+    "lists every country version in every page's footer",
+    () => {
+      const pages = [
+        ...LANDINGS.map((e) => ({
+          path: landingPath(e),
+          page: readFileSync(join(dist, landingPath(e), "index.html"), "utf8"),
+        })),
+        ...others.map((f) => ({ path: null, page: readFileSync(f, "utf8") })),
+      ];
+      for (const { path, page } of pages) {
+        const footer = page.split("<footer")[1]!.split("</footer>")[0]!;
+        for (const e of LANDINGS) {
+          const link = new RegExp(
+            `<a[^>]*href="${landingPath(e)}"[^>]*data-country-choice="${e.code}"[^>]*>`,
+          ).exec(footer)?.[0];
+          expect(link, `${path ?? "other"} ${e.code}`).toBeDefined();
+          // Only the version you are on is marked current; other pages mark none.
+          expect(link!.includes('aria-current="page"'), `${path ?? "other"} ${e.code}`).toBe(
+            path === landingPath(e),
+          );
+        }
+        const home = path ?? "/";
+        expect(page).toMatch(new RegExp(`<a[^>]*href="${home}"[^>]*class="brand"`));
+        expect(footer).toMatch(new RegExp(`<a[^>]*href="${home}"[^>]*class="footer-logo"`));
+      }
+    },
+  );
 });

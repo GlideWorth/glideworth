@@ -50,6 +50,20 @@ export function versionLinks(): VersionLink[] {
   return LANDINGS.map((e) => ({ code: e.code, path: landingPath(e), label: e.label }));
 }
 
+/** The version served at exactly this site path, if any ("/uk/" → the UK entry; "/pricing/" → none). */
+export function landingForPath(pathname: string): LandingEntry | undefined {
+  const path = pathname.endsWith("/") ? pathname : `${pathname}/`;
+  return LANDINGS.find((e) => landingPath(e) === path);
+}
+
+/**
+ * Where the logo goes from this page: a country version links to itself, so a UK visitor is not sent
+ * to the US page; every other page links to the default version.
+ */
+export function homePathFor(pathname: string): string {
+  return landingPath(landingForPath(pathname) ?? DEFAULT_LANDING);
+}
+
 export function landingBySlug(slug: string): LandingEntry | undefined {
   return LANDINGS.find((e) => e.slug === slug);
 }
